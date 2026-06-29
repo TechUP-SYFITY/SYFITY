@@ -1,0 +1,38 @@
+{
+  "name": "syfity",
+  "private": true,
+  "scripts": {
+    "dev:fe": "pnpm --filter frontend dev",
+    "dev:be": "pnpm --filter backend dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.9.0",
+      "onFail": "download"
+    }
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.1.0",
+    "@commitlint/config-conventional": "^21.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.9.1"
+  },
+  "lint-staged": {
+    "apps/frontend/**/*.{ts,tsx}": [
+      "prettier --write",
+      "bash -c 'cd apps/frontend && eslint --fix'"
+    ],
+    "apps/backend/**/*.ts": [
+      "prettier --write",
+      "bash -c 'cd apps/backend && eslint --fix'"
+    ],
+    "*.{json,yaml,yml,md,css}": [
+      "prettier --write"
+    ]
+  }
+}

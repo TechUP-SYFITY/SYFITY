@@ -1,3 +1,6 @@
+// For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from 'eslint-plugin-storybook';
+
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
@@ -7,7 +10,14 @@ import tsParser from '@typescript-eslint/parser';
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'src/generated/**']),
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+    'src/generated/**',
+    '.storybook/**',
+  ]),
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -148,6 +158,7 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  ...storybook.configs['flat/recommended'],
 ]);
 
 export default eslintConfig;

@@ -27,11 +27,11 @@
   "lint-staged": {
     "apps/frontend/**/*.{ts,tsx}": [
       "prettier --write",
-      "bash -c 'cd apps/frontend && eslint --fix'"
+      "bash -c 'cd apps/frontend && ./node_modules/.bin/eslint --fix'"
     ],
     "apps/backend/**/*.ts": [
       "prettier --write",
-      "bash -c 'cd apps/backend && eslint --fix'"
+      "bash -c 'cd apps/backend && ./node_modules/.bin/eslint --fix'"
     ],
     "*.{json,yaml,yml,md,css}": [
       "prettier --write"

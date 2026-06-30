@@ -2,9 +2,9 @@
   "name": "backend",
   "private": true,
   "scripts": {
-    "generate": "tsoa generate",
-    "dev": "tsoa generate && tsx watch src/server.ts",
-    "build": "tsoa generate && tsc",
+    "generate": "tsoa spec-and-routes",
+    "dev": "tsoa spec-and-routes && tsx watch src/server.ts",
+    "build": "tsoa spec-and-routes && tsc",
     "start": "node dist/server.js",
     "lint": "eslint .",
     "test": "vitest run"
@@ -13,6 +13,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@syfity/shared": "workspace:*",
+    "@tsoa/runtime": "7.0.0-alpha.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

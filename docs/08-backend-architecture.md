@@ -528,7 +528,6 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   "entryFile": "src/server.ts",
   "noImplicitAdditionalProperties": "throw-on-extras",
   "controllerPathGlobs": ["src/controllers/**/*.controller.ts"],
-  "iocModule": "src/ioc",
   "spec": {
     "outputDirectory": "src/generated",
     "specVersion": 3,
@@ -545,6 +544,8 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   },
   "routes": {
     "routesDir": "src/generated",
+    "routesFileName": "routes.gen.ts",
+    "iocModule": "src/ioc",
     "authenticationModule": "src/authentication",
     "basePath": "/api/v1"
   }
@@ -554,8 +555,8 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
 ### 빌드 플로우
 
 ```
-tsoa generate  →  src/generated/routes.gen.ts + src/generated/swagger.json 생성
-tsc            →  TypeScript 컴파일
+tsoa spec-and-routes  →  src/generated/routes.gen.ts + src/generated/swagger.json 생성
+tsc                   →  TypeScript 컴파일
 ```
 
 `src/generated/`는 `.gitignore` 대상이며, 개발/빌드 스크립트에서 자동으로 생성한다.
@@ -563,9 +564,9 @@ tsc            →  TypeScript 컴파일
 ```json
 // package.json scripts
 {
-  "generate": "tsoa generate",
-  "dev": "tsoa generate && tsx watch src/server.ts",
-  "build": "tsoa generate && tsc"
+  "generate": "tsoa spec-and-routes",
+  "dev": "tsoa spec-and-routes && tsx watch src/server.ts",
+  "build": "tsoa spec-and-routes && tsc"
 }
 ```
 
@@ -573,7 +574,7 @@ tsc            →  TypeScript 컴파일
 
 1. `src/controllers/<domain>.controller.ts` — tsoa 데코레이터 + 생성자 주입
 2. `src/ioc.ts` — 팩토리 등록
-3. `tsoa generate` 실행 — 라우터 + 스펙 재생성
+3. `tsoa spec-and-routes` 실행 — 라우터 + 스펙 재생성
 4. `packages/shared/src/dto/<domain>.dto.ts` — 요청/응답 타입
 
 ---

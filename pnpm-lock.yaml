@@ -237,6 +237,9 @@ importers:
       '@syfity/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@tsoa/runtime':
+        specifier: 7.0.0-alpha.0
+        version: 7.0.0-alpha.0
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7

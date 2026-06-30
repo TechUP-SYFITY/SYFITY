@@ -2,7 +2,6 @@
   "entryFile": "src/server.ts",
   "noImplicitAdditionalProperties": "throw-on-extras",
   "controllerPathGlobs": ["src/controllers/**/*.controller.ts"],
-  "iocModule": "src/ioc",
   "spec": {
     "outputDirectory": "src/generated",
     "specVersion": 3,
@@ -20,6 +19,7 @@
   "routes": {
     "routesDir": "src/generated",
     "routesFileName": "routes.gen.ts",
+    "iocModule": "src/ioc",
     "authenticationModule": "src/authentication",
     "basePath": "/api/v1"
   }

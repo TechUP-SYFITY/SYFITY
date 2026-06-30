@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +5,161 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum RoomVisibility {
+  private
+  public
+}
+
+enum RoomStatus {
+  active
+  inactive
+  closed
+}
+
+enum RoomRole {
+  host
+  member
+  guest
+}
+
+enum RoomMemberStatus {
+  online
+  offline
+  left
+}
+
+enum PlaylistItemStatus {
+  available
+  unavailable
+}
+
+enum ChatMessageType {
+  user
+  system
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  nickname     String
+  profileImage String?  @map("profile_image")
+  refreshToken String?  @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  hostedRooms   Room[]         @relation("HostedRooms")
+  roomMembers   RoomMember[]
+  recentRooms   RecentRoom[]
+  playlistItems PlaylistItem[]
+  chatMessages  ChatMessage[]
+
+  @@map("users")
+}
+
+model Room {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  hostId         String         @map("host_id") @db.Uuid
+  visibility     RoomVisibility
+  inviteCode     String         @unique @map("invite_code") @db.VarChar(8)
+  status         RoomStatus     @default(active)
+  lastActivityAt DateTime       @map("last_activity_at") @db.Timestamptz
+  closedAt       DateTime?      @map("closed_at") @db.Timestamptz
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  host          User           @relation("HostedRooms", fields: [hostId], references: [id])
+  roomMembers   RoomMember[]
+  recentRooms   RecentRoom[]
+  playlistItems PlaylistItem[]
+  playbackState PlaybackState?
+  chatMessages  ChatMessage[]
+
+  @@map("rooms")
+}
+
+model RoomMember {
+  id         String           @id @default(uuid()) @db.Uuid
+  roomId     String           @map("room_id") @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  role       RoomRole
+  status     RoomMemberStatus
+  joinedAt   DateTime         @map("joined_at") @db.Timestamptz
+  lastSeenAt DateTime?        @map("last_seen_at") @db.Timestamptz
+  leftAt     DateTime?        @map("left_at") @db.Timestamptz
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+  @@map("room_members")
+}
+
+model RecentRoom {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  roomId       String   @map("room_id") @db.Uuid
+  lastJoinedAt DateTime @map("last_joined_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+
+  @@unique([userId, roomId])
+  @@index([userId, lastJoinedAt(sort: Desc)])
+  @@map("recent_rooms")
+}
+
+model PlaylistItem {
+  id           String             @id @default(uuid()) @db.Uuid
+  roomId       String             @map("room_id") @db.Uuid
+  videoId      String             @map("video_id")
+  title        String
+  channelTitle String             @map("channel_title")
+  thumbnailUrl String             @map("thumbnail_url")
+  duration     Int
+  position     Int
+  addedBy      String             @map("added_by") @db.Uuid
+  status       PlaylistItemStatus @default(available)
+  addedAt      DateTime           @map("added_at") @db.Timestamptz
+
+  room           Room            @relation(fields: [roomId], references: [id])
+  addedByUser    User            @relation(fields: [addedBy], references: [id])
+  playbackStates PlaybackState[]
+
+  @@index([roomId, position])
+  @@map("playlist_items")
+}
+
+model PlaybackState {
+  id              String    @id @default(uuid()) @db.Uuid
+  roomId          String    @unique @map("room_id") @db.Uuid
+  videoId         String?   @map("video_id")
+  playlistItemId  String?   @map("playlist_item_id") @db.Uuid
+  baseCurrentTime Float     @default(0) @map("base_current_time")
+  isPlaying       Boolean   @default(false) @map("is_playing")
+  serverStartedAt DateTime? @map("server_started_at") @db.Timestamptz
+  serverPausedAt  DateTime? @map("server_paused_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  room         Room          @relation(fields: [roomId], references: [id])
+  playlistItem PlaylistItem? @relation(fields: [playlistItemId], references: [id])
+
+  @@map("playback_states")
+}
+
+model ChatMessage {
+  id        String          @id @default(uuid()) @db.Uuid
+  roomId    String          @map("room_id") @db.Uuid
+  userId    String?         @map("user_id") @db.Uuid
+  type      ChatMessageType
+  message   String          @db.Text
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  room Room  @relation(fields: [roomId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([roomId, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("chat_messages")
 }

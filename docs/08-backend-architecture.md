@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.0                                                                                  |
-| 상태      | 초안                                                                                  |
+| 버전      | v1.2                                                                                  |
+| 상태      | tsoa 컨트롤러 패턴 + iocModule + Swagger 반영                                         |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -42,21 +42,17 @@ apps/backend/
     app.ts              → Express 앱 설정 (미들웨어, 라우터 등록)
     server.ts           → 서버 진입점 (HTTP 서버 생성, Socket.IO 초기화)
 
-    routes/             → 엔드포인트 정의, Controller 연결
-      authRouter.ts
-      meRouter.ts
-      roomRouter.ts
-      playlistRouter.ts
-      chatRouter.ts
-      searchRouter.ts
+    generated/          → tsoa generate 출력 (gitignore 대상)
+      routes.gen.ts     → 자동 생성된 Express 라우터
+      swagger.json      → 자동 생성된 OpenAPI 스펙
 
-    controllers/        → 요청/응답 처리, try-catch, Service 호출
-      authController.ts
-      meController.ts
-      roomController.ts
-      playlistController.ts
-      chatController.ts
-      searchController.ts
+    controllers/        → tsoa 데코레이터 + Service 주입
+      auth.controller.ts
+      me.controller.ts
+      room.controller.ts
+      playlist.controller.ts
+      chat.controller.ts
+      search.controller.ts
 
     services/           → 비즈니스 로직, Repository 호출
       authService.ts
@@ -84,9 +80,15 @@ apps/backend/
         chat.handler.ts
         presence.handler.ts
 
+    authentication.ts   → tsoa Security 핸들러 (REST 인증)
+    ioc.ts              → tsoa iocModule (팩토리 레지스트리)
+
+    errors/
+      appError.ts       → 공통 애플리케이션 에러 클래스
+
     middlewares/        → Express 미들웨어
-      auth.middleware.ts
-      error.middleware.ts
+      auth.middleware.ts  → Socket.IO 인증 전용
+      error.middleware.ts → 전역 에러 응답 미들웨어
 
     lib/                → 공통 유틸
       cache/
@@ -114,9 +116,206 @@ Router → Controller → Service → Repository
 | 레이어     | 역할                             | 규칙                                  |
 | ---------- | -------------------------------- | ------------------------------------- |
 | Router     | 엔드포인트 정의, Controller 연결 | 비즈니스 로직 없음                    |
-| Controller | 요청/응답 처리, try-catch        | Service만 호출, Prisma 직접 접근 금지 |
+| Controller | 요청/응답 처리                   | Service만 호출, Prisma 직접 접근 금지 |
 | Service    | 비즈니스 로직                    | Repository만 호출, 에러는 throw       |
 | Repository | DB 접근 전담                     | Prisma Client 직접 호출               |
+
+### 의존성 주입 패턴
+
+각 레이어는 클래스로 구현하고, tsoa `iocModule`에서 의존 그래프를 조립한다. 외부 DI 컨테이너 없이 생성자 주입(수동 DI)을 사용한다.
+
+**Repository — Prisma 주입, 인터페이스 선언**
+
+```ts
+// src/repositories/auth.repository.ts
+import type { PrismaClient, User } from '../generated/prisma';
+
+export interface IAuthRepository {
+  findUserByEmail(email: string): Promise<User | null>;
+  upsertUser(data: { email: string; nickname: string; profileImage?: string }): Promise<User>;
+}
+
+export class AuthRepository implements IAuthRepository {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  findUserByEmail(email: string) {
+    return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  upsertUser(data: { email: string; nickname: string; profileImage?: string }) {
+    return this.prisma.user.upsert({
+      where: { email: data.email },
+      update: { nickname: data.nickname, profileImage: data.profileImage },
+      create: data,
+    });
+  }
+}
+```
+
+**Service — Repository 인터페이스에 의존**
+
+```ts
+// src/services/auth.service.ts
+import type { IAuthRepository } from '../repositories/auth.repository';
+
+export class AuthService {
+  constructor(private readonly authRepo: IAuthRepository) {}
+
+  async loginWithGoogle(googleIdToken: string) {
+    // 비즈니스 로직
+    const user = await this.authRepo.findUserByEmail(email);
+    // ...
+  }
+}
+```
+
+**Controller — tsoa 데코레이터 + Service 주입**
+
+tsoa 데코레이터로 경로와 HTTP 메서드를 선언한다. 메서드는 데이터만 반환하고, 응답 직렬화와 에러 처리는 tsoa가 담당한다. `next(err)` 호출 대신 에러를 throw한다.
+
+```ts
+// src/controllers/auth.controller.ts
+import type { Request as ExRequest } from 'express';
+import { Get, Query, Request, Route } from 'tsoa';
+
+import type { AuthService } from '../services/auth.service';
+import type { LoginResponse } from '@syfity/shared';
+
+@Route('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Get('google/callback')
+  async googleCallback(@Query() code: string, @Request() req: ExRequest): Promise<LoginResponse> {
+    return this.authService.loginWithGoogle(code, req);
+  }
+}
+```
+
+**iocModule — 의존 그래프 조립**
+
+tsoa는 컨트롤러를 자동으로 인스턴스화하므로, `iocModule`을 통해 생성자 주입을 연결한다. 별도 DI 라이브러리 없이 팩토리 레지스트리로 구현한다. 각 도메인 구현 시 이 파일에 팩토리를 등록한다.
+
+```ts
+// src/ioc.ts
+import type { IocContainer } from 'tsoa';
+import { cache } from './lib/cache';
+import { prisma } from './lib/prisma';
+
+// 각 도메인 구현 시 추가
+// import { AuthController } from './controllers/auth.controller';
+// import { AuthRepository } from './repositories/auth.repository';
+// import { AuthService } from './services/auth.service';
+
+const registry = new Map<Function, () => unknown>();
+
+function register<T>(cls: new (...args: never[]) => T, factory: () => T): void {
+  registry.set(cls, factory as () => unknown);
+}
+
+// 팩토리 등록 — T03~에서 도메인별로 추가
+// register(AuthController, () => {
+//   const repo = new AuthRepository(prisma);
+//   return new AuthController(new AuthService(repo));
+// });
+
+export const iocContainer: IocContainer = {
+  get<T>(controller: new (...args: never[]) => T): T {
+    const factory = registry.get(controller);
+    if (!factory) throw new Error(`IoC: ${controller.name} not registered`);
+    return factory() as T;
+  },
+};
+```
+
+Cache가 필요한 Service는 생성자에서 `ICache`를 받는다.
+
+```ts
+export class RoomService {
+  constructor(
+    private readonly roomRepo: IRoomRepository,
+    private readonly cache: ICache,
+  ) {}
+}
+// register 예시
+// register(RoomController, () => {
+//   const repo = new RoomRepository(prisma);
+//   return new RoomController(new RoomService(repo, cache));
+// });
+```
+
+**인증 핸들러 — tsoa Security 연동**
+
+`@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. 기존 `authenticate` 미들웨어를 대체하며, Socket.IO 인증은 별도로 `auth.middleware.ts`의 `authenticate`를 유지한다.
+
+```ts
+// src/authentication.ts
+import type { Request } from 'express';
+import jwt from 'jsonwebtoken';
+
+import { config } from './config';
+import { AppError } from './errors/appError';
+
+export function expressAuthentication(
+  request: Request,
+  securityName: string,
+): Promise<{ id: string; email: string }> {
+  if (securityName === 'jwt') {
+    const token = request.cookies?.access_token as string | undefined;
+    if (!token) {
+      return Promise.reject(new AppError(401, 'AUTH_UNAUTHORIZED', '인증이 필요합니다.'));
+    }
+    return new Promise((resolve, reject) => {
+      jwt.verify(token, config.jwt.accessSecret, (err, payload) => {
+        if (err instanceof jwt.TokenExpiredError) {
+          reject(new AppError(401, 'AUTH_TOKEN_EXPIRED', '토큰이 만료되었습니다.'));
+        } else if (err) {
+          reject(new AppError(401, 'AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
+        } else {
+          const user = payload as { id: string; email: string };
+          request.user = user;
+          resolve(user);
+        }
+      });
+    });
+  }
+  return Promise.reject(new AppError(401, 'AUTH_UNAUTHORIZED', '알 수 없는 보안 스킴입니다.'));
+}
+```
+
+**app.ts — 생성된 라우터 등록**
+
+```ts
+import { ValidateError } from 'tsoa';
+import swaggerUi from 'swagger-ui-express';
+import { RegisterRoutes } from './generated/routes.gen';
+
+// tsoa generate 실행 후 생성됨
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const swaggerDocument = require('./generated/swagger.json');
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// tsoa 생성 라우터
+RegisterRoutes(app);
+
+// tsoa 요청 유효성 검사 실패 처리 (errorHandler 이전에 등록)
+app.use(
+  (err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof ValidateError) {
+      res.status(422).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: err.message },
+      });
+      return;
+    }
+    next(err);
+  },
+);
+
+app.use(errorHandler);
+```
 
 **예외: search**
 
@@ -129,13 +328,14 @@ Router → Controller → Service → Repository
 ### 에러 처리 흐름
 
 ```
-Repository → throw Error
-Service    → throw Error (catch 없음)
-Controller → try-catch → 전역 에러 미들웨어로 전달
-전역 에러 미들웨어 → 에러 코드 기반 응답 반환
+Repository → throw AppError
+Service    → throw AppError (catch 없음)
+Controller → throw AppError (catch 없음, tsoa가 자동으로 에러 핸들러로 전달)
+ValidateError 핸들러 → 422 응답 (tsoa 요청 유효성 검사 실패)
+전역 에러 미들웨어 → AppError 코드 기반 응답 반환
 ```
 
-Service는 에러를 throw만 하고, Controller가 catch한다. 전역 에러 미들웨어에서 일관된 응답 형식으로 처리한다.
+tsoa가 컨트롤러 메서드를 래핑하므로 Controller에서 try-catch가 불필요하다. 에러는 모두 throw하고 전역 핸들러에서 처리한다. Socket 핸들러는 tsoa 범위 밖이므로 기존처럼 try-catch를 직접 처리한다.
 
 ---
 
@@ -253,20 +453,33 @@ export function registerRoomHandlers(io: Server, socket: Socket) {
 
 ## 7. 미들웨어
 
-### 인증 미들웨어
+### 인증
+
+REST 엔드포인트와 Socket.IO는 인증 방식이 다르다.
+
+| 경로                      | 방식                    | 파일                                 |
+| ------------------------- | ----------------------- | ------------------------------------ |
+| REST (`@Security('jwt')`) | `expressAuthentication` | `src/authentication.ts`              |
+| Socket.IO                 | `authenticate` 미들웨어 | `src/middlewares/auth.middleware.ts` |
 
 ```ts
-// src/middlewares/auth.middleware.ts
+// src/middlewares/auth.middleware.ts — Socket.IO 전용
 export function authenticate(req: Request, res: Response, next: NextFunction) {
-  const token = req.cookies.access_token;
-  if (!token) return res.status(401).json({ success: false, error: { code: 'AUTH_UNAUTHORIZED' } });
-
+  const token = req.cookies.access_token as string | undefined;
+  if (!token) {
+    next(new AppError(401, 'AUTH_UNAUTHORIZED', '인증이 필요합니다.'));
+    return;
+  }
   try {
-    const payload = jwt.verify(token, config.jwt.accessSecret);
-    req.user = payload as { id: string; email: string };
+    const payload = jwt.verify(token, config.jwt.accessSecret) as { id: string; email: string };
+    req.user = payload;
     next();
-  } catch {
-    res.status(401).json({ success: false, error: { code: 'AUTH_UNAUTHORIZED' } });
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      next(new AppError(401, 'AUTH_TOKEN_EXPIRED', '토큰이 만료되었습니다.'));
+    } else {
+      next(new AppError(401, 'AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
+    }
   }
 }
 ```
@@ -274,22 +487,98 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
 ### 전역 에러 미들웨어
 
 ```ts
-// src/middlewares/error.middleware.ts
-export function errorHandler(err: AppError, req: Request, res: Response, next: NextFunction) {
-  const status = err.status ?? 500;
-  const code = err.code ?? 'SERVER_INTERNAL_ERROR';
-  const message = err.message ?? '서버 오류가 발생했습니다.';
+// src/errors/appError.ts
+export class AppError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+```
 
-  res.status(status).json({
+```ts
+// src/middlewares/error.middleware.ts
+import { AppError } from '../errors/appError';
+
+export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
+  if (err instanceof AppError) {
+    res.status(err.status).json({
+      success: false,
+      error: { code: err.code, message: err.message },
+    });
+    return;
+  }
+  res.status(500).json({
     success: false,
-    error: { code, message },
+    error: { code: 'SERVER_INTERNAL_ERROR', message: '서버 오류가 발생했습니다.' },
   });
 }
 ```
 
+## 8. tsoa 설정
+
+### tsoa.json
+
+```json
+{
+  "entryFile": "src/server.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/controllers/**/*.controller.ts"],
+  "iocModule": "src/ioc",
+  "spec": {
+    "outputDirectory": "src/generated",
+    "specVersion": 3,
+    "name": "Syfity API",
+    "version": "1.0.0",
+    "securityDefinitions": {
+      "jwt": {
+        "type": "apiKey",
+        "name": "access_token",
+        "in": "cookie"
+      }
+    },
+    "basePath": "/api/v1"
+  },
+  "routes": {
+    "routesDir": "src/generated",
+    "authenticationModule": "src/authentication",
+    "basePath": "/api/v1"
+  }
+}
+```
+
+### 빌드 플로우
+
+```
+tsoa generate  →  src/generated/routes.gen.ts + src/generated/swagger.json 생성
+tsc            →  TypeScript 컴파일
+```
+
+`src/generated/`는 `.gitignore` 대상이며, 개발/빌드 스크립트에서 자동으로 생성한다.
+
+```json
+// package.json scripts
+{
+  "generate": "tsoa generate",
+  "dev": "tsoa generate && tsx watch src/server.ts",
+  "build": "tsoa generate && tsc"
+}
+```
+
+### 새 도메인 추가 체크리스트
+
+1. `src/controllers/<domain>.controller.ts` — tsoa 데코레이터 + 생성자 주입
+2. `src/ioc.ts` — 팩토리 등록
+3. `tsoa generate` 실행 — 라우터 + 스펙 재생성
+4. `packages/shared/src/dto/<domain>.dto.ts` — 요청/응답 타입
+
 ---
 
-## 8. Request 타입 확장
+## 9. Request 타입 확장
 
 Express `Request` 객체에 인증된 사용자 정보를 붙이기 위해 타입을 확장한다.
 
@@ -307,7 +596,7 @@ declare namespace Express {
 
 ---
 
-## 9. 환경변수 목록
+## 10. 환경변수 목록
 
 ```
 # apps/backend/.env

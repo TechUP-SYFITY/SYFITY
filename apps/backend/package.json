@@ -30,7 +30,6 @@
     "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.62.0",
     "@typescript-eslint/parser": "^8.62.0",
-    "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import": "^2.32.0",
     "prisma": "^7.8.0",

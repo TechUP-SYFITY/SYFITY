@@ -89,12 +89,13 @@ JWT 기반 인증. Access Token은 httpOnly 쿠키로 전달된다.
 
 ### 2.5 공통 에러 코드
 
-| 코드                    | HTTP | 설명                                                    |
-| ----------------------- | ---- | ------------------------------------------------------- |
-| `AUTH_UNAUTHORIZED`     | 401  | Access Token 없음 또는 만료 → FE가 `/auth/refresh` 시도 |
-| `AUTH_REFRESH_EXPIRED`  | 401  | Refresh Token 만료 → 자동 로그아웃 후 Landing으로 이동  |
-| `AUTH_FORBIDDEN`        | 403  | 권한 없음                                               |
-| `SERVER_INTERNAL_ERROR` | 500  | 서버 내부 오류                                          |
+| 코드                    | HTTP | 설명                                                             |
+| ----------------------- | ---- | ---------------------------------------------------------------- |
+| `AUTH_UNAUTHORIZED`     | 401  | Access Token 없음 또는 유효하지 않음 → FE가 `/auth/refresh` 시도 |
+| `AUTH_TOKEN_EXPIRED`    | 401  | Access Token 만료 → FE가 `/auth/refresh` 시도                    |
+| `AUTH_REFRESH_EXPIRED`  | 401  | Refresh Token 만료 → 자동 로그아웃 후 Landing으로 이동           |
+| `AUTH_FORBIDDEN`        | 403  | 권한 없음                                                        |
+| `SERVER_INTERNAL_ERROR` | 500  | 서버 내부 오류                                                   |
 
 ---
 

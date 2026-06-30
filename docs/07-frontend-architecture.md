@@ -234,8 +234,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   if (response.status === 401) {
     const error = await response.json();
 
-    if (error.code === 'AUTH_UNAUTHORIZED') {
-      // Access Token 만료 → refresh 시도
+    if (error.code === 'AUTH_UNAUTHORIZED' || error.code === 'AUTH_TOKEN_EXPIRED') {
+      // Access Token 없음/만료 → refresh 시도
       const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
@@ -421,12 +421,13 @@ export const queryClient = new QueryClient({
 
 ### 전역 처리 (공통 레이어에서 처리)
 
-| 에러                    | 처리 방식                            |
-| ----------------------- | ------------------------------------ |
-| `AUTH_UNAUTHORIZED`     | apiClient에서 자동 refresh 후 재시도 |
-| `AUTH_REFRESH_EXPIRED`  | 자동 로그아웃 → Landing 리다이렉트   |
-| `SERVER_INTERNAL_ERROR` | Toast로 안내                         |
-| Socket 연결 해제        | Toast로 안내, 재연결 시도            |
+| 에러                    | 처리 방식                                             |
+| ----------------------- | ----------------------------------------------------- |
+| `AUTH_UNAUTHORIZED`     | apiClient에서 자동 refresh 후 재시도 (토큰 없음/무효) |
+| `AUTH_TOKEN_EXPIRED`    | apiClient에서 자동 refresh 후 재시도 (토큰 만료)      |
+| `AUTH_REFRESH_EXPIRED`  | 자동 로그아웃 → Landing 리다이렉트                    |
+| `SERVER_INTERNAL_ERROR` | Toast로 안내                                          |
+| Socket 연결 해제        | Toast로 안내, 재연결 시도                             |
 
 ### 로컬 처리 (각 feature에서 처리)
 

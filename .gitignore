@@ -1,5 +1,44 @@
+# 의존성
 node_modules/
-.env
-.env.local
+
+# 환경변수
+.env*
+!.env.example
+
+# 빌드 결과물
 dist/
 .next/
+out/
+build/
+
+# Prisma 생성 파일
+src/generated/
+
+# 로그
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# AI 설정 파일
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+AGENTS.override.md
+.codex/
+.claude/
+.agents/
+.coderabbit.yaml
+
+# Cursor
+.cursor/
+.cursorrules

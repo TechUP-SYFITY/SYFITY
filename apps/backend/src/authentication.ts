@@ -29,7 +29,8 @@ export function expressAuthentication(
         return;
       }
 
-      const user = payload as { id: string; email: string };
+      const verifiedPayload = payload as { id: string; email: string };
+      const user = { id: verifiedPayload.id, email: verifiedPayload.email };
       request.user = user;
       resolve(user);
     });

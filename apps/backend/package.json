@@ -4,7 +4,7 @@
   "scripts": {
     "generate": "tsoa spec-and-routes",
     "dev": "tsoa spec-and-routes && tsx watch src/server.ts",
-    "build": "tsoa spec-and-routes && tsc",
+    "build": "tsoa spec-and-routes && tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "lint": "eslint .",
     "test": "vitest run"

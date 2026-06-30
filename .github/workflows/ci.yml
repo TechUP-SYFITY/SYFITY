@@ -25,10 +25,10 @@ jobs:
         run: pnpm install
 
       - name: Lint FE
-        run: pnpm --filter frontend eslint src
+        run: pnpm --filter frontend lint
 
       - name: Lint BE
-        run: pnpm --filter backend eslint src
+        run: pnpm --filter backend lint
 
   build:
     runs-on: ubuntu-latest

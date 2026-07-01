@@ -83,6 +83,24 @@ describe('AuthController', () => {
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, { Location: '/room/abc' });
   });
 
+  it('production 환경에서는 secure strict 쿠키를 설정한다', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest();
+    const redirectMock = vi.fn();
+    const redirect = redirectMock as unknown as TsoaResponse<302, void>;
+
+    await controller.googleCallback(req, redirect, 'valid-code');
+
+    expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'access-token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+    });
+  });
+
   it('콜백 실패 시 clientUrl 에러 쿼리로 리다이렉트한다', async () => {
     const { AuthController } = await import('./auth.controller');
     const authService = makeAuthService();

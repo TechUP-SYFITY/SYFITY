@@ -2,14 +2,20 @@ import type { CookieOptions, Request as ExRequest } from 'express';
 import { Get, Post, Query, Request, Res, Route, Security, SuccessResponse } from 'tsoa';
 import type { TsoaResponse } from 'tsoa';
 
-import type { LogoutResponse } from '@syfity/shared';
+import type { LogoutResponse, RefreshResponse } from '@syfity/shared';
 
 import { config } from '../config';
+import { AppError } from '../errors/appError';
 import type { AuthService } from '../services/auth.service';
+
+type AuthControllerService = Pick<
+  AuthService,
+  'getAuthorizationUrl' | 'getPostLoginRedirectUrl' | 'handleCallback' | 'logout' | 'refresh'
+>;
 
 @Route('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthControllerService) {}
 
   @Get('google')
   async redirectToGoogle(
@@ -60,6 +66,27 @@ export class AuthController {
     res.clearCookie('refresh_token', { path: '/api/v1/auth/refresh' });
 
     return { success: true, data: { message: 'logged out' } };
+  }
+
+  @Post('refresh')
+  @SuccessResponse(200, 'token refreshed')
+  async refresh(@Request() req: ExRequest): Promise<RefreshResponse> {
+    const refreshToken = req.cookies?.refresh_token;
+    if (typeof refreshToken !== 'string') {
+      throw new AppError(401, 'AUTH_REFRESH_EXPIRED', 'Refresh Token이 없습니다.');
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } =
+      await this.authService.refresh(refreshToken);
+
+    const res = req.res!;
+    res.cookie('access_token', accessToken, this.getCookieOptions());
+    res.cookie('refresh_token', newRefreshToken, {
+      ...this.getCookieOptions(),
+      path: '/api/v1/auth/refresh',
+    });
+
+    return { success: true, data: { message: 'token refreshed' } };
   }
 
   private getCookieOptions(): CookieOptions {

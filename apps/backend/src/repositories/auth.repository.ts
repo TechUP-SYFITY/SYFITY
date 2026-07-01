@@ -2,7 +2,7 @@ import type { PrismaClient } from '../generated/prisma/client';
 import type { IAuthRepository, UserRecord } from '../types/auth';
 
 export type AuthRepositoryPrisma = {
-  user: Pick<PrismaClient['user'], 'upsert' | 'update'>;
+  user: Pick<PrismaClient['user'], 'upsert' | 'update' | 'findUnique'>;
 };
 
 export class AuthRepository implements IAuthRepository {
@@ -25,6 +25,14 @@ export class AuthRepository implements IAuthRepository {
         profileImage: data.profileImage,
       },
     });
+  }
+
+  async findUserByRefreshToken(userId: string, refreshToken: string): Promise<UserRecord | null> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
+    if (user.refreshToken !== refreshToken) return null;
+
+    return user;
   }
 
   async saveRefreshToken(userId: string, token: string): Promise<void> {

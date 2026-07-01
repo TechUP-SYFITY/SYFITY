@@ -1,4 +1,3 @@
-import type { OAuth2Client } from 'google-auth-library';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import { config } from '../config';
@@ -17,10 +16,19 @@ type GoogleProfile = {
   picture?: string;
 };
 
+type AuthOAuthClient = {
+  generateAuthUrl(options: { access_type: string; scope: string[]; state: string }): string;
+  getToken(code: string): Promise<{ tokens: { id_token?: string | null } }>;
+  verifyIdToken(options: {
+    idToken: string;
+    audience: string;
+  }): Promise<{ getPayload(): GoogleProfile | undefined }>;
+};
+
 export class AuthService {
   constructor(
     private readonly authRepo: IAuthRepository,
-    private readonly oauthClient: OAuth2Client,
+    private readonly oauthClient: AuthOAuthClient,
   ) {}
 
   getAuthorizationUrl(returnUrl?: string): string {
@@ -73,6 +81,22 @@ export class AuthService {
     return returnUrl;
   }
 
+  async refresh(refreshToken: string): Promise<AuthTokens> {
+    const payload = this.verifyRefreshToken(refreshToken);
+    const user = await this.authRepo.findUserByRefreshToken(payload.id, refreshToken);
+
+    if (!user) {
+      throw new AppError(401, 'AUTH_REFRESH_EXPIRED', 'Refresh Token이 유효하지 않습니다.');
+    }
+
+    const accessToken = this.signAccessToken(user);
+    const newRefreshToken = this.signRefreshToken(user);
+
+    await this.authRepo.saveRefreshToken(user.id, newRefreshToken);
+
+    return { user, accessToken, refreshToken: newRefreshToken };
+  }
+
   private async exchangeCodeForIdToken(code: string): Promise<string> {
     try {
       const { tokens } = await this.oauthClient.getToken(code);
@@ -105,6 +129,22 @@ export class AuthService {
       };
     } catch {
       throw new AppError(401, 'AUTH_GOOGLE_TOKEN_INVALID', 'Google ID 토큰이 유효하지 않습니다.');
+    }
+  }
+
+  private verifyRefreshToken(refreshToken: string): { id: string } {
+    try {
+      return jwt.verify(refreshToken, config.jwt.refreshSecret) as { id: string };
+    } catch (err) {
+      if (err instanceof jwt.TokenExpiredError || err instanceof jwt.JsonWebTokenError) {
+        throw new AppError(
+          401,
+          'AUTH_REFRESH_EXPIRED',
+          'Refresh Token이 만료되었거나 유효하지 않습니다.',
+        );
+      }
+
+      throw err;
     }
   }
 

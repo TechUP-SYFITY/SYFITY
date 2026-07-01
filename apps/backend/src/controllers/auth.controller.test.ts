@@ -24,12 +24,18 @@ function makeAuthService() {
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
     } satisfies AuthTokens),
+    refresh: vi.fn().mockResolvedValue({
+      user: userRecord,
+      accessToken: 'new-access-token',
+      refreshToken: 'new-refresh-token',
+    } satisfies AuthTokens),
     logout: vi.fn().mockResolvedValue(undefined),
   };
 }
 
-function makeRequest(): ExRequest {
+function makeRequest(cookies: Record<string, unknown> = {}): ExRequest {
   return {
+    cookies,
     user: { id: 'user-id', email: 'alice@example.com' },
     res: {
       cookie: vi.fn(),
@@ -40,6 +46,7 @@ function makeRequest(): ExRequest {
 
 describe('AuthController', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     vi.resetModules();
     vi.stubEnv('CLIENT_URL', 'http://localhost:3000');
   });
@@ -167,5 +174,88 @@ describe('AuthController', () => {
     expect(req.res!.clearCookie).toHaveBeenCalledWith('refresh_token', {
       path: '/api/v1/auth/refresh',
     });
+  });
+
+  it('refresh_token 쿠키가 없으면 AUTH_REFRESH_EXPIRED를 반환한다', async () => {
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest();
+
+    await expect(controller.refresh(req)).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_REFRESH_EXPIRED',
+    });
+    expect(authService.refresh).not.toHaveBeenCalled();
+  });
+
+  it('refresh_token 쿠키가 문자열이 아니면 AUTH_REFRESH_EXPIRED를 반환한다', async () => {
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest({ refresh_token: ['old-refresh-token'] });
+
+    await expect(controller.refresh(req)).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_REFRESH_EXPIRED',
+    });
+    expect(authService.refresh).not.toHaveBeenCalled();
+  });
+
+  it('refresh 성공 시 새 쿠키를 설정하고 응답을 반환한다', async () => {
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest({ refresh_token: 'old-refresh-token' });
+
+    await expect(controller.refresh(req)).resolves.toEqual({
+      success: true,
+      data: { message: 'token refreshed' },
+    });
+    expect(authService.refresh).toHaveBeenCalledWith('old-refresh-token');
+    expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'new-access-token', {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+    });
+    expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      path: '/api/v1/auth/refresh',
+    });
+  });
+
+  it('refresh 성공 시 production 쿠키 옵션을 적용한다', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest({ refresh_token: 'old-refresh-token' });
+
+    await controller.refresh(req);
+
+    expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'new-access-token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+    });
+    expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/api/v1/auth/refresh',
+    });
+  });
+
+  it('refresh service 에러를 그대로 전파한다', async () => {
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const error = new Error('refresh failed');
+    authService.refresh.mockRejectedValue(error);
+    const controller = new AuthController(authService);
+    const req = makeRequest({ refresh_token: 'old-refresh-token' });
+
+    await expect(controller.refresh(req)).rejects.toBe(error);
   });
 });

@@ -1,8 +1,12 @@
 import type { PrismaClient } from '../generated/prisma/client';
 import type { IAuthRepository, UserRecord } from '../types/auth';
 
+export type AuthRepositoryPrisma = {
+  user: Pick<PrismaClient['user'], 'upsert' | 'update'>;
+};
+
 export class AuthRepository implements IAuthRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: AuthRepositoryPrisma) {}
 
   upsertUser(data: {
     email: string;

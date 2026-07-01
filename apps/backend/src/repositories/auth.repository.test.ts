@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AuthRepository } from './auth.repository';
-import type { PrismaClient } from '../generated/prisma/client';
+import { AuthRepository, type AuthRepositoryPrisma } from './auth.repository';
 import type { UserRecord } from '../types/auth';
 
 const userRecord: UserRecord = {
@@ -18,7 +17,7 @@ describe('AuthRepository', () => {
   it('email 기준으로 사용자를 upsert한다', async () => {
     const upsert = vi.fn().mockResolvedValue(userRecord);
     const update = vi.fn();
-    const prisma = { user: { upsert, update } } as unknown as PrismaClient;
+    const prisma = { user: { upsert, update } } satisfies AuthRepositoryPrisma;
     const repo = new AuthRepository(prisma);
 
     await expect(
@@ -46,7 +45,7 @@ describe('AuthRepository', () => {
   it('기존 사용자의 nickname과 profileImage를 update 필드에 포함한다', async () => {
     const upsert = vi.fn().mockResolvedValue({ ...userRecord, nickname: 'Alice Updated' });
     const update = vi.fn();
-    const prisma = { user: { upsert, update } } as unknown as PrismaClient;
+    const prisma = { user: { upsert, update } } satisfies AuthRepositoryPrisma;
     const repo = new AuthRepository(prisma);
 
     await repo.upsertUser({
@@ -69,7 +68,7 @@ describe('AuthRepository', () => {
   it('refreshToken을 저장한다', async () => {
     const upsert = vi.fn();
     const update = vi.fn().mockResolvedValue(userRecord);
-    const prisma = { user: { upsert, update } } as unknown as PrismaClient;
+    const prisma = { user: { upsert, update } } satisfies AuthRepositoryPrisma;
     const repo = new AuthRepository(prisma);
 
     await repo.saveRefreshToken('user-id', 'refresh-token');
@@ -83,7 +82,7 @@ describe('AuthRepository', () => {
   it('refreshToken을 초기화한다', async () => {
     const upsert = vi.fn();
     const update = vi.fn().mockResolvedValue(userRecord);
-    const prisma = { user: { upsert, update } } as unknown as PrismaClient;
+    const prisma = { user: { upsert, update } } satisfies AuthRepositoryPrisma;
     const repo = new AuthRepository(prisma);
 
     await repo.clearRefreshToken('user-id');

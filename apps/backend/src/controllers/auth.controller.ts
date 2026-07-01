@@ -40,7 +40,9 @@ export class AuthController {
         path: '/api/v1/auth/refresh',
       });
 
-      return redirect(302, undefined, { Location: state?.length ? state : config.clientUrl });
+      return redirect(302, undefined, {
+        Location: this.authService.getPostLoginRedirectUrl(state),
+      });
     } catch {
       return redirect(302, undefined, { Location: `${config.clientUrl}?error=auth_failed` });
     }

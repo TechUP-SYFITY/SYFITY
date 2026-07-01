@@ -74,6 +74,38 @@ describe('AuthService', () => {
     });
   });
 
+  it('외부 returnUrl은 OAuth state에 담지 않는다', async () => {
+    const { AuthService } = await import('./auth.service');
+    const repo = makeRepo();
+    const oauthClient = makeOauthClient();
+    const service = new AuthService(repo, oauthClient);
+
+    service.getAuthorizationUrl('https://example.com');
+    service.getAuthorizationUrl('//example.com');
+
+    expect(oauthClient.generateAuthUrl).toHaveBeenNthCalledWith(1, {
+      access_type: 'offline',
+      scope: ['openid', 'email', 'profile'],
+      state: '',
+    });
+    expect(oauthClient.generateAuthUrl).toHaveBeenNthCalledWith(2, {
+      access_type: 'offline',
+      scope: ['openid', 'email', 'profile'],
+      state: '',
+    });
+  });
+
+  it('로그인 후 redirect URL은 내부 상대 경로만 허용한다', async () => {
+    const { AuthService } = await import('./auth.service');
+    const repo = makeRepo();
+    const oauthClient = makeOauthClient();
+    const service = new AuthService(repo, oauthClient);
+
+    expect(service.getPostLoginRedirectUrl('/room/abc')).toBe('/room/abc');
+    expect(service.getPostLoginRedirectUrl('https://example.com')).toBe('http://localhost:3000');
+    expect(service.getPostLoginRedirectUrl('//example.com')).toBe('http://localhost:3000');
+  });
+
   it('정상 콜백에서 사용자를 upsert하고 access/refresh token을 발급한다', async () => {
     const { AuthService } = await import('./auth.service');
     const repo = makeRepo();

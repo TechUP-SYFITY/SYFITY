@@ -18,6 +18,7 @@ const userRecord: UserRecord = {
 function makeAuthService() {
   return {
     getAuthorizationUrl: vi.fn().mockReturnValue('https://accounts.google.com/oauth'),
+    getPostLoginRedirectUrl: vi.fn((returnUrl?: string) => returnUrl ?? 'http://localhost:3000'),
     handleCallback: vi.fn().mockResolvedValue({
       user: userRecord,
       accessToken: 'access-token',
@@ -69,6 +70,7 @@ describe('AuthController', () => {
     await controller.googleCallback(req, redirect, 'valid-code', '/room/abc');
 
     expect(authService.handleCallback).toHaveBeenCalledWith('valid-code');
+    expect(authService.getPostLoginRedirectUrl).toHaveBeenCalledWith('/room/abc');
     expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'access-token', {
       httpOnly: true,
       secure: false,
@@ -81,6 +83,23 @@ describe('AuthController', () => {
       path: '/api/v1/auth/refresh',
     });
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, { Location: '/room/abc' });
+  });
+
+  it('콜백 성공 시 외부 state는 service fallback redirect를 사용한다', async () => {
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    authService.getPostLoginRedirectUrl.mockReturnValue('http://localhost:3000');
+    const controller = new AuthController(authService);
+    const req = makeRequest();
+    const redirectMock = vi.fn();
+    const redirect = redirectMock as unknown as TsoaResponse<302, void>;
+
+    await controller.googleCallback(req, redirect, 'valid-code', 'https://example.com');
+
+    expect(authService.getPostLoginRedirectUrl).toHaveBeenCalledWith('https://example.com');
+    expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
+      Location: 'http://localhost:3000',
+    });
   });
 
   it('production 환경에서는 secure strict 쿠키를 설정한다', async () => {

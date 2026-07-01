@@ -27,8 +27,12 @@ export class AuthService {
     return this.oauthClient.generateAuthUrl({
       access_type: 'offline',
       scope: ['openid', 'email', 'profile'],
-      state: returnUrl ?? '',
+      state: this.getSafeReturnUrl(returnUrl) ?? '',
     });
+  }
+
+  getPostLoginRedirectUrl(returnUrl?: string): string {
+    return this.getSafeReturnUrl(returnUrl) ?? config.clientUrl;
   }
 
   async handleCallback(code: string): Promise<AuthTokens> {
@@ -58,6 +62,15 @@ export class AuthService {
 
   async logout(userId: string): Promise<void> {
     await this.authRepo.clearRefreshToken(userId);
+  }
+
+  private getSafeReturnUrl(returnUrl?: string): string | undefined {
+    if (!returnUrl) return undefined;
+    if (!returnUrl.startsWith('/') || returnUrl.startsWith('//') || returnUrl.includes('\\')) {
+      return undefined;
+    }
+
+    return returnUrl;
   }
 
   private async exchangeCodeForIdToken(code: string): Promise<string> {

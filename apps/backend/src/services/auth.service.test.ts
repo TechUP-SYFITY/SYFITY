@@ -26,6 +26,7 @@ type GooglePayload = {
 function makeRepo(): IAuthRepository {
   return {
     upsertUser: vi.fn().mockResolvedValue(userRecord),
+    findUserByRefreshToken: vi.fn().mockResolvedValue(userRecord),
     saveRefreshToken: vi.fn().mockResolvedValue(undefined),
     clearRefreshToken: vi.fn().mockResolvedValue(undefined),
   };
@@ -192,5 +193,69 @@ describe('AuthService', () => {
     await service.logout('user-id');
 
     expect(repo.clearRefreshToken).toHaveBeenCalledWith('user-id');
+  });
+
+  it('유효한 refreshToken이면 새 토큰 쌍을 발급하고 DB 토큰을 교체한다', async () => {
+    const { AuthService } = await import('./auth.service');
+    const repo = makeRepo();
+    const oauthClient = makeOauthClient();
+    const service = new AuthService(repo, oauthClient);
+    const issuedAt = Math.floor(Date.now() / 1000) - 60;
+    const refreshToken = jwt.sign({ id: 'user-id', iat: issuedAt }, REFRESH_SECRET, {
+      expiresIn: '30d',
+    });
+
+    const result = await service.refresh(refreshToken);
+
+    expect(repo.findUserByRefreshToken).toHaveBeenCalledWith('user-id', refreshToken);
+    expect(jwt.verify(result.accessToken, ACCESS_SECRET)).toMatchObject({
+      id: 'user-id',
+      email: 'alice@example.com',
+    });
+    expect(jwt.verify(result.refreshToken, REFRESH_SECRET)).toMatchObject({ id: 'user-id' });
+    expect(repo.saveRefreshToken).toHaveBeenCalledWith('user-id', result.refreshToken);
+  });
+
+  it('만료된 refreshToken이면 AUTH_REFRESH_EXPIRED를 반환한다', async () => {
+    const { AuthService } = await import('./auth.service');
+    const repo = makeRepo();
+    const oauthClient = makeOauthClient();
+    const service = new AuthService(repo, oauthClient);
+    const expiredRefreshToken = jwt.sign({ id: 'user-id' }, REFRESH_SECRET, { expiresIn: -1 });
+
+    await expect(service.refresh(expiredRefreshToken)).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_REFRESH_EXPIRED',
+    });
+    expect(repo.findUserByRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('서명이 유효하지 않은 refreshToken이면 AUTH_REFRESH_EXPIRED를 반환한다', async () => {
+    const { AuthService } = await import('./auth.service');
+    const repo = makeRepo();
+    const oauthClient = makeOauthClient();
+    const service = new AuthService(repo, oauthClient);
+    const invalidRefreshToken = jwt.sign({ id: 'user-id' }, 'other-secret');
+
+    await expect(service.refresh(invalidRefreshToken)).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_REFRESH_EXPIRED',
+    });
+    expect(repo.findUserByRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('DB에 저장된 refreshToken과 일치하지 않으면 AUTH_REFRESH_EXPIRED를 반환한다', async () => {
+    const { AuthService } = await import('./auth.service');
+    const repo = makeRepo();
+    repo.findUserByRefreshToken = vi.fn().mockResolvedValue(null);
+    const oauthClient = makeOauthClient();
+    const service = new AuthService(repo, oauthClient);
+    const refreshToken = jwt.sign({ id: 'user-id' }, REFRESH_SECRET, { expiresIn: '30d' });
+
+    await expect(service.refresh(refreshToken)).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_REFRESH_EXPIRED',
+    });
+    expect(repo.saveRefreshToken).not.toHaveBeenCalled();
   });
 });

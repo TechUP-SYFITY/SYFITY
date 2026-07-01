@@ -1,5 +1,5 @@
 ---
-name: 작업
+name: 작업 항목
 about: 기능 외 작업을 정의합니다
 labels: chore
 ---

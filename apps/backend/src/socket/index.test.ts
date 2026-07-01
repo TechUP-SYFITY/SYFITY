@@ -70,6 +70,21 @@ describe('socketAuth', () => {
     );
   });
 
+  it('payload의 id 또는 email이 string이 아니면 AUTH_UNAUTHORIZED 에러를 next로 전달한다', async () => {
+    const { socketAuth } = await import('./socketAuth');
+    const token = jwt.sign({ id: 123 }, JWT_SECRET);
+    const socket = makeSocket(`access_token=${token}`);
+    const next = vi.fn();
+
+    socketAuth(socket, next);
+
+    expect(socket.data.userId).toBeUndefined();
+    expect(socket.data.email).toBeUndefined();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { code: 'AUTH_UNAUTHORIZED' } }),
+    );
+  });
+
   it('쿠키가 여러 개인 경우에도 access_token만 추출한다', async () => {
     const { socketAuth } = await import('./socketAuth');
     const token = jwt.sign({ id: 'user-id', email: 'user@example.com' }, JWT_SECRET);

@@ -14,6 +14,7 @@ export interface IAuthRepository {
     nickname: string;
     profileImage: string | null;
   }): Promise<UserRecord>;
+  findUserByRefreshToken(userId: string, refreshToken: string): Promise<UserRecord | null>;
   saveRefreshToken(userId: string, token: string): Promise<void>;
   clearRefreshToken(userId: string): Promise<void>;
 }

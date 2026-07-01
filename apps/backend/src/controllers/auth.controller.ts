@@ -66,8 +66,8 @@ export class AuthController {
   @Post('refresh')
   @SuccessResponse(200, 'token refreshed')
   async refresh(@Request() req: ExRequest): Promise<RefreshResponse> {
-    const refreshToken = req.cookies?.refresh_token as string | undefined;
-    if (!refreshToken) {
+    const refreshToken = req.cookies?.refresh_token;
+    if (typeof refreshToken !== 'string') {
       throw new AppError(401, 'AUTH_REFRESH_EXPIRED', 'Refresh Token이 없습니다.');
     }
 

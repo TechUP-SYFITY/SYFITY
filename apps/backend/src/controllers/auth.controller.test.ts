@@ -33,7 +33,7 @@ function makeAuthService() {
   };
 }
 
-function makeRequest(cookies: Record<string, string> = {}): ExRequest {
+function makeRequest(cookies: Record<string, unknown> = {}): ExRequest {
   return {
     cookies,
     user: { id: 'user-id', email: 'alice@example.com' },
@@ -181,6 +181,19 @@ describe('AuthController', () => {
     const authService = makeAuthService();
     const controller = new AuthController(authService);
     const req = makeRequest();
+
+    await expect(controller.refresh(req)).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_REFRESH_EXPIRED',
+    });
+    expect(authService.refresh).not.toHaveBeenCalled();
+  });
+
+  it('refresh_token 쿠키가 문자열이 아니면 AUTH_REFRESH_EXPIRED를 반환한다', async () => {
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest({ refresh_token: ['old-refresh-token'] });
 
     await expect(controller.refresh(req)).rejects.toMatchObject({
       status: 401,

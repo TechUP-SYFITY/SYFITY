@@ -20,3 +20,5 @@ jobs:
               issue_number: context.issue.number,
               assignees: [context.actor],
             });
+
+      - uses: kentaro-m/auto-assign-action@v2.0.2

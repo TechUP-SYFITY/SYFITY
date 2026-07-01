@@ -7,6 +7,7 @@
     "specVersion": 3,
     "name": "Syfity API",
     "version": "1.0.0",
+    "description": "🔐 [Google 로그인](http://localhost:4000/api/v1/auth/google) 후 protected 엔드포인트를 사용하세요.",
     "securityDefinitions": {
       "jwt": {
         "type": "apiKey",

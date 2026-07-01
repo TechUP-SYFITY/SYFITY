@@ -14,6 +14,17 @@ function toSocketError(code: string, message: string): SocketAuthError {
   return Object.assign(new Error(message), { data: { code } });
 }
 
+function isSocketAuthPayload(payload: unknown): payload is { id: string; email: string } {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'id' in payload &&
+    'email' in payload &&
+    typeof payload.id === 'string' &&
+    typeof payload.email === 'string'
+  );
+}
+
 export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
   const rawCookie = socket.handshake.headers.cookie ?? '';
   const token = parseCookie(rawCookie).access_token;
@@ -24,7 +35,12 @@ export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
   }
 
   try {
-    const payload = jwt.verify(token, config.jwt.accessSecret) as { id: string; email: string };
+    const payload = jwt.verify(token, config.jwt.accessSecret);
+    if (!isSocketAuthPayload(payload)) {
+      next(toSocketError('AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
+      return;
+    }
+
     socket.data.userId = payload.id;
     socket.data.email = payload.email;
     next();

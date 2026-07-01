@@ -1,0 +1,26 @@
+{
+  "entryFile": "src/server.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/controllers/**/*.controller.ts"],
+  "spec": {
+    "outputDirectory": "src/generated",
+    "specVersion": 3,
+    "name": "Syfity API",
+    "version": "1.0.0",
+    "securityDefinitions": {
+      "jwt": {
+        "type": "apiKey",
+        "name": "access_token",
+        "in": "cookie"
+      }
+    },
+    "basePath": "/api/v1"
+  },
+  "routes": {
+    "routesDir": "src/generated",
+    "routesFileName": "routes.gen.ts",
+    "iocModule": "src/ioc",
+    "authenticationModule": "src/authentication",
+    "basePath": "/api/v1"
+  }
+}

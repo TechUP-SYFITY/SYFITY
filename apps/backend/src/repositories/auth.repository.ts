@@ -29,7 +29,8 @@ export class AuthRepository implements IAuthRepository {
 
   async findUserByRefreshToken(userId: string, refreshToken: string): Promise<UserRecord | null> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user?.refreshToken !== refreshToken) return null;
+    if (!user) return null;
+    if (user.refreshToken !== refreshToken) return null;
 
     return user;
   }

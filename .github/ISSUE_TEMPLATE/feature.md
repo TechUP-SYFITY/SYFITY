@@ -1,5 +1,5 @@
 ---
-name: 기능
+name: 기능 추가
 about: 구현할 기능을 정의합니다
 labels: feat
 ---

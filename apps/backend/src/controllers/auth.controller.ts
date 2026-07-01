@@ -8,9 +8,14 @@ import { config } from '../config';
 import { AppError } from '../errors/appError';
 import type { AuthService } from '../services/auth.service';
 
+type AuthControllerService = Pick<
+  AuthService,
+  'getAuthorizationUrl' | 'getPostLoginRedirectUrl' | 'handleCallback' | 'logout' | 'refresh'
+>;
+
 @Route('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthControllerService) {}
 
   @Get('google')
   async redirectToGoogle(

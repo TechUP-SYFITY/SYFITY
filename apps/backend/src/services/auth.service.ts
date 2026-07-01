@@ -1,4 +1,3 @@
-import type { OAuth2Client } from 'google-auth-library';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import { config } from '../config';
@@ -17,10 +16,19 @@ type GoogleProfile = {
   picture?: string;
 };
 
+type AuthOAuthClient = {
+  generateAuthUrl(options: { access_type: string; scope: string[]; state: string }): string;
+  getToken(code: string): Promise<{ tokens: { id_token?: string | null } }>;
+  verifyIdToken(options: {
+    idToken: string;
+    audience: string;
+  }): Promise<{ getPayload(): GoogleProfile | undefined }>;
+};
+
 export class AuthService {
   constructor(
     private readonly authRepo: IAuthRepository,
-    private readonly oauthClient: OAuth2Client,
+    private readonly oauthClient: AuthOAuthClient,
   ) {}
 
   getAuthorizationUrl(returnUrl?: string): string {

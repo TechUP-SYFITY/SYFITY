@@ -22,11 +22,15 @@ export class AuthController {
 
   @Get('google/callback')
   async googleCallback(
-    @Query() code: string,
-    @Query() state: string | undefined,
     @Request() req: ExRequest,
     @Res() redirect: TsoaResponse<302, void>,
+    @Query() code?: string,
+    @Query() state?: string,
   ): Promise<void> {
+    if (!code) {
+      return redirect(302, undefined, { Location: `${config.clientUrl}?error=auth_failed` });
+    }
+
     try {
       const { accessToken, refreshToken } = await this.authService.handleCallback(code);
       const res = req.res!;

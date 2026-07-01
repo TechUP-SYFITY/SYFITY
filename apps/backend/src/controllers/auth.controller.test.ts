@@ -66,7 +66,7 @@ describe('AuthController', () => {
     const redirectMock = vi.fn();
     const redirect = redirectMock as unknown as TsoaResponse<302, void>;
 
-    await controller.googleCallback('valid-code', '/room/abc', req, redirect);
+    await controller.googleCallback(req, redirect, 'valid-code', '/room/abc');
 
     expect(authService.handleCallback).toHaveBeenCalledWith('valid-code');
     expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'access-token', {
@@ -92,8 +92,24 @@ describe('AuthController', () => {
     const redirectMock = vi.fn();
     const redirect = redirectMock as unknown as TsoaResponse<302, void>;
 
-    await controller.googleCallback('invalid-code', undefined, req, redirect);
+    await controller.googleCallback(req, redirect, 'invalid-code');
 
+    expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
+      Location: 'http://localhost:3000?error=auth_failed',
+    });
+  });
+
+  it('콜백 code가 없으면 Google 처리 없이 clientUrl 에러 쿼리로 리다이렉트한다', async () => {
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest();
+    const redirectMock = vi.fn();
+    const redirect = redirectMock as unknown as TsoaResponse<302, void>;
+
+    await controller.googleCallback(req, redirect);
+
+    expect(authService.handleCallback).not.toHaveBeenCalled();
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
       Location: 'http://localhost:3000?error=auth_failed',
     });

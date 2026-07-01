@@ -31,5 +31,3 @@ httpServer.listen(config.port, () => {
   // eslint-disable-next-line no-console
   console.log(`서버 실행 중: http://localhost:${config.port}`);
 });
-
-export { io };

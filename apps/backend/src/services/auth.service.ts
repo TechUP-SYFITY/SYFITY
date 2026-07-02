@@ -1,5 +1,7 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
+import { ERROR_CODES } from '@syfity/shared';
+
 import { config } from '../config';
 import { AppError } from '../errors/appError';
 import type { IAuthRepository, UserRecord } from '../types/auth';
@@ -50,7 +52,7 @@ export class AuthService {
     if (!payload.email) {
       throw new AppError(
         400,
-        'AUTH_GOOGLE_EMAIL_MISSING',
+        ERROR_CODES.AUTH_GOOGLE_EMAIL_MISSING,
         'Google 계정 이메일을 확인할 수 없습니다.',
       );
     }
@@ -86,7 +88,11 @@ export class AuthService {
     const user = await this.authRepo.findUserByRefreshToken(payload.id, refreshToken);
 
     if (!user) {
-      throw new AppError(401, 'AUTH_REFRESH_EXPIRED', 'Refresh Token이 유효하지 않습니다.');
+      throw new AppError(
+        401,
+        ERROR_CODES.AUTH_REFRESH_EXPIRED,
+        'Refresh Token이 유효하지 않습니다.',
+      );
     }
 
     const accessToken = this.signAccessToken(user);
@@ -101,7 +107,11 @@ export class AuthService {
     try {
       const { tokens } = await this.oauthClient.getToken(code);
       if (!tokens.id_token) {
-        throw new AppError(400, 'AUTH_GOOGLE_TOKEN_MISSING', 'Google ID 토큰이 응답에 없습니다.');
+        throw new AppError(
+          400,
+          ERROR_CODES.AUTH_GOOGLE_TOKEN_MISSING,
+          'Google ID 토큰이 응답에 없습니다.',
+        );
       }
 
       return tokens.id_token;
@@ -109,7 +119,7 @@ export class AuthService {
       if (err instanceof AppError) throw err;
       throw new AppError(
         400,
-        'AUTH_GOOGLE_CALLBACK_FAILED',
+        ERROR_CODES.AUTH_GOOGLE_CALLBACK_FAILED,
         'Google OAuth 콜백 처리에 실패했습니다.',
       );
     }
@@ -128,7 +138,11 @@ export class AuthService {
         picture: payload?.picture,
       };
     } catch {
-      throw new AppError(401, 'AUTH_GOOGLE_TOKEN_INVALID', 'Google ID 토큰이 유효하지 않습니다.');
+      throw new AppError(
+        401,
+        ERROR_CODES.AUTH_GOOGLE_TOKEN_INVALID,
+        'Google ID 토큰이 유효하지 않습니다.',
+      );
     }
   }
 
@@ -139,7 +153,7 @@ export class AuthService {
       if (err instanceof jwt.TokenExpiredError || err instanceof jwt.JsonWebTokenError) {
         throw new AppError(
           401,
-          'AUTH_REFRESH_EXPIRED',
+          ERROR_CODES.AUTH_REFRESH_EXPIRED,
           'Refresh Token이 만료되었거나 유효하지 않습니다.',
         );
       }

@@ -6,16 +6,19 @@ import { prisma } from './lib/prisma';
 import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
+import { ChatRepository } from './repositories/chat.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
 
 import { AuthService } from './services/auth.service';
+import { ChatService } from './services/chat.service';
 import { HealthService } from './services/health.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
 import { UserService } from './services/user.service';
 
 import { AuthController } from './controllers/auth.controller';
+import { ChatController } from './controllers/chat.controller';
 import { HealthController } from './controllers/health.controller';
 import { RoomController } from './controllers/room.controller';
 import { SearchController } from './controllers/search.controller';
@@ -45,6 +48,10 @@ const roomRepository = new RoomRepository(prisma);
 const roomService = new RoomService(roomRepository, cache);
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
+register(ChatController, () => {
+  const chatRepo = new ChatRepository(prisma);
+  return new ChatController(new ChatService(chatRepo, roomRepository));
+});
 register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);
   return new SearchController(new SearchService(youtubeClient, cache));

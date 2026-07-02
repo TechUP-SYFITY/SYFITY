@@ -17,7 +17,7 @@ export function SearchResultItem({
 }: SearchResultItemProps) {
   return (
     <article
-      className={`flex min-h-17 items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-zinc-50 ${className}`}
+      className={`flex min-h-[68px] items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-zinc-50 ${className}`}
     >
       <img
         src={video.thumbnailUrl}

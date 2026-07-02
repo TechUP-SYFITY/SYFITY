@@ -2,17 +2,20 @@ import { OAuth2Client } from 'google-auth-library';
 import type { IocContainer } from 'tsoa';
 
 import { cache } from './lib/cache';
+import { getIo } from './lib/io';
 import { prisma } from './lib/prisma';
 import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
+import { PlaylistRepository } from './repositories/playlist.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
 
 import { AuthService } from './services/auth.service';
 import { ChatService } from './services/chat.service';
 import { HealthService } from './services/health.service';
+import { PlaylistService } from './services/playlist.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
 import { UserService } from './services/user.service';
@@ -20,6 +23,7 @@ import { UserService } from './services/user.service';
 import { AuthController } from './controllers/auth.controller';
 import { ChatController } from './controllers/chat.controller';
 import { HealthController } from './controllers/health.controller';
+import { PlaylistController } from './controllers/playlist.controller';
 import { RoomController } from './controllers/room.controller';
 import { SearchController } from './controllers/search.controller';
 import { UserController } from './controllers/user.controller';
@@ -55,6 +59,14 @@ register(ChatController, () => {
 register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);
   return new SearchController(new SearchService(youtubeClient, cache));
+});
+register(PlaylistController, () => {
+  const playlistRepository = new PlaylistRepository(prisma);
+  const youtubeClient = new YouTubeClient(config.youtube.apiKey);
+
+  return new PlaylistController(
+    new PlaylistService(playlistRepository, roomRepository, youtubeClient, getIo()),
+  );
 });
 
 export const iocContainer: IocContainer = {

@@ -1,3 +1,5 @@
+import { ERROR_CODES } from '@syfity/shared';
+
 import { AppError } from '../errors/appError';
 import type { IUserRepository, RecentRoomRecord, UserProfileRecord } from '../types/user';
 
@@ -7,7 +9,7 @@ export class UserService {
   async getMe(userId: string): Promise<UserProfileRecord> {
     const user = await this.userRepo.findUserById(userId);
     if (!user) {
-      throw new AppError(404, 'AUTH_USER_NOT_FOUND', '사용자를 찾을 수 없습니다.');
+      throw new AppError(404, ERROR_CODES.AUTH_USER_NOT_FOUND, '사용자를 찾을 수 없습니다.');
     }
 
     return user;

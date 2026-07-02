@@ -2,7 +2,7 @@ import type { CookieOptions, Request as ExRequest } from 'express';
 import { Get, Post, Query, Request, Res, Route, Security, SuccessResponse } from 'tsoa';
 import type { TsoaResponse } from 'tsoa';
 
-import type { LogoutResponse, RefreshResponse } from '@syfity/shared';
+import { ERROR_CODES, type LogoutResponse, type RefreshResponse } from '@syfity/shared';
 
 import { config } from '../config';
 import { AppError } from '../errors/appError';
@@ -73,7 +73,7 @@ export class AuthController {
   async refresh(@Request() req: ExRequest): Promise<RefreshResponse> {
     const refreshToken = req.cookies?.refresh_token;
     if (typeof refreshToken !== 'string') {
-      throw new AppError(401, 'AUTH_REFRESH_EXPIRED', 'Refresh Token이 없습니다.');
+      throw new AppError(401, ERROR_CODES.AUTH_REFRESH_EXPIRED, 'Refresh Token이 없습니다.');
     }
 
     const { accessToken, refreshToken: newRefreshToken } =

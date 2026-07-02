@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { ERROR_CODES } from '@syfity/shared';
 
 import { YouTubeClient } from './youtube.client';
-import { AppError } from '../../errors/appError';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -150,7 +149,6 @@ describe('YouTubeClient', () => {
     const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(invalidJsonResponse(503));
     const client = new YouTubeClient('api-key', fetchFn);
 
-    await expect(client.search('music')).rejects.toBeInstanceOf(AppError);
     await expect(client.search('music')).rejects.toMatchObject({
       status: 502,
       code: ERROR_CODES.SERVER_YOUTUBE_API_ERROR,

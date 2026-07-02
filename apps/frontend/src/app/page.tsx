@@ -12,6 +12,23 @@ export default function Home() {
           height={20}
           priority
         />
+        {/* 디자인 토큰 · 폰트 적용 확인용 (Pretendard + 시맨틱 토큰) */}
+        <section className="rounded-2xl bg-gray-950 p-10 font-sans text-foreground">
+          <p className="mb-3 text-sm">
+            이 문구가 Pretendard로 보이면 폰트 적용 성공 · 안녕하세요 Syfity 123
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <span className="rounded-md bg-primary px-3 py-1 text-primary-foreground">primary</span>
+            <span className="rounded-md bg-accent px-3 py-1 text-accent-foreground">accent</span>
+            <span className="rounded-lg bg-muted px-3 py-1 text-muted-foreground">
+              muted (radius-lg)
+            </span>
+            <span className="rounded-xl border border-border bg-surface px-3 py-1">
+              surface (radius-xl)
+            </span>
+          </div>
+        </section>
+
         <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
           <h1 className="max-w-xs text-3xl leading-10 font-semibold tracking-tight text-black dark:text-zinc-50">
             To get started, edit the page.tsx file.

@@ -60,9 +60,7 @@
   --info: var(--color-accent-500);
 
   --border: rgba(255, 255, 255, 0.09);
-  --input: rgba(255, 255, 255, 0.05);
   --ring: var(--color-primary-400);
-  --radius: 16px;
 }
 
 /* 시맨틱 토큰 → 유틸리티(bg-surface, bg-primary, border-border 등) 매핑 */
@@ -87,7 +85,6 @@
   --color-destructive: var(--destructive);
   --color-info: var(--info);
   --color-border: var(--border);
-  --color-input: var(--input);
   --color-ring: var(--ring);
 
   --font-sans: var(--font-pretendard);

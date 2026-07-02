@@ -50,6 +50,21 @@ register(AuthController, () => {
 const userService = new UserService(new UserRepository(prisma));
 const roomRepository = new RoomRepository(prisma);
 const roomService = new RoomService(roomRepository, cache);
+const playlistRepository = new PlaylistRepository(prisma);
+const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
+let playlistService: PlaylistService | null = null;
+
+function getPlaylistService(): PlaylistService {
+  playlistService ??= new PlaylistService(
+    playlistRepository,
+    roomRepository,
+    playlistYoutubeClient,
+    getIo(),
+  );
+
+  return playlistService;
+}
+
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
 register(ChatController, () => {
@@ -60,14 +75,7 @@ register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);
   return new SearchController(new SearchService(youtubeClient, cache));
 });
-register(PlaylistController, () => {
-  const playlistRepository = new PlaylistRepository(prisma);
-  const youtubeClient = new YouTubeClient(config.youtube.apiKey);
-
-  return new PlaylistController(
-    new PlaylistService(playlistRepository, roomRepository, youtubeClient, getIo()),
-  );
-});
+register(PlaylistController, () => new PlaylistController(getPlaylistService()));
 
 export const iocContainer: IocContainer = {
   get<T>(controller: new (...args: never[]) => T): T {

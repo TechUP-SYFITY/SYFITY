@@ -15,4 +15,5 @@ export type CreateRoomData = {
 export interface IRoomRepository {
   existsInviteCode(inviteCode: string): Promise<boolean>;
   createRoom(data: CreateRoomData): Promise<RoomRecord>;
+  existsRoom(roomId: string): Promise<boolean>;
 }

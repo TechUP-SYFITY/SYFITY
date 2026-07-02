@@ -24,6 +24,15 @@ export class RoomRepository implements IRoomRepository {
     return room !== null;
   }
 
+  async existsRoom(roomId: string): Promise<boolean> {
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      select: { id: true },
+    });
+
+    return room !== null;
+  }
+
   async createRoom(data: CreateRoomData): Promise<RoomRecord> {
     const now = new Date();
     const room = await this.prisma.$transaction(async (tx) => {

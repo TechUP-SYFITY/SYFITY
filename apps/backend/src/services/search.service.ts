@@ -29,9 +29,21 @@ export class SearchService {
       searchItems.map((item) => item.videoId),
     );
     const detailByVideoId = new Map(details.map((detail) => [detail.videoId, detail]));
-    const results = searchItems.flatMap((item) => {
+    const results = searchItems.flatMap((item): SearchResult[] => {
       const detail = detailByVideoId.get(item.videoId);
-      return detail ? [detail] : [];
+      if (!detail) {
+        return [];
+      }
+
+      return [
+        {
+          videoId: detail.videoId,
+          title: detail.title,
+          channelTitle: detail.channelTitle,
+          thumbnailUrl: detail.thumbnailUrl,
+          duration: detail.duration,
+        },
+      ];
     });
 
     this.cache.set(cacheKey, results, CacheTTL.YT_SEARCH);

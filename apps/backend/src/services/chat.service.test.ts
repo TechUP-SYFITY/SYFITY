@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { ERROR_CODES } from '@syfity/shared';
+
 import { ChatService } from './chat.service';
 import type { ChatRecord, IChatRepository } from '../types/chat';
 import type { IRoomRepository, RoomRecord } from '../types/room';
@@ -141,7 +143,7 @@ describe('ChatService', () => {
       }),
     ).rejects.toMatchObject({
       status: 400,
-      code: 'VALIDATION_ERROR',
+      code: ERROR_CODES.VALIDATION_ERROR,
     });
     expect(roomRepo.existsRoom).not.toHaveBeenCalled();
     expect(chatRepo.findChatsByCursor).not.toHaveBeenCalled();

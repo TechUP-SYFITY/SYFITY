@@ -22,7 +22,7 @@ export class ChatService {
     const cursorDate = new Date(params.cursorTime);
 
     if (Number.isNaN(cursorDate.getTime())) {
-      throw new AppError(400, 'VALIDATION_ERROR', '유효하지 않은 cursorTime 형식입니다.');
+      throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, '유효하지 않은 cursorTime 형식입니다.');
     }
 
     const exists = await this.roomRepo.existsRoom(params.roomId);

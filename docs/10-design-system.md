@@ -211,7 +211,7 @@ linear-gradient(135deg, #72F4A4 0%, #885CF6 100%)
 | Mobile         | ~767px     | `px-5` (20px) |
 
 ```html
-<div class="max-w-[1200px] mx-auto px-5 md:px-6 lg:px-8">…</div>
+<div class="max-w-300 mx-auto px-5 md:px-6 lg:px-8">…</div>
 ```
 
 ### 5.5 Room 화면 레이아웃 규격

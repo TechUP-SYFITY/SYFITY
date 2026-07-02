@@ -73,16 +73,14 @@ describe('SearchPanel', () => {
 
     const { container, rerender } = render(<SearchPanel open {...panelProps} />);
 
-    expect(screen.getByRole('dialog', { name: '곡 추가' }).className).toContain(
-      'search-panel-dialog--open',
-    );
+    expect(screen.getByRole('dialog', { name: '곡 추가' }).getAttribute('data-state')).toBe('open');
 
     rerender(<SearchPanel open={false} {...panelProps} />);
 
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
-    expect(container.querySelector('[data-search-panel]')?.className).toContain(
-      'search-panel-dialog--closed',
+    expect(container.querySelector('[data-search-panel]')?.getAttribute('data-state')).toBe(
+      'closed',
     );
   });
 });

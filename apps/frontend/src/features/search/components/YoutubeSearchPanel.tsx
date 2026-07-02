@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { ApiClientError } from '@/shared/lib/api/apiClient';
+import { QueryProvider } from '@/shared/lib/query/QueryProvider';
 
 import { SearchPanel } from './SearchPanel';
 import type { SearchToastMessage } from './SearchToast';
@@ -23,6 +24,26 @@ interface YoutubeSearchPanelProps {
 }
 
 export function YoutubeSearchPanel({
+  open,
+  roomName,
+  onClose,
+  onAdd,
+  initialQuery = '',
+}: YoutubeSearchPanelProps) {
+  return (
+    <QueryProvider>
+      <YoutubeSearchPanelContent
+        open={open}
+        roomName={roomName}
+        onClose={onClose}
+        onAdd={onAdd}
+        initialQuery={initialQuery}
+      />
+    </QueryProvider>
+  );
+}
+
+function YoutubeSearchPanelContent({
   open,
   roomName,
   onClose,

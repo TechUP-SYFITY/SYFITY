@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 
 import { pretendard } from '@/shared/lib/fonts';
-
-import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -17,9 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">
-        <Providers>{children}</Providers>
-      </body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

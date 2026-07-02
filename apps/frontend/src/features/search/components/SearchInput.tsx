@@ -32,7 +32,7 @@ export function SearchInput({
           aria-label="곡 검색"
           aria-busy={isLoading}
           onChange={(event) => onQueryChange(event.target.value)}
-          className="search-input-control min-w-0 flex-1 bg-transparent text-sm leading-5 text-white outline-none placeholder:text-white/40"
+          className="min-w-0 flex-1 bg-transparent text-sm leading-5 text-white outline-none placeholder:text-white/40 [&::-webkit-search-cancel-button]:appearance-none"
         />
         {query ? (
           <button

@@ -1,5 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
+import { ERROR_CODES } from '@syfity/shared';
+
 import { AppError } from '../errors/appError';
 
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
@@ -13,6 +15,6 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
 
   res.status(500).json({
     success: false,
-    error: { code: 'SERVER_INTERNAL_ERROR', message: '서버 오류가 발생했습니다.' },
+    error: { code: ERROR_CODES.SERVER_INTERNAL_ERROR, message: '서버 오류가 발생했습니다.' },
   });
 }

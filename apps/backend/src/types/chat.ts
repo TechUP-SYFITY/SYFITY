@@ -9,7 +9,7 @@ export type ChatRecord = {
 
 export type ChatCursor = {
   roomId: string;
-  cursorTime: string;
+  cursorTime: Date;
   cursorId: string;
   limit: number;
 };

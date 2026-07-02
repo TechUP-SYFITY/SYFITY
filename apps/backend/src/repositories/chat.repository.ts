@@ -10,12 +10,11 @@ export class ChatRepository implements IChatRepository {
 
   async findChatsByCursor(cursor: ChatCursor): Promise<ChatRecord[]> {
     const { roomId, cursorTime, cursorId, limit } = cursor;
-    const cursorDate = new Date(cursorTime);
 
     const rows = await this.prisma.chatMessage.findMany({
       where: {
         roomId,
-        OR: [{ createdAt: { lt: cursorDate } }, { createdAt: cursorDate, id: { lt: cursorId } }],
+        OR: [{ createdAt: { lt: cursorTime } }, { createdAt: cursorTime, id: { lt: cursorId } }],
       },
       select: {
         id: true,

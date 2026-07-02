@@ -32,7 +32,7 @@ export class ChatService {
 
     const rows = await this.chatRepo.findChatsByCursor({
       roomId: params.roomId,
-      cursorTime: params.cursorTime,
+      cursorTime: cursorDate,
       cursorId: params.cursorId,
       limit: limit + 1,
     });

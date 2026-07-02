@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ChatRepository, type ChatRepositoryPrisma } from './chat.repository';
 
-const cursorTime = '2026-07-01T12:00:00.000Z';
-const cursorDate = new Date(cursorTime);
+const cursorTime = new Date('2026-07-01T12:00:00.000Z');
 
 type ChatMessageRow = {
   id: string;
@@ -62,8 +61,8 @@ describe('ChatRepository', () => {
       where: {
         roomId: 'room-1',
         OR: [
-          { createdAt: { lt: cursorDate } },
-          { createdAt: cursorDate, id: { lt: 'message-cursor' } },
+          { createdAt: { lt: cursorTime } },
+          { createdAt: cursorTime, id: { lt: 'message-cursor' } },
         ],
       },
       select: {

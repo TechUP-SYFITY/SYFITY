@@ -57,7 +57,7 @@ describe('ChatService', () => {
     expect(roomRepo.existsRoom).toHaveBeenCalledWith('room-1');
     expect(chatRepo.findChatsByCursor).toHaveBeenCalledWith({
       roomId: 'room-1',
-      cursorTime: '2026-07-01T12:00:00.000Z',
+      cursorTime: new Date('2026-07-01T12:00:00.000Z'),
       cursorId: 'message-cursor',
       limit: 3,
     });

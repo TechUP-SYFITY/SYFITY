@@ -43,7 +43,9 @@ function makePrisma(
       room: {
         findUnique: vi.fn().mockResolvedValue(findUniqueResult),
       },
-      $transaction: vi.fn(<T>(fn: (tx: RoomTransactionPrisma) => Promise<T>) => fn(tx)),
+      $transaction: vi.fn((fn: (tx: RoomTransactionPrisma) => Promise<unknown>) =>
+        fn(tx),
+      ) as unknown as RoomRepositoryPrisma['$transaction'],
     },
     tx,
   };
@@ -124,7 +126,9 @@ describe('RoomRepository', () => {
   it('트랜잭션 오류를 그대로 전파한다', async () => {
     const error = new Error('db failed');
     const { prisma } = makePrisma();
-    prisma.$transaction = vi.fn().mockRejectedValue(error);
+    prisma.$transaction = vi
+      .fn()
+      .mockRejectedValue(error) as unknown as RoomRepositoryPrisma['$transaction'];
     const repo = new RoomRepository(prisma);
 
     await expect(

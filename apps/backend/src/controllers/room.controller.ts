@@ -23,7 +23,9 @@ export class RoomController {
       success: true,
       data: {
         rooms: rooms.map((room) => ({
-          ...room,
+          id: room.id,
+          name: room.name,
+          inviteCode: room.inviteCode,
           lastJoinedAt: room.lastJoinedAt.toISOString(),
         })),
       },

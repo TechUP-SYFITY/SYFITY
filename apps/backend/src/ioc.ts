@@ -1,18 +1,22 @@
 import { OAuth2Client } from 'google-auth-library';
 import type { IocContainer } from 'tsoa';
 
+import { cache } from './lib/cache';
 import { prisma } from './lib/prisma';
+import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { UserRepository } from './repositories/user.repository';
 
 import { AuthService } from './services/auth.service';
 import { HealthService } from './services/health.service';
+import { SearchService } from './services/search.service';
 import { UserService } from './services/user.service';
 
 import { AuthController } from './controllers/auth.controller';
 import { HealthController } from './controllers/health.controller';
 import { RoomController } from './controllers/room.controller';
+import { SearchController } from './controllers/search.controller';
 import { UserController } from './controllers/user.controller';
 
 import { config } from './config';
@@ -37,6 +41,10 @@ register(AuthController, () => {
 const userService = new UserService(new UserRepository(prisma));
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService));
+register(SearchController, () => {
+  const youtubeClient = new YouTubeClient(config.youtube.apiKey);
+  return new SearchController(new SearchService(youtubeClient, cache));
+});
 
 export const iocContainer: IocContainer = {
   get<T>(controller: new (...args: never[]) => T): T {

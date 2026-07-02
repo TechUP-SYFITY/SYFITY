@@ -3,9 +3,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Syfity 디자인 시스템 토큰 (10-design-system.md) — 다크 퍼스트 */
+/* Syfity 색상 스케일 (primary=Neon Green, accent=Purple, gray=Neutral) */
 @theme {
-  /* Primary — Neon Green (§3.1) */
   --color-primary-50: #f0fdf7;
   --color-primary-100: #d1fae5;
   --color-primary-200: #a7f3cc;
@@ -17,7 +16,6 @@
   --color-primary-800: #0a6b32;
   --color-primary-900: #053d1d;
 
-  /* Accent — Purple (§3.2) */
   --color-accent-50: #f5f3ff;
   --color-accent-100: #ede9fe;
   --color-accent-200: #ddd6fe;
@@ -29,7 +27,6 @@
   --color-accent-800: #5b21b6;
   --color-accent-900: #4c1d95;
 
-  /* Neutral — Gray (§3.3) */
   --color-gray-50: #fafafa;
   --color-gray-100: #f4f4f5;
   --color-gray-200: #e4e4e7;
@@ -76,18 +73,19 @@
   --radius-full: 9999px;
 }
 
+/* 다크 퍼스트: 기본 테마 값을 :root에 둔다 */
 :root {
-  --background: #09090b; /* Gray-950, App 배경 */
-  --surface: #111113; /* Gray-900, 카드/패널 */
-  --foreground: #f4f4f5; /* Gray-100 */
-  --muted: #27272a; /* Gray-800 */
-  --muted-foreground: #a1a1aa; /* Gray-400 */
+  --background: #09090b;
+  --surface: #111113;
+  --foreground: #f4f4f5;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
 
-  --primary: #72f4a4; /* Neon Green 400 */
+  --primary: #72f4a4;
   --primary-foreground: #09090b;
-  --secondary: #27272a; /* Gray-800 */
+  --secondary: #27272a;
   --secondary-foreground: #f4f4f5;
-  --accent: #885cf6; /* Purple 500 */
+  --accent: #885cf6;
   --accent-foreground: #ffffff;
 
   --success: #22c55e;

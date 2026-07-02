@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
-| 버전      | v1.0                                                                                            |
-| 상태      | 초안                                                                                            |
+| 버전      | v1.1                                                                                            |
+| 상태      | GET /me 에러 코드 보강                                                                          |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
 
@@ -246,9 +246,11 @@ Access Token 갱신. Refresh Token Rotation 적용으로 새 Refresh Token도 �
 
 **에러**
 
-| 코드                | HTTP | 설명     |
-| ------------------- | ---- | -------- |
-| `AUTH_UNAUTHORIZED` | 401  | 미로그인 |
+| 코드                  | HTTP | 설명                                           |
+| --------------------- | ---- | ---------------------------------------------- |
+| `AUTH_UNAUTHORIZED`   | 401  | 미로그인                                       |
+| `AUTH_TOKEN_EXPIRED`  | 401  | Access Token 만료                              |
+| `AUTH_USER_NOT_FOUND` | 404  | 토큰은 유효하지만 DB에서 사용자를 찾을 수 없음 |
 
 ---
 

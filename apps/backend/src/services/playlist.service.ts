@@ -118,7 +118,11 @@ export class PlaylistService {
   }
 
   private nonEmpty(value: string | null | undefined): string | null {
-    return value ? value : null;
+    if (value) {
+      return value;
+    }
+
+    return null;
   }
 
   private toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {

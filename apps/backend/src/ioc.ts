@@ -4,12 +4,16 @@ import type { IocContainer } from 'tsoa';
 import { prisma } from './lib/prisma';
 
 import { AuthRepository } from './repositories/auth.repository';
+import { UserRepository } from './repositories/user.repository';
 
 import { AuthService } from './services/auth.service';
 import { HealthService } from './services/health.service';
+import { UserService } from './services/user.service';
 
 import { AuthController } from './controllers/auth.controller';
 import { HealthController } from './controllers/health.controller';
+import { RoomController } from './controllers/room.controller';
+import { UserController } from './controllers/user.controller';
 
 import { config } from './config';
 
@@ -29,6 +33,10 @@ register(AuthController, () => {
   const repo = new AuthRepository(prisma);
   return new AuthController(new AuthService(repo, oauthClient));
 });
+
+const userService = new UserService(new UserRepository(prisma));
+register(UserController, () => new UserController(userService));
+register(RoomController, () => new RoomController(userService));
 
 export const iocContainer: IocContainer = {
   get<T>(controller: new (...args: never[]) => T): T {

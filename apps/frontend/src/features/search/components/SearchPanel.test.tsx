@@ -5,7 +5,10 @@ import { SearchPanel } from './SearchPanel';
 import { MOCK_SEARCH_RESULTS } from '../data/mockSearchResults';
 import { SEARCH_RESULT_STATUS } from '../types/search';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('SearchPanel', () => {
   it('renders room search controls and forwards interactions', () => {
@@ -40,7 +43,7 @@ describe('SearchPanel', () => {
     expect(handleAdd).toHaveBeenCalledWith(MOCK_SEARCH_RESULTS[0]);
   });
 
-  it('does not render when closed', () => {
+  it('does not expose the dialog when closed', () => {
     render(
       <SearchPanel
         open={false}
@@ -55,5 +58,31 @@ describe('SearchPanel', () => {
     );
 
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps the panel mounted in a closed animation state', () => {
+    const panelProps = {
+      roomName: 'Chill Night',
+      query: '',
+      status: SEARCH_RESULT_STATUS.idle,
+      results: [],
+      onClose: () => undefined,
+      onQueryChange: () => undefined,
+      onAdd: () => undefined,
+    };
+
+    const { container, rerender } = render(<SearchPanel open {...panelProps} />);
+
+    expect(screen.getByRole('dialog', { name: '곡 추가' }).className).toContain(
+      'search-panel-dialog--open',
+    );
+
+    rerender(<SearchPanel open={false} {...panelProps} />);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('[data-search-panel]')?.className).toContain(
+      'search-panel-dialog--closed',
+    );
   });
 });

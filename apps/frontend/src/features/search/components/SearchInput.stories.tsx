@@ -12,6 +12,7 @@ const meta = {
   args: {
     query: 'Coldplay',
     isLoading: false,
+    onQueryChange: () => undefined,
   },
 } satisfies Meta<typeof SearchInput>;
 

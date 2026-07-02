@@ -9,9 +9,16 @@ export const SEARCH_RESULT_STATUS = {
 export type SearchResultStatus = (typeof SEARCH_RESULT_STATUS)[keyof typeof SEARCH_RESULT_STATUS];
 
 export interface SearchVideo {
-  id: string;
+  videoId: string;
   title: string;
   channelTitle: string;
   thumbnailUrl: string;
-  duration: string;
+  duration: number;
+}
+
+export interface YoutubeSearchResponse {
+  success: true;
+  data: {
+    items: SearchVideo[];
+  };
 }

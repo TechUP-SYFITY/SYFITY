@@ -2,7 +2,9 @@
 
 import Image from 'next/image';
 
+import { PlusIcon } from './SearchIcons';
 import type { SearchVideo } from '../types/search';
+import { formatDuration } from '../utils/formatDuration';
 
 interface SearchResultItemProps {
   video: SearchVideo;
@@ -19,7 +21,7 @@ export function SearchResultItem({
 }: SearchResultItemProps) {
   return (
     <article
-      className={`flex min-h-[68px] items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-zinc-50 ${className}`}
+      className={`flex min-h-[68px] items-center gap-3 border-b border-white/[0.05] px-4 py-3 transition hover:bg-white/[0.03] ${className}`}
     >
       <Image
         src={video.thumbnailUrl}
@@ -27,20 +29,23 @@ export function SearchResultItem({
         width={44}
         height={44}
         unoptimized
-        className="h-11 w-11 shrink-0 rounded-xl object-cover"
+        className="h-11 w-11 shrink-0 rounded-2xl object-cover"
       />
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-sm font-semibold text-zinc-950">{video.title}</h3>
-        <p className="mt-0.5 truncate text-xs font-medium text-zinc-500">{video.channelTitle}</p>
+        <h3 className="truncate text-sm font-semibold leading-5 text-white">{video.title}</h3>
+        <p className="truncate text-xs leading-4 text-white/45">{video.channelTitle}</p>
       </div>
-      <span className="shrink-0 text-xs font-semibold text-zinc-500">{video.duration}</span>
+      <span className="hidden shrink-0 text-xs leading-4 text-white/40 min-[390px]:block">
+        {formatDuration(video.duration)}
+      </span>
       <button
         type="button"
         disabled={isAdded}
         aria-label={`${video.title} 추가`}
         onClick={() => onAdd(video)}
-        className="h-8 shrink-0 rounded-full bg-zinc-950 px-3 text-xs font-semibold text-white transition hover:bg-zinc-700 disabled:bg-zinc-200 disabled:text-zinc-500"
+        className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-2xl border border-[#72f4a4]/25 bg-[#72f4a4]/10 px-3 text-xs font-bold leading-4 text-[#72f4a4] transition hover:border-[#72f4a4]/45 hover:bg-[#72f4a4]/15 disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-white/35"
       >
+        <PlusIcon className="h-3 w-3" />
         {isAdded ? '추가됨' : '추가'}
       </button>
     </article>

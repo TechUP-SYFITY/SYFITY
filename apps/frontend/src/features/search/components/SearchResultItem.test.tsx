@@ -13,7 +13,7 @@ describe('SearchResultItem', () => {
 
     expect(screen.getByText(video.title)).toBeTruthy();
     expect(screen.getByText(video.channelTitle)).toBeTruthy();
-    expect(screen.getByText(video.duration)).toBeTruthy();
+    expect(screen.getByText('4:29')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: `${video.title} 추가` }));
 

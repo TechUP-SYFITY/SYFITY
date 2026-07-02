@@ -45,3 +45,8 @@ AGENTS.override.md
 
 # temp
 temp/
+.pnpm-store/
+.worktrees/
+
+# Local Notion document summaries
+notion-docs-summary/

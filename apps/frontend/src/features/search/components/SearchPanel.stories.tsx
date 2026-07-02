@@ -17,6 +17,9 @@ const meta = {
     query: 'Coldplay',
     status: SEARCH_RESULT_STATUS.success,
     results: MOCK_SEARCH_RESULTS,
+    onClose: () => undefined,
+    onQueryChange: () => undefined,
+    onAdd: () => undefined,
   },
 } satisfies Meta<typeof SearchPanel>;
 

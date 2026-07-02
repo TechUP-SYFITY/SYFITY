@@ -34,7 +34,7 @@ describe('SearchResultList', () => {
       />,
     );
 
-    expect(screen.getByText('검색 중이에요')).toBeTruthy();
+    expect(screen.getByText('검색 중')).toBeTruthy();
 
     rerender(
       <SearchResultList
@@ -45,7 +45,7 @@ describe('SearchResultList', () => {
       />,
     );
     expect(screen.getByText('검색 결과가 없어요')).toBeTruthy();
-    expect(screen.getByText('"Colplda"에 대한 결과를 찾지 못했어요.')).toBeTruthy();
+    expect(screen.getByText('"Colplda"에 대한 결과를 찾지 못했어요')).toBeTruthy();
 
     rerender(
       <SearchResultList status={SEARCH_RESULT_STATUS.idle} results={[]} onAdd={() => undefined} />,

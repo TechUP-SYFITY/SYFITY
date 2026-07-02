@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import type { SearchVideo } from '../types/search';
 
 interface SearchResultItemProps {
@@ -19,9 +21,12 @@ export function SearchResultItem({
     <article
       className={`flex min-h-[68px] items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-zinc-50 ${className}`}
     >
-      <img
+      <Image
         src={video.thumbnailUrl}
         alt={`${video.title} 썸네일`}
+        width={44}
+        height={44}
+        unoptimized
         className="h-11 w-11 shrink-0 rounded-xl object-cover"
       />
       <div className="min-w-0 flex-1">

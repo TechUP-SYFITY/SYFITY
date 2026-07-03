@@ -4,3 +4,4 @@ export * from './dto/chat.dto';
 export * from './dto/room.dto';
 export * from './dto/user.dto';
 export * from './dto/search.dto';
+export * from './dto/playlist.dto';

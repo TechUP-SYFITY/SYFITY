@@ -35,6 +35,8 @@ function makeRoomRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository
     existsInviteCode: vi.fn().mockResolvedValue(false),
     createRoom: vi.fn().mockResolvedValue(room),
     existsRoom: vi.fn().mockResolvedValue(true),
+    findRoomById: vi.fn().mockResolvedValue(null),
+    touchLastActivity: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

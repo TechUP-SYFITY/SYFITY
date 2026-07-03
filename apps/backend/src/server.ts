@@ -3,6 +3,8 @@ import { createServer } from 'http';
 
 import { Server } from 'socket.io';
 
+import { setIo } from './lib/io';
+
 import app from './app';
 import { config } from './config';
 import { initSocket } from './socket';
@@ -25,6 +27,7 @@ const io = new Server(httpServer, {
   },
 });
 
+setIo(io);
 initSocket(io);
 
 httpServer.listen(config.port, () => {

@@ -5,7 +5,7 @@ import {
   type RoomRepositoryPrisma,
   type RoomTransactionPrisma,
 } from './room.repository';
-import type { RoomRecord } from '../types/room';
+import type { RoomDetailRecord, RoomRecord } from '../types/room';
 
 const createdRoom: RoomRecord = {
   id: 'room-1',
@@ -13,6 +13,14 @@ const createdRoom: RoomRecord = {
   inviteCode: 'ABC123',
   status: 'active',
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
+};
+
+const roomDetail: RoomDetailRecord = {
+  id: 'room-1',
+  name: 'Morning Jazz',
+  hostId: 'user-1',
+  inviteCode: 'ABC123',
+  status: 'active',
 };
 
 function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionPrisma {
@@ -31,7 +39,7 @@ function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionP
 
 function makePrisma(
   overrides: {
-    findUniqueResult?: { id: string } | null;
+    findUniqueResult?: { id: string } | RoomDetailRecord | null;
     tx?: RoomTransactionPrisma;
   } = {},
 ): { prisma: RoomRepositoryPrisma; tx: RoomTransactionPrisma } {
@@ -42,6 +50,7 @@ function makePrisma(
     prisma: {
       room: {
         findUnique: vi.fn().mockResolvedValue(findUniqueResult),
+        update: vi.fn().mockResolvedValue({}),
       },
       $transaction: vi.fn((fn: (tx: RoomTransactionPrisma) => Promise<unknown>) =>
         fn(tx),
@@ -157,5 +166,42 @@ describe('RoomRepository', () => {
         inviteCode: 'ABC123',
       }),
     ).rejects.toThrow(error);
+  });
+
+  it('ID로 Room 상세를 조회한다', async () => {
+    const { prisma } = makePrisma({ findUniqueResult: roomDetail });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.findRoomById('room-1')).resolves.toEqual(roomDetail);
+
+    expect(prisma.room.findUnique).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      select: {
+        id: true,
+        name: true,
+        hostId: true,
+        status: true,
+        inviteCode: true,
+      },
+    });
+  });
+
+  it('Room이 없으면 null을 반환한다', async () => {
+    const { prisma } = makePrisma({ findUniqueResult: null });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.findRoomById('room-1')).resolves.toBeNull();
+  });
+
+  it('lastActivityAt을 현재 시각으로 갱신한다', async () => {
+    const { prisma } = makePrisma();
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.touchLastActivity('room-1')).resolves.toBeUndefined();
+
+    expect(prisma.room.update).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      data: { lastActivityAt: expect.any(Date) },
+    });
   });
 });

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '../generated/prisma/client';
-import type { CreateRoomData, IRoomRepository, RoomRecord } from '../types/room';
+import type { CreateRoomData, IRoomRepository, RoomDetailRecord, RoomRecord } from '../types/room';
 
 export type RoomTransactionPrisma = {
   room: Pick<PrismaClient['room'], 'create'>;
@@ -8,7 +8,7 @@ export type RoomTransactionPrisma = {
 };
 
 export type RoomRepositoryPrisma = {
-  room: Pick<PrismaClient['room'], 'findUnique'>;
+  room: Pick<PrismaClient['room'], 'findUnique' | 'update'>;
   $transaction: <T>(fn: (tx: RoomTransactionPrisma) => Promise<T>) => Promise<T>;
 };
 
@@ -86,5 +86,25 @@ export class RoomRepository implements IRoomRepository {
       status: room.status,
       createdAt: room.createdAt,
     };
+  }
+
+  async findRoomById(roomId: string): Promise<RoomDetailRecord | null> {
+    return this.prisma.room.findUnique({
+      where: { id: roomId },
+      select: {
+        id: true,
+        name: true,
+        hostId: true,
+        status: true,
+        inviteCode: true,
+      },
+    });
+  }
+
+  async touchLastActivity(roomId: string): Promise<void> {
+    await this.prisma.room.update({
+      where: { id: roomId },
+      data: { lastActivityAt: new Date() },
+    });
   }
 }

@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const JWT_SECRET = 'test-access-secret';
+const USER_ID = '11111111-1111-4111-8111-111111111111';
 
 function makeSocket(cookieHeader: string): Socket {
   return {
@@ -19,13 +20,13 @@ describe('socketAuth', () => {
 
   it('유효한 access_token 쿠키로 socket.data에 userId와 email을 주입한다', async () => {
     const { socketAuth } = await import('./socketAuth');
-    const token = jwt.sign({ id: 'user-id', email: 'user@example.com' }, JWT_SECRET);
+    const token = jwt.sign({ id: USER_ID, email: 'user@example.com' }, JWT_SECRET);
     const socket = makeSocket(`access_token=${token}`);
     const next = vi.fn();
 
     socketAuth(socket, next);
 
-    expect(socket.data.userId).toBe('user-id');
+    expect(socket.data.userId).toBe(USER_ID);
     expect(socket.data.email).toBe('user@example.com');
     expect(next).toHaveBeenCalledWith();
   });
@@ -44,7 +45,7 @@ describe('socketAuth', () => {
 
   it('만료된 토큰이면 AUTH_TOKEN_EXPIRED 에러를 next로 전달한다', async () => {
     const { socketAuth } = await import('./socketAuth');
-    const token = jwt.sign({ id: 'user-id', email: 'user@example.com' }, JWT_SECRET, {
+    const token = jwt.sign({ id: USER_ID, email: 'user@example.com' }, JWT_SECRET, {
       expiresIn: -1,
     });
     const socket = makeSocket(`access_token=${token}`);
@@ -59,7 +60,7 @@ describe('socketAuth', () => {
 
   it('유효하지 않은 서명의 토큰이면 AUTH_UNAUTHORIZED 에러를 next로 전달한다', async () => {
     const { socketAuth } = await import('./socketAuth');
-    const token = jwt.sign({ id: 'user-id', email: 'user@example.com' }, 'wrong-secret');
+    const token = jwt.sign({ id: USER_ID, email: 'user@example.com' }, 'wrong-secret');
     const socket = makeSocket(`access_token=${token}`);
     const next = vi.fn();
 
@@ -85,15 +86,30 @@ describe('socketAuth', () => {
     );
   });
 
-  it('쿠키가 여러 개인 경우에도 access_token만 추출한다', async () => {
+  it('payload id가 UUID가 아니면 AUTH_UNAUTHORIZED 에러를 next로 전달한다', async () => {
     const { socketAuth } = await import('./socketAuth');
     const token = jwt.sign({ id: 'user-id', email: 'user@example.com' }, JWT_SECRET);
+    const socket = makeSocket(`access_token=${token}`);
+    const next = vi.fn();
+
+    socketAuth(socket, next);
+
+    expect(socket.data.userId).toBeUndefined();
+    expect(socket.data.email).toBeUndefined();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { code: 'AUTH_UNAUTHORIZED' } }),
+    );
+  });
+
+  it('쿠키가 여러 개인 경우에도 access_token만 추출한다', async () => {
+    const { socketAuth } = await import('./socketAuth');
+    const token = jwt.sign({ id: USER_ID, email: 'user@example.com' }, JWT_SECRET);
     const socket = makeSocket(`other_cookie=abc; access_token=${token}; another=xyz`);
     const next = vi.fn();
 
     socketAuth(socket, next);
 
-    expect(socket.data.userId).toBe('user-id');
+    expect(socket.data.userId).toBe(USER_ID);
     expect(next).toHaveBeenCalledWith();
   });
 });

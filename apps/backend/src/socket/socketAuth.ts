@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import type { Socket } from 'socket.io';
 
 import { config } from '../config';
+import { isAuthPayload } from '../utils/authPayload';
 
 interface SocketAuthError extends Error {
   data: {
@@ -12,17 +13,6 @@ interface SocketAuthError extends Error {
 
 function toSocketError(code: string, message: string): SocketAuthError {
   return Object.assign(new Error(message), { data: { code } });
-}
-
-function isSocketAuthPayload(payload: unknown): payload is { id: string; email: string } {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'id' in payload &&
-    'email' in payload &&
-    typeof payload.id === 'string' &&
-    typeof payload.email === 'string'
-  );
 }
 
 export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
@@ -36,7 +26,7 @@ export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
 
   try {
     const payload = jwt.verify(token, config.jwt.accessSecret);
-    if (!isSocketAuthPayload(payload)) {
+    if (!isAuthPayload(payload)) {
       next(toSocketError('AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
       return;
     }

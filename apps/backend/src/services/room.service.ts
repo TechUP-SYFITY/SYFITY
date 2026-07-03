@@ -7,6 +7,7 @@ import type { ICache } from '../lib/cache/cache.interface';
 import { CacheKeys } from '../lib/cache/cacheKeys';
 import type { PlaybackStateCache } from '../types/cache';
 import type { IRoomRepository, RoomRecord } from '../types/room';
+import type { IUserRepository } from '../types/user';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
 
@@ -22,10 +23,16 @@ const INITIAL_PLAYBACK_STATE: PlaybackStateCache = {
 export class RoomService {
   constructor(
     private readonly roomRepo: IRoomRepository,
+    private readonly userRepo: Pick<IUserRepository, 'findUserById'>,
     private readonly cache: ICache,
   ) {}
 
   async createRoom(userId: string, name: string): Promise<RoomRecord> {
+    const user = await this.userRepo.findUserById(userId);
+    if (!user) {
+      throw new AppError(404, ERROR_CODES.AUTH_USER_NOT_FOUND, '사용자를 찾을 수 없습니다.');
+    }
+
     const inviteCode = await this.generateUniqueInviteCode();
     const room = await this.roomRepo.createRoom({ name, hostId: userId, inviteCode });
 

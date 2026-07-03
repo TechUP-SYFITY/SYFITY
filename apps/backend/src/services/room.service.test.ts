@@ -4,6 +4,7 @@ import { RoomService } from './room.service';
 import type { ICache } from '../lib/cache/cache.interface';
 import { CacheKeys } from '../lib/cache/cacheKeys';
 import type { IRoomRepository, RoomRecord } from '../types/room';
+import type { IUserRepository, UserProfileRecord } from '../types/user';
 
 const room: RoomRecord = {
   id: 'room-1',
@@ -11,6 +12,13 @@ const room: RoomRecord = {
   inviteCode: 'ABC123',
   status: 'active',
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
+};
+
+const userProfile: UserProfileRecord = {
+  id: 'user-1',
+  email: 'alice@example.com',
+  nickname: 'Alice',
+  profileImage: null,
 };
 
 const initialPlaybackState = {
@@ -27,6 +35,17 @@ function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
     existsInviteCode: vi.fn().mockResolvedValue(false),
     createRoom: vi.fn().mockResolvedValue(room),
     existsRoom: vi.fn().mockResolvedValue(true),
+    findRoomById: vi.fn().mockResolvedValue(null),
+    touchLastActivity: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function makeUserRepo(
+  overrides: Partial<Pick<IUserRepository, 'findUserById'>> = {},
+): Pick<IUserRepository, 'findUserById'> {
+  return {
+    findUserById: vi.fn().mockResolvedValue(userProfile),
     ...overrides,
   };
 }
@@ -43,11 +62,13 @@ function makeCache(): ICache {
 describe('RoomService', () => {
   it('첫 번째 시도에 고유 초대 코드를 생성하고 Room을 생성한다', async () => {
     const repo = makeRepo();
+    const userRepo = makeUserRepo();
     const cache = makeCache();
-    const service = new RoomService(repo, cache);
+    const service = new RoomService(repo, userRepo, cache);
 
     await expect(service.createRoom('user-1', 'Morning Jazz')).resolves.toEqual(room);
 
+    expect(userRepo.findUserById).toHaveBeenCalledWith('user-1');
     expect(repo.existsInviteCode).toHaveBeenCalledTimes(1);
     expect(repo.existsInviteCode).toHaveBeenCalledWith(expect.stringMatching(/^[0-9A-F]{6}$/));
     expect(repo.createRoom).toHaveBeenCalledWith({
@@ -62,7 +83,7 @@ describe('RoomService', () => {
       existsInviteCode: vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false),
     });
     const cache = makeCache();
-    const service = new RoomService(repo, cache);
+    const service = new RoomService(repo, makeUserRepo(), cache);
 
     await expect(service.createRoom('user-1', 'Morning Jazz')).resolves.toEqual(room);
 
@@ -79,7 +100,7 @@ describe('RoomService', () => {
         .mockResolvedValueOnce(false),
     });
     const cache = makeCache();
-    const service = new RoomService(repo, cache);
+    const service = new RoomService(repo, makeUserRepo(), cache);
 
     await expect(service.createRoom('user-1', 'Morning Jazz')).resolves.toEqual(room);
 
@@ -92,7 +113,7 @@ describe('RoomService', () => {
       existsInviteCode: vi.fn().mockResolvedValue(true),
     });
     const cache = makeCache();
-    const service = new RoomService(repo, cache);
+    const service = new RoomService(repo, makeUserRepo(), cache);
 
     await expect(service.createRoom('user-1', 'Morning Jazz')).rejects.toMatchObject({
       status: 500,
@@ -103,10 +124,27 @@ describe('RoomService', () => {
     expect(cache.set).not.toHaveBeenCalled();
   });
 
+  it('사용자를 찾지 못하면 AUTH_USER_NOT_FOUND를 반환하고 Room을 생성하지 않는다', async () => {
+    const repo = makeRepo();
+    const userRepo = makeUserRepo({
+      findUserById: vi.fn().mockResolvedValue(null),
+    });
+    const cache = makeCache();
+    const service = new RoomService(repo, userRepo, cache);
+
+    await expect(service.createRoom('missing-user', 'Morning Jazz')).rejects.toMatchObject({
+      status: 404,
+      code: 'AUTH_USER_NOT_FOUND',
+    });
+    expect(repo.existsInviteCode).not.toHaveBeenCalled();
+    expect(repo.createRoom).not.toHaveBeenCalled();
+    expect(cache.set).not.toHaveBeenCalled();
+  });
+
   it('Room 생성 성공 시 PlaybackState 초기값을 캐시에 저장한다', async () => {
     const repo = makeRepo();
     const cache = makeCache();
-    const service = new RoomService(repo, cache);
+    const service = new RoomService(repo, makeUserRepo(), cache);
 
     await service.createRoom('user-1', 'Morning Jazz');
 

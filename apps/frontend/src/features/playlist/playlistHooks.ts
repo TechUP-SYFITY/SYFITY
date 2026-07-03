@@ -5,10 +5,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
+import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playlistApi } from './playlistApi';
 import { usePlaylistStore } from './playlistStore';
-import type { AddPlaylistItemRequest, ReorderPlaylistRequest } from './playlistTypes';
+import type {
+  AddPlaylistItemRequest,
+  PlaylistResponse,
+  ReorderPlaylistRequest,
+} from './playlistTypes';
 
 export const playlistQueryKeys = {
   all: ['playlist'] as const,
@@ -27,7 +32,15 @@ export const useAddPlaylistItem = (roomId: string) => {
 
   return useMutation({
     mutationFn: (body: AddPlaylistItemRequest) => playlistApi.addPlaylistItem(roomId, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: playlistQueryKeys.room(roomId) }),
+    onSuccess: (createdItem) => {
+      const currentPlaylist = getCurrentPlaylist(queryClient, roomId);
+      const nextPlaylist = currentPlaylist.some((item) => item.id === createdItem.id)
+        ? currentPlaylist
+        : sortPlaylist([...currentPlaylist, createdItem]);
+
+      applyPlaylist(queryClient, roomId, nextPlaylist);
+      return queryClient.invalidateQueries({ queryKey: playlistQueryKeys.room(roomId) });
+    },
   });
 };
 
@@ -36,7 +49,24 @@ export const useDeletePlaylistItem = (roomId: string) => {
 
   return useMutation({
     mutationFn: (itemId: string) => playlistApi.deletePlaylistItem(roomId, itemId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: playlistQueryKeys.room(roomId) }),
+    onMutate: async (itemId) => {
+      await queryClient.cancelQueries({ queryKey: playlistQueryKeys.room(roomId) });
+
+      const previousPlaylist = getCurrentPlaylist(queryClient, roomId);
+      applyPlaylist(
+        queryClient,
+        roomId,
+        previousPlaylist.filter((item) => item.id !== itemId),
+      );
+
+      return { previousPlaylist };
+    },
+    onError: (_error, _itemId, context) => {
+      if (context?.previousPlaylist) {
+        applyPlaylist(queryClient, roomId, context.previousPlaylist);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: playlistQueryKeys.room(roomId) }),
   });
 };
 
@@ -45,7 +75,20 @@ export const useReorderPlaylist = (roomId: string) => {
 
   return useMutation({
     mutationFn: (body: ReorderPlaylistRequest) => playlistApi.reorderPlaylist(roomId, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: playlistQueryKeys.room(roomId) }),
+    onMutate: async (body) => {
+      await queryClient.cancelQueries({ queryKey: playlistQueryKeys.room(roomId) });
+
+      const previousPlaylist = getCurrentPlaylist(queryClient, roomId);
+      applyPlaylist(queryClient, roomId, reorderPlaylist(previousPlaylist, body));
+
+      return { previousPlaylist };
+    },
+    onError: (_error, _body, context) => {
+      if (context?.previousPlaylist) {
+        applyPlaylist(queryClient, roomId, context.previousPlaylist);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: playlistQueryKeys.room(roomId) }),
   });
 };
 
@@ -70,3 +113,32 @@ export const usePlaylistSocket = (roomId: string) => {
     };
   }, [queryClient, roomId, setPlaylist]);
 };
+
+function getCurrentPlaylist(queryClient: ReturnType<typeof useQueryClient>, roomId: string) {
+  const cached = queryClient.getQueryData<PlaylistResponse>(playlistQueryKeys.room(roomId));
+  return cached?.playlist ?? usePlaylistStore.getState().playlist;
+}
+
+function applyPlaylist(
+  queryClient: ReturnType<typeof useQueryClient>,
+  roomId: string,
+  playlist: PlaylistItem[],
+) {
+  usePlaylistStore.getState().setPlaylist(playlist);
+  queryClient.setQueryData<PlaylistResponse>(playlistQueryKeys.room(roomId), { playlist });
+}
+
+function reorderPlaylist(playlist: PlaylistItem[], body: ReorderPlaylistRequest) {
+  const positionById = new Map(body.items.map((item) => [item.id, item.position]));
+
+  return sortPlaylist(
+    playlist.map((item) => ({
+      ...item,
+      position: positionById.get(item.id) ?? item.position,
+    })),
+  );
+}
+
+function sortPlaylist(playlist: PlaylistItem[]) {
+  return [...playlist].sort((a, b) => a.position - b.position);
+}

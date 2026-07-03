@@ -1,3 +1,4 @@
+import type { Request as ExRequest } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ChatController } from './chat.controller';
@@ -27,13 +28,25 @@ function makeService(chats: ChatRecord[] = [userChat], hasMore = false) {
   };
 }
 
+function makeRequest(): ExRequest {
+  return {
+    user: { id: 'user-1', email: 'alice@example.com' },
+  } as ExRequest;
+}
+
 describe('ChatController', () => {
   it('GET /rooms/:roomId/chats 응답을 반환한다', async () => {
     const service = makeService([userChat], false);
     const controller = new ChatController(service);
 
     await expect(
-      controller.getChats('room-1', '2026-07-01T12:05:00.000Z', 'message-cursor', 20),
+      controller.getChats(
+        'room-1',
+        makeRequest(),
+        '2026-07-01T12:05:00.000Z',
+        'message-cursor',
+        20,
+      ),
     ).resolves.toEqual({
       success: true,
       data: {
@@ -55,6 +68,7 @@ describe('ChatController', () => {
       cursorTime: '2026-07-01T12:05:00.000Z',
       cursorId: 'message-cursor',
       limit: 20,
+      userId: 'user-1',
     });
   });
 
@@ -63,7 +77,7 @@ describe('ChatController', () => {
     const controller = new ChatController(service);
 
     await expect(
-      controller.getChats('room-1', '2026-07-01T12:05:00.000Z', 'message-cursor'),
+      controller.getChats('room-1', makeRequest(), '2026-07-01T12:05:00.000Z', 'message-cursor'),
     ).resolves.toEqual({
       success: true,
       data: {
@@ -88,6 +102,7 @@ describe('ChatController', () => {
 
     const response = await controller.getChats(
       'room-1',
+      makeRequest(),
       '2026-07-01T12:05:00.000Z',
       'message-cursor',
     );
@@ -100,7 +115,7 @@ describe('ChatController', () => {
     const controller = new ChatController(service);
 
     await expect(
-      controller.getChats('room-1', '2026-07-01T12:05:00.000Z', 'message-cursor'),
+      controller.getChats('room-1', makeRequest(), '2026-07-01T12:05:00.000Z', 'message-cursor'),
     ).resolves.toEqual({
       success: true,
       data: {
@@ -126,7 +141,7 @@ describe('ChatController', () => {
     const controller = new ChatController(service);
 
     await expect(
-      controller.getChats('room-1', '2026-07-01T12:05:00.000Z', 'message-cursor'),
+      controller.getChats('room-1', makeRequest(), '2026-07-01T12:05:00.000Z', 'message-cursor'),
     ).rejects.toThrow(error);
   });
 });

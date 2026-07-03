@@ -1,9 +1,10 @@
 'use client';
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
-import { Play } from 'lucide-react';
-import { useCallback } from 'react';
+import { AlertTriangle, Loader2, Pause, Play, Radio, RefreshCcw, SkipForward } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 
+import { Button } from '@/shared/components/ui';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
@@ -19,26 +20,85 @@ interface PlayerPanelProps {
 export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playbackError = usePlayerStore((state) => state.playbackError);
+  const lastEventSource = usePlayerStore((state) => state.lastEventSource);
+  const [pendingCommand, setPendingCommand] = useState<PlayerCommand | null>(null);
+  const [commandError, setCommandError] = useState<string | null>(null);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const currentTrack =
     playlist.find((item) => item.id === playbackState?.playlistItemId) ?? playlist[0];
   const posterUrl = currentTrack ? getThumbnailUrl(currentTrack) : null;
   const shouldShowPoster = Boolean(posterUrl) && !playbackState?.isPlaying;
+  const currentIndex = currentTrack
+    ? playlist.findIndex((item) => item.id === currentTrack.id)
+    : -1;
+  const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
+  const isPlaying = playbackState?.isPlaying ?? false;
+  const currentTime = playbackState?.currentTime ?? 0;
+  const hasPlayableTrack = Boolean(currentTrack && playbackState?.videoId);
+  const controlDisabled = !isHost || !hasPlayableTrack || Boolean(pendingCommand);
+  const syncDisabled = !hasPlayableTrack;
+  const syncStatus = useMemo(() => {
+    if (lastEventSource === 'sync-response') {
+      return '서버 재생 위치와 동기화됐어요.';
+    }
+
+    if (lastEventSource === 'tick') {
+      return '서버 기준 재생 위치를 확인했어요.';
+    }
+
+    return syncFeedback;
+  }, [lastEventSource, syncFeedback]);
 
   const handleSyncRequest = useCallback(() => {
-    playbackCommands.requestSync(roomId);
-  }, [roomId]);
-
-  const handleNextTrack = useCallback(() => {
-    const currentIndex = playlist.findIndex((item) => item.id === playbackState?.playlistItemId);
-    const nextItem = playlist[currentIndex + 1];
-
-    if (nextItem) {
-      void playbackCommands.changeTrack(roomId, nextItem.id);
+    if (!hasPlayableTrack) {
       return;
     }
 
-    void playbackCommands.pause(roomId, 0);
-  }, [playbackState?.playlistItemId, playlist, roomId]);
+    try {
+      playbackCommands.requestSync(roomId);
+      setSyncFeedback('동기화 요청을 보냈어요.');
+      setCommandError(null);
+    } catch (error) {
+      setCommandError(getPlayerCommandErrorMessage(error));
+    }
+  }, [hasPlayableTrack, roomId]);
+
+  const runHostCommand = useCallback(
+    async (command: PlayerCommand, action: () => Promise<void>) => {
+      if (!isHost || pendingCommand) {
+        return;
+      }
+
+      setPendingCommand(command);
+      setCommandError(null);
+
+      try {
+        await action();
+      } catch (error) {
+        setCommandError(getPlayerCommandErrorMessage(error));
+      } finally {
+        setPendingCommand(null);
+      }
+    },
+    [isHost, pendingCommand],
+  );
+
+  const handlePlayPause = useCallback(() => {
+    if (isPlaying) {
+      void runHostCommand('pause', () => playbackCommands.pause(roomId, currentTime));
+      return;
+    }
+
+    void runHostCommand('play', () => playbackCommands.play(roomId, currentTime));
+  }, [currentTime, isPlaying, roomId, runHostCommand]);
+
+  const handleNextTrack = useCallback(() => {
+    if (!nextItem) {
+      return;
+    }
+
+    void runHostCommand('next', () => playbackCommands.changeTrack(roomId, nextItem.id));
+  }, [nextItem, roomId, runHostCommand]);
 
   const handlePlayerError = useCallback(
     (errorCode: number) => {
@@ -99,10 +159,61 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
         ) : null}
       </div>
 
-      <div className="min-h-5 text-sm text-white/45">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.035] p-3">
+        <Button
+          variant={isPlaying ? 'ghost' : 'primary'}
+          size="md"
+          className="min-w-28 rounded-2xl"
+          disabled={controlDisabled}
+          isLoading={pendingCommand === 'play' || pendingCommand === 'pause'}
+          type="button"
+          onClick={handlePlayPause}
+        >
+          {isPlaying ? <Pause aria-hidden /> : <Play aria-hidden />}
+          {isPlaying ? '일시정지' : '재생'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="md"
+          className="rounded-2xl"
+          disabled={controlDisabled || !nextItem}
+          isLoading={pendingCommand === 'next'}
+          type="button"
+          onClick={handleNextTrack}
+        >
+          <SkipForward aria-hidden />
+          다음 곡
+        </Button>
+        <Button
+          variant="accent-soft"
+          size="md"
+          className="rounded-2xl"
+          disabled={syncDisabled}
+          type="button"
+          onClick={handleSyncRequest}
+        >
+          <RefreshCcw aria-hidden />
+          동기화
+        </Button>
+        <div className="ml-auto flex min-h-9 items-center gap-2 text-xs text-white/45">
+          {pendingCommand ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+          <Radio className="h-3.5 w-3.5 text-[#72f4a4]" aria-hidden />
+          {isHost ? 'Host 제어 가능' : 'Host만 재생을 제어할 수 있어요.'}
+        </div>
+      </div>
+
+      <div className="min-h-5 space-y-1 text-sm text-white/45">
+        {syncStatus ? <p>{syncStatus}</p> : null}
+        {commandError ? (
+          <p className="flex items-center gap-2 text-rose-400">
+            <AlertTriangle className="h-4 w-4" aria-hidden />
+            {commandError}
+          </p>
+        ) : null}
         {playbackError ? (
-          <p className="text-rose-400">
-            재생 오류 {playbackError.videoId} / {playbackError.errorCode}
+          <p className="flex items-center gap-2 text-rose-400">
+            <AlertTriangle className="h-4 w-4" aria-hidden />
+            재생할 수 없는 영상이에요. 오류 코드 {playbackError.errorCode}
           </p>
         ) : null}
       </div>
@@ -122,4 +233,26 @@ function formatDuration(duration: number) {
   const minutes = Math.floor(duration / 60);
   const seconds = String(duration % 60).padStart(2, '0');
   return `${minutes}:${seconds}`;
+}
+
+type PlayerCommand = 'play' | 'pause' | 'next';
+
+function getPlayerCommandErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    if (error.message === 'Socket is not connected.') {
+      return '서버에 연결하지 못했어요.';
+    }
+
+    if (error.message.includes('AUTH_FORBIDDEN')) {
+      return 'Host만 재생을 제어할 수 있어요.';
+    }
+
+    if (error.message.includes('PLAYLIST_ITEM_NOT_FOUND')) {
+      return '재생할 곡을 찾을 수 없어요.';
+    }
+
+    return error.message;
+  }
+
+  return '재생 제어 요청에 실패했어요.';
 }

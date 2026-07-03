@@ -1,6 +1,7 @@
 'use client';
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
+import { Play } from 'lucide-react';
 import { useCallback } from 'react';
 
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -14,12 +15,6 @@ interface PlayerPanelProps {
   isHost: boolean;
   playlist: PlaylistItem[];
 }
-
-const ROOM_ICON_PATHS = {
-  play: '/assets/icons/room/play.svg',
-} as const;
-
-type RoomIconName = keyof typeof ROOM_ICON_PATHS;
 
 export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
   const playbackState = usePlayerStore((state) => state.playbackState);
@@ -75,7 +70,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
             />
             <div className="absolute inset-0 bg-black/10" />
             <div className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white">
-              <RoomIcon name="play" className="h-6 w-6 translate-x-0.5" />
+              <Play className="h-6 w-6 translate-x-0.5" aria-hidden />
             </div>
           </div>
         ) : null}
@@ -84,17 +79,17 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
           LIVE SYNC
         </div>
         <span className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-black/70 px-2 py-1 text-xs font-bold text-white">
-          {currentTrack ? formatDuration(currentTrack.duration) : '3:46'}
+          {currentTrack ? formatDuration(currentTrack.duration) : '0:00'}
         </span>
       </div>
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-bold tracking-[-0.02em] text-white">
-            {currentTrack?.title ?? 'Night Changes'}
+            {currentTrack?.title ?? '재생 대기'}
           </h2>
           <p className="mt-1 truncate text-sm text-white/48">
-            {currentTrack?.channelTitle ?? 'One Direction'}
+            {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>
         {!isHost ? (
@@ -127,18 +122,4 @@ function formatDuration(duration: number) {
   const minutes = Math.floor(duration / 60);
   const seconds = String(duration % 60).padStart(2, '0');
   return `${minutes}:${seconds}`;
-}
-
-function RoomIcon({ className = '', name }: { className?: string; name: RoomIconName }) {
-  return (
-    <span
-      className={`inline-block shrink-0 ${className}`}
-      style={{
-        WebkitMask: `url(${ROOM_ICON_PATHS[name]}) center / contain no-repeat`,
-        backgroundColor: 'currentColor',
-        mask: `url(${ROOM_ICON_PATHS[name]}) center / contain no-repeat`,
-      }}
-      aria-hidden
-    />
-  );
 }

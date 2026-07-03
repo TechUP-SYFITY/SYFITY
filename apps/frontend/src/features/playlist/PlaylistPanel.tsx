@@ -1,6 +1,7 @@
 'use client';
 
 // Playlist 목록과 곡 추가, 삭제, 재생 요청을 위한 최소 UI를 제공한다.
+import { ChevronDown, CircleAlert, Inbox, ListMusic, Play, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -14,28 +15,15 @@ import {
 import { usePlaylistStore } from './playlistStore';
 
 interface PlaylistPanelProps {
-  fallbackPlaylist?: PlaylistItem[];
+  playlistItems?: PlaylistItem[];
   roomId: string;
   isHost: boolean;
   isReady: boolean;
   onPlayItem: (playlistItemId: string) => void;
 }
 
-const ROOM_ICON_PATHS = {
-  chevronDown: '/assets/icons/room/chevron-down.svg',
-  emptyInbox: '/assets/icons/room/empty-inbox.svg',
-  play: '/assets/icons/room/play.svg',
-  playlist: '/assets/icons/room/playlist.svg',
-  plus: '/assets/icons/room/plus.svg',
-  plusPrimary: '/assets/icons/room/plus-primary.svg',
-  trash: '/assets/icons/room/trash.svg',
-  unavailable: '/assets/icons/room/unavailable.svg',
-} as const;
-
-type RoomIconName = keyof typeof ROOM_ICON_PATHS;
-
 export function PlaylistPanel({
-  fallbackPlaylist = [],
+  playlistItems,
   roomId,
   isHost,
   isReady,
@@ -43,19 +31,20 @@ export function PlaylistPanel({
 }: PlaylistPanelProps) {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const { data, isLoading } = usePlaylist(roomId, isReady);
+  const shouldUseParentPlaylist = Boolean(playlistItems);
+  const { data, isLoading } = usePlaylist(roomId, isReady && !shouldUseParentPlaylist);
   const addPlaylistItem = useAddPlaylistItem(roomId);
   const deletePlaylistItem = useDeletePlaylistItem(roomId);
   const reorderPlaylist = useReorderPlaylist(roomId);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
-  const visiblePlaylist = playlist.length > 0 ? playlist : (data?.playlist ?? fallbackPlaylist);
+  const visiblePlaylist = playlistItems ?? playlist;
 
   useEffect(() => {
-    if (data?.playlist) {
+    if (!shouldUseParentPlaylist && data?.playlist) {
       setPlaylist(data.playlist);
     }
-  }, [data?.playlist, setPlaylist]);
+  }, [data?.playlist, setPlaylist, shouldUseParentPlaylist]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -103,7 +92,7 @@ export function PlaylistPanel({
     <aside className="relative flex min-h-[360px] flex-col border-r border-white/[0.07] bg-[#09090b]">
       <div className="hidden h-12 items-center justify-between border-b border-white/[0.07] px-4 lg:flex">
         <h2 className="flex items-center gap-2 text-xs font-semibold text-white/65">
-          <RoomIcon name="playlist" className="h-3.5 w-3.5 text-[#72f4a4]" />
+          <ListMusic className="h-3.5 w-3.5 text-[#72f4a4]" aria-hidden />
           재생목록
           <span className="font-normal text-white/35">{visiblePlaylist.length}곡</span>
         </h2>
@@ -112,7 +101,7 @@ export function PlaylistPanel({
           type="button"
           onClick={() => setIsAddFormOpen((value) => !value)}
         >
-          <RoomIcon name="plus" className="h-3 w-3" />
+          <Plus className="h-3 w-3" aria-hidden />
           추가
         </button>
       </div>
@@ -130,7 +119,7 @@ export function PlaylistPanel({
             disabled={!isReady || addPlaylistItem.isPending}
             type="submit"
           >
-            <RoomIcon name="plus" className="h-3.5 w-3.5" />
+            <Plus className="h-3.5 w-3.5" aria-hidden />
             추가
           </button>
         </form>
@@ -141,7 +130,7 @@ export function PlaylistPanel({
         {!isLoading && visiblePlaylist.length === 0 ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.04] text-white/40">
-              <RoomIcon name="emptyInbox" className="h-5 w-5" />
+              <Inbox className="h-5 w-5" aria-hidden />
             </div>
             <p className="mt-4 text-sm font-bold text-white">아직 곡이 없어요</p>
             <p className="mt-2 text-xs leading-5 text-white/45">
@@ -153,7 +142,7 @@ export function PlaylistPanel({
               type="button"
               onClick={() => setIsAddFormOpen(true)}
             >
-              <RoomIcon name="plusPrimary" className="h-4 w-4" />첫 번째 곡 추가
+              <Plus className="h-4 w-4" aria-hidden />첫 번째 곡 추가
             </button>
           </div>
         ) : null}
@@ -177,9 +166,9 @@ export function PlaylistPanel({
                   <p className={`truncate text-sm font-bold ${titleColorClass}`}>
                     {item.title}
                     {isUnavailable ? (
-                      <RoomIcon
-                        name="unavailable"
+                      <CircleAlert
                         className="ml-1 inline-block h-3 w-3 text-[#f87171]"
+                        aria-hidden
                       />
                     ) : null}
                   </p>
@@ -204,7 +193,7 @@ export function PlaylistPanel({
                   aria-label={`${item.title} 재생`}
                   onClick={() => onPlayItem(item.id)}
                 >
-                  <RoomIcon name="play" className="h-3.5 w-3.5" />
+                  <Play className="h-3.5 w-3.5" aria-hidden />
                 </button>
                 <div
                   className={
@@ -220,7 +209,7 @@ export function PlaylistPanel({
                     onClick={() => handleMove(item.id, -1)}
                     aria-label={`${item.title} 위로 이동`}
                   >
-                    <RoomIcon name="chevronDown" className="h-3 w-3 rotate-180" />
+                    <ChevronDown className="h-3 w-3 rotate-180" aria-hidden />
                   </button>
                   <button
                     className="flex h-5 w-5 items-center justify-center text-white/32 disabled:opacity-20"
@@ -229,7 +218,7 @@ export function PlaylistPanel({
                     onClick={() => handleMove(item.id, 1)}
                     aria-label={`${item.title} 아래로 이동`}
                   >
-                    <RoomIcon name="chevronDown" className="h-3 w-3" />
+                    <ChevronDown className="h-3 w-3" aria-hidden />
                   </button>
                   <button
                     className="flex h-5 w-5 items-center justify-center text-rose-400/70 disabled:opacity-20"
@@ -238,7 +227,7 @@ export function PlaylistPanel({
                     aria-label={`${item.title} 삭제`}
                     onClick={() => deletePlaylistItem.mutate(item.id)}
                   >
-                    <RoomIcon name="trash" className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </div>
               </div>
@@ -252,7 +241,7 @@ export function PlaylistPanel({
         type="button"
         onClick={() => setIsAddFormOpen((value) => !value)}
       >
-        <RoomIcon name="plusPrimary" className="h-4 w-4" />곡 추가
+        <Plus className="h-4 w-4" aria-hidden />곡 추가
       </button>
     </aside>
   );
@@ -287,18 +276,4 @@ function formatDuration(duration: number) {
   const minutes = Math.floor(duration / 60);
   const seconds = String(duration % 60).padStart(2, '0');
   return `${minutes}:${seconds}`;
-}
-
-function RoomIcon({ className = '', name }: { className?: string; name: RoomIconName }) {
-  return (
-    <span
-      className={`inline-block shrink-0 ${className}`}
-      style={{
-        WebkitMask: `url(${ROOM_ICON_PATHS[name]}) center / contain no-repeat`,
-        backgroundColor: 'currentColor',
-        mask: `url(${ROOM_ICON_PATHS[name]}) center / contain no-repeat`,
-      }}
-      aria-hidden
-    />
-  );
 }

@@ -8,6 +8,7 @@ import { socketClient } from '@/shared/lib/socket/socketClient';
 import { useRoomStore } from './roomStore';
 
 export const useRoomSocket = (roomId: string) => {
+  const setRoomSocketError = useRoomStore((state) => state.setRoomSocketError);
   const updateMember = useRoomStore((state) => state.updateMember);
 
   useEffect(() => {
@@ -18,9 +19,12 @@ export const useRoomSocket = (roomId: string) => {
     const socket = socketClient.connect();
     const joinRoom = () => {
       socket.emit('room:join', { roomId }, (response) => {
-        if (response.success && response.data) {
+        if (response.success) {
+          setRoomSocketError(null);
           return;
         }
+
+        setRoomSocketError(response.error.message);
       });
     };
 
@@ -33,5 +37,5 @@ export const useRoomSocket = (roomId: string) => {
       socket.off('presence:update', updateMember);
       socket.emit('room:leave', { roomId });
     };
-  }, [roomId, updateMember]);
+  }, [roomId, setRoomSocketError, updateMember]);
 };

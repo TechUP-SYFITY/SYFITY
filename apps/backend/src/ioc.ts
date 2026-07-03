@@ -50,8 +50,9 @@ register(AuthController, () => {
 const userRepository = new UserRepository(prisma);
 const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
-const roomService = new RoomService(roomRepository, userRepository, cache);
 const playlistRepository = new PlaylistRepository(prisma);
+const chatRepository = new ChatRepository(prisma);
+const roomService = new RoomService(roomRepository, cache, playlistRepository, chatRepository);
 const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
 let playlistService: PlaylistService | null = null;
 
@@ -68,10 +69,7 @@ function getPlaylistService(): PlaylistService {
 
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
-register(ChatController, () => {
-  const chatRepo = new ChatRepository(prisma);
-  return new ChatController(new ChatService(chatRepo, roomRepository));
-});
+register(ChatController, () => new ChatController(new ChatService(chatRepository, roomRepository)));
 register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);
   return new SearchController(new SearchService(youtubeClient, cache));

@@ -47,9 +47,10 @@ register(AuthController, () => {
   return new AuthController(new AuthService(repo, oauthClient));
 });
 
-const userService = new UserService(new UserRepository(prisma));
+const userRepository = new UserRepository(prisma);
+const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
-const roomService = new RoomService(roomRepository, cache);
+const roomService = new RoomService(roomRepository, userRepository, cache);
 const playlistRepository = new PlaylistRepository(prisma);
 const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
 let playlistService: PlaylistService | null = null;

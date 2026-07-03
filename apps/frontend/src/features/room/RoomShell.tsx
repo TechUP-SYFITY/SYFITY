@@ -4,6 +4,7 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 
+import { Avatar, AvatarFallback, Button } from '@/shared/components/ui';
 import type {
   ChatMessage,
   PlaybackState,
@@ -65,16 +66,18 @@ export function RoomShell({
             />
             <span className="text-base font-bold tracking-[-0.02em]">Syfity</span>
           </div>
-          <button
-            className="flex items-center gap-2 rounded-2xl p-1 text-sm text-white"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-2xl border-0 bg-transparent p-1 text-sm hover:bg-white/5"
             type="button"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-700 text-xs font-semibold">
-              민
-            </span>
+            <Avatar size="sm" className="size-8">
+              <AvatarFallback>민</AvatarFallback>
+            </Avatar>
             <span className="hidden font-semibold md:inline">민지</span>
             <RoomIcon name="chevronDown" className="h-3.5 w-3.5 text-white/45" />
-          </button>
+          </Button>
         </header>
 
         <section className="flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#09090b]/95 px-5 md:px-6">
@@ -85,13 +88,15 @@ export function RoomShell({
               {onlineMemberCount}명 접속 중
             </p>
           </div>
-          <button
-            className="flex h-9 w-9 items-center justify-center gap-1.5 rounded-full border border-[#72f4a4]/25 bg-[#72f4a4]/10 text-[#72f4a4] shadow-[0_0_16px_rgba(114,244,164,0.12)] md:h-8 md:w-auto md:px-4 md:text-xs md:font-bold"
+          <Button
+            variant="primary-soft"
+            size="sm"
+            className="h-9 w-9 rounded-full px-0 md:h-8 md:w-auto md:px-4"
             type="button"
           >
             <RoomIcon name="share" className="h-3.5 w-3.5" />
             <span className="hidden md:inline">초대</span>
-          </button>
+          </Button>
         </section>
 
         <section className="hidden min-h-0 flex-1 grid-cols-[200px_minmax(320px,1fr)_280px_280px] overflow-hidden border-b border-white/[0.07] lg:grid">

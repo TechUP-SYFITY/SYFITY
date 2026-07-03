@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { config } from './config';
 import { AppError } from './errors/appError';
+import { isAuthPayload } from './utils/authPayload';
 
 export function expressAuthentication(
   request: Request,
@@ -33,8 +34,12 @@ export function expressAuthentication(
         return;
       }
 
-      const verifiedPayload = payload as { id: string; email: string };
-      const user = { id: verifiedPayload.id, email: verifiedPayload.email };
+      if (!isAuthPayload(payload)) {
+        reject(new AppError(401, ERROR_CODES.AUTH_UNAUTHORIZED, '유효하지 않은 토큰입니다.'));
+        return;
+      }
+
+      const user = { id: payload.id, email: payload.email };
       request.user = user;
       resolve(user);
     });

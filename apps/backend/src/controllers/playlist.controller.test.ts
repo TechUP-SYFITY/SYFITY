@@ -35,7 +35,7 @@ describe('PlaylistController', () => {
     const playlistService = makePlaylistService();
     const controller = new PlaylistController(playlistService);
 
-    await expect(controller.getPlaylist('room-1')).resolves.toEqual({
+    await expect(controller.getPlaylist('room-1', makeRequest())).resolves.toEqual({
       success: true,
       data: {
         playlist: [
@@ -53,7 +53,7 @@ describe('PlaylistController', () => {
         ],
       },
     });
-    expect(playlistService.getPlaylist).toHaveBeenCalledWith('room-1');
+    expect(playlistService.getPlaylist).toHaveBeenCalledWith('room-1', 'user-1');
   });
 
   it('POST /rooms/:roomId/playlist 응답을 반환한다', async () => {
@@ -87,6 +87,6 @@ describe('PlaylistController', () => {
     playlistService.getPlaylist.mockRejectedValue(error);
     const controller = new PlaylistController(playlistService);
 
-    await expect(controller.getPlaylist('room-1')).rejects.toThrow(error);
+    await expect(controller.getPlaylist('room-1', makeRequest())).rejects.toThrow(error);
   });
 });

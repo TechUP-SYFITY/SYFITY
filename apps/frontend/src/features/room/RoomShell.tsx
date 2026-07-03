@@ -86,7 +86,7 @@ export function RoomShell({
             </p>
           </div>
           <button
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#72f4a4]/25 bg-[#72f4a4]/10 text-[#72f4a4] shadow-[0_0_16px_rgba(114,244,164,0.12)] md:h-8 md:w-auto md:px-4 md:text-xs md:font-bold"
+            className="flex h-9 w-9 items-center justify-center gap-1.5 rounded-full border border-[#72f4a4]/25 bg-[#72f4a4]/10 text-[#72f4a4] shadow-[0_0_16px_rgba(114,244,164,0.12)] md:h-8 md:w-auto md:px-4 md:text-xs md:font-bold"
             type="button"
           >
             <RoomIcon name="share" className="h-3.5 w-3.5" />

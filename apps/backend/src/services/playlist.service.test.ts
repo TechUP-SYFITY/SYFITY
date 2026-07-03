@@ -13,6 +13,7 @@ const room: RoomDetailRecord = {
   hostId: 'user-1',
   inviteCode: 'ABC123',
   status: 'active',
+  createdAt: new Date('2026-07-01T12:00:00.000Z'),
 };
 
 const playlistItem: PlaylistItemRecord = {

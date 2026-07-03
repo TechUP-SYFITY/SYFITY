@@ -83,6 +83,13 @@ export function Button({
           }
           props.onClick?.(e as React.MouseEvent<HTMLButtonElement>);
         }}
+        onKeyDown={(e) => {
+          if (isDisabled && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            return;
+          }
+          props.onKeyDown?.(e as React.KeyboardEvent<HTMLButtonElement>);
+        }}
       >
         {content}
       </Slot.Root>

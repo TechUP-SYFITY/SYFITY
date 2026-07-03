@@ -44,6 +44,8 @@ export function Input({
   value,
   defaultValue,
   onChange,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
   ...props
 }: InputProps) {
   const generatedId = useId();
@@ -71,8 +73,12 @@ export function Input({
           maxLength={maxLength}
           value={value}
           defaultValue={defaultValue}
-          aria-invalid={hasError || undefined}
-          aria-describedby={hasBottom ? `${inputId}-desc` : undefined}
+          aria-invalid={hasError || ariaInvalid}
+          aria-describedby={
+            [hasBottom ? `${inputId}-desc` : undefined, ariaDescribedBy]
+              .filter(Boolean)
+              .join(' ') || undefined
+          }
           className={cn(
             inputVariants({ state: hasError ? 'error' : 'default', size }),
             leadingIcon && 'pl-10',

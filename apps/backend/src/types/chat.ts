@@ -16,4 +16,5 @@ export type ChatCursor = {
 
 export interface IChatRepository {
   findChatsByCursor(cursor: ChatCursor): Promise<ChatRecord[]>;
+  findLatestChats(roomId: string, limit: number): Promise<ChatRecord[]>;
 }

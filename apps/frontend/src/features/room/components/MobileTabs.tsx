@@ -1,6 +1,8 @@
 'use client';
 
 // 모바일 Room 화면의 playlist, members, chat 탭을 표시한다.
+import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui';
+
 import { RoomIcon } from './RoomIcon';
 import type { RoomIconName } from './RoomIcon';
 
@@ -20,25 +22,15 @@ export function MobileTabs({
   ];
 
   return (
-    <div className="grid grid-cols-3 border-t border-white/[0.07] bg-[#09090b]">
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.id;
-
-        return (
-          <button
-            className={`relative flex h-12 items-center justify-center gap-1.5 text-sm font-bold ${
-              isActive ? 'text-[#72f4a4]' : 'text-white/42'
-            }`}
-            key={tab.id}
-            type="button"
-            onClick={() => onChange(tab.id)}
-          >
+    <Tabs value={activeTab} onValueChange={(value) => onChange(value as RoomMobileTab)}>
+      <TabsList className="grid h-12 grid-cols-3 border-t border-white/[0.07] bg-[#09090b]">
+        {tabs.map((tab) => (
+          <TabsTrigger className="h-12 text-sm" key={tab.id} value={tab.id}>
             <RoomIcon name={tab.icon} className="h-3.5 w-3.5" />
             {tab.label}
-            {isActive ? <span className="absolute bottom-0 h-0.5 w-full bg-[#72f4a4]" /> : null}
-          </button>
-        );
-      })}
-    </div>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

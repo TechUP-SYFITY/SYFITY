@@ -3,8 +3,8 @@
 // Room 멤버 목록을 온라인과 오프라인 그룹으로 나누어 표시한다.
 import type { RoomMember } from '@/shared/types/domain';
 
-import { Avatar } from './Avatar';
 import { RoomIcon } from './RoomIcon';
+import { RoomMemberAvatar } from './RoomMemberAvatar';
 
 export function MemberList({
   compact = false,
@@ -50,7 +50,7 @@ function MemberGroup({
             }`}
             key={member.userId}
           >
-            <Avatar label={member.nickname} muted={isMuted} />
+            <RoomMemberAvatar label={member.nickname} muted={isMuted} />
             <div className="min-w-0">
               <p
                 className={`truncate text-sm font-semibold ${

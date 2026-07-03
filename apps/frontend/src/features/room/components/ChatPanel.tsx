@@ -1,11 +1,12 @@
 'use client';
 
 // Room 채팅 패널의 메시지 목록과 입력 영역 뼈대를 표시한다.
+import { Input } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { Avatar } from './Avatar';
 import { formatChatTime } from './roomFormatters';
 import { RoomIcon } from './RoomIcon';
+import { RoomMemberAvatar } from './RoomMemberAvatar';
 
 export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; compact?: boolean }) {
   return (
@@ -25,7 +26,7 @@ export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; co
         </p>
         {chats.map((chat) => (
           <div className="flex items-start gap-3" key={chat.id}>
-            <Avatar label={chat.nickname ?? 'S'} size="sm" />
+            <RoomMemberAvatar label={chat.nickname ?? 'S'} size="sm" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white/90">
                 {chat.nickname}
@@ -38,13 +39,17 @@ export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; co
           </div>
         ))}
       </div>
-      <div className="shrink-0 border-t border-white/[0.07] p-4">
-        <div className="flex h-11 items-center rounded-2xl border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-white/32">
-          메시지 입력...
-          <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.06] text-white/35">
-            <RoomIcon name="send" className="h-3 w-3" />
-          </span>
-        </div>
+      <div className="relative shrink-0 border-t border-white/[0.07] p-4">
+        <Input
+          className="rounded-2xl bg-white/[0.055] pr-11"
+          placeholder="메시지 입력..."
+          readOnly
+          aria-label="채팅 메시지 입력"
+        />
+        <RoomIcon
+          name="send"
+          className="pointer-events-none absolute top-1/2 right-8 h-3 w-3 -translate-y-1/2 text-white/35"
+        />
       </div>
     </aside>
   );

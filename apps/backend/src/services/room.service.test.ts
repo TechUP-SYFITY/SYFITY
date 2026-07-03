@@ -331,8 +331,20 @@ describe('RoomService', () => {
   it('Room 기본 정보를 조회한다', async () => {
     const { service, roomRepo } = makeService();
 
-    await expect(service.getRoomInfo('room-1')).resolves.toEqual(roomDetail);
+    await expect(service.getRoomInfo('room-1', 'user-1')).resolves.toEqual(roomDetail);
     expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
+  });
+
+  it('left 상태 멤버도 Room 기본 정보를 조회할 수 있다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: {
+        findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'left' }),
+      },
+    });
+
+    await expect(service.getRoomInfo('room-1', 'user-1')).resolves.toEqual(roomDetail);
+    expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
   });
 
   it('Room 기본 정보가 없으면 ROOM_NOT_FOUND를 던진다', async () => {
@@ -340,9 +352,20 @@ describe('RoomService', () => {
       roomRepo: { findRoomById: vi.fn().mockResolvedValue(null) },
     });
 
-    await expect(service.getRoomInfo('missing-room')).rejects.toMatchObject({
+    await expect(service.getRoomInfo('missing-room', 'user-1')).rejects.toMatchObject({
       status: 404,
       code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+  });
+
+  it('Room 멤버십 이력이 없으면 기본 정보 조회에서 ROOM_ACCESS_DENIED를 던진다', async () => {
+    const { service } = makeService({
+      roomRepo: { findMembership: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.getRoomInfo('room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
     });
   });
 });

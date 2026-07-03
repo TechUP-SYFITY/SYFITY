@@ -240,7 +240,7 @@ describe('RoomController', () => {
     const roomService = makeRoomService();
     const controller = new RoomController(userService, roomService);
 
-    await expect(controller.getRoom('room-1')).resolves.toEqual({
+    await expect(controller.getRoom('room-1', makeRequest())).resolves.toEqual({
       success: true,
       data: {
         id: 'room-1',
@@ -251,7 +251,7 @@ describe('RoomController', () => {
         createdAt: '2026-07-01T12:00:00.000Z',
       },
     });
-    expect(roomService.getRoomInfo).toHaveBeenCalledWith('room-1');
+    expect(roomService.getRoomInfo).toHaveBeenCalledWith('room-1', 'user-id');
   });
 
   it('GET /rooms/:roomId service 에러를 그대로 전파한다', async () => {
@@ -261,6 +261,6 @@ describe('RoomController', () => {
     roomService.getRoomInfo.mockRejectedValue(error);
     const controller = new RoomController(userService, roomService);
 
-    await expect(controller.getRoom('room-1')).rejects.toThrow(error);
+    await expect(controller.getRoom('room-1', makeRequest())).rejects.toThrow(error);
   });
 });

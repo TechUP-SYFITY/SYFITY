@@ -114,8 +114,9 @@ export class RoomController {
   @Get('{roomId}')
   @Security('jwt')
   @SuccessResponse(200, 'OK')
-  async getRoom(@Path() roomId: string): Promise<GetRoomResponse> {
-    const room = await this.roomService.getRoomInfo(roomId);
+  async getRoom(@Path() roomId: string, @Request() req: ExRequest): Promise<GetRoomResponse> {
+    const userId = req.user!.id;
+    const room = await this.roomService.getRoomInfo(roomId, userId);
 
     return {
       success: true,

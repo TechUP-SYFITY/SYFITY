@@ -1,0 +1,146 @@
+// Room 기본 레이아웃을 로컬 개발 환경에서 확인하기 위한 프리뷰 데이터를 제공한다.
+import type { ChatMessage, PlaylistItem, RoomDetail, RoomMember } from '@/shared/types/domain';
+
+export const ROOM_PREVIEW_ROOM: RoomDetail = {
+  hostId: 'fallback-host',
+  id: 'preview-room',
+  inviteCode: '3F9A2C',
+  name: 'Chill Night',
+  status: 'active',
+};
+
+export const ROOM_PREVIEW_MEMBERS: RoomMember[] = [
+  {
+    id: 'fallback-host',
+    nickname: '민지',
+    profileImage: null,
+    role: 'host',
+    status: 'online',
+    userId: 'fallback-host',
+  },
+  {
+    id: 'fallback-member-1',
+    nickname: '지민',
+    profileImage: null,
+    role: 'member',
+    status: 'online',
+    userId: 'fallback-member-1',
+  },
+  {
+    id: 'fallback-member-2',
+    nickname: '이수현',
+    profileImage: null,
+    role: 'member',
+    status: 'online',
+    userId: 'fallback-member-2',
+  },
+  {
+    id: 'fallback-member-3',
+    nickname: '박아리',
+    profileImage: null,
+    role: 'member',
+    status: 'online',
+    userId: 'fallback-member-3',
+  },
+  {
+    id: 'fallback-member-4',
+    nickname: '최태오',
+    profileImage: null,
+    role: 'member',
+    status: 'offline',
+    userId: 'fallback-member-4',
+  },
+  {
+    id: 'fallback-member-5',
+    nickname: '정우진',
+    profileImage: null,
+    role: 'member',
+    status: 'offline',
+    userId: 'fallback-member-5',
+  },
+];
+
+export const ROOM_PREVIEW_PLAYLIST: PlaylistItem[] = [
+  {
+    addedBy: 'fallback-host',
+    channelTitle: 'One Direction',
+    duration: 226,
+    id: 'fallback-night-changes',
+    position: 1,
+    status: 'available',
+    thumbnailUrl: 'https://i.ytimg.com/vi/syFZfO_wfMQ/hqdefault.jpg',
+    title: 'Night Changes',
+    videoId: 'syFZfO_wfMQ',
+  },
+  {
+    addedBy: 'fallback-member-1',
+    channelTitle: 'BTS',
+    duration: 199,
+    id: 'fallback-dynamite',
+    position: 2,
+    status: 'available',
+    thumbnailUrl: 'https://i.ytimg.com/vi/gdZLi9oWNZg/hqdefault.jpg',
+    title: 'Dynamite',
+    videoId: 'gdZLi9oWNZg',
+  },
+  {
+    addedBy: 'fallback-member-2',
+    channelTitle: 'Dua Lipa',
+    duration: 203,
+    id: 'fallback-levitating',
+    position: 3,
+    status: 'unavailable',
+    thumbnailUrl: 'https://i.ytimg.com/vi/TUVcZfQe-Kw/hqdefault.jpg',
+    title: 'Levitating',
+    videoId: 'TUVcZfQe-Kw',
+  },
+  {
+    addedBy: 'fallback-member-3',
+    channelTitle: 'The Weeknd',
+    duration: 202,
+    id: 'fallback-blinding-lights',
+    position: 4,
+    status: 'available',
+    thumbnailUrl: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/hqdefault.jpg',
+    title: 'Blinding Lights',
+    videoId: '4NRXx6U8ABQ',
+  },
+  {
+    addedBy: 'fallback-member-4',
+    channelTitle: 'Harry Styles',
+    duration: 157,
+    id: 'fallback-as-it-was',
+    position: 5,
+    status: 'available',
+    thumbnailUrl: 'https://i.ytimg.com/vi/H5v3kku4y6Q/hqdefault.jpg',
+    title: 'As It Was',
+    videoId: 'H5v3kku4y6Q',
+  },
+];
+
+export const ROOM_PREVIEW_CHATS: ChatMessage[] = [
+  {
+    createdAt: '2026-07-01T10:12:00.000Z',
+    id: 'fallback-chat-1',
+    message: '안녕하세요 다들.',
+    nickname: '민지',
+    type: 'user',
+    userId: 'fallback-host',
+  },
+  {
+    createdAt: '2026-07-01T10:13:00.000Z',
+    id: 'fallback-chat-2',
+    message: '오늘 좋은 곡들 많이 들을 것 같아요.',
+    nickname: '지민',
+    type: 'user',
+    userId: 'fallback-member-1',
+  },
+  {
+    createdAt: '2026-07-01T10:14:00.000Z',
+    id: 'fallback-chat-3',
+    message: 'Night Changes 진짜 최고예요.',
+    nickname: '이수현',
+    type: 'user',
+    userId: 'fallback-member-2',
+  },
+];

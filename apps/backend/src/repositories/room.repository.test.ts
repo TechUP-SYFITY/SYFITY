@@ -71,6 +71,25 @@ describe('RoomRepository', () => {
     await expect(repo.existsInviteCode('ABC123')).resolves.toBe(false);
   });
 
+  it('Room이 존재하면 true를 반환한다', async () => {
+    const { prisma } = makePrisma({ findUniqueResult: { id: 'room-1' } });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.existsRoom('room-1')).resolves.toBe(true);
+
+    expect(prisma.room.findUnique).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      select: { id: true },
+    });
+  });
+
+  it('Room이 없으면 false를 반환한다', async () => {
+    const { prisma } = makePrisma({ findUniqueResult: null });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.existsRoom('room-1')).resolves.toBe(false);
+  });
+
   it('Room, Host 멤버, PlaybackState를 트랜잭션으로 생성한다', async () => {
     const { prisma, tx } = makePrisma();
     const repo = new RoomRepository(prisma);

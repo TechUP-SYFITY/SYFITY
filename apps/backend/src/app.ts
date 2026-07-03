@@ -4,6 +4,8 @@ import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { ValidateError } from 'tsoa';
 
+import { ERROR_CODES } from '@syfity/shared';
+
 import { errorHandler } from './middlewares/error.middleware';
 
 import { isAllowedOrigin } from './utils/cors';
@@ -39,7 +41,7 @@ app.use(
     if (err instanceof ValidateError) {
       res.status(422).json({
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: err.message },
+        error: { code: ERROR_CODES.VALIDATION_ERROR, message: err.message },
       });
       return;
     }

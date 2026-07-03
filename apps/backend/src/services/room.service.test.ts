@@ -26,6 +26,7 @@ function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
   return {
     existsInviteCode: vi.fn().mockResolvedValue(false),
     createRoom: vi.fn().mockResolvedValue(room),
+    existsRoom: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }

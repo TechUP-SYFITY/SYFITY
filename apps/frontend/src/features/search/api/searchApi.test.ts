@@ -14,7 +14,11 @@ describe('searchYoutubeVideos', () => {
   });
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
+    if (originalApiUrl === undefined) {
+      delete process.env.NEXT_PUBLIC_API_URL;
+    } else {
+      process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
+    }
     vi.unstubAllGlobals();
   });
 

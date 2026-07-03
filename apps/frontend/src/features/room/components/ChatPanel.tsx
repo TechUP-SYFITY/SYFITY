@@ -4,9 +4,9 @@
 import { Input } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { Avatar } from './Avatar';
 import { formatChatTime } from './roomFormatters';
 import { RoomIcon } from './RoomIcon';
+import { RoomMemberAvatar } from './RoomMemberAvatar';
 
 export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; compact?: boolean }) {
   return (
@@ -26,7 +26,7 @@ export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; co
         </p>
         {chats.map((chat) => (
           <div className="flex items-start gap-3" key={chat.id}>
-            <Avatar label={chat.nickname ?? 'S'} size="sm" />
+            <RoomMemberAvatar label={chat.nickname ?? 'S'} size="sm" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white/90">
                 {chat.nickname}

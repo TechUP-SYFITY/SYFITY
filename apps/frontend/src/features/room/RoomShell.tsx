@@ -56,13 +56,13 @@ export function RoomShell({
   const onlineMemberCount = members.filter((member) => member.status === 'online').length;
 
   return (
-    <main className="min-h-screen bg-[#09090b] text-white">
+    <main className="min-h-screen bg-gray-950 text-white">
       <div className="flex min-h-screen flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-white/[0.07] bg-[#09090b]/95 px-5 md:px-6">
+        <header className="flex h-16 items-center justify-between border-b border-white/[0.07] bg-gray-950/50 px-5 md:px-6">
           <div className="flex items-center gap-2">
             <RoomIcon
               name="brand"
-              className="h-8 w-8 text-[#72f4a4] drop-shadow-[0_0_14px_rgba(114,244,164,0.35)]"
+              className="h-8 w-8 text-primary-400 drop-shadow-[0_0_14px_rgba(114,244,164,0.35)]"
             />
             <span className="text-base font-bold tracking-[-0.02em]">Syfity</span>
           </div>
@@ -80,11 +80,11 @@ export function RoomShell({
           </Button>
         </header>
 
-        <section className="flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#09090b]/95 px-5 md:px-6">
+        <section className="flex h-14 items-center justify-between border-b border-white/[0.07] bg-gray-950/50 px-5 md:px-6">
           <div>
             <h1 className="text-sm font-bold">{room?.name ?? 'Room'}</h1>
             <p className="mt-0.5 flex items-center gap-1.5 text-xs text-white/50">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#72f4a4]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary-400" />
               {onlineMemberCount}명 접속 중
             </p>
           </div>

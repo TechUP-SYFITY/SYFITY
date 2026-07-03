@@ -22,6 +22,7 @@ import {
 import { RoomShell, type RoomMobileTab } from '@/features/room/RoomShell';
 import { useRoomStore } from '@/features/room/roomStore';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
+import { SearchPanel } from '@/features/search/components/SearchPanel';
 
 interface RoomPageClientProps {
   roomId: string;
@@ -31,6 +32,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const hasRequestedJoin = useRef(false);
   const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
+  const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const joinRoom = useJoinRoom();
   const members = useRoomStore((state) => state.members);
   const roomFromStore = useRoomStore((state) => state.room);
@@ -79,28 +81,36 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const isHost = shouldShowPreviewData ? true : isCurrentUserHost(visibleMembers, currentUserId);
 
   return (
-    <RoomShell
-      activeMobileTab={activeMobileTab}
-      chats={visibleChats}
-      isHost={isHost}
-      members={visibleMembers}
-      onMobileTabChange={setActiveMobileTab}
-      playbackState={playbackState}
-      playlist={visiblePlaylist}
-      renderPlayerPanel={() => (
-        <PlayerPanel roomId={roomId} isHost={isHost} playlist={visiblePlaylist} />
-      )}
-      renderPlaylistPanel={() => (
-        <PlaylistPanel
-          playlistItems={visiblePlaylist}
-          roomId={roomId}
-          isHost={isHost}
-          isReady={hasJoinedRoom || shouldShowPreviewData}
-          onPlayItem={handlePlayItem}
-        />
-      )}
-      room={visibleRoom}
-    />
+    <>
+      <RoomShell
+        activeMobileTab={activeMobileTab}
+        chats={visibleChats}
+        isHost={isHost}
+        members={visibleMembers}
+        onMobileTabChange={setActiveMobileTab}
+        playbackState={playbackState}
+        playlist={visiblePlaylist}
+        renderPlayerPanel={() => (
+          <PlayerPanel roomId={roomId} isHost={isHost} playlist={visiblePlaylist} />
+        )}
+        renderPlaylistPanel={() => (
+          <PlaylistPanel
+            playlistItems={visiblePlaylist}
+            roomId={roomId}
+            isHost={isHost}
+            isReady={hasJoinedRoom || shouldShowPreviewData}
+            onOpenSearch={() => setIsSearchPanelOpen(true)}
+            onPlayItem={handlePlayItem}
+          />
+        )}
+        room={visibleRoom}
+      />
+      <SearchPanel
+        isOpen={isSearchPanelOpen}
+        roomName={visibleRoom?.name ?? 'Room'}
+        onClose={() => setIsSearchPanelOpen(false)}
+      />
+    </>
   );
 }
 

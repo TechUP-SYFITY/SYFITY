@@ -19,6 +19,7 @@ interface PlaylistPanelProps {
   roomId: string;
   isHost: boolean;
   isReady: boolean;
+  onOpenSearch?: () => void;
   onPlayItem: (playlistItemId: string) => void;
 }
 
@@ -27,6 +28,7 @@ export function PlaylistPanel({
   roomId,
   isHost,
   isReady,
+  onOpenSearch,
   onPlayItem,
 }: PlaylistPanelProps) {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
@@ -64,6 +66,24 @@ export function PlaylistPanel({
     );
   };
 
+  const handleToggleAddForm = () => {
+    if (onOpenSearch) {
+      onOpenSearch();
+      return;
+    }
+
+    setIsAddFormOpen((value) => !value);
+  };
+
+  const handleOpenAddForm = () => {
+    if (onOpenSearch) {
+      onOpenSearch();
+      return;
+    }
+
+    setIsAddFormOpen(true);
+  };
+
   const handleMove = (itemId: string, direction: -1 | 1) => {
     const currentIndex = visiblePlaylist.findIndex((item) => item.id === itemId);
     const nextIndex = currentIndex + direction;
@@ -99,7 +119,7 @@ export function PlaylistPanel({
         <button
           className="flex items-center gap-1.5 rounded-2xl border border-[#72f4a4]/20 bg-[#72f4a4]/10 px-3 py-2 text-xs font-bold text-[#72f4a4]"
           type="button"
-          onClick={() => setIsAddFormOpen((value) => !value)}
+          onClick={handleToggleAddForm}
         >
           <Plus className="h-3 w-3" aria-hidden />
           추가
@@ -140,7 +160,7 @@ export function PlaylistPanel({
               className="mt-6 flex items-center gap-2 rounded-2xl bg-[#72f4a4] px-4 py-3 text-sm font-bold text-[#09090b] shadow-[0_0_24px_rgba(114,244,164,0.24)] disabled:opacity-50"
               disabled={!isReady}
               type="button"
-              onClick={() => setIsAddFormOpen(true)}
+              onClick={handleOpenAddForm}
             >
               <Plus className="h-4 w-4" aria-hidden />첫 번째 곡 추가
             </button>
@@ -239,7 +259,7 @@ export function PlaylistPanel({
       <button
         className="fixed right-5 bottom-24 z-30 flex items-center gap-2 rounded-2xl bg-[#72f4a4] px-5 py-3 text-sm font-bold text-[#07150d] shadow-[0_0_28px_rgba(114,244,164,0.45)] lg:hidden"
         type="button"
-        onClick={() => setIsAddFormOpen((value) => !value)}
+        onClick={handleToggleAddForm}
       >
         <Plus className="h-4 w-4" aria-hidden />곡 추가
       </button>

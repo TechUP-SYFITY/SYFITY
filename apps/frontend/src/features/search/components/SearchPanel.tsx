@@ -117,7 +117,7 @@ export function SearchPanel({
                   <SearchResultItem
                     key={result.videoId}
                     result={result}
-                    onAdd={() => onAddResult?.(result)}
+                    onAdd={onAddResult ? () => onAddResult(result) : undefined}
                   />
                 ))}
               </ul>
@@ -133,7 +133,7 @@ export function SearchPanel({
   );
 }
 
-function SearchResultItem({ result, onAdd }: { result: YoutubeSearchResult; onAdd: () => void }) {
+function SearchResultItem({ result, onAdd }: { result: YoutubeSearchResult; onAdd?: () => void }) {
   return (
     <li className="flex min-h-[68px] items-center gap-3 border-b border-white/[0.055] px-4 py-3 transition hover:bg-white/[0.025] lg:min-h-[69px]">
       <span
@@ -150,9 +150,10 @@ function SearchResultItem({ result, onAdd }: { result: YoutubeSearchResult; onAd
         {formatDuration(result.duration)}
       </span>
       <button
-        className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#72f4a4]/20 bg-[#72f4a4]/10 px-3 text-xs font-bold text-[#72f4a4] transition hover:bg-[#72f4a4]/15"
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#72f4a4]/20 bg-[#72f4a4]/10 px-3 text-xs font-bold text-[#72f4a4] transition hover:bg-[#72f4a4]/15 disabled:cursor-not-allowed disabled:opacity-45"
         type="button"
         aria-label={`${result.title} 추가`}
+        disabled={!onAdd}
         onClick={onAdd}
       >
         <Plus className="h-3 w-3" aria-hidden />

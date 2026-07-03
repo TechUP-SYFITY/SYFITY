@@ -39,4 +39,31 @@ export class ChatRepository implements IChatRepository {
       createdAt: row.createdAt,
     }));
   }
+
+  async findLatestChats(roomId: string, limit: number): Promise<ChatRecord[]> {
+    const rows = await this.prisma.chatMessage.findMany({
+      where: { roomId },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        message: true,
+        createdAt: true,
+        user: {
+          select: { nickname: true },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      nickname: row.user?.nickname ?? null,
+      type: row.type,
+      message: row.message,
+      createdAt: row.createdAt,
+    }));
+  }
 }

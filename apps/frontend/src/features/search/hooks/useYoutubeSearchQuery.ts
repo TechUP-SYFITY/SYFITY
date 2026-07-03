@@ -4,7 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import {
   searchYoutubeVideos,
-  type SearchApiErrorResponse,
+  type SearchApiError,
   type YoutubeSearchResult,
 } from '../api/searchApi';
 
@@ -14,7 +14,7 @@ export const youtubeSearchQueryKeys = {
 
 export const useYoutubeSearchQuery = (
   query: string,
-): UseQueryResult<YoutubeSearchResult[], SearchApiErrorResponse> => {
+): UseQueryResult<YoutubeSearchResult[], SearchApiError> => {
   const normalizedQuery = query.trim();
 
   return useQuery({

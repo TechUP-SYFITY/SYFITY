@@ -246,12 +246,8 @@ describe('RoomService', () => {
     expect(chatRepo.findLatestChats).toHaveBeenCalledWith('room-1', 50);
   });
 
-  it('left 상태 이력이 있어도 inviteCode 입장은 upsert 흐름으로 허용한다', async () => {
-    const { service, roomRepo } = makeService({
-      roomRepo: {
-        findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'left' }),
-      },
-    });
+  it('inviteCode 입장은 기존 멤버십 상태를 조회하지 않고 upsert로 처리한다', async () => {
+    const { service, roomRepo } = makeService();
 
     await expect(service.joinRoom('user-2', 'ABC123')).resolves.toMatchObject({ room: roomDetail });
     expect(roomRepo.findMembership).not.toHaveBeenCalled();

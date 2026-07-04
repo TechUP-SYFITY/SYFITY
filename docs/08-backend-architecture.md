@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.2                                                                                  |
-| 상태      | tsoa 컨트롤러 패턴 + iocModule + Swagger 반영                                         |
+| 버전      | v1.3                                                                                  |
+| 상태      | REST/Socket 인증 진입점과 미들웨어 구조 정리                                          |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -73,6 +73,7 @@ apps/backend/
 
     socket/             → Socket.IO 이벤트 처리
       index.ts          → initSocket 함수 정의, 핸들러 등록
+      socketAuth.ts     → Socket.IO 인증
       handlers/
         room.handler.ts
         playback.handler.ts
@@ -87,7 +88,6 @@ apps/backend/
       appError.ts       → 공통 애플리케이션 에러 클래스
 
     middlewares/        → Express 미들웨어
-      auth.middleware.ts  → Socket.IO 인증 전용
       error.middleware.ts → 전역 에러 응답 미들웨어
 
     lib/                → 공통 유틸
@@ -246,7 +246,7 @@ export class RoomService {
 
 **인증 핸들러 — tsoa Security 연동**
 
-`@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. 기존 `authenticate` 미들웨어를 대체하며, Socket.IO 인증은 별도로 `auth.middleware.ts`의 `authenticate`를 유지한다.
+`@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. REST 인증은 일반 Express 인증 미들웨어를 직접 붙이지 않고 tsoa Security 진입점을 사용한다. Socket.IO 인증은 별도로 `socket/socketAuth.ts`의 `socketAuth`를 사용한다.
 
 ```ts
 // src/authentication.ts
@@ -457,29 +457,39 @@ export function registerRoomHandlers(io: Server, socket: Socket) {
 
 REST 엔드포인트와 Socket.IO는 인증 방식이 다르다.
 
-| 경로                      | 방식                    | 파일                                 |
-| ------------------------- | ----------------------- | ------------------------------------ |
-| REST (`@Security('jwt')`) | `expressAuthentication` | `src/authentication.ts`              |
-| Socket.IO                 | `authenticate` 미들웨어 | `src/middlewares/auth.middleware.ts` |
+| 경로                      | 방식                    | 파일                       |
+| ------------------------- | ----------------------- | -------------------------- |
+| REST (`@Security('jwt')`) | `expressAuthentication` | `src/authentication.ts`    |
+| Socket.IO                 | `socketAuth` 미들웨어   | `src/socket/socketAuth.ts` |
 
 ```ts
-// src/middlewares/auth.middleware.ts — Socket.IO 전용
-export function authenticate(req: Request, res: Response, next: NextFunction) {
-  const token = req.cookies.access_token as string | undefined;
+// src/socket/socketAuth.ts
+export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
+  const rawCookie = socket.handshake.headers.cookie ?? '';
+  const token = parseCookie(rawCookie).access_token;
+
   if (!token) {
-    next(new AppError(401, 'AUTH_UNAUTHORIZED', '인증이 필요합니다.'));
+    next(toSocketError('AUTH_UNAUTHORIZED', '인증이 필요합니다.'));
     return;
   }
+
   try {
-    const payload = jwt.verify(token, config.jwt.accessSecret) as { id: string; email: string };
-    req.user = payload;
+    const payload = jwt.verify(token, config.jwt.accessSecret);
+    if (!isAuthPayload(payload)) {
+      next(toSocketError('AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
+      return;
+    }
+
+    socket.data.userId = payload.id;
+    socket.data.email = payload.email;
     next();
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
-      next(new AppError(401, 'AUTH_TOKEN_EXPIRED', '토큰이 만료되었습니다.'));
-    } else {
-      next(new AppError(401, 'AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
+      next(toSocketError('AUTH_TOKEN_EXPIRED', '토큰이 만료되었습니다.'));
+      return;
     }
+
+    next(toSocketError('AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
   }
 }
 ```

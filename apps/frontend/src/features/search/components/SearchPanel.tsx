@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Inbox, Link2, LoaderCircle, Music2, Plus, Search, X } from 'lucide-react';
+import { ChevronDown, Inbox, LoaderCircle, Music2, Plus, Search, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { cn } from '@/shared/lib/utils';
@@ -83,7 +83,7 @@ export function SearchPanel({
             />
             <input
               className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-11 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09]"
-              placeholder="YouTube 검색 또는 링크 붙여넣기"
+              placeholder="YouTube 영상 검색"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -98,10 +98,6 @@ export function SearchPanel({
               </button>
             ) : null}
           </div>
-          <p className="mt-3 flex items-center gap-2 text-xs text-white/35">
-            <Link2 className="h-3 w-3" aria-hidden />
-            YouTube / YouTube Music 링크를 붙여넣어도 돼요
-          </p>
         </div>
 
         <div className="min-h-[280px] flex-1 overflow-y-auto">

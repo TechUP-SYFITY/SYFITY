@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiClientError } from '@/shared/types/api';
+
 import { SearchPanel } from './SearchPanel';
 import type { YoutubeSearchResult } from '../api/searchApi';
 import { useYoutubeSearchQuery } from '../hooks/useYoutubeSearchQuery';
@@ -20,6 +22,17 @@ const results: YoutubeSearchResult[] = [
     duration: 269,
   },
 ];
+
+const createSearchQueryResult = (
+  overrides: Partial<ReturnType<typeof useYoutubeSearchQuery>> = {},
+) =>
+  ({
+    data: results,
+    error: null,
+    isError: false,
+    isLoading: false,
+    ...overrides,
+  }) as unknown as ReturnType<typeof useYoutubeSearchQuery>;
 
 const renderPanel = (props?: Partial<React.ComponentProps<typeof SearchPanel>>) => {
   const onClose = vi.fn();
@@ -41,12 +54,7 @@ const renderPanel = (props?: Partial<React.ComponentProps<typeof SearchPanel>>) 
 
 describe('SearchPanel', () => {
   beforeEach(() => {
-    useYoutubeSearchQueryMock.mockReturnValue({
-      data: results,
-      error: null,
-      isError: false,
-      isLoading: false,
-    } as ReturnType<typeof useYoutubeSearchQuery>);
+    useYoutubeSearchQueryMock.mockReturnValue(createSearchQueryResult());
   });
 
   afterEach(() => {
@@ -58,6 +66,8 @@ describe('SearchPanel', () => {
 
     expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeTruthy();
     expect(screen.getByDisplayValue('Coldplay')).toBeTruthy();
+    expect(screen.getByPlaceholderText('YouTube 영상 검색')).toBeTruthy();
+    expect(screen.queryByText(/링크/)).toBeNull();
     expect(screen.getByText('검색 결과 1개')).toBeTruthy();
     expect(screen.getByText('Yellow')).toBeTruthy();
     expect(screen.getByText('Coldplay')).toBeTruthy();
@@ -73,18 +83,54 @@ describe('SearchPanel', () => {
     expect(onAddResult).toHaveBeenCalledWith(results[0]);
   });
 
+  it('renders a loading state while searching', () => {
+    useYoutubeSearchQueryMock.mockReturnValue(
+      createSearchQueryResult({
+        data: undefined,
+        isLoading: true,
+      }),
+    );
+
+    renderPanel();
+
+    expect(screen.getByText('검색 중이에요')).toBeTruthy();
+  });
+
   it('renders an empty state when the search has no results', () => {
-    useYoutubeSearchQueryMock.mockReturnValue({
-      data: [],
-      error: null,
-      isError: false,
-      isLoading: false,
-    } as ReturnType<typeof useYoutubeSearchQuery>);
+    useYoutubeSearchQueryMock.mockReturnValue(createSearchQueryResult({ data: [] }));
 
     renderPanel({ initialQuery: 'Colplda' });
 
     expect(screen.getByText('검색 결과가 없어요')).toBeTruthy();
     expect(screen.getByText('"Colplda"에 대한 결과를 찾지 못했어요')).toBeTruthy();
+  });
+
+  it('renders an error state when the search request fails', () => {
+    useYoutubeSearchQueryMock.mockReturnValue(
+      createSearchQueryResult({
+        data: undefined,
+        error: new ApiClientError(
+          {
+            code: 'SERVER_YOUTUBE_API_ERROR',
+            message: 'YouTube 검색 요청에 실패했어요.',
+          },
+          502,
+        ),
+        isError: true,
+      }),
+    );
+
+    renderPanel();
+
+    expect(screen.getByText('검색에 실패했어요')).toBeTruthy();
+    expect(screen.getByText('YouTube 검색 요청에 실패했어요.')).toBeTruthy();
+  });
+
+  it('does not render the dialog or search active text when closed', () => {
+    renderPanel({ isOpen: false });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useYoutubeSearchQueryMock).toHaveBeenCalledWith('');
   });
 
   it('calls onClose when the close button is clicked', () => {

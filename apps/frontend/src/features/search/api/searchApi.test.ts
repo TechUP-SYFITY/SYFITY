@@ -1,53 +1,43 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { searchYoutubeVideos, type SearchApiErrorResponse } from './searchApi';
+import { apiClient } from '@/shared/lib/api/apiClient';
+import { ApiClientError } from '@/shared/types/api';
 
-const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
+import { searchYoutubeVideos } from './searchApi';
+
+vi.mock('@/shared/lib/api/apiClient', () => ({
+  apiClient: {
+    get: vi.fn(),
+  },
+}));
+
+const getMock = vi.mocked(apiClient.get);
 
 describe('searchYoutubeVideos', () => {
-  const fetchMock = vi.fn<typeof fetch>();
-
   beforeEach(() => {
-    fetchMock.mockReset();
-    vi.stubGlobal('fetch', fetchMock);
-    process.env.NEXT_PUBLIC_API_URL = 'http://localhost:4000/api/v1';
+    getMock.mockReset();
   });
 
   afterEach(() => {
-    if (originalApiUrl === undefined) {
-      delete process.env.NEXT_PUBLIC_API_URL;
-    } else {
-      process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
-    }
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   it('encodes query and calls the YouTube search API', async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            items: [
-              {
-                videoId: 'abc123',
-                title: 'Test Song',
-                channelTitle: 'Test Channel',
-                thumbnailUrl: 'https://i.ytimg.com/vi/abc123/default.jpg',
-                duration: 180,
-              },
-            ],
-          },
-        }),
-        { status: 200 },
-      ),
-    );
+    getMock.mockResolvedValue({
+      items: [
+        {
+          videoId: 'abc123',
+          title: 'Test Song',
+          channelTitle: 'Test Channel',
+          thumbnailUrl: 'https://i.ytimg.com/vi/abc123/default.jpg',
+          duration: 180,
+        },
+      ],
+    });
 
     const items = await searchYoutubeVideos('lofi playlist');
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:4000/api/v1/search?q=lofi+playlist', {
-      credentials: 'include',
-    });
+    expect(getMock).toHaveBeenCalledWith('/search?q=lofi+playlist');
     expect(items).toEqual([
       {
         videoId: 'abc123',
@@ -59,17 +49,17 @@ describe('searchYoutubeVideos', () => {
     ]);
   });
 
-  it('throws the server error response', async () => {
-    const errorResponse: SearchApiErrorResponse = {
-      success: false,
-      error: {
+  it('throws the API client error', async () => {
+    const error = new ApiClientError(
+      {
         code: 'SERVER_YOUTUBE_API_ERROR',
         message: 'YouTube API request failed',
       },
-    };
+      502,
+    );
 
-    fetchMock.mockResolvedValue(new Response(JSON.stringify(errorResponse), { status: 502 }));
+    getMock.mockRejectedValue(error);
 
-    await expect(searchYoutubeVideos('error case')).rejects.toEqual(errorResponse);
+    await expect(searchYoutubeVideos('error case')).rejects.toEqual(error);
   });
 });

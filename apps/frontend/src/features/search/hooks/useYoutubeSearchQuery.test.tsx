@@ -3,12 +3,10 @@ import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiClientError } from '@/shared/types/api';
+
 import { useYoutubeSearchQuery, youtubeSearchQueryKeys } from './useYoutubeSearchQuery';
-import {
-  searchYoutubeVideos,
-  type SearchApiErrorResponse,
-  type YoutubeSearchResult,
-} from '../api/searchApi';
+import { searchYoutubeVideos, type YoutubeSearchResult } from '../api/searchApi';
 
 vi.mock('../api/searchApi', () => ({
   searchYoutubeVideos: vi.fn(),
@@ -73,13 +71,13 @@ describe('useYoutubeSearchQuery', () => {
   });
 
   it('exposes API errors through React Query error state', async () => {
-    const errorResponse: SearchApiErrorResponse = {
-      success: false,
-      error: {
+    const errorResponse = new ApiClientError(
+      {
         code: 'SERVER_YOUTUBE_API_ERROR',
         message: 'YouTube API request failed',
       },
-    };
+      502,
+    );
     searchYoutubeVideosMock.mockRejectedValue(errorResponse);
 
     const { result } = renderHook(() => useYoutubeSearchQuery('error case'), {

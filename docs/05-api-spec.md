@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
-| 버전      | v1.3                                                                                            |
-| 상태      | Room 입장 API와 참여자 접근 검증 반영                                                           |
+| 버전      | v1.4                                                                                            |
+| 상태      | Room 종료 API 에러 코드 실제 동작 반영                                                          |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
 
@@ -481,11 +481,11 @@ Host가 Socket `room:leave` 이벤트를 전송하는 경우에도 서버 내부
 
 **에러**
 
-| 코드                  | HTTP | 설명             |
-| --------------------- | ---- | ---------------- |
-| `ROOM_NOT_FOUND`      | 404  | Room 없음        |
-| `AUTH_FORBIDDEN`      | 403  | Host가 아님      |
-| `ROOM_ALREADY_CLOSED` | 400  | 이미 closed 상태 |
+| 코드                 | HTTP | 설명                                                            |
+| -------------------- | ---- | --------------------------------------------------------------- |
+| `ROOM_NOT_FOUND`     | 404  | Room 없음                                                       |
+| `ROOM_ACCESS_DENIED` | 403  | Room 참여 이력이 없거나 이미 나감(이미 종료된 Room 재요청 포함) |
+| `AUTH_FORBIDDEN`     | 403  | Room 참여자이지만 Host가 아님                                   |
 
 ---
 

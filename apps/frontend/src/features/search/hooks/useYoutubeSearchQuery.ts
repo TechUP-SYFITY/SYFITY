@@ -5,7 +5,8 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { searchApi, type SearchApiError, type YoutubeSearchResult } from '../api/searchApi';
 
 export const youtubeSearchQueryKeys = {
-  search: (query: string) => ['youtube-search', query] as const,
+  all: ['youtube-search'] as const,
+  search: (query: string) => [...youtubeSearchQueryKeys.all, query] as const,
 };
 
 export const useYoutubeSearchQuery = (

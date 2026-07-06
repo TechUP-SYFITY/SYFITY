@@ -38,6 +38,7 @@ describe('useYoutubeSearchQuery', () => {
   });
 
   it('builds a query key from the search query', () => {
+    expect(youtubeSearchQueryKeys.all).toEqual(['youtube-search']);
     expect(youtubeSearchQueryKeys.search('lofi')).toEqual(['youtube-search', 'lofi']);
   });
 

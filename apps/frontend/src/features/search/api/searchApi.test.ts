@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '@/shared/lib/api/apiClient';
 import { ApiClientError } from '@/shared/types/api';
 
-import { searchYoutubeVideos } from './searchApi';
+import { searchApi } from './searchApi';
 
 vi.mock('@/shared/lib/api/apiClient', () => ({
   apiClient: {
@@ -13,7 +13,7 @@ vi.mock('@/shared/lib/api/apiClient', () => ({
 
 const getMock = vi.mocked(apiClient.get);
 
-describe('searchYoutubeVideos', () => {
+describe('searchApi.searchVideos', () => {
   beforeEach(() => {
     getMock.mockReset();
   });
@@ -35,7 +35,7 @@ describe('searchYoutubeVideos', () => {
       ],
     });
 
-    const items = await searchYoutubeVideos('lofi playlist');
+    const items = await searchApi.searchVideos('lofi playlist');
 
     expect(getMock).toHaveBeenCalledWith('/search?q=lofi+playlist');
     expect(items).toEqual([
@@ -60,6 +60,6 @@ describe('searchYoutubeVideos', () => {
 
     getMock.mockRejectedValue(error);
 
-    await expect(searchYoutubeVideos('error case')).rejects.toEqual(error);
+    await expect(searchApi.searchVideos('error case')).rejects.toEqual(error);
   });
 });

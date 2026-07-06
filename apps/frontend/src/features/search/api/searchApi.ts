@@ -13,3 +13,7 @@ export const searchYoutubeVideos = async (query: string): Promise<YoutubeSearchR
 
   return data.items;
 };
+
+export const searchApi = {
+  searchVideos: searchYoutubeVideos,
+};

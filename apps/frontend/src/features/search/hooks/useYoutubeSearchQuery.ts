@@ -2,11 +2,7 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import {
-  searchYoutubeVideos,
-  type SearchApiError,
-  type YoutubeSearchResult,
-} from '../api/searchApi';
+import { searchApi, type SearchApiError, type YoutubeSearchResult } from '../api/searchApi';
 
 export const youtubeSearchQueryKeys = {
   search: (query: string) => ['youtube-search', query] as const,
@@ -19,7 +15,7 @@ export const useYoutubeSearchQuery = (
 
   return useQuery({
     queryKey: youtubeSearchQueryKeys.search(normalizedQuery),
-    queryFn: () => searchYoutubeVideos(normalizedQuery),
+    queryFn: () => searchApi.searchVideos(normalizedQuery),
     enabled: normalizedQuery.length > 0,
   });
 };

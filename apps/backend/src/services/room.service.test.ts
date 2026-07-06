@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ERROR_CODES } from '@syfity/shared';
 
-import { RoomService } from './room.service';
+import { RoomService, type RoomSocketServer } from './room.service';
 import type { ICache } from '../lib/cache/cache.interface';
 import { CacheKeys } from '../lib/cache/cacheKeys';
 import type { ChatRecord, IChatRepository } from '../types/chat';
@@ -13,6 +13,7 @@ import type {
   RoomDetailRecord,
   RoomMemberRecord,
   RoomRecord,
+  RoomUpdateRecord,
 } from '../types/room';
 
 const room: RoomRecord = {
@@ -30,6 +31,12 @@ const roomDetail: RoomDetailRecord = {
   inviteCode: 'ABC123',
   status: 'active',
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
+};
+
+const updatedRoom: RoomUpdateRecord = {
+  id: 'room-1',
+  name: 'Evening Jazz',
+  updatedAt: new Date('2026-07-01T12:30:00.000Z'),
 };
 
 const playbackState: PlaybackStateRecord = {
@@ -98,6 +105,7 @@ function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
     updateMemberStatus: vi.fn().mockResolvedValue(undefined),
     findMemberInfo: vi.fn().mockResolvedValue(member),
     closeRoom: vi.fn().mockResolvedValue(undefined),
+    updateRoomName: vi.fn().mockResolvedValue(updatedRoom),
     ...overrides,
   };
 }
@@ -129,12 +137,24 @@ function makeCache(): ICache {
   };
 }
 
+function makeIo(): { io: RoomSocketServer; emitter: { emit: ReturnType<typeof vi.fn> } } {
+  const emitter = { emit: vi.fn().mockReturnValue(true) };
+  return {
+    io: {
+      to: vi.fn().mockReturnValue(emitter),
+      socketsLeave: vi.fn(),
+    },
+    emitter,
+  };
+}
+
 function makeService(
   overrides: {
     roomRepo?: Partial<IRoomRepository>;
     playlistRepo?: Partial<Pick<IPlaylistRepository, 'getPlaylist'>>;
     chatRepo?: Partial<Pick<IChatRepository, 'findLatestChats'>>;
     cache?: ICache;
+    io?: RoomSocketServer;
   } = {},
 ) {
   const roomRepo = makeRepo(overrides.roomRepo);
@@ -143,7 +163,7 @@ function makeService(
   const cache = overrides.cache ?? makeCache();
 
   return {
-    service: new RoomService(roomRepo, cache, playlistRepo, chatRepo),
+    service: new RoomService(roomRepo, cache, playlistRepo, chatRepo, overrides.io),
     roomRepo,
     playlistRepo,
     chatRepo,
@@ -368,6 +388,67 @@ describe('RoomService', () => {
     });
   });
 
+  it('Host가 Room 이름을 수정하면 갱신된 정보를 반환한다', async () => {
+    const { service, roomRepo } = makeService();
+
+    await expect(service.updateRoom('room-1', 'user-1', 'Evening Jazz')).resolves.toEqual(
+      updatedRoom,
+    );
+
+    expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.updateRoomName).toHaveBeenCalledWith('room-1', 'Evening Jazz');
+  });
+
+  it('Room 이름 수정 시 Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findRoomById: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(
+      service.updateRoom('missing-room', 'user-1', 'Evening Jazz'),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(roomRepo.updateRoomName).not.toHaveBeenCalled();
+  });
+
+  it('Host가 아닌 사용자가 Room 이름을 수정하려 하면 AUTH_FORBIDDEN을 던진다', async () => {
+    const { service, roomRepo } = makeService();
+
+    await expect(service.updateRoom('room-1', 'user-2', 'Evening Jazz')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+    });
+    expect(roomRepo.updateRoomName).not.toHaveBeenCalled();
+  });
+
+  it('closed Room도 Host면 이름 수정을 허용한다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: {
+        findRoomById: vi.fn().mockResolvedValue({ ...roomDetail, status: 'closed' }),
+      },
+    });
+
+    await expect(service.updateRoom('room-1', 'user-1', 'Evening Jazz')).resolves.toEqual(
+      updatedRoom,
+    );
+    expect(roomRepo.updateRoomName).toHaveBeenCalledWith('room-1', 'Evening Jazz');
+  });
+
+  it('inactive Room도 Host면 이름 수정을 허용한다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: {
+        findRoomById: vi.fn().mockResolvedValue({ ...roomDetail, status: 'inactive' }),
+      },
+    });
+
+    await expect(service.updateRoom('room-1', 'user-1', 'Evening Jazz')).resolves.toEqual(
+      updatedRoom,
+    );
+    expect(roomRepo.updateRoomName).toHaveBeenCalledWith('room-1', 'Evening Jazz');
+  });
+
   it('멤버를 online으로 전환하고 멤버 정보를 반환한다', async () => {
     const { service, roomRepo } = makeService();
 
@@ -495,6 +576,98 @@ describe('RoomService', () => {
     await expect(service.closeRoom('missing-room', 'user-1')).rejects.toMatchObject({
       status: 404,
       code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('REST Room 종료 성공 시 room:closed를 broadcast하고 Socket Room을 해제한다', async () => {
+    const { io, emitter } = makeIo();
+    const { service, roomRepo, cache } = makeService({ io });
+
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).resolves.toBeUndefined();
+
+    expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
+    expect(cache.del).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'));
+    expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
+    expect(io.to).toHaveBeenCalledWith('room:room-1');
+    expect(emitter.emit).toHaveBeenCalledWith('room:closed', {
+      roomId: 'room-1',
+      reason: 'host-closed',
+    });
+    expect(io.socketsLeave).toHaveBeenCalledWith('room:room-1');
+  });
+
+  it('REST Room 종료 시 Room이 없으면 broadcast하지 않는다', async () => {
+    const { io, emitter } = makeIo();
+    const { service, roomRepo } = makeService({
+      io,
+      roomRepo: { findRoomById: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.closeRoomAndBroadcast('missing-room', 'user-1')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+    expect(io.to).not.toHaveBeenCalled();
+    expect(emitter.emit).not.toHaveBeenCalled();
+    expect(io.socketsLeave).not.toHaveBeenCalled();
+  });
+
+  it('REST Room 종료 시 참여자가 아니면 ROOM_ACCESS_DENIED를 던지고 broadcast하지 않는다', async () => {
+    const { io, emitter } = makeIo();
+    const { service, roomRepo } = makeService({
+      io,
+      roomRepo: { findMembership: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
+    });
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+    expect(io.to).not.toHaveBeenCalled();
+    expect(emitter.emit).not.toHaveBeenCalled();
+    expect(io.socketsLeave).not.toHaveBeenCalled();
+  });
+
+  it('REST Room 종료 시 이미 나간 참여자면 ROOM_ACCESS_DENIED를 던지고 broadcast하지 않는다', async () => {
+    const { io, emitter } = makeIo();
+    const { service, roomRepo } = makeService({
+      io,
+      roomRepo: { findMembership: vi.fn().mockResolvedValue({ role: 'host', status: 'left' }) },
+    });
+
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
+    });
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+    expect(io.to).not.toHaveBeenCalled();
+    expect(emitter.emit).not.toHaveBeenCalled();
+    expect(io.socketsLeave).not.toHaveBeenCalled();
+  });
+
+  it('REST Room 종료 시 Host가 아니면 AUTH_FORBIDDEN을 던지고 broadcast하지 않는다', async () => {
+    const { io, emitter } = makeIo();
+    const { service, roomRepo } = makeService({ io });
+
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-2')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+    });
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+    expect(io.to).not.toHaveBeenCalled();
+    expect(emitter.emit).not.toHaveBeenCalled();
+    expect(io.socketsLeave).not.toHaveBeenCalled();
+  });
+
+  it('REST Room 종료 시 io가 없으면 SERVER_INTERNAL_ERROR를 던지고 Room을 닫지 않는다', async () => {
+    const { service, roomRepo } = makeService();
+
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).rejects.toMatchObject({
+      status: 500,
+      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
     });
     expect(roomRepo.closeRoom).not.toHaveBeenCalled();
   });

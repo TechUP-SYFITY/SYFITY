@@ -18,6 +18,12 @@ export type RoomDetailRecord = {
   createdAt: Date;
 };
 
+export type RoomUpdateRecord = {
+  id: string;
+  name: string;
+  updatedAt: Date;
+};
+
 export type CreateRoomData = {
   name: string;
   hostId: string;
@@ -84,4 +90,5 @@ export interface IRoomRepository {
   updateMemberStatus(roomId: string, userId: string, status: RoomMemberStatus): Promise<void>;
   findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
   closeRoom(roomId: string): Promise<void>;
+  updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord>;
 }

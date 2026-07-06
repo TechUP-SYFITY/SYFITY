@@ -174,7 +174,7 @@ export function PlaylistPanel({
       ) : null}
 
       {mutationErrorMessage && !addPlaylistItem.isError ? (
-        <p className="border-b border-white/[0.07] px-4 py-2 text-xs text-[#f87171]" role="alert">
+        <p className="border-b border-white/[0.07] px-4 py-2 text-xs text-destructive" role="alert">
           {mutationErrorMessage}
         </p>
       ) : null}
@@ -188,7 +188,7 @@ export function PlaylistPanel({
         ) : null}
         {isPlaylistError ? (
           <div className="flex min-h-[240px] flex-col items-center justify-center px-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#f87171]/20 bg-[#f87171]/10 text-[#f87171]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive">
               <CircleAlert className="h-5 w-5" aria-hidden />
             </div>
             <p className="mt-4 text-sm font-bold text-white">재생목록을 불러오지 못했어요</p>
@@ -249,7 +249,7 @@ export function PlaylistPanel({
                     {item.title}
                     {isUnavailable ? (
                       <CircleAlert
-                        className="ml-1 inline-block h-3 w-3 text-[#f87171]"
+                        className="ml-1 inline-block h-3 w-3 text-destructive"
                         aria-hidden
                       />
                     ) : null}

@@ -48,6 +48,11 @@ function makeRoomRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository
     updateMemberStatus: vi.fn().mockResolvedValue(undefined),
     findMemberInfo: vi.fn().mockResolvedValue(null),
     closeRoom: vi.fn().mockResolvedValue(undefined),
+    updateRoomName: vi.fn().mockResolvedValue({
+      id: 'room-1',
+      name: 'Morning Jazz',
+      updatedAt: new Date('2026-07-01T12:30:00.000Z'),
+    }),
     ...overrides,
   };
 }

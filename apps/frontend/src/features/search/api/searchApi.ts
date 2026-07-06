@@ -7,7 +7,7 @@ export type YoutubeSearchResult = SearchResponse['data']['items'][number];
 
 export type SearchApiError = ApiClientError;
 
-export const searchYoutubeVideos = async (query: string): Promise<YoutubeSearchResult[]> => {
+const searchYoutubeVideos = async (query: string): Promise<YoutubeSearchResult[]> => {
   const params = new URLSearchParams({ q: query });
   const data = await apiClient.get<SearchResponse['data']>(`/search?${params.toString()}`);
 

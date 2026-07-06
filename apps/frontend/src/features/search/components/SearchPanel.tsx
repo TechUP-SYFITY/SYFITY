@@ -42,13 +42,13 @@ export function SearchPanel({
     hasSearchQuery && !searchQuery.isLoading && !searchQuery.isError && !hasResults;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 text-white backdrop-blur-sm lg:items-center">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden bg-black/70 px-3 pt-14 pb-20 text-white backdrop-blur-sm sm:pt-16 lg:items-center lg:p-0">
       <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(circle_at_50%_12%,rgba(114,244,164,0.08),transparent_26%),radial-gradient(circle_at_74%_79%,rgba(111,76,255,0.12),transparent_28%)] lg:block" />
       <section
         role="dialog"
         aria-modal="true"
         aria-label="곡 추가"
-        className="relative flex max-h-[calc(100dvh-4.25rem)] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 slide-in-from-bottom-6 lg:max-h-[calc(100vh-8rem)] lg:w-[448px] lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
+        className="relative flex h-[calc(100dvh-8.5rem)] max-h-[680px] w-full animate-in flex-col overflow-hidden rounded-[24px] border border-white/[0.08] bg-[#101012]/95 shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 slide-in-from-bottom-4 sm:h-[calc(100dvh-9rem)] lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-[448px] lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
       >
         <div className="flex h-5 items-center justify-center border-b border-white/[0.04] lg:hidden">
           <span className="h-1 w-10 rounded-full bg-white/20" />

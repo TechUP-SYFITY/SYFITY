@@ -75,6 +75,17 @@ describe('SearchPanel', () => {
     expect(useYoutubeSearchQueryMock).toHaveBeenCalledWith('Coldplay');
   });
 
+  it('uses a four-fifths viewport height for the mobile bottom sheet', () => {
+    renderPanel();
+
+    const dialog = screen.getByRole('dialog', { name: '곡 추가' });
+
+    expect(dialog.className).toContain('h-[80dvh]');
+    expect(dialog.className).toContain('max-h-[calc(100dvh-1rem)]');
+    expect(dialog.className).not.toContain('h-[66.667dvh]');
+    expect(dialog.className).not.toContain('max-h-[620px]');
+  });
+
   it('calls onAddResult when a result add button is clicked', () => {
     const { onAddResult } = renderPanel();
 
@@ -139,5 +150,35 @@ describe('SearchPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onClose when the backdrop is clicked', () => {
+    const { onClose } = renderPanel();
+    const dialog = screen.getByRole('dialog');
+    const backdrop = dialog.parentElement;
+
+    expect(backdrop).toBeTruthy();
+    fireEvent.click(backdrop as HTMLElement);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not close when the dialog itself is clicked', () => {
+    const { onClose } = renderPanel();
+
+    fireEvent.click(screen.getByRole('dialog'));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps the sheet open when it is dragged downward', () => {
+    const { onClose } = renderPanel();
+    const dialog = screen.getByRole('dialog');
+
+    fireEvent.pointerDown(dialog, { clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(dialog, { clientY: 176, pointerId: 1 });
+    fireEvent.pointerUp(dialog, { clientY: 176, pointerId: 1 });
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

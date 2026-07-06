@@ -10,7 +10,7 @@ import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
 import type { PlaylistApi } from '@/features/playlist/playlistApi';
-import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
+import { useAddPlaylistItem, usePlaylistSocket } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { useJoinRoom } from '@/features/room/roomHooks';
@@ -23,6 +23,7 @@ import {
 import { RoomShell, type RoomMobileTab } from '@/features/room/RoomShell';
 import { useRoomStore } from '@/features/room/roomStore';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
+import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
 import { SearchPanel } from '@/features/search/components/SearchPanel';
 
 interface RoomPageClientProps {
@@ -42,10 +43,14 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
+  const shouldShowPreviewData = process.env.NODE_ENV === 'development' && joinRoom.isError;
+  const activeRoomId = roomFromStore?.id ?? roomId;
+  const playlistApiClient = shouldShowPreviewData ? roomPreviewPlaylistApi : undefined;
+  const addPlaylistItem = useAddPlaylistItem(activeRoomId, playlistApiClient);
 
   usePlaybackSocket(hasJoinedRoom);
-  usePlaylistSocket(hasJoinedRoom ? roomId : '');
-  useRoomSocket(hasJoinedRoom ? roomId : '');
+  usePlaylistSocket(hasJoinedRoom ? activeRoomId : '');
+  useRoomSocket(hasJoinedRoom ? activeRoomId : '');
 
   useEffect(() => {
     if (hasRequestedJoin.current) {
@@ -54,7 +59,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
 
     hasRequestedJoin.current = true;
     joinRoom.mutate(
-      { roomId },
+      { inviteCode: roomId },
       {
         onError: () => {
           setHasJoinedRoom(false);
@@ -69,7 +74,6 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     );
   }, [joinRoom, roomId, setJoinedRoom, setPlaybackState, setPlaylist]);
 
-  const shouldShowPreviewData = process.env.NODE_ENV === 'development' && joinRoom.isError;
   const visibleRoom = shouldShowPreviewData ? ROOM_PREVIEW_ROOM : roomFromStore;
   const visibleMembers = shouldShowPreviewData ? ROOM_PREVIEW_MEMBERS : members;
   const visiblePlaylist = shouldShowPreviewData ? ROOM_PREVIEW_PLAYLIST : playlist;
@@ -82,7 +86,15 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       return;
     }
 
-    void playbackCommands.changeTrack(roomId, playlistItemId);
+    void playbackCommands.changeTrack(activeRoomId, playlistItemId);
+  };
+
+  const handleAddSearchResult = (result: YoutubeSearchResult) => {
+    if (!hasJoinedRoom && !shouldShowPreviewData) {
+      return;
+    }
+
+    addPlaylistItem.mutate({ videoId: result.videoId });
   };
 
   return (
@@ -96,12 +108,12 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         playbackState={playbackState}
         playlist={visiblePlaylist}
         renderPlayerPanel={() => (
-          <PlayerPanel roomId={roomId} isHost={isHost} playlist={visiblePlaylist} />
+          <PlayerPanel roomId={activeRoomId} isHost={isHost} playlist={visiblePlaylist} />
         )}
         renderPlaylistPanel={() => (
           <PlaylistPanel
             playlistItems={shouldShowPreviewData ? visiblePlaylist : undefined}
-            roomId={roomId}
+            roomId={activeRoomId}
             isHost={isHost}
             isReady={hasJoinedRoom || shouldShowPreviewData}
             onOpenSearch={() => setIsSearchPanelOpen(true)}
@@ -114,6 +126,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       <SearchPanel
         isOpen={isSearchPanelOpen}
         roomName={visibleRoom?.name ?? 'Room'}
+        onAddResult={handleAddSearchResult}
         onClose={() => setIsSearchPanelOpen(false)}
       />
     </>

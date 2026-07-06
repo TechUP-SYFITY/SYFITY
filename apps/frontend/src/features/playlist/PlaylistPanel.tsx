@@ -58,6 +58,8 @@ export function PlaylistPanel({
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
   const visiblePlaylist = playlistItems ?? playlist;
+  const isInitialLoading = isLoading && visiblePlaylist.length === 0;
+  const isBackgroundFetching = isFetching && !isLoading && visiblePlaylist.length > 0;
   const mutationError = addPlaylistItem.error ?? deletePlaylistItem.error ?? reorderPlaylist.error;
   const mutationErrorMessage = mutationError ? getPlaylistErrorMessage(mutationError) : undefined;
 
@@ -124,6 +126,11 @@ export function PlaylistPanel({
           <ListMusic className="h-3.5 w-3.5 text-[#72f4a4]" aria-hidden />
           재생목록
           <span className="font-normal text-white/35">{visiblePlaylist.length}곡</span>
+          {isBackgroundFetching ? (
+            <span className="font-normal text-white/35" aria-live="polite">
+              새로고침 중
+            </span>
+          ) : null}
         </h2>
         <Button
           variant="primary-soft"
@@ -170,7 +177,7 @@ export function PlaylistPanel({
       ) : null}
 
       <div className="flex-1 overflow-y-auto">
-        {isLoading || isFetching ? (
+        {isInitialLoading ? (
           <div className="flex items-center gap-2 p-4 text-sm text-white/45" aria-live="polite">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             Playlist 불러오는 중
@@ -196,7 +203,7 @@ export function PlaylistPanel({
             </Button>
           </div>
         ) : null}
-        {!isLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
+        {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.04] text-white/40">
               <Inbox className="h-5 w-5" aria-hidden />

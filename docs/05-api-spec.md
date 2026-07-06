@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
-| 버전      | v1.2                                                                                            |
-| 상태      | Room 생성 사용자 없음 에러 코드 보강                                                            |
+| 버전      | v1.3                                                                                            |
+| 상태      | Room 입장 API와 참여자 접근 검증 반영                                                           |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
 
@@ -320,10 +320,9 @@ Access Token 갱신. Refresh Token Rotation 적용으로 새 Refresh Token도 �
 
 #### `POST /rooms/join`
 
-초대 코드 또는 roomId로 Room에 입장한다.
+초대 코드로 Room에 입장한다.
 
 - `inviteCode` → Room 조회 후 입장
-- `roomId` → `room_members` 기존 참여자 확인 후 재입장
 
 입장 성공 시 Room 초기 데이터를 함께 반환한다.
 
@@ -331,12 +330,9 @@ Access Token 갱신. Refresh Token Rotation 적용으로 새 Refresh Token도 �
 
 ```ts
 {
-  inviteCode?: string,
-  roomId?: string
+  inviteCode: string;
 }
 ```
-
-`inviteCode`와 `roomId` 중 하나는 반드시 있어야 한다.
 
 **응답 200**
 
@@ -397,12 +393,11 @@ Access Token 갱신. Refresh Token Rotation 적용으로 새 Refresh Token도 �
 
 **에러**
 
-| 코드                 | HTTP | 설명                                   |
-| -------------------- | ---- | -------------------------------------- |
-| `ROOM_NOT_FOUND`     | 404  | Room 없음 또는 유효하지 않은 초대 코드 |
-| `ROOM_INACTIVE`      | 403  | inactive 상태 Room                     |
-| `ROOM_CLOSED`        | 403  | closed 상태 Room                       |
-| `ROOM_ACCESS_DENIED` | 403  | roomId로 재입장 시 기존 참여자가 아님  |
+| 코드             | HTTP | 설명                                   |
+| ---------------- | ---- | -------------------------------------- |
+| `ROOM_NOT_FOUND` | 404  | Room 없음 또는 유효하지 않은 초대 코드 |
+| `ROOM_INACTIVE`  | 403  | inactive 상태 Room                     |
+| `ROOM_CLOSED`    | 403  | closed 상태 Room                       |
 
 ---
 
@@ -428,9 +423,10 @@ Room 정보 조회.
 
 **에러**
 
-| 코드             | HTTP | 설명      |
-| ---------------- | ---- | --------- |
-| `ROOM_NOT_FOUND` | 404  | Room 없음 |
+| 코드                 | HTTP | 설명                |
+| -------------------- | ---- | ------------------- |
+| `ROOM_NOT_FOUND`     | 404  | Room 없음           |
+| `ROOM_ACCESS_DENIED` | 403  | Room 참여 이력 없음 |
 
 ---
 
@@ -522,6 +518,13 @@ Room의 플레이리스트 조회. `position` 오름차순으로 반환한다.
 }
 ```
 
+**에러**
+
+| 코드                 | HTTP | 설명               |
+| -------------------- | ---- | ------------------ |
+| `ROOM_NOT_FOUND`     | 404  | Room 없음          |
+| `ROOM_ACCESS_DENIED` | 403  | Room 참여자가 아님 |
+
 ---
 
 #### `POST /rooms/:roomId/playlist`
@@ -568,6 +571,7 @@ MVP에서 중복 추가를 허용한다.
 | 코드                         | HTTP | 설명                  |
 | ---------------------------- | ---- | --------------------- |
 | `ROOM_NOT_FOUND`             | 404  | Room 없음             |
+| `ROOM_ACCESS_DENIED`         | 403  | Room 참여자가 아님    |
 | `PLAYLIST_INVALID_URL`       | 400  | videoId 파싱 불가 URL |
 | `PLAYLIST_VIDEO_UNAVAILABLE` | 400  | 재생 불가 영상        |
 | `SERVER_YOUTUBE_API_ERROR`   | 502  | YouTube API 호출 실패 |
@@ -679,9 +683,10 @@ MVP에서 중복 추가를 허용한다.
 
 **에러**
 
-| 코드             | HTTP | 설명      |
-| ---------------- | ---- | --------- |
-| `ROOM_NOT_FOUND` | 404  | Room 없음 |
+| 코드                 | HTTP | 설명               |
+| -------------------- | ---- | ------------------ |
+| `ROOM_NOT_FOUND`     | 404  | Room 없음          |
+| `ROOM_ACCESS_DENIED` | 403  | Room 참여자가 아님 |
 
 ---
 

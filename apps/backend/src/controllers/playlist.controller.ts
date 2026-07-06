@@ -21,8 +21,12 @@ export class PlaylistController {
 
   @Get()
   @SuccessResponse(200, 'OK')
-  async getPlaylist(@Path() roomId: string): Promise<GetPlaylistResponse> {
-    const playlist = await this.playlistService.getPlaylist(roomId);
+  async getPlaylist(
+    @Path() roomId: string,
+    @Request() req: ExRequest,
+  ): Promise<GetPlaylistResponse> {
+    const userId = req.user!.id;
+    const playlist = await this.playlistService.getPlaylist(roomId, userId);
 
     return {
       success: true,

@@ -13,6 +13,7 @@ const room: RoomDetailRecord = {
   hostId: 'user-1',
   inviteCode: 'ABC123',
   status: 'active',
+  createdAt: new Date('2026-07-01T12:00:00.000Z'),
 };
 
 const playlistItem: PlaylistItemRecord = {
@@ -53,6 +54,7 @@ function makeFixture(
 
   const roomRepo = {
     findRoomById: vi.fn().mockResolvedValue('room' in overrides ? overrides.room : room),
+    findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'offline' }),
     touchLastActivity: vi.fn().mockResolvedValue(undefined),
   };
 
@@ -79,9 +81,20 @@ describe('PlaylistService', () => {
   it('Room이 없으면 플레이리스트 조회에서 ROOM_NOT_FOUND를 반환한다', async () => {
     const { service, playlistRepo } = makeFixture({ room: null });
 
-    await expect(service.getPlaylist('room-1')).rejects.toMatchObject({
+    await expect(service.getPlaylist('room-1', 'user-1')).rejects.toMatchObject({
       status: 404,
       code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(playlistRepo.getPlaylist).not.toHaveBeenCalled();
+  });
+
+  it('참여자가 아니면 플레이리스트 조회에서 ROOM_ACCESS_DENIED를 반환한다', async () => {
+    const { service, roomRepo, playlistRepo } = makeFixture();
+    roomRepo.findMembership.mockResolvedValue(null);
+
+    await expect(service.getPlaylist('room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
     });
     expect(playlistRepo.getPlaylist).not.toHaveBeenCalled();
   });
@@ -89,7 +102,7 @@ describe('PlaylistService', () => {
   it('플레이리스트를 조회한다', async () => {
     const { service, playlistRepo } = makeFixture({ playlist: [playlistItem] });
 
-    await expect(service.getPlaylist('room-1')).resolves.toEqual([playlistItem]);
+    await expect(service.getPlaylist('room-1', 'user-1')).resolves.toEqual([playlistItem]);
     expect(playlistRepo.getPlaylist).toHaveBeenCalledWith('room-1');
   });
 
@@ -102,6 +115,20 @@ describe('PlaylistService', () => {
         code: ERROR_CODES.ROOM_NOT_FOUND,
       },
     );
+    expect(playlistRepo.addItem).not.toHaveBeenCalled();
+  });
+
+  it('참여자가 아니면 곡 추가에서 ROOM_ACCESS_DENIED를 반환한다', async () => {
+    const { service, roomRepo, playlistRepo, youtubeClient } = makeFixture();
+    roomRepo.findMembership.mockResolvedValue(null);
+
+    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
+      {
+        status: 403,
+        code: ERROR_CODES.ROOM_ACCESS_DENIED,
+      },
+    );
+    expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
     expect(playlistRepo.addItem).not.toHaveBeenCalled();
   });
 

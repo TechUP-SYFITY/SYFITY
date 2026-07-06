@@ -4,6 +4,7 @@ import { AppError } from '../errors/appError';
 import type { IYouTubeClient } from '../lib/youtube/youtube.client';
 import type { IPlaylistRepository, PlaylistItemRecord } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
+import { assertActiveRoomMember } from '../utils/roomAccess';
 
 type PlaylistRoomEmitter = {
   emit(event: 'playlist:updated', payload: { playlist: PlaylistItem[] }): boolean;
@@ -16,13 +17,16 @@ export type PlaylistSocketServer = {
 export class PlaylistService {
   constructor(
     private readonly playlistRepo: IPlaylistRepository,
-    private readonly roomRepo: Pick<IRoomRepository, 'findRoomById' | 'touchLastActivity'>,
+    private readonly roomRepo: Pick<
+      IRoomRepository,
+      'findRoomById' | 'touchLastActivity' | 'findMembership'
+    >,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
     private readonly io: PlaylistSocketServer,
   ) {}
 
-  async getPlaylist(roomId: string): Promise<PlaylistItemRecord[]> {
-    await this.ensureRoomExists(roomId);
+  async getPlaylist(roomId: string, userId: string): Promise<PlaylistItemRecord[]> {
+    await assertActiveRoomMember(this.roomRepo, roomId, userId);
 
     return this.playlistRepo.getPlaylist(roomId);
   }
@@ -32,7 +36,7 @@ export class PlaylistService {
     userId: string,
     request: AddPlaylistItemRequest,
   ): Promise<PlaylistItemRecord> {
-    await this.ensureRoomExists(roomId);
+    await assertActiveRoomMember(this.roomRepo, roomId, userId);
 
     const videoId = this.resolveVideoId(request);
     const [video] = await this.youtubeClient.getVideoDetails([videoId]);
@@ -60,13 +64,6 @@ export class PlaylistService {
     });
 
     return item;
-  }
-
-  private async ensureRoomExists(roomId: string): Promise<void> {
-    const room = await this.roomRepo.findRoomById(roomId);
-    if (!room) {
-      throw new AppError(404, ERROR_CODES.ROOM_NOT_FOUND, 'Room을 찾을 수 없습니다.');
-    }
   }
 
   private resolveVideoId(request: AddPlaylistItemRequest): string {

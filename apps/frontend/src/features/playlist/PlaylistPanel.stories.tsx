@@ -2,6 +2,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 
 import type { PlaylistItem } from '@/shared/types/domain';
 
@@ -113,6 +114,24 @@ function withPlaylistStoryFrame() {
   };
 }
 
+function getButtonAt(buttons: HTMLElement[], index: number) {
+  const button = buttons[index];
+
+  if (!button) {
+    throw new Error(`Storybook button index ${index} was not found.`);
+  }
+
+  return button;
+}
+
+async function openAddForm(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+
+  await userEvent.click(getButtonAt(canvas.getAllByRole('button'), 0));
+
+  return canvas;
+}
+
 export const ApiSuccess: Story = {
   decorators: [withPlaylistStoryFrame()],
 };
@@ -158,4 +177,42 @@ export const MemberView: Story = {
     isHost: false,
   },
   decorators: [withPlaylistStoryFrame()],
+};
+
+export const AddFailureInteraction: Story = {
+  args: {
+    playlistApiClient: createPlaylistApiMock({
+      addPlaylistItem: async () => {
+        throw new Error('add failed');
+      },
+    }),
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: async ({ canvasElement }) => {
+    const canvas = await openAddForm(canvasElement);
+
+    await userEvent.type(canvas.getByPlaceholderText('YouTube URL'), 'https://youtu.be/fail');
+    await userEvent.click(getButtonAt(canvas.getAllByRole('button'), 1));
+
+    await expect(canvas.findByText('add failed')).resolves.toBeInTheDocument();
+  },
+};
+
+export const DeleteFailureInteraction: Story = {
+  args: {
+    playlistApiClient: createPlaylistApiMock({
+      deletePlaylistItem: async () => {
+        throw new Error('delete failed');
+      },
+    }),
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nightChangesButtons = await canvas.findAllByRole('button', { name: /Night Changes/ });
+
+    await userEvent.click(getButtonAt(nightChangesButtons, nightChangesButtons.length - 1));
+
+    await expect(canvas.findByText('delete failed')).resolves.toBeInTheDocument();
+  },
 };

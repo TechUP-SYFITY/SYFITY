@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
-import { authApi, type AuthApi, type AuthApiError, type UserProfile } from './authApi';
+import { authApi, type AuthApi, type AuthApiError, type UserProfile } from '../api/authApi';
 
 export const authQueryKeys = {
   all: ['auth'] as const,

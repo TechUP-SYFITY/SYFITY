@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 
-import { getBaseUrl } from '@/shared/lib/api/apiClient';
 import { cn } from '@/shared/lib/utils';
+
+import { authApi } from '@/features/auth/api/authApi';
 
 // 공식 signin-assets 번들의 표준 컬러 "G" 로고 (모노크롬 금지, 색·비율 변경 금지).
 function GoogleLogo() {
@@ -39,11 +40,7 @@ export function GoogleButton({ returnUrl, className }: GoogleButtonProps) {
 
   const handleClick = () => {
     setIsLoading(true);
-    const url = new URL(`${getBaseUrl()}/auth/google`);
-    if (returnUrl) {
-      url.searchParams.set('returnUrl', returnUrl);
-    }
-    window.location.href = url.toString();
+    authApi.loginWithGoogle(returnUrl);
   };
 
   return (
@@ -56,12 +53,11 @@ export function GoogleButton({ returnUrl, className }: GoogleButtonProps) {
         // Google 다크 규격(불변): 배경 #131314 / 테두리 #8E918F 1px / 글자 #E3E3E3, 14/20, medium weight.
         // 라벨이 한글이라 Roboto(라틴 전용, 한글 글리프 없음) 대신 앱 폰트 Pretendard를 상속해 사용한다.
         // Google은 텍스트 현지화를 허용하므로 규격 위반 아님. 색·테두리·컬러 G 로고는 고정.
-        'flex w-full cursor-pointer items-center justify-center rounded-2xl border bg-[#131314] py-3.5 text-sm leading-5 font-medium shadow-[0px_2px_8px_0px_rgba(0,0,0,0.2)] transition-colors outline-none hover:bg-gray-800/40 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70',
+        'flex w-full cursor-pointer items-center justify-center rounded-2xl border border-[#8E918F] bg-[#131314] py-3.5 text-sm leading-5 font-medium text-[#E3E3E3] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.2)] transition-colors outline-none hover:bg-gray-800/40 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70',
         // 패딩: 로고 앞 12 / 로고 뒤 10(gap) / 텍스트 뒤 12
         'gap-2.5 px-3',
         className,
       )}
-      style={{ borderColor: '#8E918F', color: '#E3E3E3' }}
     >
       {isLoading ? (
         <svg className="size-4.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>

@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.3                                                                                  |
-| 상태      | REST/Socket 인증 진입점과 미들웨어 구조 정리                                          |
+| 버전      | v1.4                                                                                  |
+| 상태      | Socket 핸들러 DI 파라미터 패턴 및 socketAuth 경로 반영                                |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -412,7 +412,7 @@ export function initSocket(io: Server) {
 
 ### Socket 에러 처리
 
-Socket 핸들러는 HTTP 미들웨어가 적용되지 않으므로 각 핸들러에서 직접 try-catch로 처리한다. ack가 있는 이벤트는 에러를 ack로 반환하고, ack가 없는 이벤트는 에러 이벤트를 emit한다.
+Socket 핸들러는 HTTP 미들웨어가 적용되지 않으므로 각 핸들러에서 직접 try-catch로 처리한다. ack가 있는 이벤트는 에러를 ack로 반환하고, ack가 없는 이벤트는 서버 로그만 남긴다.
 
 ```ts
 socket.on('room:join', async ({ roomId }, ack) => {
@@ -427,24 +427,32 @@ socket.on('room:join', async ({ roomId }, ack) => {
 
 ### 핸들러 구조
 
-각 핸들러 파일은 도메인별 Socket 이벤트를 등록한다.
+각 핸들러 파일은 도메인별 Socket 이벤트를 등록한다. 테스트가 필요한 핸들러는 기존 `registerXHandlers(io, socket)` 호출 형태를 유지하면서, 세 번째 선택적 `deps` 파라미터로 Service 의존성을 주입할 수 있다.
 
 ```ts
 // src/socket/handlers/room.handler.ts
-import { Server, Socket } from 'socket.io';
+import type { Server, Socket } from 'socket.io';
 
-export function registerRoomHandlers(io: Server, socket: Socket) {
+import { roomService as defaultRoomService } from '../../ioc';
+import type { RoomService } from '../../services/room.service';
+
+type RoomHandlerDeps = {
+  roomService: Pick<RoomService, 'setMemberOnline' | 'leaveRoom' | 'getPlaybackStateForSocket'>;
+};
+
+export function registerRoomHandlers(
+  io: Server,
+  socket: Socket,
+  deps: RoomHandlerDeps = { roomService: defaultRoomService },
+) {
+  const { roomService } = deps;
+
   socket.on('room:join', async ({ roomId }, ack) => {
-    // 처리 로직
+    // roomService 호출 후 ack 응답
   });
 
   socket.on('room:leave', async ({ roomId }) => {
-    // 처리 로직
-  });
-
-  socket.on('disconnect', async () => {
-    // disconnect는 Room, Presence, Playback 타이머 등 여러 도메인에 영향을 줌
-    // room.handler.ts에서 통합 처리하며, 필요한 Service를 각각 호출
+    // roomService 호출 후 broadcast 또는 로그 처리
   });
 }
 ```

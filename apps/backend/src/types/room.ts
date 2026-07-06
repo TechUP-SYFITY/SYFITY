@@ -24,9 +24,12 @@ export type CreateRoomData = {
   inviteCode: string;
 };
 
+export type RoomRole = 'host' | 'member' | 'guest';
+export type RoomMemberStatus = 'online' | 'offline' | 'left';
+
 export type RoomMembershipRecord = {
-  role: 'host' | 'member' | 'guest';
-  status: 'online' | 'offline' | 'left';
+  role: RoomRole;
+  status: RoomMemberStatus;
 };
 
 export type RoomMemberRecord = {
@@ -34,8 +37,8 @@ export type RoomMemberRecord = {
   userId: string;
   nickname: string;
   profileImage: string | null;
-  role: 'host' | 'member' | 'guest';
-  status: 'online' | 'offline' | 'left';
+  role: RoomRole;
+  status: RoomMemberStatus;
 };
 
 export type PlaybackStateRecord = {
@@ -64,6 +67,8 @@ export type JoinRoomResult = {
   recentChats: ChatRecord[];
 };
 
+export type LeaveRoomResult = { type: 'closed' } | { type: 'left'; member: RoomMemberRecord };
+
 export interface IRoomRepository {
   existsInviteCode(inviteCode: string): Promise<boolean>;
   createRoom(data: CreateRoomData): Promise<RoomRecord>;
@@ -76,4 +81,7 @@ export interface IRoomRepository {
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
   upsertRecentRoom(userId: string, roomId: string): Promise<void>;
   findPlaybackState(roomId: string): Promise<PlaybackStateRecord | null>;
+  updateMemberStatus(roomId: string, userId: string, status: RoomMemberStatus): Promise<void>;
+  findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
+  closeRoom(roomId: string): Promise<void>;
 }

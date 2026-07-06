@@ -95,6 +95,9 @@ function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
     findMembers: vi.fn().mockResolvedValue([member]),
     upsertRecentRoom: vi.fn().mockResolvedValue(undefined),
     findPlaybackState: vi.fn().mockResolvedValue(playbackState),
+    updateMemberStatus: vi.fn().mockResolvedValue(undefined),
+    findMemberInfo: vi.fn().mockResolvedValue(member),
+    closeRoom: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -362,6 +365,220 @@ describe('RoomService', () => {
     await expect(service.getRoomInfo('room-1', 'user-1')).rejects.toMatchObject({
       status: 403,
       code: ERROR_CODES.ROOM_ACCESS_DENIED,
+    });
+  });
+
+  it('멤버를 online으로 전환하고 멤버 정보를 반환한다', async () => {
+    const { service, roomRepo } = makeService();
+
+    await expect(service.setMemberOnline('room-1', 'user-1')).resolves.toEqual(member);
+
+    expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'online');
+    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-1');
+  });
+
+  it('online 전환 시 Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findRoomById: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.setMemberOnline('missing-room', 'user-1')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
+  });
+
+  it('online 전환 시 참여자가 아니거나 이미 나간 사용자면 ROOM_ACCESS_DENIED를 던진다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'left' }) },
+    });
+
+    await expect(service.setMemberOnline('room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
+    });
+    expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
+  });
+
+  it('online 전환 후 멤버 정보 재조회에 실패하면 SERVER_INTERNAL_ERROR를 던진다', async () => {
+    const { service } = makeService({
+      roomRepo: { findMemberInfo: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.setMemberOnline('room-1', 'user-1')).rejects.toMatchObject({
+      status: 500,
+      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
+    });
+  });
+
+  it('일반 멤버가 Room을 나가면 left로 전환하고 멤버 정보를 반환한다', async () => {
+    const leftMember = { ...member, userId: 'user-2', status: 'left' as const };
+    const { service, roomRepo } = makeService({
+      roomRepo: { findMemberInfo: vi.fn().mockResolvedValue(leftMember) },
+    });
+
+    await expect(service.leaveRoom('room-1', 'user-2')).resolves.toEqual({
+      type: 'left',
+      member: leftMember,
+    });
+
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-2', 'left');
+    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-2');
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('Host가 Room을 나가면 Room을 종료한다', async () => {
+    const { service, roomRepo, cache } = makeService();
+
+    await expect(service.leaveRoom('room-1', 'user-1')).resolves.toEqual({ type: 'closed' });
+
+    expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
+    expect(cache.del).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'));
+    expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
+    expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
+  });
+
+  it('Room 퇴장 시 참여자가 아니면 ROOM_ACCESS_DENIED를 던진다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findMembership: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.leaveRoom('room-1', 'user-2')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
+    });
+    expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('일반 멤버 퇴장 후 멤버 정보 재조회에 실패하면 SERVER_INTERNAL_ERROR를 던진다', async () => {
+    const { service } = makeService({
+      roomRepo: { findMemberInfo: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.leaveRoom('room-1', 'user-2')).rejects.toMatchObject({
+      status: 500,
+      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
+    });
+  });
+
+  it('Host가 Room을 닫으면 Room 종료와 캐시 삭제 후 Room 정보를 반환한다', async () => {
+    const { service, roomRepo, cache } = makeService();
+
+    await expect(service.closeRoom('room-1', 'user-1')).resolves.toEqual(roomDetail);
+
+    expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
+    expect(cache.del).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'));
+    expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
+  });
+
+  it('Host가 아닌 사용자가 Room을 닫으려 하면 AUTH_FORBIDDEN을 던진다', async () => {
+    const { service, roomRepo } = makeService();
+
+    await expect(service.closeRoom('room-1', 'user-2')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+    });
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('Room 종료 시 Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findRoomById: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.closeRoom('missing-room', 'user-1')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('소켓용 PlaybackState 조회는 캐시 히트 시 DB를 조회하지 않는다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
+    const cache = makeCache();
+    cache.get = vi.fn().mockReturnValue({
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      baseCurrentTime: 30,
+      isPlaying: true,
+      serverStartedAt: '2026-07-01T12:00:00.000Z',
+      serverPausedAt: null,
+    });
+    const { service, roomRepo } = makeService({ cache });
+
+    await expect(service.getPlaybackStateForSocket('room-1')).resolves.toEqual({
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      currentTime: 35,
+      isPlaying: true,
+    });
+    expect(roomRepo.findPlaybackState).not.toHaveBeenCalled();
+  });
+
+  it('소켓용 PlaybackState 캐시 히트 시 일시정지 상태는 baseCurrentTime을 그대로 반환한다', async () => {
+    const cache = makeCache();
+    cache.get = vi.fn().mockReturnValue({
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      baseCurrentTime: 30,
+      isPlaying: false,
+      serverStartedAt: '2026-07-01T12:00:00.000Z',
+      serverPausedAt: '2026-07-01T12:00:05.000Z',
+    });
+    const { service } = makeService({ cache });
+
+    await expect(service.getPlaybackStateForSocket('room-1')).resolves.toMatchObject({
+      currentTime: 30,
+    });
+  });
+
+  it('소켓용 PlaybackState 캐시 미스 시 DB에서 조회하고 캐시를 재구성한다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
+    const { service, roomRepo, cache } = makeService({
+      roomRepo: {
+        findPlaybackState: vi.fn().mockResolvedValue({
+          ...playbackState,
+          baseCurrentTime: 30,
+          isPlaying: true,
+          serverStartedAt: new Date('2026-07-01T12:00:00.000Z'),
+          serverPausedAt: null,
+        }),
+      },
+    });
+
+    await expect(service.getPlaybackStateForSocket('room-1')).resolves.toEqual({
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      currentTime: 35,
+      isPlaying: true,
+    });
+    expect(roomRepo.findPlaybackState).toHaveBeenCalledWith('room-1');
+    expect(cache.set).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'), {
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      baseCurrentTime: 30,
+      isPlaying: true,
+      serverStartedAt: '2026-07-01T12:00:00.000Z',
+      serverPausedAt: null,
+    });
+  });
+
+  it('소켓용 PlaybackState가 캐시와 DB에 모두 없으면 SERVER_INTERNAL_ERROR를 던진다', async () => {
+    const { service } = makeService({
+      roomRepo: { findPlaybackState: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.getPlaybackStateForSocket('room-1')).rejects.toMatchObject({
+      status: 500,
+      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
     });
   });
 });

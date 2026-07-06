@@ -9,6 +9,7 @@ import { playbackCommands } from '@/features/player/playbackCommands';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
+import type { PlaylistApi } from '@/features/playlist/playlistApi';
 import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
@@ -66,10 +67,6 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     );
   }, [joinRoom, roomId, setJoinedRoom, setPlaybackState, setPlaylist]);
 
-  const handlePlayItem = (playlistItemId: string) => {
-    void playbackCommands.changeTrack(roomId, playlistItemId);
-  };
-
   const shouldShowPreviewData = process.env.NODE_ENV === 'development' && joinRoom.isError;
   const visibleRoom = shouldShowPreviewData ? ROOM_PREVIEW_ROOM : roomFromStore;
   const visibleMembers = shouldShowPreviewData ? ROOM_PREVIEW_MEMBERS : members;
@@ -77,6 +74,14 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const visibleChats = shouldShowPreviewData ? ROOM_PREVIEW_CHATS : [];
   const currentUserId = getCurrentUserId();
   const isHost = shouldShowPreviewData ? true : isCurrentUserHost(visibleMembers, currentUserId);
+
+  const handlePlayItem = (playlistItemId: string) => {
+    if (shouldShowPreviewData) {
+      return;
+    }
+
+    void playbackCommands.changeTrack(roomId, playlistItemId);
+  };
 
   return (
     <RoomShell
@@ -92,11 +97,12 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       )}
       renderPlaylistPanel={() => (
         <PlaylistPanel
-          playlistItems={visiblePlaylist}
+          playlistItems={shouldShowPreviewData ? visiblePlaylist : undefined}
           roomId={roomId}
           isHost={isHost}
           isReady={hasJoinedRoom || shouldShowPreviewData}
           onPlayItem={handlePlayItem}
+          playlistApiClient={shouldShowPreviewData ? roomPreviewPlaylistApi : undefined}
         />
       )}
       room={visibleRoom}
@@ -116,3 +122,20 @@ function isCurrentUserHost(members: RoomMember[], currentUserId: string | null) 
 
   return members.some((member) => member.userId === currentUserId && member.role === 'host');
 }
+
+const roomPreviewPlaylistApi: PlaylistApi = {
+  addPlaylistItem: async (_roomId, body) => ({
+    addedBy: ROOM_PREVIEW_ROOM.hostId,
+    channelTitle: 'Preview',
+    duration: 180,
+    id: `preview-${body.videoId ?? body.youtubeUrl ?? 'track'}`,
+    position: ROOM_PREVIEW_PLAYLIST.length + 1,
+    status: 'available',
+    thumbnailUrl: '',
+    title: body.youtubeUrl ?? body.videoId ?? 'Preview Track',
+    videoId: body.videoId ?? 'preview-video',
+  }),
+  deletePlaylistItem: async () => ({ message: 'preview playlist item deleted' }),
+  getPlaylist: async () => ({ playlist: ROOM_PREVIEW_PLAYLIST }),
+  reorderPlaylist: async () => ({ message: 'preview playlist reordered' }),
+};

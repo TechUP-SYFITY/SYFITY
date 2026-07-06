@@ -1,11 +1,24 @@
 'use client';
 
 // Playlist 목록과 곡 추가, 삭제, 재생 요청을 위한 최소 UI를 제공한다.
-import { ChevronDown, CircleAlert, Inbox, ListMusic, Play, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  CircleAlert,
+  Inbox,
+  ListMusic,
+  Loader2,
+  Play,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { Button, Input } from '@/shared/components/ui';
+import { ApiClientError } from '@/shared/types/api';
 import type { PlaylistItem } from '@/shared/types/domain';
 
+import type { PlaylistApi } from './playlistApi';
 import {
   useAddPlaylistItem,
   useDeletePlaylistItem,
@@ -20,6 +33,7 @@ interface PlaylistPanelProps {
   isHost: boolean;
   isReady: boolean;
   onPlayItem: (playlistItemId: string) => void;
+  playlistApiClient?: PlaylistApi;
 }
 
 export function PlaylistPanel({
@@ -28,17 +42,35 @@ export function PlaylistPanel({
   isHost,
   isReady,
   onPlayItem,
+  playlistApiClient,
 }: PlaylistPanelProps) {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const shouldUseParentPlaylist = Boolean(playlistItems);
-  const { data, isLoading } = usePlaylist(roomId, isReady && !shouldUseParentPlaylist);
-  const addPlaylistItem = useAddPlaylistItem(roomId);
-  const deletePlaylistItem = useDeletePlaylistItem(roomId);
-  const reorderPlaylist = useReorderPlaylist(roomId);
+  const {
+    data,
+    error: playlistError,
+    isError: isPlaylistError,
+    isFetching,
+    isLoading,
+    refetch,
+  } = usePlaylist(roomId, isReady && !shouldUseParentPlaylist, playlistApiClient);
+  const addPlaylistItem = useAddPlaylistItem(roomId, playlistApiClient);
+  const deletePlaylistItem = useDeletePlaylistItem(roomId, playlistApiClient);
+  const reorderPlaylist = useReorderPlaylist(roomId, playlistApiClient);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
   const visiblePlaylist = playlistItems ?? playlist;
+  const isInitialLoading = isLoading && visiblePlaylist.length === 0;
+  const isBackgroundFetching = isFetching && !isLoading && visiblePlaylist.length > 0;
+  const mutationError = addPlaylistItem.error ?? deletePlaylistItem.error ?? reorderPlaylist.error;
+  const mutationErrorMessage = mutationError ? getPlaylistErrorMessage(mutationError) : undefined;
+
+  const resetMutationErrors = () => {
+    addPlaylistItem.reset();
+    deletePlaylistItem.reset();
+    reorderPlaylist.reset();
+  };
 
   useEffect(() => {
     if (!shouldUseParentPlaylist && data?.playlist) {
@@ -50,10 +82,11 @@ export function PlaylistPanel({
     event.preventDefault();
 
     const trimmedUrl = youtubeUrl.trim();
-    if (!isReady || !trimmedUrl) {
+    if (!isReady || !trimmedUrl || addPlaylistItem.isPending) {
       return;
     }
 
+    resetMutationErrors();
     addPlaylistItem.mutate(
       { youtubeUrl: trimmedUrl },
       {
@@ -80,6 +113,7 @@ export function PlaylistPanel({
     }
 
     nextPlaylist.splice(nextIndex, 0, targetItem);
+    resetMutationErrors();
     reorderPlaylist.mutate({
       items: nextPlaylist.map((item, index) => ({
         id: item.id,
@@ -95,39 +129,84 @@ export function PlaylistPanel({
           <ListMusic className="h-3.5 w-3.5 text-[#72f4a4]" aria-hidden />
           재생목록
           <span className="font-normal text-white/35">{visiblePlaylist.length}곡</span>
+          {isBackgroundFetching ? (
+            <span className="font-normal text-white/35" aria-live="polite">
+              새로고침 중
+            </span>
+          ) : null}
         </h2>
-        <button
-          className="flex items-center gap-1.5 rounded-2xl border border-[#72f4a4]/20 bg-[#72f4a4]/10 px-3 py-2 text-xs font-bold text-[#72f4a4]"
+        <Button
+          variant="primary-soft"
+          size="sm"
+          className="rounded-2xl"
           type="button"
-          onClick={() => setIsAddFormOpen((value) => !value)}
+          onClick={() => {
+            resetMutationErrors();
+            setIsAddFormOpen((value) => !value);
+          }}
         >
           <Plus className="h-3 w-3" aria-hidden />
           추가
-        </button>
+        </Button>
       </div>
 
       {isAddFormOpen ? (
         <form className="flex gap-2 border-b border-white/[0.07] px-4 py-3" onSubmit={handleSubmit}>
-          <input
-            className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2 text-sm text-white outline-none placeholder:text-white/28 focus:border-[#72f4a4]/60"
+          <Input
+            className="min-w-0 rounded-xl border-white/[0.08] bg-white/[0.05]"
+            error={addPlaylistItem.isError ? mutationErrorMessage : undefined}
+            leadingIcon={<ListMusic aria-hidden />}
             placeholder="YouTube URL"
             value={youtubeUrl}
+            disabled={!isReady || addPlaylistItem.isPending}
             onChange={(event) => setYoutubeUrl(event.target.value)}
           />
-          <button
-            className="flex items-center gap-1.5 rounded-xl bg-[#72f4a4] px-3 py-2 text-sm font-bold text-[#07150d] disabled:opacity-50"
+          <Button
+            className="h-11 shrink-0 rounded-xl"
             disabled={!isReady || addPlaylistItem.isPending}
+            isLoading={addPlaylistItem.isPending}
             type="submit"
           >
-            <Plus className="h-3.5 w-3.5" aria-hidden />
+            {!addPlaylistItem.isPending ? <Plus className="h-3.5 w-3.5" aria-hidden /> : null}
             추가
-          </button>
+          </Button>
         </form>
       ) : null}
 
+      {mutationErrorMessage && !addPlaylistItem.isError ? (
+        <p className="border-b border-white/[0.07] px-4 py-2 text-xs text-destructive" role="alert">
+          {mutationErrorMessage}
+        </p>
+      ) : null}
+
       <div className="flex-1 overflow-y-auto">
-        {isLoading ? <p className="p-4 text-sm text-white/40">Playlist 불러오는 중</p> : null}
-        {!isLoading && visiblePlaylist.length === 0 ? (
+        {isInitialLoading ? (
+          <div className="flex items-center gap-2 p-4 text-sm text-white/45" aria-live="polite">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Playlist 불러오는 중
+          </div>
+        ) : null}
+        {isPlaylistError ? (
+          <div className="flex min-h-[240px] flex-col items-center justify-center px-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive">
+              <CircleAlert className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="mt-4 text-sm font-bold text-white">재생목록을 불러오지 못했어요</p>
+            <p className="mt-2 text-xs leading-5 text-white/45">
+              {getPlaylistErrorMessage(playlistError)}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-5 rounded-2xl"
+              type="button"
+              onClick={() => void refetch()}
+            >
+              다시 시도
+            </Button>
+          </div>
+        ) : null}
+        {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.04] text-white/40">
               <Inbox className="h-5 w-5" aria-hidden />
@@ -136,14 +215,17 @@ export function PlaylistPanel({
             <p className="mt-2 text-xs leading-5 text-white/45">
               검색하거나 링크로 곡을 추가해보세요.
             </p>
-            <button
-              className="mt-6 flex items-center gap-2 rounded-2xl bg-[#72f4a4] px-4 py-3 text-sm font-bold text-[#09090b] shadow-[0_0_24px_rgba(114,244,164,0.24)] disabled:opacity-50"
+            <Button
+              className="mt-6 rounded-2xl"
               disabled={!isReady}
               type="button"
-              onClick={() => setIsAddFormOpen(true)}
+              onClick={() => {
+                resetMutationErrors();
+                setIsAddFormOpen(true);
+              }}
             >
               <Plus className="h-4 w-4" aria-hidden />첫 번째 곡 추가
-            </button>
+            </Button>
           </div>
         ) : null}
         {visiblePlaylist.map((item, index) => {
@@ -167,7 +249,7 @@ export function PlaylistPanel({
                     {item.title}
                     {isUnavailable ? (
                       <CircleAlert
-                        className="ml-1 inline-block h-3 w-3 text-[#f87171]"
+                        className="ml-1 inline-block h-3 w-3 text-destructive"
                         aria-hidden
                       />
                     ) : null}
@@ -182,10 +264,12 @@ export function PlaylistPanel({
                     {formatDuration(item.duration)}
                   </p>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className={
                     isHost
-                      ? 'hidden h-7 w-7 items-center justify-center rounded-full text-white/40 opacity-0 transition group-hover:opacity-100 disabled:opacity-0 lg:flex'
+                      ? 'h-7 w-7 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5 lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100'
                       : 'hidden'
                   }
                   disabled={!isReady || !isHost || isUnavailable}
@@ -194,41 +278,50 @@ export function PlaylistPanel({
                   onClick={() => onPlayItem(item.id)}
                 >
                   <Play className="h-3.5 w-3.5" aria-hidden />
-                </button>
+                </Button>
                 <div
                   className={
                     isHost
-                      ? 'hidden items-center gap-2 opacity-0 transition group-hover:opacity-100 lg:flex'
+                      ? 'flex items-center gap-1 opacity-100 transition lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100'
                       : 'hidden'
                   }
                 >
-                  <button
-                    className="flex h-5 w-5 items-center justify-center text-white/32 disabled:opacity-20"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-full border-0 bg-transparent text-white/35 hover:bg-white/5"
                     disabled={!isReady || !isHost || isCurrent}
                     type="button"
                     onClick={() => handleMove(item.id, -1)}
                     aria-label={`${item.title} 위로 이동`}
                   >
-                    <ChevronDown className="h-3 w-3 rotate-180" aria-hidden />
-                  </button>
-                  <button
-                    className="flex h-5 w-5 items-center justify-center text-white/32 disabled:opacity-20"
+                    <ArrowUp className="h-3 w-3" aria-hidden />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-full border-0 bg-transparent text-white/35 hover:bg-white/5"
                     disabled={!isReady || !isHost || index === visiblePlaylist.length - 1}
                     type="button"
                     onClick={() => handleMove(item.id, 1)}
                     aria-label={`${item.title} 아래로 이동`}
                   >
-                    <ChevronDown className="h-3 w-3" aria-hidden />
-                  </button>
-                  <button
-                    className="flex h-5 w-5 items-center justify-center text-rose-400/70 disabled:opacity-20"
+                    <ArrowDown className="h-3 w-3" aria-hidden />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-full border-0 bg-transparent text-rose-400/70 hover:bg-rose-500/10"
                     disabled={!isReady || deletePlaylistItem.isPending}
                     type="button"
                     aria-label={`${item.title} 삭제`}
-                    onClick={() => deletePlaylistItem.mutate(item.id)}
+                    onClick={() => {
+                      resetMutationErrors();
+                      deletePlaylistItem.mutate(item.id);
+                    }}
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -236,13 +329,16 @@ export function PlaylistPanel({
         })}
       </div>
 
-      <button
-        className="fixed right-5 bottom-24 z-30 flex items-center gap-2 rounded-2xl bg-[#72f4a4] px-5 py-3 text-sm font-bold text-[#07150d] shadow-[0_0_28px_rgba(114,244,164,0.45)] lg:hidden"
+      <Button
+        className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-[0_0_28px_rgba(114,244,164,0.45)] lg:hidden"
         type="button"
-        onClick={() => setIsAddFormOpen((value) => !value)}
+        onClick={() => {
+          resetMutationErrors();
+          setIsAddFormOpen((value) => !value);
+        }}
       >
         <Plus className="h-4 w-4" aria-hidden />곡 추가
-      </button>
+      </Button>
     </aside>
   );
 }
@@ -276,4 +372,36 @@ function formatDuration(duration: number) {
   const minutes = Math.floor(duration / 60);
   const seconds = String(duration % 60).padStart(2, '0');
   return `${minutes}:${seconds}`;
+}
+
+function getPlaylistErrorMessage(error: unknown) {
+  if (error instanceof ApiClientError) {
+    if (error.code === 'PLAYLIST_INVALID_URL') {
+      return '유효한 YouTube 링크를 입력해주세요.';
+    }
+
+    if (error.code === 'PLAYLIST_VIDEO_UNAVAILABLE') {
+      return '재생할 수 없는 영상이에요.';
+    }
+
+    if (error.code === 'AUTH_FORBIDDEN') {
+      return '이 작업을 할 권한이 없어요.';
+    }
+
+    if (error.code === 'PLAYLIST_ITEM_NOT_FOUND') {
+      return '이미 삭제됐거나 찾을 수 없는 곡이에요.';
+    }
+
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    if (error.message === 'Failed to fetch') {
+      return '서버에 연결하지 못했어요. 백엔드 실행 상태를 확인해주세요.';
+    }
+
+    return error.message;
+  }
+
+  return '잠시 후 다시 시도해주세요.';
 }

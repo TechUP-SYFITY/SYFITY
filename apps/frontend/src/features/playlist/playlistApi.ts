@@ -17,3 +17,5 @@ export const playlistApi = {
   reorderPlaylist: (roomId: string, body: ReorderPlaylistRequest) =>
     apiClient.patch<{ message: string }>(`/rooms/${roomId}/playlist/reorder`, body),
 };
+
+export type PlaylistApi = typeof playlistApi;

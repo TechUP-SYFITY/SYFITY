@@ -48,7 +48,7 @@ export function SearchPanel({
         role="dialog"
         aria-modal="true"
         aria-label="곡 추가"
-        className="relative flex h-[calc(100dvh-5rem)] max-h-[720px] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 slide-in-from-bottom-4 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-[448px] lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
+        className="relative flex h-[67dvh] max-h-[620px] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 slide-in-from-bottom-4 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-[448px] lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
       >
         <div className="flex h-5 items-center justify-center border-b border-white/[0.04] lg:hidden">
           <span className="h-1 w-10 rounded-full bg-white/20" />
@@ -100,7 +100,7 @@ export function SearchPanel({
           </div>
         </div>
 
-        <div className="min-h-[280px] flex-1 overflow-y-auto">
+        <div className="min-h-[280px] flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
           {searchQuery.isLoading ? <SearchPanelLoading /> : null}
           {searchQuery.isError ? <SearchPanelError message={searchQuery.error.message} /> : null}
           {!searchQuery.isLoading && !searchQuery.isError && hasResults ? (

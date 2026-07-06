@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.4                                                                                  |
-| 상태      | Socket 핸들러 DI 파라미터 패턴 및 socketAuth 경로 반영                                |
+| 버전      | v1.5                                                                                  |
+| 상태      | Render 운영 환경변수 설정 안내 추가                                                   |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -639,3 +639,21 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:4000/api/v1/auth/google/callback
 ```
+
+### 10.1 운영(Render) 환경변수 설정
+
+Render Blueprint는 민감값을 `sync: false`로 선언하고, 실제 값은 Render 대시보드에서 직접 입력한다.
+
+| 키                                          | 운영 값 기준                                                                                             |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                                                                             |
+| `NODE_VERSION`                              | `22`                                                                                                     |
+| `CLIENT_URL`                                | T21에서 확정되는 FE 프로덕션 URL. T20 시점에는 임시값을 입력하고 T21 완료 후 `https://{domain}`으로 갱신 |
+| `ALLOWED_ORIGINS`                           | 프로덕션 커스텀 도메인 FE origin. Vercel Preview 도메인은 `cors.ts`의 `*.vercel.app` 허용 규칙으로 처리  |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                        |
+| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                      |
+| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                  |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                  |
+| `GOOGLE_CALLBACK_URL`                       | `https://api.{domain}/api/v1/auth/google/callback`                                                       |
+
+`PORT`는 Render web service가 자동 주입하므로 고정하지 않는다. Supabase Direct Connection은 IPv6 전용일 수 있어 Render에서는 Session Pooler 사용을 기본값으로 둔다.

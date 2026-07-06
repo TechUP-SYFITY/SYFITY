@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { PlaylistItem } from '@/shared/types/domain';
 
-import { playlistApi } from './playlistApi';
+import { playlistApi, type PlaylistApi } from './playlistApi';
 import { usePlaylistStore } from './playlistStore';
 import type {
   AddPlaylistItemRequest,
@@ -20,18 +20,18 @@ export const playlistQueryKeys = {
   room: (roomId: string) => [...playlistQueryKeys.all, roomId] as const,
 };
 
-export const usePlaylist = (roomId: string, enabled = true) =>
+export const usePlaylist = (roomId: string, enabled = true, api: PlaylistApi = playlistApi) =>
   useQuery({
     enabled: enabled && roomId.length > 0,
-    queryFn: () => playlistApi.getPlaylist(roomId),
+    queryFn: () => api.getPlaylist(roomId),
     queryKey: playlistQueryKeys.room(roomId),
   });
 
-export const useAddPlaylistItem = (roomId: string) => {
+export const useAddPlaylistItem = (roomId: string, api: PlaylistApi = playlistApi) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: AddPlaylistItemRequest) => playlistApi.addPlaylistItem(roomId, body),
+    mutationFn: (body: AddPlaylistItemRequest) => api.addPlaylistItem(roomId, body),
     onSuccess: (createdItem) => {
       const currentPlaylist = getCurrentPlaylist(queryClient, roomId);
       const nextPlaylist = currentPlaylist.some((item) => item.id === createdItem.id)
@@ -44,11 +44,11 @@ export const useAddPlaylistItem = (roomId: string) => {
   });
 };
 
-export const useDeletePlaylistItem = (roomId: string) => {
+export const useDeletePlaylistItem = (roomId: string, api: PlaylistApi = playlistApi) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (itemId: string) => playlistApi.deletePlaylistItem(roomId, itemId),
+    mutationFn: (itemId: string) => api.deletePlaylistItem(roomId, itemId),
     onMutate: async (itemId) => {
       await queryClient.cancelQueries({ queryKey: playlistQueryKeys.room(roomId) });
 
@@ -70,11 +70,11 @@ export const useDeletePlaylistItem = (roomId: string) => {
   });
 };
 
-export const useReorderPlaylist = (roomId: string) => {
+export const useReorderPlaylist = (roomId: string, api: PlaylistApi = playlistApi) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: ReorderPlaylistRequest) => playlistApi.reorderPlaylist(roomId, body),
+    mutationFn: (body: ReorderPlaylistRequest) => api.reorderPlaylist(roomId, body),
     onMutate: async (body) => {
       await queryClient.cancelQueries({ queryKey: playlistQueryKeys.room(roomId) });
 

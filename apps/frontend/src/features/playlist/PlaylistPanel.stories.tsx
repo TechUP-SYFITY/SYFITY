@@ -1,11 +1,11 @@
-// PlaylistPanel의 API 상태별 Storybook 화면을 mock API로 재현한다.
+// PlaylistPanel의 API 상태를 Storybook mock API로 재현한다.
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
 import type { PlaylistItem } from '@/shared/types/domain';
 
-import { playlistApi } from './playlistApi';
+import type { PlaylistApi } from './playlistApi';
 import { PlaylistPanel } from './PlaylistPanel';
 import { usePlaylistStore } from './playlistStore';
 
@@ -56,13 +56,14 @@ const meta = {
     isHost: true,
     isReady: true,
     onPlayItem: () => undefined,
+    playlistApiClient: createPlaylistApiMock(),
   },
 } satisfies Meta<typeof PlaylistPanel>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-type PlaylistApiMock = Partial<typeof playlistApi>;
+type PlaylistApiOverride = Partial<PlaylistApi>;
 type StoryRender = () => ReactNode;
 
 function createQueryClient() {
@@ -78,7 +79,7 @@ function createPendingPromise<T>() {
   return new Promise<T>(() => undefined);
 }
 
-function createDefaultApiMock(): typeof playlistApi {
+function createPlaylistApiMock(apiOverride: PlaylistApiOverride = {}): PlaylistApi {
   return {
     addPlaylistItem: async (_roomId, body) => ({
       addedBy: 'story-host',
@@ -94,16 +95,12 @@ function createDefaultApiMock(): typeof playlistApi {
     deletePlaylistItem: async () => ({ message: 'playlist item deleted' }),
     getPlaylist: async () => ({ playlist: playlistItems }),
     reorderPlaylist: async () => ({ message: 'playlist reordered' }),
+    ...apiOverride,
   };
 }
 
-function applyPlaylistApiMock(apiMock: PlaylistApiMock) {
-  Object.assign(playlistApi, createDefaultApiMock(), apiMock);
-}
-
-function withPlaylistApiMock(apiMock: PlaylistApiMock = {}) {
-  return function PlaylistApiMockDecorator(Story: StoryRender) {
-    applyPlaylistApiMock(apiMock);
+function withPlaylistStoryFrame() {
+  return function PlaylistStoryFrameDecorator(Story: StoryRender) {
     usePlaylistStore.getState().clearPlaylist();
 
     return (
@@ -117,45 +114,48 @@ function withPlaylistApiMock(apiMock: PlaylistApiMock = {}) {
 }
 
 export const ApiSuccess: Story = {
-  decorators: [withPlaylistApiMock()],
+  decorators: [withPlaylistStoryFrame()],
 };
 
 export const ApiLoading: Story = {
-  decorators: [
-    withPlaylistApiMock({
+  args: {
+    playlistApiClient: createPlaylistApiMock({
       getPlaylist: () => createPendingPromise(),
     }),
-  ],
+  },
+  decorators: [withPlaylistStoryFrame()],
 };
 
 export const ApiError: Story = {
-  decorators: [
-    withPlaylistApiMock({
+  args: {
+    playlistApiClient: createPlaylistApiMock({
       getPlaylist: async () => {
         throw new Error('Failed to fetch');
       },
     }),
-  ],
+  },
+  decorators: [withPlaylistStoryFrame()],
 };
 
 export const Empty: Story = {
-  decorators: [
-    withPlaylistApiMock({
+  args: {
+    playlistApiClient: createPlaylistApiMock({
       getPlaylist: async () => ({ playlist: [] }),
     }),
-  ],
+  },
+  decorators: [withPlaylistStoryFrame()],
 };
 
 export const ParentPlaylistData: Story = {
   args: {
     playlistItems,
   },
-  decorators: [withPlaylistApiMock()],
+  decorators: [withPlaylistStoryFrame()],
 };
 
 export const MemberView: Story = {
   args: {
     isHost: false,
   },
-  decorators: [withPlaylistApiMock()],
+  decorators: [withPlaylistStoryFrame()],
 };

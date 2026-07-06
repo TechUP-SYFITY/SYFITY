@@ -18,6 +18,7 @@ import { Button, Input } from '@/shared/components/ui';
 import { ApiClientError } from '@/shared/types/api';
 import type { PlaylistItem } from '@/shared/types/domain';
 
+import type { PlaylistApi } from './playlistApi';
 import {
   useAddPlaylistItem,
   useDeletePlaylistItem,
@@ -32,6 +33,7 @@ interface PlaylistPanelProps {
   isHost: boolean;
   isReady: boolean;
   onPlayItem: (playlistItemId: string) => void;
+  playlistApiClient?: PlaylistApi;
 }
 
 export function PlaylistPanel({
@@ -40,6 +42,7 @@ export function PlaylistPanel({
   isHost,
   isReady,
   onPlayItem,
+  playlistApiClient,
 }: PlaylistPanelProps) {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -51,10 +54,10 @@ export function PlaylistPanel({
     isFetching,
     isLoading,
     refetch,
-  } = usePlaylist(roomId, isReady && !shouldUseParentPlaylist);
-  const addPlaylistItem = useAddPlaylistItem(roomId);
-  const deletePlaylistItem = useDeletePlaylistItem(roomId);
-  const reorderPlaylist = useReorderPlaylist(roomId);
+  } = usePlaylist(roomId, isReady && !shouldUseParentPlaylist, playlistApiClient);
+  const addPlaylistItem = useAddPlaylistItem(roomId, playlistApiClient);
+  const deletePlaylistItem = useDeletePlaylistItem(roomId, playlistApiClient);
+  const reorderPlaylist = useReorderPlaylist(roomId, playlistApiClient);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
   const visiblePlaylist = playlistItems ?? playlist;

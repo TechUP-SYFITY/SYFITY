@@ -183,7 +183,7 @@ REST `POST /rooms/join` 완료 후 Socket Room에 참여한다. 재연결 시에
 
 Host가 `room:leave`를 전송하면 서버 내부에서 `POST /rooms/:roomId/close` 로직을 실행한다. disconnect와 달리 1분 대기 없이 즉시 Room closed 처리된다.
 
-Member가 `room:leave`를 전송하면 `presence:update (left)` broadcast 후 Socket Room에서 제거된다.
+Member가 `room:leave`를 전송하면 서버는 해당 Socket을 Socket Room에서 제거한 뒤, 남아 있는 참여자에게 `presence:update (left)`를 broadcast한다.
 
 **Payload**
 

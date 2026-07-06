@@ -573,18 +573,27 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
 ### 빌드 플로우
 
 ```
-tsoa spec-and-routes  →  src/generated/routes.gen.ts + src/generated/swagger.json 생성
-tsc                   →  TypeScript 컴파일
+pnpm --filter @syfity/shared build  →  @syfity/shared 런타임 산출물 생성
+tsoa spec-and-routes                →  src/generated/routes.gen.ts + src/generated/swagger.json 생성
+tsc -p tsconfig.build.json          →  TypeScript 컴파일
+cp swagger.json                     →  dist/src/generated/swagger.json 복사
 ```
 
-`src/generated/`는 `.gitignore` 대상이며, 개발/빌드 스크립트에서 자동으로 생성한다.
+`src/generated/`는 `.gitignore` 대상이며, 개발/빌드 스크립트에서 자동으로 생성한다. `routes.gen.ts`는
+TypeScript 컴파일 대상이지만 `swagger.json`은 자동 복사되지 않으므로, 빌드 후 `dist/src/generated/`로 복사한다.
+`@syfity/shared`의 런타임 진입점은 `dist/index.js`이므로 백엔드 빌드/시작/테스트 전 shared 빌드를 먼저 실행한다.
 
 ```json
 // package.json scripts
 {
   "generate": "tsoa spec-and-routes",
   "dev": "tsoa spec-and-routes && tsx watch src/server.ts",
-  "build": "tsoa spec-and-routes && tsc"
+  "prebuild": "pnpm --filter @syfity/shared build",
+  "build": "tsoa spec-and-routes && tsc -p tsconfig.build.json",
+  "postbuild": "mkdir -p dist/src/generated && cp src/generated/swagger.json dist/src/generated/swagger.json",
+  "prestart": "pnpm --filter @syfity/shared build",
+  "start": "node dist/src/server.js",
+  "pretest": "pnpm --filter @syfity/shared build"
 }
 ```
 

@@ -52,7 +52,12 @@ const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
 const playlistRepository = new PlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
-const roomService = new RoomService(roomRepository, cache, playlistRepository, chatRepository);
+export const roomService = new RoomService(
+  roomRepository,
+  cache,
+  playlistRepository,
+  chatRepository,
+);
 const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
 let playlistService: PlaylistService | null = null;
 

@@ -92,7 +92,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       )}
       renderPlaylistPanel={() => (
         <PlaylistPanel
-          playlistItems={visiblePlaylist}
+          playlistItems={shouldShowPreviewData ? visiblePlaylist : undefined}
           roomId={roomId}
           isHost={isHost}
           isReady={hasJoinedRoom || shouldShowPreviewData}

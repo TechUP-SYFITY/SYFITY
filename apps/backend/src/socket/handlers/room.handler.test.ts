@@ -57,7 +57,7 @@ function makeSocket(): { socket: Socket; handlers: Record<string, RoomHandlerCal
     on,
   };
 
-  return { socket: socketRef as Socket, handlers };
+  return { socket: socketRef as unknown as Socket, handlers };
 }
 
 function makeIo(): {

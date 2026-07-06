@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                 |
 | --------- | ------------------------------------------------------------------------------------ |
 | 문서명    | Syfity Socket Event Spec                                                             |
-| 버전      | v1.0                                                                                 |
-| 상태      | 초안                                                                                 |
+| 버전      | v1.1                                                                                 |
+| 상태      | room:join 접근 검증/유효성 에러 코드 반영                                            |
 | 작성 목적 | Syfity MVP Socket.IO 이벤트 명세 정의                                                |
 | 기반 문서 | `01-prd.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `05-api-spec.md` |
 
@@ -168,10 +168,12 @@ REST `POST /rooms/join` 완료 후 Socket Room에 참여한다. 재연결 시에
 
 **ack 에러**
 
-| 코드                | 설명      |
-| ------------------- | --------- |
-| `ROOM_NOT_FOUND`    | Room 없음 |
-| `AUTH_UNAUTHORIZED` | 인증 실패 |
+| 코드                 | 설명                              |
+| -------------------- | --------------------------------- |
+| `ROOM_NOT_FOUND`     | Room 없음                         |
+| `ROOM_ACCESS_DENIED` | Room 참여 이력이 없거나 이미 나감 |
+| `VALIDATION_ERROR`   | roomId가 없거나 빈 문자열         |
+| `AUTH_UNAUTHORIZED`  | 인증 실패                         |
 
 ---
 
@@ -181,7 +183,7 @@ REST `POST /rooms/join` 완료 후 Socket Room에 참여한다. 재연결 시에
 
 Host가 `room:leave`를 전송하면 서버 내부에서 `POST /rooms/:roomId/close` 로직을 실행한다. disconnect와 달리 1분 대기 없이 즉시 Room closed 처리된다.
 
-Member가 `room:leave`를 전송하면 `presence:update (left)` broadcast 후 Socket Room에서 제거된다.
+Member가 `room:leave`를 전송하면 서버는 해당 Socket을 Socket Room에서 제거한 뒤, 남아 있는 참여자에게 `presence:update (left)`를 broadcast한다.
 
 **Payload**
 

@@ -11,7 +11,11 @@ import { PlayerPanel } from './PlayerPanel';
 import { usePlayerStore } from './playerStore';
 
 vi.mock('./YouTubePlayer', () => ({
-  YouTubePlayer: () => <div data-testid="youtube-player" />,
+  YouTubePlayer: ({ onEnded }: { onEnded: () => void }) => (
+    <button type="button" onClick={onEnded}>
+      mock ended
+    </button>
+  ),
 }));
 
 vi.mock('./playbackCommands', () => ({
@@ -52,12 +56,12 @@ const playlist: PlaylistItem[] = [
   },
 ];
 
-function seedPlayback(isPlaying = false) {
+function seedPlayback(isPlaying = false, playlistItemId = 'playlist-item-1') {
   usePlayerStore.getState().setPlaybackState(
     {
       currentTime: 12,
       isPlaying,
-      playlistItemId: 'playlist-item-1',
+      playlistItemId,
       videoId: 'video-1',
     },
     'room-join',
@@ -111,6 +115,17 @@ describe('PlayerPanel', () => {
     });
   });
 
+  it('마지막 곡 종료 시 0초 pause 명령으로 재생 상태를 정리한다', async () => {
+    seedPlayback(true, 'playlist-item-2');
+    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
+
+    await waitFor(() => {
+      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 0);
+    });
+  });
+
   it('Member에게는 재생 제어 버튼이 비활성화된다', () => {
     seedPlayback(false);
     render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
@@ -150,6 +165,18 @@ describe('PlayerPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Host만 재생을 제어할 수 있어요.')).toBeInTheDocument();
+    });
+  });
+
+  it('알 수 없는 제어 명령 실패 시 fallback 메시지를 표시한다', async () => {
+    seedPlayback(false);
+    vi.mocked(playbackCommands.play).mockRejectedValue(new Error('UPSTREAM_UNKNOWN'));
+    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '재생' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('재생 제어 요청에 실패했어요.')).toBeInTheDocument();
     });
   });
 });

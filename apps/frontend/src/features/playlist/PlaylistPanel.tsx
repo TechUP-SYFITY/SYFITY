@@ -61,6 +61,12 @@ export function PlaylistPanel({
   const mutationError = addPlaylistItem.error ?? deletePlaylistItem.error ?? reorderPlaylist.error;
   const mutationErrorMessage = mutationError ? getPlaylistErrorMessage(mutationError) : undefined;
 
+  const resetMutationErrors = () => {
+    addPlaylistItem.reset();
+    deletePlaylistItem.reset();
+    reorderPlaylist.reset();
+  };
+
   useEffect(() => {
     if (!shouldUseParentPlaylist && data?.playlist) {
       setPlaylist(data.playlist);
@@ -75,6 +81,7 @@ export function PlaylistPanel({
       return;
     }
 
+    resetMutationErrors();
     addPlaylistItem.mutate(
       { youtubeUrl: trimmedUrl },
       {
@@ -101,6 +108,7 @@ export function PlaylistPanel({
     }
 
     nextPlaylist.splice(nextIndex, 0, targetItem);
+    resetMutationErrors();
     reorderPlaylist.mutate({
       items: nextPlaylist.map((item, index) => ({
         id: item.id,
@@ -122,7 +130,10 @@ export function PlaylistPanel({
           size="sm"
           className="rounded-2xl"
           type="button"
-          onClick={() => setIsAddFormOpen((value) => !value)}
+          onClick={() => {
+            resetMutationErrors();
+            setIsAddFormOpen((value) => !value);
+          }}
         >
           <Plus className="h-3 w-3" aria-hidden />
           추가
@@ -198,7 +209,10 @@ export function PlaylistPanel({
               className="mt-6 rounded-2xl"
               disabled={!isReady}
               type="button"
-              onClick={() => setIsAddFormOpen(true)}
+              onClick={() => {
+                resetMutationErrors();
+                setIsAddFormOpen(true);
+              }}
             >
               <Plus className="h-4 w-4" aria-hidden />첫 번째 곡 추가
             </Button>
@@ -291,7 +305,10 @@ export function PlaylistPanel({
                     disabled={!isReady || deletePlaylistItem.isPending}
                     type="button"
                     aria-label={`${item.title} 삭제`}
-                    onClick={() => deletePlaylistItem.mutate(item.id)}
+                    onClick={() => {
+                      resetMutationErrors();
+                      deletePlaylistItem.mutate(item.id);
+                    }}
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   </Button>
@@ -305,7 +322,10 @@ export function PlaylistPanel({
       <Button
         className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-[0_0_28px_rgba(114,244,164,0.45)] lg:hidden"
         type="button"
-        onClick={() => setIsAddFormOpen((value) => !value)}
+        onClick={() => {
+          resetMutationErrors();
+          setIsAddFormOpen((value) => !value);
+        }}
       >
         <Plus className="h-4 w-4" aria-hidden />곡 추가
       </Button>

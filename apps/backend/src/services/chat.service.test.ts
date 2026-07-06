@@ -4,7 +4,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { ChatService } from './chat.service';
 import type { ChatRecord, IChatRepository } from '../types/chat';
-import type { IRoomRepository, RoomRecord } from '../types/room';
+import type { IRoomRepository, RoomDetailRecord } from '../types/room';
 
 const chat: ChatRecord = {
   id: 'message-1',
@@ -15,9 +15,10 @@ const chat: ChatRecord = {
   createdAt: new Date('2026-07-01T11:59:00.000Z'),
 };
 
-const room: RoomRecord = {
+const room: RoomDetailRecord = {
   id: 'room-1',
   name: 'Morning Jazz',
+  hostId: 'user-1',
   inviteCode: 'ABC123',
   status: 'active',
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
@@ -26,6 +27,7 @@ const room: RoomRecord = {
 function makeChatRepo(overrides: Partial<IChatRepository> = {}): IChatRepository {
   return {
     findChatsByCursor: vi.fn().mockResolvedValue([chat]),
+    findLatestChats: vi.fn().mockResolvedValue([chat]),
     ...overrides,
   };
 }
@@ -35,8 +37,14 @@ function makeRoomRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository
     existsInviteCode: vi.fn().mockResolvedValue(false),
     createRoom: vi.fn().mockResolvedValue(room),
     existsRoom: vi.fn().mockResolvedValue(true),
-    findRoomById: vi.fn().mockResolvedValue(null),
+    findRoomById: vi.fn().mockResolvedValue(room),
+    findRoomByInviteCode: vi.fn().mockResolvedValue(room),
     touchLastActivity: vi.fn().mockResolvedValue(undefined),
+    findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'offline' }),
+    upsertMembership: vi.fn().mockResolvedValue(undefined),
+    findMembers: vi.fn().mockResolvedValue([]),
+    upsertRecentRoom: vi.fn().mockResolvedValue(undefined),
+    findPlaybackState: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }
@@ -53,10 +61,12 @@ describe('ChatService', () => {
         cursorTime: '2026-07-01T12:00:00.000Z',
         cursorId: 'message-cursor',
         limit: 2,
+        userId: 'user-1',
       }),
     ).resolves.toEqual({ chats: [chat], hasMore: false });
 
-    expect(roomRepo.existsRoom).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
     expect(chatRepo.findChatsByCursor).toHaveBeenCalledWith({
       roomId: 'room-1',
       cursorTime: new Date('2026-07-01T12:00:00.000Z'),
@@ -79,6 +89,7 @@ describe('ChatService', () => {
         cursorTime: '2026-07-01T12:00:00.000Z',
         cursorId: 'message-cursor',
         limit: 2,
+        userId: 'user-1',
       }),
     ).resolves.toEqual({ chats: [chat, secondChat], hasMore: true });
   });
@@ -91,6 +102,7 @@ describe('ChatService', () => {
       roomId: 'room-1',
       cursorTime: '2026-07-01T12:00:00.000Z',
       cursorId: 'message-cursor',
+      userId: 'user-1',
     });
 
     expect(chatRepo.findChatsByCursor).toHaveBeenCalledWith(expect.objectContaining({ limit: 51 }));
@@ -105,6 +117,7 @@ describe('ChatService', () => {
       cursorTime: '2026-07-01T12:00:00.000Z',
       cursorId: 'message-cursor',
       limit: 20,
+      userId: 'user-1',
     });
 
     expect(chatRepo.findChatsByCursor).toHaveBeenCalledWith(expect.objectContaining({ limit: 21 }));
@@ -114,7 +127,7 @@ describe('ChatService', () => {
     const chatRepo = makeChatRepo();
     const service = new ChatService(
       chatRepo,
-      makeRoomRepo({ existsRoom: vi.fn().mockResolvedValue(false) }),
+      makeRoomRepo({ findRoomById: vi.fn().mockResolvedValue(null) }),
     );
 
     await expect(
@@ -123,10 +136,33 @@ describe('ChatService', () => {
         cursorTime: '2026-07-01T12:00:00.000Z',
         cursorId: 'message-cursor',
         limit: 20,
+        userId: 'user-1',
       }),
     ).rejects.toMatchObject({
       status: 404,
       code: 'ROOM_NOT_FOUND',
+    });
+    expect(chatRepo.findChatsByCursor).not.toHaveBeenCalled();
+  });
+
+  it('참여자가 아니면 ROOM_ACCESS_DENIED를 던진다', async () => {
+    const chatRepo = makeChatRepo();
+    const service = new ChatService(
+      chatRepo,
+      makeRoomRepo({ findMembership: vi.fn().mockResolvedValue(null) }),
+    );
+
+    await expect(
+      service.getChats({
+        roomId: 'room-1',
+        cursorTime: '2026-07-01T12:00:00.000Z',
+        cursorId: 'message-cursor',
+        limit: 20,
+        userId: 'user-1',
+      }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
     });
     expect(chatRepo.findChatsByCursor).not.toHaveBeenCalled();
   });
@@ -142,12 +178,13 @@ describe('ChatService', () => {
         cursorTime: 'not-a-date',
         cursorId: 'message-cursor',
         limit: 20,
+        userId: 'user-1',
       }),
     ).rejects.toMatchObject({
       status: 400,
       code: ERROR_CODES.VALIDATION_ERROR,
     });
-    expect(roomRepo.existsRoom).not.toHaveBeenCalled();
+    expect(roomRepo.findRoomById).not.toHaveBeenCalled();
     expect(chatRepo.findChatsByCursor).not.toHaveBeenCalled();
   });
 
@@ -164,6 +201,7 @@ describe('ChatService', () => {
         cursorTime: '2026-07-01T12:00:00.000Z',
         cursorId: 'message-cursor',
         limit: 20,
+        userId: 'user-1',
       }),
     ).rejects.toThrow(error);
   });

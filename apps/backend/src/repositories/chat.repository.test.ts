@@ -154,4 +154,68 @@ describe('ChatRepository', () => {
       }),
     ).rejects.toThrow(error);
   });
+
+  it('최신 메시지를 최신순으로 조회한다', async () => {
+    const rows = [makeRow()];
+    const prisma = makePrisma(rows);
+    const repo = new ChatRepository(prisma);
+
+    await expect(repo.findLatestChats('room-1', 50)).resolves.toEqual([
+      {
+        id: 'message-1',
+        userId: 'user-1',
+        nickname: 'Alice',
+        type: 'user',
+        message: 'hello',
+        createdAt: new Date('2026-07-01T11:59:00.000Z'),
+      },
+    ]);
+
+    expect(prisma.chatMessage.findMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1' },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        message: true,
+        createdAt: true,
+        user: {
+          select: { nickname: true },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 50,
+    });
+  });
+
+  it('최신 메시지가 없으면 빈 배열을 반환한다', async () => {
+    const prisma = makePrisma([]);
+    const repo = new ChatRepository(prisma);
+
+    await expect(repo.findLatestChats('room-1', 50)).resolves.toEqual([]);
+  });
+
+  it('최신 시스템 메시지는 nickname을 null로 반환한다', async () => {
+    const prisma = makePrisma([
+      makeRow({
+        id: 'message-system',
+        userId: null,
+        type: 'system',
+        message: 'Alice joined',
+        user: null,
+      }),
+    ]);
+    const repo = new ChatRepository(prisma);
+
+    await expect(repo.findLatestChats('room-1', 50)).resolves.toEqual([
+      {
+        id: 'message-system',
+        userId: null,
+        nickname: null,
+        type: 'system',
+        message: 'Alice joined',
+        createdAt: new Date('2026-07-01T11:59:00.000Z'),
+      },
+    ]);
+  });
 });

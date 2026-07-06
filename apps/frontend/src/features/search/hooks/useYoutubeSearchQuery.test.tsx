@@ -6,13 +6,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiClientError } from '@/shared/types/api';
 
 import { useYoutubeSearchQuery, youtubeSearchQueryKeys } from './useYoutubeSearchQuery';
-import { searchYoutubeVideos, type YoutubeSearchResult } from '../api/searchApi';
+import { searchApi, type YoutubeSearchResult } from '../api/searchApi';
 
 vi.mock('../api/searchApi', () => ({
-  searchYoutubeVideos: vi.fn(),
+  searchApi: {
+    searchVideos: vi.fn(),
+  },
 }));
 
-const searchYoutubeVideosMock = vi.mocked(searchYoutubeVideos);
+const searchVideosMock = vi.mocked(searchApi.searchVideos);
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -32,10 +34,11 @@ const createWrapper = () => {
 
 describe('useYoutubeSearchQuery', () => {
   beforeEach(() => {
-    searchYoutubeVideosMock.mockReset();
+    searchVideosMock.mockReset();
   });
 
   it('builds a query key from the search query', () => {
+    expect(youtubeSearchQueryKeys.all).toEqual(['youtube-search']);
     expect(youtubeSearchQueryKeys.search('lofi')).toEqual(['youtube-search', 'lofi']);
   });
 
@@ -45,7 +48,7 @@ describe('useYoutubeSearchQuery', () => {
     });
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(searchYoutubeVideosMock).not.toHaveBeenCalled();
+    expect(searchVideosMock).not.toHaveBeenCalled();
   });
 
   it('trims query and returns search results', async () => {
@@ -58,7 +61,7 @@ describe('useYoutubeSearchQuery', () => {
         duration: 180,
       },
     ];
-    searchYoutubeVideosMock.mockResolvedValue(items);
+    searchVideosMock.mockResolvedValue(items);
 
     const { result } = renderHook(() => useYoutubeSearchQuery('  lofi  '), {
       wrapper: createWrapper(),
@@ -66,7 +69,7 @@ describe('useYoutubeSearchQuery', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(searchYoutubeVideosMock).toHaveBeenCalledWith('lofi');
+    expect(searchVideosMock).toHaveBeenCalledWith('lofi');
     expect(result.current.data).toEqual(items);
   });
 
@@ -78,7 +81,7 @@ describe('useYoutubeSearchQuery', () => {
       },
       502,
     );
-    searchYoutubeVideosMock.mockRejectedValue(errorResponse);
+    searchVideosMock.mockRejectedValue(errorResponse);
 
     const { result } = renderHook(() => useYoutubeSearchQuery('error case'), {
       wrapper: createWrapper(),

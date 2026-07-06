@@ -1,4 +1,5 @@
-import { Get, Path, Query, Route, Security, SuccessResponse, Tags } from 'tsoa';
+import type { Request as ExRequest } from 'express';
+import { Get, Path, Query, Request, Route, Security, SuccessResponse, Tags } from 'tsoa';
 
 import type { GetChatsResponse } from '@syfity/shared';
 
@@ -26,15 +27,18 @@ export class ChatController {
   @SuccessResponse(200, 'OK')
   async getChats(
     @Path() roomId: string,
+    @Request() req: ExRequest,
     @Query() cursorTime: string,
     @Query() cursorId: string,
     @Query() limit?: number,
   ): Promise<GetChatsResponse> {
+    const userId = req.user!.id;
     const { chats, hasMore } = await this.chatService.getChats({
       roomId,
       cursorTime,
       cursorId,
       limit,
+      userId,
     });
 
     return {

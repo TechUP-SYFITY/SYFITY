@@ -1,8 +1,7 @@
 // Player 재생 제어 상태와 Socket 명령 실행을 관리한다.
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { playbackCommands } from './playbackCommands';
-import { usePlayerStore } from './playerStore';
 
 export type PlayerCommand = 'play' | 'pause' | 'next';
 
@@ -23,25 +22,13 @@ export function usePlayerControls({
   isPlaying,
   nextItemId,
 }: UsePlayerControlsParams) {
-  const lastEventSource = usePlayerStore((state) => state.lastEventSource);
   const [pendingCommand, setPendingCommand] = useState<PlayerCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const controlDisabled = !isHost || !hasPlayableTrack || Boolean(pendingCommand);
   const syncDisabled = !hasPlayableTrack;
-  const syncStatus = useMemo(() => {
-    if (lastEventSource === 'sync-response') {
-      return '서버 재생 위치와 동기화됐어요.';
-    }
 
-    if (lastEventSource === 'tick') {
-      return '서버 기준 재생 위치를 확인했어요.';
-    }
-
-    return syncFeedback;
-  }, [lastEventSource, syncFeedback]);
-
-  const handleSyncRequest = useCallback(() => {
+  function handleSyncRequest() {
     if (!hasPlayableTrack) {
       return;
     }
@@ -53,45 +40,42 @@ export function usePlayerControls({
     } catch (error) {
       setCommandError(getPlayerCommandErrorMessage(error));
     }
-  }, [hasPlayableTrack, roomId]);
+  }
 
-  const runHostCommand = useCallback(
-    async (command: PlayerCommand, action: () => Promise<unknown>) => {
-      if (!isHost || pendingCommand) {
-        return;
-      }
+  async function runHostCommand(command: PlayerCommand, action: () => Promise<unknown>) {
+    if (!isHost || pendingCommand) {
+      return;
+    }
 
-      setPendingCommand(command);
-      setCommandError(null);
+    setPendingCommand(command);
+    setCommandError(null);
 
-      try {
-        await action();
-      } catch (error) {
-        setCommandError(getPlayerCommandErrorMessage(error));
-      } finally {
-        setPendingCommand(null);
-      }
-    },
-    [isHost, pendingCommand],
-  );
+    try {
+      await action();
+    } catch (error) {
+      setCommandError(getPlayerCommandErrorMessage(error));
+    } finally {
+      setPendingCommand(null);
+    }
+  }
 
-  const handlePlayPause = useCallback(() => {
+  function handlePlayPause() {
     if (isPlaying) {
       void runHostCommand('pause', () => playbackCommands.pause(roomId, currentTime));
       return;
     }
 
     void runHostCommand('play', () => playbackCommands.play(roomId, currentTime));
-  }, [currentTime, isPlaying, roomId, runHostCommand]);
+  }
 
-  const handleNextTrack = useCallback(() => {
+  function handleNextTrack() {
     if (!nextItemId) {
       void runHostCommand('next', () => playbackCommands.pause(roomId, 0));
       return;
     }
 
     void runHostCommand('next', () => playbackCommands.changeTrack(roomId, nextItemId));
-  }, [nextItemId, roomId, runHostCommand]);
+  }
 
   return {
     commandError,
@@ -101,7 +85,7 @@ export function usePlayerControls({
     handleSyncRequest,
     pendingCommand,
     syncDisabled,
-    syncStatus,
+    syncStatus: syncFeedback,
   };
 }
 

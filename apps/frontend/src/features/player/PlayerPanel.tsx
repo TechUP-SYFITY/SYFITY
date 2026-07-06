@@ -2,7 +2,6 @@
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
 import { AlertTriangle, Loader2, Pause, Play, Radio, RefreshCcw, SkipForward } from 'lucide-react';
-import { useCallback } from 'react';
 
 import { Button } from '@/shared/components/ui';
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -50,16 +49,13 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
     roomId,
   });
 
-  const handlePlayerError = useCallback(
-    (errorCode: number) => {
-      if (!isHost || !playbackState?.videoId) {
-        return;
-      }
+  function handlePlayerError(errorCode: number) {
+    if (!isHost || !playbackState?.videoId) {
+      return;
+    }
 
-      void playbackCommands.reportError(roomId, playbackState.videoId, errorCode);
-    },
-    [isHost, playbackState, roomId],
-  );
+    void playbackCommands.reportError(roomId, playbackState.videoId, errorCode);
+  }
 
   return (
     <section className="mx-auto flex w-full max-w-[760px] flex-col gap-4 lg:mx-0 lg:max-w-none">

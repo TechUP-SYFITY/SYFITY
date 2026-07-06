@@ -1,7 +1,7 @@
 // Player 제어 UI가 Socket 명령 계약에 맞게 동작하는지 검증한다.
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -143,6 +143,26 @@ describe('PlayerPanel', () => {
 
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
     expect(screen.getByText('동기화 요청을 보냈어요.')).toBeInTheDocument();
+  });
+
+  it('playback:tick 수신만으로는 동기화 피드백을 표시하지 않는다', () => {
+    seedPlayback(false);
+    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+
+    act(() => {
+      usePlayerStore.getState().setPlaybackState(
+        {
+          currentTime: 22,
+          isPlaying: true,
+          playlistItemId: 'playlist-item-1',
+          videoId: 'video-1',
+        },
+        'tick',
+      );
+    });
+
+    expect(screen.queryByText('서버 기준 재생 위치를 확인했어요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('서버 재생 위치와 동기화됐어요.')).not.toBeInTheDocument();
   });
 
   it('playback:error 상태를 사용자 메시지로 표시한다', () => {

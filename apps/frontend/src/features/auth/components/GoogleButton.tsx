@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { cn } from '@/shared/lib/utils';
 
-import { authApi } from '@/features/auth/api/authApi';
+import { authApi } from '../api/authApi';
 
 // 공식 signin-assets 번들의 표준 컬러 "G" 로고 (모노크롬 금지, 색·비율 변경 금지).
 function GoogleLogo() {

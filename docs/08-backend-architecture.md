@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.5                                                                                  |
-| 상태      | Render 운영 환경변수 설정 안내 추가                                                   |
+| 버전      | v1.6                                                                                  |
+| 상태      | 서비스/레포지토리 파일명 표기와 Playback Socket 의존성 예시 정정                      |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -55,21 +55,21 @@ apps/backend/
       search.controller.ts
 
     services/           → 비즈니스 로직, Repository 호출
-      authService.ts
-      meService.ts
-      roomService.ts
-      playlistService.ts
-      chatService.ts
-      playbackService.ts  → Socket 핸들러에서 호출
-      searchService.ts    → YouTube API 직접 호출 (Repository 없음)
+      auth.service.ts
+      me.service.ts
+      room.service.ts
+      playlist.service.ts
+      chat.service.ts
+      playback.service.ts  → Socket 핸들러에서 호출
+      search.service.ts    → YouTube API 직접 호출 (Repository 없음)
 
     repositories/       → Prisma 직접 호출, DB 접근 전담
-      authRepository.ts
-      meRepository.ts
-      roomRepository.ts
-      playlistRepository.ts
-      chatRepository.ts
-      playbackRepository.ts
+      auth.repository.ts
+      me.repository.ts
+      room.repository.ts
+      playlist.repository.ts
+      chat.repository.ts
+      playback.repository.ts
 
     socket/             → Socket.IO 이벤트 처리
       index.ts          → initSocket 함수 정의, 핸들러 등록
@@ -319,11 +319,11 @@ app.use(errorHandler);
 
 **예외: search**
 
-`search`는 DB 접근 없이 YouTube API만 호출한다. `searchService.ts`가 `lib/youtube/youtube.client.ts`를 직접 호출하며, Repository 레이어가 없다.
+`search`는 DB 접근 없이 YouTube API만 호출한다. `search.service.ts`가 `lib/youtube/youtube.client.ts`를 직접 호출하며, Repository 레이어가 없다.
 
 **playback**
 
-재생 제어는 Socket 이벤트로만 처리하므로 REST 레이어(Router/Controller)가 없다. 단, PlaybackState의 DB 저장/조회가 필요하므로 `playbackService.ts`와 `playbackRepository.ts`는 존재한다. Socket 핸들러에서 Service를 호출하는 구조다.
+재생 제어는 Socket 이벤트로만 처리하므로 REST 레이어(Router/Controller)가 없다. 단, PlaybackState의 DB 저장/조회가 필요하므로 `playback.service.ts`와 `playback.repository.ts`는 존재한다. Socket 핸들러에서 Service를 호출하는 구조다.
 
 ### 에러 처리 흐름
 
@@ -433,22 +433,30 @@ socket.on('room:join', async ({ roomId }, ack) => {
 // src/socket/handlers/room.handler.ts
 import type { Server, Socket } from 'socket.io';
 
-import { roomService as defaultRoomService } from '../../ioc';
+import {
+  playbackService as defaultPlaybackService,
+  roomService as defaultRoomService,
+} from '../../ioc';
+import type { PlaybackService } from '../../services/playback.service';
 import type { RoomService } from '../../services/room.service';
 
 type RoomHandlerDeps = {
-  roomService: Pick<RoomService, 'setMemberOnline' | 'leaveRoom' | 'getPlaybackStateForSocket'>;
+  roomService: Pick<RoomService, 'setMemberOnline' | 'leaveRoom'>;
+  playbackService: Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 };
 
 export function registerRoomHandlers(
   io: Server,
   socket: Socket,
-  deps: RoomHandlerDeps = { roomService: defaultRoomService },
+  deps: RoomHandlerDeps = {
+    roomService: defaultRoomService,
+    playbackService: defaultPlaybackService,
+  },
 ) {
-  const { roomService } = deps;
+  const { roomService, playbackService } = deps;
 
   socket.on('room:join', async ({ roomId }, ack) => {
-    // roomService 호출 후 ack 응답
+    // roomService로 참여 상태 갱신, playbackService로 재생 상태 조회 후 ack 응답
   });
 
   socket.on('room:leave', async ({ roomId }) => {

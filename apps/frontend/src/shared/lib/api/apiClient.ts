@@ -3,7 +3,7 @@ import { ApiClientError, type ApiError, type ApiResponse } from '@/shared/types/
 
 const DEFAULT_API_URL = 'http://localhost:4000/api/v1';
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL;
   return baseUrl.replace(/\/$/, '');
 };

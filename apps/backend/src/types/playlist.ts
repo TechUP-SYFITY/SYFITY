@@ -33,12 +33,19 @@ export type PlaylistItemLookupRecord = {
   status: 'available' | 'unavailable';
 };
 
+export type ReorderPlaylistItemInput = {
+  id: string;
+  position: number;
+};
+
 export interface IPlaylistRepository {
   getPlaylist(roomId: string): Promise<PlaylistItemRecord[]>;
   getMaxPosition(roomId: string): Promise<number | null>;
   addItem(data: AddPlaylistItemData): Promise<PlaylistItemRecord>;
   findItemById(itemId: string): Promise<PlaylistItemLookupRecord | null>;
   markUnavailable(itemId: string): Promise<void>;
+  deleteItem(itemId: string): Promise<void>;
+  reorderItems(items: ReorderPlaylistItemInput[]): Promise<void>;
 }
 
 export function toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {

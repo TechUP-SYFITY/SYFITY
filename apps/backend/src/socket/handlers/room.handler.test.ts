@@ -17,7 +17,10 @@ type RoomJoinCallback = (
 ) => Promise<void>;
 type RoomLeaveCallback = (payload: RoomLeavePayload | null | undefined) => Promise<void>;
 type RoomHandlerCallback = RoomJoinCallback | RoomLeaveCallback;
-type RoomHandlerService = Pick<RoomService, 'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'>;
+type RoomHandlerService = Pick<
+  RoomService,
+  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+>;
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 
 const member: RoomMemberRecord = {
@@ -160,7 +163,7 @@ describe('registerRoomHandlers', () => {
       setMemberOnline: vi.fn().mockResolvedValue({ member, wasOnline: true }),
     });
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     const ack = vi.fn();
     await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
 
@@ -176,7 +179,7 @@ describe('registerRoomHandlers', () => {
       createSystemMessage: vi.fn().mockResolvedValue(null),
     });
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     const ack = vi.fn();
     await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
 

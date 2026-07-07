@@ -120,6 +120,7 @@ export class RoomController {
           id: chat.id,
           userId: chat.userId,
           nickname: chat.nickname,
+          profileImage: chat.profileImage,
           type: chat.type,
           message: chat.message,
           createdAt: chat.createdAt.toISOString(),

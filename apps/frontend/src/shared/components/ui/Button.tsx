@@ -3,7 +3,7 @@ import { Slot } from 'radix-ui';
 
 import { cn } from '@/shared/lib/utils';
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   'inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg font-bold whitespace-nowrap transition-[background,box-shadow,filter,opacity] outline-none focus-visible:ring-2 focus-visible:ring-ring active:brightness-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed aria-disabled:opacity-50 [&_svg]:shrink-0',
   {
     variants: {

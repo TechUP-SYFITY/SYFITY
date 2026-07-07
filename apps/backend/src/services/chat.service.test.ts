@@ -83,6 +83,38 @@ describe('ChatService', () => {
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
   });
 
+  it('Room lastActivity 갱신 실패는 채팅 전송을 실패시키지 않는다', async () => {
+    const error = new Error('touch failed');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const chatRepo = makeChatRepo();
+    const roomRepo = makeRoomRepo({ touchLastActivity: vi.fn().mockRejectedValue(error) });
+    const service = new ChatService(chatRepo, roomRepo);
+
+    try {
+      await expect(
+        service.sendMessage({
+          roomId: 'room-1',
+          userId: 'user-1',
+          message: 'hello',
+        }),
+      ).resolves.toEqual(chat);
+
+      expect(chatRepo.createMessage).toHaveBeenCalledWith({
+        roomId: 'room-1',
+        userId: 'user-1',
+        type: 'user',
+        message: 'hello',
+      });
+      expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ChatService.sendMessage] Room lastActivity 갱신 실패',
+        error,
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('공백 메시지는 VALIDATION_ERROR를 던지고 저장하지 않는다', async () => {
     const chatRepo = makeChatRepo();
     const roomRepo = makeRoomRepo();

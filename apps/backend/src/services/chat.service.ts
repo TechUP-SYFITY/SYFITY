@@ -43,7 +43,13 @@ export class ChatService {
       message: trimmed,
     });
 
-    await this.roomRepo.touchLastActivity(params.roomId);
+    try {
+      await this.roomRepo.touchLastActivity(params.roomId);
+    } catch (err) {
+      // 메시지 저장은 이미 성공했으므로 lastActivity 갱신 실패가 실시간 전달을 막지 않게 한다.
+      // eslint-disable-next-line no-console
+      console.error('[ChatService.sendMessage] Room lastActivity 갱신 실패', err);
+    }
 
     return record;
   }

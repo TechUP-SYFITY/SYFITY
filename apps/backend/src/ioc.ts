@@ -92,6 +92,7 @@ function getPlaylistService(): PlaylistService {
     roomRepository,
     playlistYoutubeClient,
     getIo(),
+    playbackService,
   );
 
   return playlistService;

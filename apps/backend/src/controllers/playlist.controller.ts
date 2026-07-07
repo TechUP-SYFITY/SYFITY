@@ -1,17 +1,35 @@
 import type { Request as ExRequest } from 'express';
-import { Body, Get, Path, Post, Request, Route, Security, SuccessResponse, Tags } from 'tsoa';
+import {
+  Body,
+  Delete,
+  Get,
+  Patch,
+  Path,
+  Post,
+  Request,
+  Route,
+  Security,
+  SuccessResponse,
+  Tags,
+} from 'tsoa';
 
 import type {
   AddPlaylistItemRequest,
   AddPlaylistItemResponse,
+  DeletePlaylistItemResponse,
   GetPlaylistResponse,
   PlaylistItem,
+  ReorderPlaylistRequest,
+  ReorderPlaylistResponse,
 } from '@syfity/shared';
 
 import type { PlaylistService } from '../services/playlist.service';
 import type { PlaylistItemRecord } from '../types/playlist';
 
-type PlaylistControllerService = Pick<PlaylistService, 'getPlaylist' | 'addItem'>;
+type PlaylistControllerService = Pick<
+  PlaylistService,
+  'getPlaylist' | 'addItem' | 'reorderPlaylist' | 'deleteItem'
+>;
 
 @Route('rooms/{roomId}/playlist')
 @Tags('Playlist')
@@ -50,6 +68,32 @@ export class PlaylistController {
       success: true,
       data: this.toPlaylistItem(item),
     };
+  }
+
+  @Patch('reorder')
+  @SuccessResponse(200, 'OK')
+  async reorderPlaylist(
+    @Path() roomId: string,
+    @Request() req: ExRequest,
+    @Body() body: ReorderPlaylistRequest,
+  ): Promise<ReorderPlaylistResponse> {
+    const userId = req.user!.id;
+    await this.playlistService.reorderPlaylist(roomId, userId, body.items);
+
+    return { success: true, data: { message: 'playlist reordered' } };
+  }
+
+  @Delete('{itemId}')
+  @SuccessResponse(200, 'OK')
+  async deleteItem(
+    @Path() roomId: string,
+    @Path() itemId: string,
+    @Request() req: ExRequest,
+  ): Promise<DeletePlaylistItemResponse> {
+    const userId = req.user!.id;
+    await this.playlistService.deleteItem(roomId, userId, itemId);
+
+    return { success: true, data: { message: 'playlist item deleted' } };
   }
 
   private toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {

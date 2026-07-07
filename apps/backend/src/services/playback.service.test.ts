@@ -57,6 +57,7 @@ const playlistLookup: PlaylistItemLookupRecord = {
   videoId: 'video-1',
   position: 1,
   addedBy: 'host-1',
+  status: 'available',
 };
 
 const videoDetail: YouTubeVideoDetail = {
@@ -299,6 +300,48 @@ describe('PlaybackService', () => {
     expect(playbackRepo.updateState).not.toHaveBeenCalled();
   });
 
+  it('play는 트랙 미선택 상태이면 첫 곡이 unavailable이어도 다음 available 곡으로 change-track을 수행한다', async () => {
+    const secondItem: PlaylistItemRecord = {
+      ...playlistItem,
+      id: 'playlist-item-2',
+      videoId: 'video-2',
+      position: 2,
+    };
+    const { service, playlistRepo, playbackRepo } = makeFixture({
+      playbackRecord: { ...playbackState, videoId: null, playlistItemId: null },
+      playlist: [{ ...playlistItem, status: 'unavailable' }, secondItem],
+      playlistLookup: { ...playlistLookup, id: 'playlist-item-2', videoId: 'video-2' },
+    });
+
+    await expect(service.play('room-1', 'host-1', 0)).resolves.toMatchObject({
+      broadcastEvent: 'playback:change-track',
+      payload: { videoId: 'video-2', playlistItemId: 'playlist-item-2', isPlaying: true },
+    });
+    expect(playlistRepo.getPlaylist).toHaveBeenCalledWith('room-1');
+    expect(playbackRepo.updateState).toHaveBeenCalledWith(
+      'room-1',
+      expect.objectContaining({
+        videoId: 'video-2',
+        playlistItemId: 'playlist-item-2',
+        baseCurrentTime: 0,
+        isPlaying: true,
+      }),
+    );
+  });
+
+  it('play는 트랙 미선택 상태에서 플레이리스트 전체가 unavailable이면 거부한다', async () => {
+    const { service, playbackRepo } = makeFixture({
+      playbackRecord: { ...playbackState, videoId: null, playlistItemId: null },
+      playlist: [{ ...playlistItem, status: 'unavailable' }],
+    });
+
+    await expect(service.play('room-1', 'host-1', 0)).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
+    });
+    expect(playbackRepo.updateState).not.toHaveBeenCalled();
+  });
+
   it('pause는 현재 트랙을 유지하고 일시정지 상태로 갱신한다', async () => {
     const { service, playbackRepo } = makeFixture();
 
@@ -371,6 +414,18 @@ describe('PlaybackService', () => {
   it('changeTrack은 다른 Room 항목이면 PLAYLIST_ITEM_NOT_FOUND를 던진다', async () => {
     const { service, playbackRepo } = makeFixture({
       playlistLookup: { ...playlistLookup, roomId: 'other-room' },
+    });
+
+    await expect(service.changeTrack('room-1', 'host-1', 'playlist-item-1')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
+    });
+    expect(playbackRepo.updateState).not.toHaveBeenCalled();
+  });
+
+  it('changeTrack은 unavailable 항목이면 PLAYLIST_ITEM_NOT_FOUND를 던진다', async () => {
+    const { service, playbackRepo } = makeFixture({
+      playlistLookup: { ...playlistLookup, status: 'unavailable' },
     });
 
     await expect(service.changeTrack('room-1', 'host-1', 'playlist-item-1')).rejects.toMatchObject({

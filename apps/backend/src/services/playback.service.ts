@@ -88,11 +88,12 @@ export class PlaybackService {
     const current = await this.readCurrentState(roomId);
     if (current.videoId === null) {
       const playlist = await this.playlistRepo.getPlaylist(roomId);
-      if (playlist.length === 0) {
+      const firstAvailable = playlist.find((item) => item.status === 'available');
+      if (!firstAvailable) {
         throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '재생할 곡이 없습니다.');
       }
 
-      const payload = await this.changeTrack(roomId, userId, playlist[0].id);
+      const payload = await this.changeTrack(roomId, userId, firstAvailable.id);
       return { payload, broadcastEvent: 'playback:change-track' };
     }
 
@@ -148,7 +149,7 @@ export class PlaybackService {
     await assertRoomHost(this.roomRepo, roomId, userId);
 
     const item = await this.playlistRepo.findItemById(playlistItemId);
-    if (item?.roomId !== roomId) {
+    if (item?.roomId !== roomId || item.status !== 'available') {
       throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '항목을 찾을 수 없습니다.');
     }
 

@@ -30,6 +30,7 @@ export type PlaylistItemLookupRecord = {
   videoId: string;
   position: number;
   addedBy: string;
+  status: 'available' | 'unavailable';
 };
 
 export interface IPlaylistRepository {

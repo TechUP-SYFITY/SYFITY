@@ -73,6 +73,7 @@ export class PlaylistRepository implements IPlaylistRepository {
         videoId: true,
         position: true,
         addedBy: true,
+        status: true,
       },
     });
   }

@@ -134,6 +134,7 @@ describe('PlaylistRepository', () => {
       videoId: 'video-1',
       position: 1,
       addedBy: 'user-1',
+      status: 'available',
     };
     const prisma = makePrisma({ findUniqueResult: item });
     const repo = new PlaylistRepository(prisma);
@@ -148,6 +149,7 @@ describe('PlaylistRepository', () => {
         videoId: true,
         position: true,
         addedBy: true,
+        status: true,
       },
     });
   });

@@ -38,7 +38,7 @@ interface RoomShellProps {
 export function RoomShell({
   activeMobileTab,
   chats,
-  currentUserName = '민지',
+  currentUserName = '게스트',
   isHost,
   members,
   onInviteClick,

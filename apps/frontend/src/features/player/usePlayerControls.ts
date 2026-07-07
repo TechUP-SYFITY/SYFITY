@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import { playbackCommands } from './playbackCommands';
 
-export type PlayerCommand = 'play' | 'pause' | 'next';
+export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next';
 
 interface UsePlayerControlsParams {
   roomId: string;
@@ -12,6 +12,7 @@ interface UsePlayerControlsParams {
   hasPlayableTrack: boolean;
   isPlaying: boolean;
   nextItemId?: string;
+  previousItemId?: string;
 }
 
 export function usePlayerControls({
@@ -21,6 +22,7 @@ export function usePlayerControls({
   hasPlayableTrack,
   isPlaying,
   nextItemId,
+  previousItemId,
 }: UsePlayerControlsParams) {
   const [pendingCommand, setPendingCommand] = useState<PlayerCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
@@ -68,6 +70,14 @@ export function usePlayerControls({
     void runHostCommand('play', () => playbackCommands.play(roomId, currentTime));
   }
 
+  function handlePreviousTrack() {
+    if (!hasPlayableTrack || !previousItemId) {
+      return;
+    }
+
+    void runHostCommand('previous', () => playbackCommands.changeTrack(roomId, previousItemId));
+  }
+
   function handleNextTrack() {
     if (!nextItemId) {
       void runHostCommand('next', () => playbackCommands.pause(roomId, 0));
@@ -82,6 +92,7 @@ export function usePlayerControls({
     controlDisabled,
     handleNextTrack,
     handlePlayPause,
+    handlePreviousTrack,
     handleSyncRequest,
     pendingCommand,
     syncDisabled,

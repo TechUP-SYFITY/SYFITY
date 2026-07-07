@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                 |
 | --------- | ------------------------------------------------------------------------------------ |
 | 문서명    | Syfity Socket Event Spec                                                             |
-| 버전      | v1.2                                                                                 |
-| 상태      | Playback 접근 검증/유효성 에러 코드 및 playback:error 부수 broadcast 반영            |
+| 버전      | v1.3                                                                                 |
+| 상태      | chat:send 및 시스템 메시지 동작 규칙 반영                                            |
 | 작성 목적 | Syfity MVP Socket.IO 이벤트 명세 정의                                                |
 | 기반 문서 | `01-prd.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `05-api-spec.md` |
 
@@ -604,9 +604,10 @@ FE는 optimistic update로 먼저 UI에 표시 후 ack 수신 시 실제 id/crea
 
 **ack 에러**
 
-| 코드             | 설명           |
-| ---------------- | -------------- |
-| `AUTH_FORBIDDEN` | 채팅 권한 없음 |
+| 코드                 | 설명                                                 |
+| -------------------- | ---------------------------------------------------- |
+| `VALIDATION_ERROR`   | roomId/message 누락, 공백 메시지, 300자 초과 메시지  |
+| `ROOM_ACCESS_DENIED` | Room 참여 이력이 없거나 이미 나간 사용자의 전송 시도 |
 
 ---
 
@@ -633,6 +634,7 @@ FE는 optimistic update로 먼저 UI에 표시 후 ack 수신 시 실제 id/crea
 #### `chat:system` S→C
 
 Room 상태 변화 시 서버에서 생성하여 broadcast. DB에 저장되므로 재입장 시 히스토리에 포함된다.
+시스템 메시지 저장 실패(DB 오류 등)는 Room 입장/퇴장/종료 흐름을 막지 않으며, 실패 시 `chat:system`은 broadcast되지 않는다.
 
 **Payload**
 
@@ -657,6 +659,9 @@ Room 상태 변화 시 서버에서 생성하여 broadcast. DB에 저장되므�
 | Host 일시정지  | `Host가 일시정지했습니다.`                                   |
 | Host 연결 해제 | `Host 연결이 끊겼습니다. 1분 내 재접속을 기다리는 중입니다.` |
 | Room 종료      | `Room이 종료되었습니다.`                                     |
+
+Room 종료 시 `chat:system`은 `room:closed`보다 먼저 broadcast된다.
+`room:join`은 `room_members.status`가 `online`이 아니었다가 `online`으로 바뀔 때만 입장 시스템 메시지를 생성한다. 이미 `online`인 상태의 재연결에는 입장 시스템 메시지를 생성하지 않는다.
 
 ---
 

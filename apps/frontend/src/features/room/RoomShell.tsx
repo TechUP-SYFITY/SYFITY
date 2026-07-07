@@ -3,6 +3,7 @@
 // Room 화면의 PC와 모바일 레이아웃을 features 컴포넌트로 조립한다.
 import type { ReactNode } from 'react';
 
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type {
   ChatMessage,
   PlaybackState,
@@ -11,7 +12,7 @@ import type {
   RoomMember,
 } from '@/shared/types/domain';
 
-import { MiniPlayer } from './components/MiniPlayer';
+import { MiniPlayer, type MiniPlayerPendingCommand } from './components/MiniPlayer';
 import type { RoomMobileTab } from './components/MobileTabs';
 import { RoomDesktopLayout } from './components/RoomDesktopLayout';
 import { RoomHeader } from './components/RoomHeader';
@@ -25,8 +26,16 @@ interface RoomShellProps {
   chats: ChatMessage[];
   currentUserName?: string;
   isHost: boolean;
+  miniPlayerCommandError: string | null;
+  miniPlayerControlDisabled: boolean;
+  miniPlayerNextDisabled: boolean;
+  miniPlayerPendingCommand: MiniPlayerPendingCommand;
+  miniPlayerPreviousDisabled: boolean;
   members: RoomMember[];
   onInviteClick?: () => void;
+  onMiniPlayerNextTrack: () => void;
+  onMiniPlayerPlayPause: () => void;
+  onMiniPlayerPreviousTrack: () => void;
   onMobileTabChange: (tab: RoomMobileTab) => void;
   playbackState: PlaybackState | null;
   playlist: PlaylistItem[];
@@ -40,8 +49,16 @@ export function RoomShell({
   chats,
   currentUserName = '게스트',
   isHost,
+  miniPlayerCommandError,
+  miniPlayerControlDisabled,
+  miniPlayerNextDisabled,
+  miniPlayerPendingCommand,
+  miniPlayerPreviousDisabled,
   members,
   onInviteClick,
+  onMiniPlayerNextTrack,
+  onMiniPlayerPlayPause,
+  onMiniPlayerPreviousTrack,
   onMobileTabChange,
   playbackState,
   playlist,
@@ -49,8 +66,7 @@ export function RoomShell({
   renderPlaylistPanel,
   room,
 }: RoomShellProps) {
-  const currentTrack =
-    playlist.find((item) => item.id === playbackState?.playlistItemId) ?? playlist[0];
+  const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const onlineMemberCount = members.filter((member) => member.status === 'online').length;
 
   return (
@@ -78,7 +94,19 @@ export function RoomShell({
           renderPlaylistPanel={renderPlaylistPanel}
         />
 
-        <MiniPlayer currentTrack={currentTrack} isPlaying={playbackState?.isPlaying ?? false} />
+        <MiniPlayer
+          commandError={miniPlayerCommandError}
+          controlDisabled={miniPlayerControlDisabled}
+          currentTrack={currentTrack}
+          isHost={isHost}
+          nextDisabled={miniPlayerNextDisabled}
+          onNextTrack={onMiniPlayerNextTrack}
+          onPlayPause={onMiniPlayerPlayPause}
+          onPreviousTrack={onMiniPlayerPreviousTrack}
+          pendingCommand={miniPlayerPendingCommand}
+          playbackState={playbackState}
+          previousDisabled={miniPlayerPreviousDisabled}
+        />
       </div>
     </main>
   );

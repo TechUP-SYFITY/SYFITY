@@ -4,6 +4,7 @@
 import { AlertTriangle, Loader2, Pause, Play, Radio, RefreshCcw, SkipForward } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui';
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
@@ -20,8 +21,7 @@ interface PlayerPanelProps {
 export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playbackError = usePlayerStore((state) => state.playbackError);
-  const currentTrack =
-    playlist.find((item) => item.id === playbackState?.playlistItemId) ?? playlist[0];
+  const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const posterUrl = currentTrack ? getThumbnailUrl(currentTrack) : null;
   const shouldShowPoster = Boolean(posterUrl) && !playbackState?.isPlaying;
   const currentIndex = currentTrack

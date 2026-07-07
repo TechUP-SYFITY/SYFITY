@@ -3,6 +3,7 @@
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
 import { useEffect, useRef, useState } from 'react';
 
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaybackState, PlaylistItem, RoomMember } from '@/shared/types/domain';
 
 import { playbackCommands } from '@/features/player/playbackCommands';
@@ -81,9 +82,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const visiblePlaybackState = shouldShowPreviewData ? previewPlaybackState : playbackState;
   const currentUserId = getCurrentUserId();
   const isHost = shouldShowPreviewData ? true : isCurrentUserHost(visibleMembers, currentUserId);
-  const currentTrack =
-    visiblePlaylist.find((item) => item.id === visiblePlaybackState?.playlistItemId) ??
-    visiblePlaylist[0];
+  const currentTrack = getCurrentPlaylistItem(visiblePlaylist, visiblePlaybackState);
   const currentIndex = currentTrack
     ? visiblePlaylist.findIndex((item) => item.id === currentTrack.id)
     : -1;

@@ -3,6 +3,7 @@
 // Room 화면의 PC와 모바일 레이아웃을 features 컴포넌트로 조립한다.
 import type { ReactNode } from 'react';
 
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type {
   ChatMessage,
   PlaybackState,
@@ -65,8 +66,7 @@ export function RoomShell({
   renderPlaylistPanel,
   room,
 }: RoomShellProps) {
-  const currentTrack =
-    playlist.find((item) => item.id === playbackState?.playlistItemId) ?? playlist[0];
+  const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const onlineMemberCount = members.filter((member) => member.status === 'online').length;
 
   return (

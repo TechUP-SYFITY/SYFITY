@@ -93,7 +93,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
-      sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
+      sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
     };
   }
 }

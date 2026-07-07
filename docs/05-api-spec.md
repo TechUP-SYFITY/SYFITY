@@ -5,7 +5,7 @@
 | 항목      | 내용                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
-| 버전      | v1.4                                                                                            |
+| 버전      | v1.5                                                                                            |
 | 상태      | Room 종료 API 에러 코드 실제 동작 반영                                                          |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
@@ -39,9 +39,13 @@ JWT 기반 인증. Access Token은 httpOnly 쿠키로 전달된다.
 {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
 }
 ```
+
+프로덕션에서는 Vercel Preview와 Render API가 cross-site 관계가 될 수 있으므로 `SameSite=None`을 사용한다. `secure: true`와 CORS origin 화이트리스트를 함께 적용한다.
+
+> CSRF 잔여 리스크: 바디가 없는 `POST /auth/logout`, `POST /auth/refresh`는 cross-site form 트리거 가능성이 남지만, 피해 범위가 세션 로그아웃/토큰 회전에 제한되므로 MVP 배포를 막는 하드닝 항목으로 보지 않는다. 바디 없는 상태 변경 엔드포인트를 추가하거나 CORS 정책을 완화할 때 재검토한다.
 
 **인증이 필요 없는 엔드포인트**
 

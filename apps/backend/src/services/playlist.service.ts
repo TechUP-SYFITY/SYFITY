@@ -1,5 +1,6 @@
 import { ERROR_CODES, type AddPlaylistItemRequest, type PlaylistItem } from '@syfity/shared';
 
+import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { IYouTubeClient } from '../lib/youtube/youtube.client';
 import {
@@ -9,15 +10,22 @@ import {
   type ReorderPlaylistItemInput,
 } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
+import type { PlaybackStatePayload } from '../types/socket';
 import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 
 type PlaylistRoomEmitter = {
   emit(event: 'playlist:updated', payload: { playlist: PlaylistItem[] }): boolean;
+  emit(event: 'playback:change-track' | 'playback:pause', payload: PlaybackStatePayload): boolean;
 };
 
 export type PlaylistSocketServer = {
   to(room: string): PlaylistRoomEmitter;
 };
+
+type PlaylistPlaybackService = Pick<
+  PlaybackService,
+  'getPlaybackState' | 'setTrack' | 'resetPlayback'
+>;
 
 export class PlaylistService {
   constructor(
@@ -28,6 +36,7 @@ export class PlaylistService {
     >,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
     private readonly io: PlaylistSocketServer,
+    private readonly playbackService: PlaylistPlaybackService,
   ) {}
 
   async getPlaylist(roomId: string, userId: string): Promise<PlaylistItemRecord[]> {
@@ -102,6 +111,65 @@ export class PlaylistService {
     const playlist = await this.playlistRepo.getPlaylist(roomId);
     this.io.to(`room:${roomId}`).emit('playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
+    });
+  }
+
+  async deleteItem(roomId: string, userId: string, itemId: string): Promise<void> {
+    const room = await assertActiveRoomMember(this.roomRepo, roomId, userId);
+
+    const item = await this.playlistRepo.findItemById(itemId);
+    if (item?.roomId !== roomId) {
+      throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '항목을 찾을 수 없습니다.');
+    }
+
+    const isHost = room.hostId === userId;
+    if (!isHost && item.addedBy !== userId) {
+      throw new AppError(
+        403,
+        ERROR_CODES.AUTH_FORBIDDEN,
+        '다른 사용자가 추가한 곡은 삭제할 수 없습니다.',
+      );
+    }
+
+    const playbackState = await this.playbackService.getPlaybackState(roomId);
+    if (!playbackState) {
+      throw new AppError(
+        500,
+        ERROR_CODES.SERVER_INTERNAL_ERROR,
+        'PlaybackState를 찾을 수 없습니다.',
+      );
+    }
+
+    const isCurrentTrack = playbackState.playlistItemId === itemId;
+    let statePayload: PlaybackStatePayload | null = null;
+    let broadcastEvent: 'playback:change-track' | 'playback:pause' | null = null;
+
+    if (isCurrentTrack) {
+      const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
+      const nextItem =
+        currentPlaylist.find(
+          (candidate) => candidate.position > item.position && candidate.status === 'available',
+        ) ?? null;
+
+      if (nextItem) {
+        statePayload = await this.playbackService.setTrack(roomId, nextItem.videoId, nextItem.id);
+        broadcastEvent = 'playback:change-track';
+      } else {
+        statePayload = await this.playbackService.resetPlayback(roomId);
+        broadcastEvent = 'playback:pause';
+      }
+    }
+
+    await this.playlistRepo.deleteItem(itemId);
+    await this.roomRepo.touchLastActivity(roomId);
+
+    const updatedPlaylist = await this.playlistRepo.getPlaylist(roomId);
+
+    if (broadcastEvent && statePayload) {
+      this.io.to(`room:${roomId}`).emit(broadcastEvent, statePayload);
+    }
+    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+      playlist: updatedPlaylist.map(toPlaylistItem),
     });
   }
 

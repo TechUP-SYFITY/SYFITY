@@ -36,21 +36,27 @@ const playbackState = {
   isPlaying: false,
 };
 
-const systemMessage: ChatMessageRecord = {
-  id: 'message-system',
-  userId: null,
-  nickname: null,
-  profileImage: null,
-  type: 'system',
-  message: 'Alice님이 입장했습니다.',
-  createdAt: new Date('2026-07-01T12:01:00.000Z'),
-};
+function makeSystemMessage(message: string): ChatMessageRecord {
+  return {
+    id: 'message-system',
+    userId: null,
+    nickname: null,
+    profileImage: null,
+    type: 'system',
+    message,
+    createdAt: new Date('2026-07-01T12:01:00.000Z'),
+  };
+}
 
 function makeRoomService(overrides: Partial<RoomHandlerService> = {}): RoomHandlerService {
   return {
     setMemberOnline: vi.fn().mockResolvedValue({ member, wasOnline: false }),
     leaveRoom: vi.fn().mockResolvedValue({ type: 'left', member: { ...member, status: 'left' } }),
-    createSystemMessage: vi.fn().mockResolvedValue(systemMessage),
+    createSystemMessage: vi
+      .fn()
+      .mockImplementation((_roomId: string, message: string) =>
+        Promise.resolve(makeSystemMessage(message)),
+      ),
     ...overrides,
   };
 }
@@ -272,7 +278,7 @@ describe('registerRoomHandlers', () => {
     expect(roomEmit).toHaveBeenCalledWith('chat:system', {
       id: 'message-system',
       type: 'system',
-      message: 'Alice님이 입장했습니다.',
+      message: 'Alice님이 퇴장했습니다.',
       createdAt: '2026-07-01T12:01:00.000Z',
     });
     expect(roomEmit).not.toHaveBeenCalledWith('room:closed', expect.anything());
@@ -297,7 +303,7 @@ describe('registerRoomHandlers', () => {
     expect(roomEmit).toHaveBeenCalledWith('chat:system', {
       id: 'message-system',
       type: 'system',
-      message: 'Alice님이 입장했습니다.',
+      message: 'Room이 종료되었습니다.',
       createdAt: '2026-07-01T12:01:00.000Z',
     });
     expect(roomEmit).toHaveBeenCalledWith('room:closed', {

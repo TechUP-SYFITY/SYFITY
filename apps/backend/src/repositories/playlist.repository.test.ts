@@ -48,7 +48,9 @@ function makePrisma(
       create: vi.fn().mockResolvedValue(overrides.createResult ?? playlistItem),
       findUnique: vi.fn().mockResolvedValue(overrides.findUniqueResult ?? null),
       update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
     },
+    $transaction: vi.fn(async (operations) => Promise.all(operations)),
   };
 }
 
@@ -170,5 +172,48 @@ describe('PlaylistRepository', () => {
       where: { id: 'playlist-item-1' },
       data: { status: 'unavailable' },
     });
+  });
+
+  it('플레이리스트 항목을 삭제한다', async () => {
+    const prisma = makePrisma();
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.deleteItem('playlist-item-1')).resolves.toBeUndefined();
+
+    expect(prisma.playlistItem.delete).toHaveBeenCalledWith({
+      where: { id: 'playlist-item-1' },
+    });
+  });
+
+  it('플레이리스트 항목 position을 트랜잭션으로 일괄 변경한다', async () => {
+    const prisma = makePrisma();
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(
+      repo.reorderItems([
+        { id: 'playlist-item-1', position: 2 },
+        { id: 'playlist-item-2', position: 1 },
+      ]),
+    ).resolves.toBeUndefined();
+
+    expect(prisma.playlistItem.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'playlist-item-1' },
+      data: { position: 2 },
+    });
+    expect(prisma.playlistItem.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'playlist-item-2' },
+      data: { position: 1 },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledWith([expect.any(Promise), expect.any(Promise)]);
+  });
+
+  it('빈 배열도 트랜잭션에 그대로 전달한다', async () => {
+    const prisma = makePrisma();
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.reorderItems([])).resolves.toBeUndefined();
+
+    expect(prisma.playlistItem.update).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledWith([]);
   });
 });

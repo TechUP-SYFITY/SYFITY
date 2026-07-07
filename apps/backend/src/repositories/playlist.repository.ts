@@ -4,6 +4,7 @@ import type {
   IPlaylistRepository,
   PlaylistItemLookupRecord,
   PlaylistItemRecord,
+  ReorderPlaylistItemInput,
 } from '../types/playlist';
 
 const PLAYLIST_ITEM_SELECT = {
@@ -22,8 +23,9 @@ const PLAYLIST_ITEM_SELECT = {
 export type PlaylistRepositoryPrisma = {
   playlistItem: Pick<
     PrismaClient['playlistItem'],
-    'findMany' | 'aggregate' | 'create' | 'findUnique' | 'update'
+    'findMany' | 'aggregate' | 'create' | 'findUnique' | 'update' | 'delete'
   >;
+  $transaction: <T>(operations: Promise<T>[]) => Promise<T[]>;
 };
 
 export class PlaylistRepository implements IPlaylistRepository {
@@ -83,5 +85,22 @@ export class PlaylistRepository implements IPlaylistRepository {
       where: { id: itemId },
       data: { status: 'unavailable' },
     });
+  }
+
+  async deleteItem(itemId: string): Promise<void> {
+    await this.prisma.playlistItem.delete({
+      where: { id: itemId },
+    });
+  }
+
+  async reorderItems(items: ReorderPlaylistItemInput[]): Promise<void> {
+    await this.prisma.$transaction(
+      items.map((item) =>
+        this.prisma.playlistItem.update({
+          where: { id: item.id },
+          data: { position: item.position },
+        }),
+      ),
+    );
   }
 }

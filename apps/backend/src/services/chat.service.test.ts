@@ -44,7 +44,6 @@ function makeRoomRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository
     upsertMembership: vi.fn().mockResolvedValue(undefined),
     findMembers: vi.fn().mockResolvedValue([]),
     upsertRecentRoom: vi.fn().mockResolvedValue(undefined),
-    findPlaybackState: vi.fn().mockResolvedValue(null),
     updateMemberStatus: vi.fn().mockResolvedValue(undefined),
     findMemberInfo: vi.fn().mockResolvedValue(null),
     closeRoom: vi.fn().mockResolvedValue(undefined),

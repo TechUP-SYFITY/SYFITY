@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                 |
 | --------- | ------------------------------------------------------------------------------------ |
 | 문서명    | Syfity Socket Event Spec                                                             |
-| 버전      | v1.1                                                                                 |
-| 상태      | room:join 접근 검증/유효성 에러 코드 반영                                            |
+| 버전      | v1.2                                                                                 |
+| 상태      | Playback 접근 검증/유효성 에러 코드 및 playback:error 부수 broadcast 반영            |
 | 작성 목적 | Syfity MVP Socket.IO 이벤트 명세 정의                                                |
 | 기반 문서 | `01-prd.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `05-api-spec.md` |
 
@@ -272,9 +272,15 @@ Host가 재생 버튼 클릭 시 전송.
 
 **ack 에러**
 
-| 코드             | 설명        |
-| ---------------- | ----------- |
-| `AUTH_FORBIDDEN` | Host가 아님 |
+| 코드                      | 설명                                                             |
+| ------------------------- | ---------------------------------------------------------------- |
+| `ROOM_NOT_FOUND`          | Room 없음                                                        |
+| `ROOM_ACCESS_DENIED`      | Room 참여 이력이 없거나 이미 나감                                |
+| `AUTH_FORBIDDEN`          | Host가 아님                                                      |
+| `VALIDATION_ERROR`        | roomId/currentTime 누락 또는 형식 오류                           |
+| `PLAYLIST_ITEM_NOT_FOUND` | 트랙 미선택 상태에서 플레이리스트도 비어 있어 재생할 항목이 없음 |
+
+트랙이 아직 선택되지 않은 상태(`videoId: null`)에서 `playback:play`가 호출되면 서버는 플레이리스트 첫 곡을 암묵적으로 선택하고 `playback:change-track`으로 broadcast한다. 플레이리스트도 비어 있으면 `PLAYLIST_ITEM_NOT_FOUND`로 거부한다.
 
 ---
 
@@ -318,9 +324,12 @@ Host가 일시정지 버튼 클릭 시 전송.
 
 **ack 에러**
 
-| 코드             | 설명        |
-| ---------------- | ----------- |
-| `AUTH_FORBIDDEN` | Host가 아님 |
+| 코드                 | 설명                                   |
+| -------------------- | -------------------------------------- |
+| `ROOM_NOT_FOUND`     | Room 없음                              |
+| `ROOM_ACCESS_DENIED` | Room 참여 이력이 없거나 이미 나감      |
+| `AUTH_FORBIDDEN`     | Host가 아님                            |
+| `VALIDATION_ERROR`   | roomId/currentTime 누락 또는 형식 오류 |
 
 ---
 
@@ -362,9 +371,12 @@ Host가 시크바 조작 시 전송. debounce 적용 여부는 YouTube IFrame Pl
 
 **ack 에러**
 
-| 코드             | 설명        |
-| ---------------- | ----------- |
-| `AUTH_FORBIDDEN` | Host가 아님 |
+| 코드                 | 설명                                |
+| -------------------- | ----------------------------------- |
+| `ROOM_NOT_FOUND`     | Room 없음                           |
+| `ROOM_ACCESS_DENIED` | Room 참여 이력이 없거나 이미 나감   |
+| `AUTH_FORBIDDEN`     | Host가 아님                         |
+| `VALIDATION_ERROR`   | roomId/seekTime 누락 또는 형식 오류 |
 
 ---
 
@@ -406,10 +418,13 @@ Host가 곡 변경 시 전송. next/previous는 FE에서 playlistItemId를 계�
 
 **ack 에러**
 
-| 코드                      | 설명        |
-| ------------------------- | ----------- |
-| `AUTH_FORBIDDEN`          | Host가 아님 |
-| `PLAYLIST_ITEM_NOT_FOUND` | 항목 없음   |
+| 코드                      | 설명                                      |
+| ------------------------- | ----------------------------------------- |
+| `ROOM_NOT_FOUND`          | Room 없음                                 |
+| `ROOM_ACCESS_DENIED`      | Room 참여 이력이 없거나 이미 나감         |
+| `AUTH_FORBIDDEN`          | Host가 아님                               |
+| `VALIDATION_ERROR`        | roomId/playlistItemId 누락 또는 형식 오류 |
+| `PLAYLIST_ITEM_NOT_FOUND` | 항목 없음 또는 다른 Room 소속 항목        |
 
 ---
 
@@ -486,6 +501,8 @@ Host가 곡 변경 시 전송. next/previous는 FE에서 playlistItemId를 계�
 
 Host 클라이언트에서 YouTube Player 재생 실패 감지 시 전송. Member의 재생 실패는 로컬에서만 처리.
 
+재생 실패가 실제 영상 삭제/비공개 전환으로 확인되면, 서버는 해당 플레이리스트 항목을 `unavailable`로 표시하고 `playlist:updated`를 함께 broadcast한다. Host 개인의 네트워크/지역 문제로 판단되는 경우(영상이 여전히 조회됨)에는 플레이리스트 상태를 변경하지 않는다.
+
 **Payload**
 
 ```ts
@@ -503,6 +520,15 @@ Host 클라이언트에서 YouTube Player 재생 실패 감지 시 전송. Membe
   success: true;
 }
 ```
+
+**ack 에러**
+
+| 코드                 | 설명                                         |
+| -------------------- | -------------------------------------------- |
+| `ROOM_NOT_FOUND`     | Room 없음                                    |
+| `ROOM_ACCESS_DENIED` | Room 참여 이력이 없거나 이미 나감            |
+| `AUTH_FORBIDDEN`     | Host가 아님                                  |
+| `VALIDATION_ERROR`   | roomId/videoId/errorCode 누락 또는 형식 오류 |
 
 ---
 

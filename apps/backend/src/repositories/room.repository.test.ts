@@ -43,16 +43,6 @@ type RoomMemberRow = {
   user: { nickname: string; profileImage: string | null };
 };
 
-type PlaybackStateRow = {
-  videoId: string | null;
-  playlistItemId: string | null;
-  baseCurrentTime: number;
-  isPlaying: boolean;
-  serverStartedAt: Date | null;
-  serverPausedAt: Date | null;
-  updatedAt: Date;
-};
-
 function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionPrisma {
   return {
     room: {
@@ -75,7 +65,6 @@ function makePrisma(
     membershipResult?: RoomMembershipResult | null;
     memberInfoResult?: RoomMemberRow | null;
     membersResult?: RoomMemberRow[];
-    playbackStateResult?: PlaybackStateRow | null;
     roomUpdateResult?: RoomUpdateRecord;
     roomUpdateError?: Error;
     tx?: RoomTransactionPrisma;
@@ -110,13 +99,6 @@ function makePrisma(
       },
       recentRoom: {
         upsert: vi.fn().mockResolvedValue({}),
-      },
-      playbackState: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue(
-            'playbackStateResult' in overrides ? overrides.playbackStateResult : null,
-          ),
       },
       $transaction: vi.fn((fn: (tx: RoomTransactionPrisma) => Promise<unknown>) =>
         fn(tx),
@@ -411,42 +393,6 @@ describe('RoomRepository', () => {
       create: { userId: 'user-1', roomId: 'room-1', lastJoinedAt: expect.any(Date) },
       update: { lastJoinedAt: expect.any(Date) },
     });
-  });
-
-  it('PlaybackState를 조회한다', async () => {
-    const playbackState = {
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      baseCurrentTime: 30,
-      isPlaying: true,
-      serverStartedAt: new Date('2026-07-01T12:00:00.000Z'),
-      serverPausedAt: null,
-      updatedAt: new Date('2026-07-01T12:00:01.000Z'),
-    };
-    const { prisma } = makePrisma({ playbackStateResult: playbackState });
-    const repo = new RoomRepository(prisma);
-
-    await expect(repo.findPlaybackState('room-1')).resolves.toEqual(playbackState);
-
-    expect(prisma.playbackState.findUnique).toHaveBeenCalledWith({
-      where: { roomId: 'room-1' },
-      select: {
-        videoId: true,
-        playlistItemId: true,
-        baseCurrentTime: true,
-        isPlaying: true,
-        serverStartedAt: true,
-        serverPausedAt: true,
-        updatedAt: true,
-      },
-    });
-  });
-
-  it('PlaybackState가 없으면 null을 반환한다', async () => {
-    const { prisma } = makePrisma({ playbackStateResult: null });
-    const repo = new RoomRepository(prisma);
-
-    await expect(repo.findPlaybackState('room-1')).resolves.toBeNull();
   });
 
   it('멤버 상태를 online으로 갱신할 때 leftAt은 변경하지 않는다', async () => {

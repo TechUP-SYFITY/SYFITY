@@ -1,9 +1,10 @@
 import type { Server, Socket } from 'socket.io';
 
-import { ERROR_CODES } from '@syfity/shared';
-
-import { AppError } from '../../errors/appError';
-import { roomService as defaultRoomService } from '../../ioc';
+import {
+  playbackService as defaultPlaybackService,
+  roomService as defaultRoomService,
+} from '../../ioc';
+import type { PlaybackService } from '../../services/playback.service';
 import type { RoomService } from '../../services/room.service';
 import type {
   PresenceUpdatePayload,
@@ -13,28 +14,25 @@ import type {
   RoomLeavePayload,
 } from '../../types/socket';
 import { toSocketAckError } from '../socketError';
+import { assertRoomId } from '../socketValidators';
 
-type RoomHandlerService = Pick<
-  RoomService,
-  'setMemberOnline' | 'leaveRoom' | 'getPlaybackStateForSocket'
->;
+type RoomHandlerService = Pick<RoomService, 'setMemberOnline' | 'leaveRoom'>;
+type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 
 type RoomHandlerDeps = {
   roomService: RoomHandlerService;
+  playbackService: RoomHandlerPlaybackService;
 };
-
-function assertRoomId(roomId: unknown): asserts roomId is string {
-  if (typeof roomId !== 'string' || roomId.length === 0) {
-    throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, 'roomId가 필요합니다.');
-  }
-}
 
 export function registerRoomHandlers(
   io: Server,
   socket: Socket,
-  deps: RoomHandlerDeps = { roomService: defaultRoomService },
+  deps: RoomHandlerDeps = {
+    roomService: defaultRoomService,
+    playbackService: defaultPlaybackService,
+  },
 ): void {
-  const { roomService } = deps;
+  const { roomService, playbackService } = deps;
 
   socket.on(
     'room:join',
@@ -45,7 +43,7 @@ export function registerRoomHandlers(
         const userId = socket.data.userId;
 
         const member = await roomService.setMemberOnline(roomId, userId);
-        const playbackState = await roomService.getPlaybackStateForSocket(roomId);
+        const playbackState = await playbackService.getPlaybackStateForSocket(roomId, userId);
 
         socket.join(`room:${roomId}`);
 

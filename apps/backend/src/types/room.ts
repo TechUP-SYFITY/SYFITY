@@ -1,4 +1,5 @@
 import type { ChatRecord } from './chat';
+import type { PlaybackStateResult } from './playback';
 import type { PlaylistItemRecord } from './playlist';
 
 export type RoomRecord = {
@@ -47,24 +48,6 @@ export type RoomMemberRecord = {
   status: RoomMemberStatus;
 };
 
-export type PlaybackStateRecord = {
-  videoId: string | null;
-  playlistItemId: string | null;
-  baseCurrentTime: number;
-  isPlaying: boolean;
-  serverStartedAt: Date | null;
-  serverPausedAt: Date | null;
-  updatedAt: Date;
-};
-
-export type PlaybackStateResult = {
-  videoId: string | null;
-  playlistItemId: string | null;
-  currentTime: number;
-  isPlaying: boolean;
-  updatedAt: string;
-};
-
 export type JoinRoomResult = {
   room: RoomDetailRecord;
   playbackState: PlaybackStateResult;
@@ -86,7 +69,6 @@ export interface IRoomRepository {
   upsertMembership(roomId: string, userId: string): Promise<void>;
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
   upsertRecentRoom(userId: string, roomId: string): Promise<void>;
-  findPlaybackState(roomId: string): Promise<PlaybackStateRecord | null>;
   updateMemberStatus(roomId: string, userId: string, status: RoomMemberStatus): Promise<void>;
   findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
   closeRoom(roomId: string): Promise<void>;

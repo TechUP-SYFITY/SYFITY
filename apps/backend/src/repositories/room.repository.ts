@@ -2,7 +2,6 @@ import type { PrismaClient } from '../generated/prisma/client';
 import type {
   CreateRoomData,
   IRoomRepository,
-  PlaybackStateRecord,
   RoomDetailRecord,
   RoomMemberRecord,
   RoomMemberStatus,
@@ -21,7 +20,6 @@ export type RoomRepositoryPrisma = {
   room: Pick<PrismaClient['room'], 'findUnique' | 'update'>;
   roomMember: Pick<PrismaClient['roomMember'], 'findUnique' | 'findMany' | 'upsert' | 'update'>;
   recentRoom: Pick<PrismaClient['recentRoom'], 'upsert'>;
-  playbackState: Pick<PrismaClient['playbackState'], 'findUnique'>;
   $transaction: <T>(fn: (tx: RoomTransactionPrisma) => Promise<T>) => Promise<T>;
 };
 
@@ -201,21 +199,6 @@ export class RoomRepository implements IRoomRepository {
       where: { userId_roomId: { userId, roomId } },
       create: { userId, roomId, lastJoinedAt: now },
       update: { lastJoinedAt: now },
-    });
-  }
-
-  async findPlaybackState(roomId: string): Promise<PlaybackStateRecord | null> {
-    return this.prisma.playbackState.findUnique({
-      where: { roomId },
-      select: {
-        videoId: true,
-        playlistItemId: true,
-        baseCurrentTime: true,
-        isPlaying: true,
-        serverStartedAt: true,
-        serverPausedAt: true,
-        updatedAt: true,
-      },
     });
   }
 

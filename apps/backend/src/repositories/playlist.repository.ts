@@ -2,6 +2,7 @@ import type { PrismaClient } from '../generated/prisma/client';
 import type {
   AddPlaylistItemData,
   IPlaylistRepository,
+  PlaylistItemLookupRecord,
   PlaylistItemRecord,
 } from '../types/playlist';
 
@@ -19,7 +20,10 @@ const PLAYLIST_ITEM_SELECT = {
 } as const;
 
 export type PlaylistRepositoryPrisma = {
-  playlistItem: Pick<PrismaClient['playlistItem'], 'findMany' | 'aggregate' | 'create'>;
+  playlistItem: Pick<
+    PrismaClient['playlistItem'],
+    'findMany' | 'aggregate' | 'create' | 'findUnique' | 'update'
+  >;
 };
 
 export class PlaylistRepository implements IPlaylistRepository {
@@ -57,6 +61,27 @@ export class PlaylistRepository implements IPlaylistRepository {
         addedAt: new Date(),
       },
       select: PLAYLIST_ITEM_SELECT,
+    });
+  }
+
+  findItemById(itemId: string): Promise<PlaylistItemLookupRecord | null> {
+    return this.prisma.playlistItem.findUnique({
+      where: { id: itemId },
+      select: {
+        id: true,
+        roomId: true,
+        videoId: true,
+        position: true,
+        addedBy: true,
+        status: true,
+      },
+    });
+  }
+
+  async markUnavailable(itemId: string): Promise<void> {
+    await this.prisma.playlistItem.update({
+      where: { id: itemId },
+      data: { status: 'unavailable' },
     });
   }
 }

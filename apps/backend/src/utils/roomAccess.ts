@@ -22,3 +22,16 @@ export async function assertActiveRoomMember(
 
   return room;
 }
+
+export async function assertRoomHost(
+  roomRepo: RoomAccessRepository,
+  roomId: string,
+  userId: string,
+): Promise<RoomDetailRecord> {
+  const room = await assertActiveRoomMember(roomRepo, roomId, userId);
+  if (room.hostId !== userId) {
+    throw new AppError(403, ERROR_CODES.AUTH_FORBIDDEN, 'Host만 사용할 수 있습니다.');
+  }
+
+  return room;
+}

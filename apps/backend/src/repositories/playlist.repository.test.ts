@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { PlaylistRepository, type PlaylistRepositoryPrisma } from './playlist.repository';
-import type { AddPlaylistItemData, PlaylistItemRecord } from '../types/playlist';
+import type {
+  AddPlaylistItemData,
+  PlaylistItemLookupRecord,
+  PlaylistItemRecord,
+} from '../types/playlist';
 
 const playlistItem: PlaylistItemRecord = {
   id: 'playlist-item-1',
@@ -32,6 +36,7 @@ function makePrisma(
     findManyResult?: PlaylistItemRecord[];
     maxPosition?: number | null;
     createResult?: PlaylistItemRecord;
+    findUniqueResult?: PlaylistItemLookupRecord | null;
   } = {},
 ): PlaylistRepositoryPrisma {
   return {
@@ -41,6 +46,8 @@ function makePrisma(
         _max: { position: overrides.maxPosition ?? null },
       }),
       create: vi.fn().mockResolvedValue(overrides.createResult ?? playlistItem),
+      findUnique: vi.fn().mockResolvedValue(overrides.findUniqueResult ?? null),
+      update: vi.fn().mockResolvedValue({}),
     },
   };
 }
@@ -117,6 +124,51 @@ describe('PlaylistRepository', () => {
         status: true,
         addedAt: true,
       },
+    });
+  });
+
+  it('ID로 플레이리스트 항목 조회에 필요한 필드를 조회한다', async () => {
+    const item: PlaylistItemLookupRecord = {
+      id: 'playlist-item-1',
+      roomId: 'room-1',
+      videoId: 'video-1',
+      position: 1,
+      addedBy: 'user-1',
+      status: 'available',
+    };
+    const prisma = makePrisma({ findUniqueResult: item });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.findItemById('playlist-item-1')).resolves.toEqual(item);
+
+    expect(prisma.playlistItem.findUnique).toHaveBeenCalledWith({
+      where: { id: 'playlist-item-1' },
+      select: {
+        id: true,
+        roomId: true,
+        videoId: true,
+        position: true,
+        addedBy: true,
+        status: true,
+      },
+    });
+  });
+
+  it('플레이리스트 항목이 없으면 null을 반환한다', async () => {
+    const repo = new PlaylistRepository(makePrisma({ findUniqueResult: null }));
+
+    await expect(repo.findItemById('playlist-item-1')).resolves.toBeNull();
+  });
+
+  it('플레이리스트 항목을 unavailable로 마킹한다', async () => {
+    const prisma = makePrisma();
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.markUnavailable('playlist-item-1')).resolves.toBeUndefined();
+
+    expect(prisma.playlistItem.update).toHaveBeenCalledWith({
+      where: { id: 'playlist-item-1' },
+      data: { status: 'unavailable' },
     });
   });
 });

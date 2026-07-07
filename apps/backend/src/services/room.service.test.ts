@@ -79,10 +79,22 @@ const chat: ChatRecord = {
   id: 'message-1',
   userId: 'user-1',
   nickname: 'Alice',
+  profileImage: 'https://example.com/alice.png',
   type: 'user',
   message: 'hello',
   createdAt: new Date('2026-07-01T11:59:00.000Z'),
 };
+
+const systemChat: ChatRecord = {
+  id: 'message-system',
+  userId: null,
+  nickname: null,
+  profileImage: null,
+  type: 'system',
+  message: 'Room이 종료되었습니다.',
+  createdAt: new Date('2026-07-01T12:30:00.000Z'),
+};
+
 
 function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
   return {
@@ -125,10 +137,11 @@ function makePlaylistRepo(
 }
 
 function makeChatRepo(
-  overrides: Partial<Pick<IChatRepository, 'findLatestChats'>> = {},
-): Pick<IChatRepository, 'findLatestChats'> {
+  overrides: Partial<Pick<IChatRepository, 'findLatestChats' | 'createMessage'>> = {},
+): Pick<IChatRepository, 'findLatestChats' | 'createMessage'> {
   return {
     findLatestChats: vi.fn().mockResolvedValue([chat]),
+    createMessage: vi.fn().mockResolvedValue(systemChat),
     ...overrides,
   };
 }
@@ -157,7 +170,7 @@ function makeService(
   overrides: {
     roomRepo?: Partial<IRoomRepository>;
     playlistRepo?: Partial<Pick<IPlaylistRepository, 'getPlaylist'>>;
-    chatRepo?: Partial<Pick<IChatRepository, 'findLatestChats'>>;
+    chatRepo?: Partial<Pick<IChatRepository, 'findLatestChats' | 'createMessage'>>;
     playbackService?: ReturnType<typeof makePlaybackService>;
     cache?: ICache;
     io?: RoomSocketServer;
@@ -447,13 +460,29 @@ describe('RoomService', () => {
   it('멤버를 online으로 전환하고 멤버 정보를 반환한다', async () => {
     const { service, roomRepo } = makeService();
 
-    await expect(service.setMemberOnline('room-1', 'user-1')).resolves.toEqual(member);
+    await expect(service.setMemberOnline('room-1', 'user-1')).resolves.toEqual({
+      member,
+      wasOnline: false,
+    });
 
     expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
     expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'online');
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-1');
+  });
+
+  it('online 전환 전 상태가 online이면 wasOnline true를 반환한다', async () => {
+    const { service } = makeService({
+      roomRepo: {
+        findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'online' }),
+      },
+    });
+
+    await expect(service.setMemberOnline('room-1', 'user-1')).resolves.toEqual({
+      member,
+      wasOnline: true,
+    });
   });
 
   it('online 전환 시 Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {
@@ -553,6 +582,38 @@ describe('RoomService', () => {
     expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
   });
 
+  it('시스템 메시지를 저장하고 결과를 반환한다', async () => {
+    const { service, chatRepo } = makeService();
+
+    await expect(service.createSystemMessage('room-1', 'Room이 종료되었습니다.')).resolves.toEqual(
+      systemChat,
+    );
+
+    expect(chatRepo.createMessage).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      userId: null,
+      type: 'system',
+      message: 'Room이 종료되었습니다.',
+    });
+  });
+
+  it('시스템 메시지 저장 실패는 null을 반환하고 에러를 전파하지 않는다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { service } = makeService({
+      chatRepo: { createMessage: vi.fn().mockRejectedValue(new Error('db failed')) },
+    });
+
+    await expect(
+      service.createSystemMessage('room-1', 'Room이 종료되었습니다.'),
+    ).resolves.toBeNull();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      '[RoomService.createSystemMessage] 시스템 메시지 생성 실패',
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
+  });
+
   it('Host가 아닌 사용자가 Room을 닫으려 하면 AUTH_FORBIDDEN을 던진다', async () => {
     const { service, roomRepo } = makeService();
 
@@ -575,9 +636,9 @@ describe('RoomService', () => {
     expect(roomRepo.closeRoom).not.toHaveBeenCalled();
   });
 
-  it('REST Room 종료 성공 시 room:closed를 broadcast하고 Socket Room을 해제한다', async () => {
+  it('REST Room 종료 성공 시 chat:system과 room:closed를 broadcast하고 Socket Room을 해제한다', async () => {
     const { io, emitter } = makeIo();
-    const { service, roomRepo, playbackService, cache } = makeService({ io });
+    const { service, roomRepo, chatRepo, playbackService, cache } = makeService({ io });
 
     await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).resolves.toBeUndefined();
 
@@ -585,11 +646,45 @@ describe('RoomService', () => {
     expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
     expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
     expect(io.to).toHaveBeenCalledWith('room:room-1');
+    expect(chatRepo.createMessage).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      userId: null,
+      type: 'system',
+      message: 'Room이 종료되었습니다.',
+    });
+    expect(emitter.emit).toHaveBeenCalledWith('chat:system', {
+      id: 'message-system',
+      type: 'system',
+      message: 'Room이 종료되었습니다.',
+      createdAt: '2026-07-01T12:30:00.000Z',
+    });
+    expect(emitter.emit).toHaveBeenCalledWith('room:closed', {
+      roomId: 'room-1',
+      reason: 'host-closed',
+    });
+    const systemCallOrder = emitter.emit.mock.invocationCallOrder[0];
+    const closedCallOrder = emitter.emit.mock.invocationCallOrder[1];
+    expect(systemCallOrder).toBeLessThan(closedCallOrder);
+    expect(io.socketsLeave).toHaveBeenCalledWith('room:room-1');
+  });
+
+  it('REST Room 종료 시 시스템 메시지 생성 실패에도 room:closed를 broadcast한다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { io, emitter } = makeIo();
+    const { service } = makeService({
+      io,
+      chatRepo: { createMessage: vi.fn().mockRejectedValue(new Error('db failed')) },
+    });
+
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).resolves.toBeUndefined();
+
+    expect(emitter.emit).not.toHaveBeenCalledWith('chat:system', expect.anything());
     expect(emitter.emit).toHaveBeenCalledWith('room:closed', {
       roomId: 'room-1',
       reason: 'host-closed',
     });
     expect(io.socketsLeave).toHaveBeenCalledWith('room:room-1');
+    consoleError.mockRestore();
   });
 
   it('REST Room 종료 시 Room이 없으면 broadcast하지 않는다', async () => {

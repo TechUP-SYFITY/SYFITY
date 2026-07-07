@@ -13,10 +13,11 @@ import type {
   RoomJoinPayload,
   RoomLeavePayload,
 } from '../../types/socket';
+import { toChatSystemPayload } from '../../utils/chatPayload';
 import { toSocketAckError } from '../socketError';
 import { assertRoomId } from '../socketValidators';
 
-type RoomHandlerService = Pick<RoomService, 'setMemberOnline' | 'leaveRoom'>;
+type RoomHandlerService = Pick<RoomService, 'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'>;
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 
 type RoomHandlerDeps = {
@@ -42,7 +43,7 @@ export function registerRoomHandlers(
         const { roomId } = payload;
         const userId = socket.data.userId;
 
-        const member = await roomService.setMemberOnline(roomId, userId);
+        const { member, wasOnline } = await roomService.setMemberOnline(roomId, userId);
         const playbackState = await playbackService.getPlaybackStateForSocket(roomId, userId);
 
         socket.join(`room:${roomId}`);
@@ -55,6 +56,16 @@ export function registerRoomHandlers(
           status: member.status,
         };
         io.to(`room:${roomId}`).emit('presence:update', presencePayload);
+
+        if (!wasOnline) {
+          const systemMessage = await roomService.createSystemMessage(
+            roomId,
+            `${member.nickname}님이 입장했습니다.`,
+          );
+          if (systemMessage) {
+            io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
+          }
+        }
 
         ack({ success: true, data: { playbackState } });
       } catch (err) {
@@ -75,6 +86,14 @@ export function registerRoomHandlers(
       socket.leave(`room:${roomId}`);
 
       if (result.type === 'closed') {
+        const systemMessage = await roomService.createSystemMessage(
+          roomId,
+          'Room이 종료되었습니다.',
+        );
+        if (systemMessage) {
+          io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
+        }
+
         const closedPayload: RoomClosedPayload = { roomId, reason: 'host-left' };
         io.to(`room:${roomId}`).emit('room:closed', closedPayload);
         io.socketsLeave(`room:${roomId}`);
@@ -89,6 +108,14 @@ export function registerRoomHandlers(
         status: result.member.status,
       };
       io.to(`room:${roomId}`).emit('presence:update', presencePayload);
+
+      const systemMessage = await roomService.createSystemMessage(
+        roomId,
+        `${result.member.nickname}님이 퇴장했습니다.`,
+      );
+      if (systemMessage) {
+        io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
+      }
     } catch (err) {
       // room:leave는 ack가 없는 이벤트다. 클라이언트에 에러를 알릴 채널이 없으므로
       // broadcast로 대체하지 않고 서버 로그만 남긴다.

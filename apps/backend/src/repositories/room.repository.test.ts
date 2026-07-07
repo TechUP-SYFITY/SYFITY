@@ -5,7 +5,7 @@ import {
   type RoomRepositoryPrisma,
   type RoomTransactionPrisma,
 } from './room.repository';
-import type { RoomDetailRecord, RoomRecord } from '../types/room';
+import type { RoomDetailRecord, RoomRecord, RoomUpdateRecord } from '../types/room';
 
 const createdRoom: RoomRecord = {
   id: 'room-1',
@@ -22,6 +22,12 @@ const roomDetail: RoomDetailRecord = {
   inviteCode: 'ABC123',
   status: 'active',
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
+};
+
+const updatedRoom: RoomUpdateRecord = {
+  id: 'room-1',
+  name: 'Evening Jazz',
+  updatedAt: new Date('2026-07-01T12:30:00.000Z'),
 };
 
 type RoomMembershipResult = {
@@ -70,17 +76,25 @@ function makePrisma(
     memberInfoResult?: RoomMemberRow | null;
     membersResult?: RoomMemberRow[];
     playbackStateResult?: PlaybackStateRow | null;
+    roomUpdateResult?: RoomUpdateRecord;
+    roomUpdateError?: Error;
     tx?: RoomTransactionPrisma;
   } = {},
 ): { prisma: RoomRepositoryPrisma; tx: RoomTransactionPrisma } {
   const findUniqueResult = 'findUniqueResult' in overrides ? overrides.findUniqueResult : null;
   const tx = overrides.tx ?? makeTransactionPrisma();
+  const roomUpdate = vi.fn();
+  if (overrides.roomUpdateError) {
+    roomUpdate.mockRejectedValue(overrides.roomUpdateError);
+  } else {
+    roomUpdate.mockResolvedValue(overrides.roomUpdateResult ?? {});
+  }
 
   return {
     prisma: {
       room: {
         findUnique: vi.fn().mockResolvedValue(findUniqueResult),
-        update: vi.fn().mockResolvedValue({}),
+        update: roomUpdate,
       },
       roomMember: {
         findUnique: vi
@@ -282,6 +296,27 @@ describe('RoomRepository', () => {
       where: { id: 'room-1' },
       data: { lastActivityAt: expect.any(Date) },
     });
+  });
+
+  it('Room 이름을 수정하고 갱신된 정보를 반환한다', async () => {
+    const { prisma } = makePrisma({ roomUpdateResult: updatedRoom });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.updateRoomName('room-1', 'Evening Jazz')).resolves.toEqual(updatedRoom);
+
+    expect(prisma.room.update).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      data: { name: 'Evening Jazz' },
+      select: { id: true, name: true, updatedAt: true },
+    });
+  });
+
+  it('Room 이름 수정 중 Prisma 오류를 그대로 전파한다', async () => {
+    const error = new Error('update failed');
+    const { prisma } = makePrisma({ roomUpdateError: error });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.updateRoomName('room-1', 'Evening Jazz')).rejects.toThrow(error);
   });
 
   it('Room 멤버십을 조회한다', async () => {

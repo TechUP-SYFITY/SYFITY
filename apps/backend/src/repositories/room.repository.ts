@@ -8,6 +8,7 @@ import type {
   RoomMemberStatus,
   RoomMembershipRecord,
   RoomRecord,
+  RoomUpdateRecord,
 } from '../types/room';
 
 export type RoomTransactionPrisma = {
@@ -132,6 +133,14 @@ export class RoomRepository implements IRoomRepository {
     await this.prisma.room.update({
       where: { id: roomId },
       data: { lastActivityAt: new Date() },
+    });
+  }
+
+  async updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord> {
+    return this.prisma.room.update({
+      where: { id: roomId },
+      data: { name },
+      select: { id: true, name: true, updatedAt: true },
     });
   }
 

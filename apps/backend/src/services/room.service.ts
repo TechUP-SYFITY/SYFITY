@@ -17,8 +17,9 @@ import type {
   RoomDetailRecord,
   RoomMemberRecord,
   RoomRecord,
+  RoomUpdateRecord,
 } from '../types/room';
-import type { PlaybackStatePayload } from '../types/socket';
+import type { PlaybackStatePayload, RoomClosedPayload } from '../types/socket';
 import { assertActiveRoomMember } from '../utils/roomAccess';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
@@ -33,12 +34,22 @@ const INITIAL_PLAYBACK_STATE: PlaybackStateCache = {
   serverPausedAt: null,
 };
 
+type RoomClosedEmitter = {
+  emit(event: 'room:closed', payload: RoomClosedPayload): boolean;
+};
+
+export type RoomSocketServer = {
+  to(room: string): RoomClosedEmitter;
+  socketsLeave(room: string): void;
+};
+
 export class RoomService {
   constructor(
     private readonly roomRepo: IRoomRepository,
     private readonly cache: ICache,
     private readonly playlistRepo: Pick<IPlaylistRepository, 'getPlaylist'>,
     private readonly chatRepo: Pick<IChatRepository, 'findLatestChats'>,
+    private readonly io?: RoomSocketServer,
   ) {}
 
   async createRoom(userId: string, name: string): Promise<RoomRecord> {
@@ -103,6 +114,18 @@ export class RoomService {
     return room;
   }
 
+  async updateRoom(roomId: string, userId: string, name: string): Promise<RoomUpdateRecord> {
+    const room = await this.roomRepo.findRoomById(roomId);
+    if (!room) {
+      throw new AppError(404, ERROR_CODES.ROOM_NOT_FOUND, '존재하지 않는 Room입니다.');
+    }
+    if (room.hostId !== userId) {
+      throw new AppError(403, ERROR_CODES.AUTH_FORBIDDEN, 'Host만 Room 정보를 수정할 수 있습니다.');
+    }
+
+    return this.roomRepo.updateRoomName(roomId, name);
+  }
+
   async setMemberOnline(roomId: string, userId: string): Promise<RoomMemberRecord> {
     await assertActiveRoomMember(this.roomRepo, roomId, userId);
     await this.roomRepo.updateMemberStatus(roomId, userId, 'online');
@@ -136,6 +159,22 @@ export class RoomService {
     this.cache.del(CacheKeys.presence(roomId));
 
     return room;
+  }
+
+  async closeRoomAndBroadcast(roomId: string, userId: string): Promise<void> {
+    if (!this.io) {
+      throw new AppError(
+        500,
+        ERROR_CODES.SERVER_INTERNAL_ERROR,
+        'Socket 서버가 초기화되지 않았습니다.',
+      );
+    }
+
+    await this.closeRoom(roomId, userId);
+
+    const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
+    this.io.to(`room:${roomId}`).emit('room:closed', payload);
+    this.io.socketsLeave(`room:${roomId}`);
   }
 
   async getPlaybackStateForSocket(roomId: string): Promise<PlaybackStatePayload> {

@@ -71,3 +71,27 @@ export type GetRoomResponse = {
     createdAt: string;
   };
 };
+
+export type UpdateRoomRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 50
+   */
+  name: string;
+};
+
+export type UpdateRoomResponse = {
+  success: true;
+  data: {
+    id: string;
+    name: string;
+    updatedAt: string;
+  };
+};
+
+export type CloseRoomResponse = {
+  success: true;
+  data: {
+    message: string;
+  };
+};

@@ -6,9 +6,10 @@ import {
   toPlaylistItem,
   type IPlaylistRepository,
   type PlaylistItemRecord,
+  type ReorderPlaylistItemInput,
 } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
-import { assertActiveRoomMember } from '../utils/roomAccess';
+import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 
 type PlaylistRoomEmitter = {
   emit(event: 'playlist:updated', payload: { playlist: PlaylistItem[] }): boolean;
@@ -75,6 +76,33 @@ export class PlaylistService {
     });
 
     return item;
+  }
+
+  async reorderPlaylist(
+    roomId: string,
+    userId: string,
+    items: ReorderPlaylistItemInput[],
+  ): Promise<void> {
+    await assertRoomHost(this.roomRepo, roomId, userId);
+
+    const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
+    const currentIdSet = new Set(currentPlaylist.map((item) => item.id));
+    const requestIdSet = new Set(items.map((item) => item.id));
+    const isSameSet =
+      requestIdSet.size === currentIdSet.size &&
+      [...requestIdSet].every((id) => currentIdSet.has(id));
+
+    if (!isSameSet) {
+      throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '일부 항목을 찾을 수 없습니다.');
+    }
+
+    await this.playlistRepo.reorderItems(items);
+    await this.roomRepo.touchLastActivity(roomId);
+
+    const playlist = await this.playlistRepo.getPlaylist(roomId);
+    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+      playlist: playlist.map(toPlaylistItem),
+    });
   }
 
   private resolveVideoId(request: AddPlaylistItemRequest): string {

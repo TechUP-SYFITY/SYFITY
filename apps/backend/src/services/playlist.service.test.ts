@@ -29,6 +29,16 @@ const playlistItem: PlaylistItemRecord = {
   addedAt: new Date('2026-07-01T12:00:00.000Z'),
 };
 
+const secondPlaylistItem: PlaylistItemRecord = {
+  ...playlistItem,
+  id: 'playlist-item-2',
+  videoId: 'video-2',
+  title: 'Song Two',
+  channelTitle: 'Channel Two',
+  position: 2,
+  addedBy: 'user-2',
+};
+
 const videoDetail: YouTubeVideoDetail = {
   videoId: 'video-1',
   title: 'Song One',
@@ -53,6 +63,8 @@ function makeFixture(
     addItem: vi.fn().mockResolvedValue(overrides.addedItem ?? playlistItem),
     findItemById: vi.fn().mockResolvedValue(null),
     markUnavailable: vi.fn().mockResolvedValue(undefined),
+    deleteItem: vi.fn().mockResolvedValue(undefined),
+    reorderItems: vi.fn().mockResolvedValue(undefined),
   } satisfies IPlaylistRepository;
 
   const roomRepo = {
@@ -271,5 +283,131 @@ describe('PlaylistService', () => {
         },
       ],
     });
+  });
+
+  it('Room이 없으면 순서 변경에서 ROOM_NOT_FOUND를 반환한다', async () => {
+    const { service, playlistRepo } = makeFixture({ room: null });
+
+    await expect(
+      service.reorderPlaylist('room-1', 'user-1', [{ id: 'playlist-item-1', position: 1 }]),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
+
+  it('참여자가 아니면 순서 변경에서 ROOM_ACCESS_DENIED를 반환한다', async () => {
+    const { service, roomRepo, playlistRepo } = makeFixture();
+    roomRepo.findMembership.mockResolvedValue(null);
+
+    await expect(
+      service.reorderPlaylist('room-1', 'user-1', [{ id: 'playlist-item-1', position: 1 }]),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
+
+  it('Host가 아니면 순서 변경에서 AUTH_FORBIDDEN을 반환한다', async () => {
+    const { service, playlistRepo } = makeFixture();
+
+    await expect(
+      service.reorderPlaylist('room-1', 'user-2', [{ id: 'playlist-item-1', position: 1 }]),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
+
+  it('순서 변경 요청에 존재하지 않는 항목이 있으면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
+    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem] });
+
+    await expect(
+      service.reorderPlaylist('room-1', 'user-1', [{ id: 'missing-item', position: 1 }]),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
+
+  it('순서 변경 요청에서 일부 항목이 누락되면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
+    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem, secondPlaylistItem] });
+
+    await expect(
+      service.reorderPlaylist('room-1', 'user-1', [{ id: 'playlist-item-1', position: 1 }]),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
+
+  it('순서 변경 요청에 중복 항목이 있으면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
+    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem, secondPlaylistItem] });
+
+    await expect(
+      service.reorderPlaylist('room-1', 'user-1', [
+        { id: 'playlist-item-1', position: 2 },
+        { id: 'playlist-item-1', position: 1 },
+      ]),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
+
+  it('Host가 전체 항목 id를 보내면 position 값을 그대로 저장하고 playlist:updated를 broadcast한다', async () => {
+    const items = [
+      { id: 'playlist-item-1', position: 2 },
+      { id: 'playlist-item-2', position: 1 },
+    ];
+    const { service, playlistRepo, roomRepo, io, emit } = makeFixture({
+      playlist: [playlistItem, secondPlaylistItem],
+    });
+
+    await expect(service.reorderPlaylist('room-1', 'user-1', items)).resolves.toBeUndefined();
+
+    expect(playlistRepo.reorderItems).toHaveBeenCalledWith(items);
+    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
+    expect(io.to).toHaveBeenCalledWith('room:room-1');
+    expect(emit).toHaveBeenCalledWith('playlist:updated', {
+      playlist: [
+        {
+          id: 'playlist-item-1',
+          videoId: 'video-1',
+          title: 'Song One',
+          channelTitle: 'Channel One',
+          thumbnailUrl: 'https://example.com/thumb.jpg',
+          duration: 180,
+          position: 1,
+          addedBy: 'user-1',
+          status: 'available',
+        },
+        {
+          id: 'playlist-item-2',
+          videoId: 'video-2',
+          title: 'Song Two',
+          channelTitle: 'Channel Two',
+          thumbnailUrl: 'https://example.com/thumb.jpg',
+          duration: 180,
+          position: 2,
+          addedBy: 'user-2',
+          status: 'available',
+        },
+      ],
+    });
+  });
+
+  it('빈 플레이리스트에 빈 순서 변경 요청을 허용한다', async () => {
+    const { service, playlistRepo } = makeFixture({ playlist: [] });
+
+    await expect(service.reorderPlaylist('room-1', 'user-1', [])).resolves.toBeUndefined();
+
+    expect(playlistRepo.reorderItems).toHaveBeenCalledWith([]);
   });
 });

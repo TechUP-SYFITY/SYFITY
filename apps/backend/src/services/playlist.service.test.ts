@@ -35,6 +35,7 @@ const videoDetail: YouTubeVideoDetail = {
   channelTitle: 'Channel One',
   thumbnailUrl: 'https://example.com/thumb.jpg',
   duration: 180,
+  embeddable: true,
 };
 
 function makeFixture(
@@ -50,6 +51,8 @@ function makeFixture(
     getPlaylist: vi.fn().mockResolvedValue(overrides.playlist ?? [playlistItem]),
     getMaxPosition: vi.fn().mockResolvedValue(overrides.maxPosition ?? null),
     addItem: vi.fn().mockResolvedValue(overrides.addedItem ?? playlistItem),
+    findItemById: vi.fn().mockResolvedValue(null),
+    markUnavailable: vi.fn().mockResolvedValue(undefined),
   } satisfies IPlaylistRepository;
 
   const roomRepo = {
@@ -218,6 +221,20 @@ describe('PlaylistService', () => {
         code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
       },
     );
+  });
+
+  it('임베드가 금지된 영상이면 PLAYLIST_VIDEO_UNAVAILABLE을 반환한다', async () => {
+    const { service, playlistRepo } = makeFixture({
+      videoDetails: [{ ...videoDetail, embeddable: false }],
+    });
+
+    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
+      {
+        status: 400,
+        code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
+      },
+    );
+    expect(playlistRepo.addItem).not.toHaveBeenCalled();
   });
 
   it('기존 항목이 있으면 최대 position + 1로 추가한다', async () => {

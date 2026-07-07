@@ -15,6 +15,7 @@ export type YouTubeVideoDetail = {
   channelTitle: string;
   thumbnailUrl: string;
   duration: number;
+  embeddable: boolean;
 };
 
 export interface IYouTubeClient {
@@ -56,6 +57,9 @@ type YouTubeVideosResponse = {
     };
     contentDetails?: {
       duration?: string;
+    };
+    status?: {
+      embeddable?: boolean;
     };
   }>;
 };
@@ -101,7 +105,7 @@ export class YouTubeClient implements IYouTubeClient {
     const url = new URL('https://www.googleapis.com/youtube/v3/videos');
     url.search = new URLSearchParams({
       id: videoIds.join(','),
-      part: 'snippet,contentDetails',
+      part: 'snippet,contentDetails,status',
       key: this.apiKey,
     }).toString();
 
@@ -120,6 +124,7 @@ export class YouTubeClient implements IYouTubeClient {
         channelTitle: item.snippet?.channelTitle ?? '',
         thumbnailUrl: this.getThumbnailUrl(item.snippet?.thumbnails),
         duration: this.parseDuration(item.contentDetails?.duration ?? ''),
+        embeddable: item.status?.embeddable ?? true,
       }));
   }
 

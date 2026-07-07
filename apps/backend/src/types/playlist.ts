@@ -1,3 +1,5 @@
+import type { PlaylistItem } from '@syfity/shared';
+
 export type PlaylistItemRecord = {
   id: string;
   videoId: string;
@@ -22,8 +24,32 @@ export type AddPlaylistItemData = {
   addedBy: string;
 };
 
+export type PlaylistItemLookupRecord = {
+  id: string;
+  roomId: string;
+  videoId: string;
+  position: number;
+  addedBy: string;
+};
+
 export interface IPlaylistRepository {
   getPlaylist(roomId: string): Promise<PlaylistItemRecord[]>;
   getMaxPosition(roomId: string): Promise<number | null>;
   addItem(data: AddPlaylistItemData): Promise<PlaylistItemRecord>;
+  findItemById(itemId: string): Promise<PlaylistItemLookupRecord | null>;
+  markUnavailable(itemId: string): Promise<void>;
+}
+
+export function toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {
+  return {
+    id: item.id,
+    videoId: item.videoId,
+    title: item.title,
+    channelTitle: item.channelTitle,
+    thumbnailUrl: item.thumbnailUrl,
+    duration: item.duration,
+    position: item.position,
+    addedBy: item.addedBy,
+    status: item.status,
+  };
 }

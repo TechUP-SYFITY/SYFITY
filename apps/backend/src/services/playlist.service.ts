@@ -2,7 +2,11 @@ import { ERROR_CODES, type AddPlaylistItemRequest, type PlaylistItem } from '@sy
 
 import { AppError } from '../errors/appError';
 import type { IYouTubeClient } from '../lib/youtube/youtube.client';
-import type { IPlaylistRepository, PlaylistItemRecord } from '../types/playlist';
+import {
+  toPlaylistItem,
+  type IPlaylistRepository,
+  type PlaylistItemRecord,
+} from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
 import { assertActiveRoomMember } from '../utils/roomAccess';
 
@@ -43,6 +47,13 @@ export class PlaylistService {
     if (!video || video.duration === 0) {
       throw new AppError(400, ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE, '재생할 수 없는 영상입니다.');
     }
+    if (!video.embeddable) {
+      throw new AppError(
+        400,
+        ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
+        '임베드가 금지된 영상입니다.',
+      );
+    }
 
     const maxPosition = await this.playlistRepo.getMaxPosition(roomId);
     const item = await this.playlistRepo.addItem({
@@ -60,7 +71,7 @@ export class PlaylistService {
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
     this.io.to(`room:${roomId}`).emit('playlist:updated', {
-      playlist: playlist.map((playlistItem) => this.toPlaylistItem(playlistItem)),
+      playlist: playlist.map(toPlaylistItem),
     });
 
     return item;
@@ -116,19 +127,5 @@ export class PlaylistService {
 
   private nonEmpty(value: string | null | undefined): string | null {
     return value === undefined || value === null || value === '' ? null : value;
-  }
-
-  private toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {
-    return {
-      id: item.id,
-      videoId: item.videoId,
-      title: item.title,
-      channelTitle: item.channelTitle,
-      thumbnailUrl: item.thumbnailUrl,
-      duration: item.duration,
-      position: item.position,
-      addedBy: item.addedBy,
-      status: item.status,
-    };
   }
 }

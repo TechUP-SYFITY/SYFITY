@@ -8,6 +8,7 @@ import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
+import { PlaybackRepository } from './repositories/playback.repository';
 import { PlaylistRepository } from './repositories/playlist.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
@@ -15,6 +16,7 @@ import { UserRepository } from './repositories/user.repository';
 import { AuthService } from './services/auth.service';
 import { ChatService } from './services/chat.service';
 import { HealthService } from './services/health.service';
+import { PlaybackService } from './services/playback.service';
 import { PlaylistService } from './services/playlist.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
@@ -52,14 +54,23 @@ const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
 const playlistRepository = new PlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
+const playbackRepository = new PlaybackRepository(prisma);
+const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
+export const playbackService = new PlaybackService(
+  playbackRepository,
+  roomRepository,
+  playlistRepository,
+  cache,
+  playlistYoutubeClient,
+);
 export const roomService = new RoomService(
   roomRepository,
   cache,
   playlistRepository,
   chatRepository,
+  playbackService,
 );
 let roomServiceWithIo: RoomService | null = null;
-const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
 let playlistService: PlaylistService | null = null;
 
 function getRoomServiceWithIo(): RoomService {
@@ -68,6 +79,7 @@ function getRoomServiceWithIo(): RoomService {
     cache,
     playlistRepository,
     chatRepository,
+    playbackService,
     getIo(),
   );
 

@@ -15,10 +15,47 @@ export type PlaybackStatePayload = {
   playlistItemId: string | null;
 };
 
+export type PlaybackPlayPayload = {
+  roomId: string;
+  currentTime: number;
+};
+
+export type PlaybackPausePayload = {
+  roomId: string;
+  currentTime: number;
+};
+
+export type PlaybackSeekPayload = {
+  roomId: string;
+  seekTime: number;
+};
+
+export type PlaybackChangeTrackPayload = {
+  roomId: string;
+  playlistItemId: string;
+};
+
+export type PlaybackErrorPayload = {
+  roomId: string;
+  videoId: string;
+  errorCode: number;
+};
+
+export type PlaybackErrorBroadcastPayload = {
+  videoId: string;
+  errorCode: number;
+};
+
+export type PlaybackSyncRequestPayload = {
+  roomId: string;
+};
+
 export type SocketAckError = {
   code: string;
   message: string;
 };
+
+export type PlaybackAck = { success: true } | { success: false; error: SocketAckError };
 
 export type RoomJoinAck =
   | { success: true; data: { playbackState: PlaybackStatePayload } }

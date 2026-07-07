@@ -2,14 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ERROR_CODES } from '@syfity/shared';
 
+import type { PlaybackService } from './playback.service';
 import { RoomService, type RoomSocketServer } from './room.service';
 import type { ICache } from '../lib/cache/cache.interface';
 import { CacheKeys } from '../lib/cache/cacheKeys';
 import type { ChatRecord, IChatRepository } from '../types/chat';
+import type { PlaybackStateResult } from '../types/playback';
 import type { IPlaylistRepository, PlaylistItemRecord } from '../types/playlist';
 import type {
   IRoomRepository,
-  PlaybackStateRecord,
   RoomDetailRecord,
   RoomMemberRecord,
   RoomRecord,
@@ -39,15 +40,18 @@ const updatedRoom: RoomUpdateRecord = {
   updatedAt: new Date('2026-07-01T12:30:00.000Z'),
 };
 
-const playbackState: PlaybackStateRecord = {
+const playbackState: PlaybackStateResult = {
   videoId: 'video-1',
   playlistItemId: 'playlist-item-1',
-  baseCurrentTime: 30,
+  currentTime: 30,
   isPlaying: false,
-  serverStartedAt: null,
-  serverPausedAt: new Date('2026-07-01T12:00:05.000Z'),
-  updatedAt: new Date('2026-07-01T12:00:10.000Z'),
+  updatedAt: '2026-07-01T12:00:10.000Z',
 };
+
+type RoomPlaybackServiceMock = Pick<
+  PlaybackService,
+  'getPlaybackStateForJoin' | 'initializeCache' | 'clearCache'
+>;
 
 const playlistItem: PlaylistItemRecord = {
   id: 'playlist-item-1',
@@ -80,15 +84,6 @@ const chat: ChatRecord = {
   createdAt: new Date('2026-07-01T11:59:00.000Z'),
 };
 
-const initialPlaybackState = {
-  videoId: null,
-  playlistItemId: null,
-  baseCurrentTime: 0,
-  isPlaying: false,
-  serverStartedAt: null,
-  serverPausedAt: null,
-};
-
 function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
   return {
     existsInviteCode: vi.fn().mockResolvedValue(false),
@@ -101,12 +96,22 @@ function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
     upsertMembership: vi.fn().mockResolvedValue(undefined),
     findMembers: vi.fn().mockResolvedValue([member]),
     upsertRecentRoom: vi.fn().mockResolvedValue(undefined),
-    findPlaybackState: vi.fn().mockResolvedValue(playbackState),
     updateMemberStatus: vi.fn().mockResolvedValue(undefined),
     findMemberInfo: vi.fn().mockResolvedValue(member),
     closeRoom: vi.fn().mockResolvedValue(undefined),
     updateRoomName: vi.fn().mockResolvedValue(updatedRoom),
     ...overrides,
+  };
+}
+
+function makePlaybackService(
+  overrides: Partial<RoomPlaybackServiceMock> = {},
+): RoomPlaybackServiceMock {
+  return {
+    getPlaybackStateForJoin:
+      overrides.getPlaybackStateForJoin ?? vi.fn().mockResolvedValue(playbackState),
+    initializeCache: overrides.initializeCache ?? vi.fn(),
+    clearCache: overrides.clearCache ?? vi.fn(),
   };
 }
 
@@ -153,6 +158,7 @@ function makeService(
     roomRepo?: Partial<IRoomRepository>;
     playlistRepo?: Partial<Pick<IPlaylistRepository, 'getPlaylist'>>;
     chatRepo?: Partial<Pick<IChatRepository, 'findLatestChats'>>;
+    playbackService?: ReturnType<typeof makePlaybackService>;
     cache?: ICache;
     io?: RoomSocketServer;
   } = {},
@@ -160,13 +166,15 @@ function makeService(
   const roomRepo = makeRepo(overrides.roomRepo);
   const playlistRepo = makePlaylistRepo(overrides.playlistRepo);
   const chatRepo = makeChatRepo(overrides.chatRepo);
+  const playbackService = overrides.playbackService ?? makePlaybackService();
   const cache = overrides.cache ?? makeCache();
 
   return {
-    service: new RoomService(roomRepo, cache, playlistRepo, chatRepo, overrides.io),
+    service: new RoomService(roomRepo, cache, playlistRepo, chatRepo, playbackService, overrides.io),
     roomRepo,
     playlistRepo,
     chatRepo,
+    playbackService,
     cache,
   };
 }
@@ -221,7 +229,7 @@ describe('RoomService', () => {
   });
 
   it('3회 모두 중복이면 초대 코드 생성 실패 에러를 던진다', async () => {
-    const { service, roomRepo, cache } = makeService({
+    const { service, roomRepo, playbackService } = makeService({
       roomRepo: {
         existsInviteCode: vi.fn().mockResolvedValue(true),
       },
@@ -233,19 +241,19 @@ describe('RoomService', () => {
     });
     expect(roomRepo.existsInviteCode).toHaveBeenCalledTimes(3);
     expect(roomRepo.createRoom).not.toHaveBeenCalled();
-    expect(cache.set).not.toHaveBeenCalled();
+    expect(playbackService.initializeCache).not.toHaveBeenCalled();
   });
 
-  it('Room 생성 성공 시 PlaybackState 초기값을 캐시에 저장한다', async () => {
-    const { service, cache } = makeService();
+  it('Room 생성 성공 시 PlaybackState 캐시 초기화를 위임한다', async () => {
+    const { service, playbackService } = makeService();
 
     await service.createRoom('user-1', 'Morning Jazz');
 
-    expect(cache.set).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'), initialPlaybackState);
+    expect(playbackService.initializeCache).toHaveBeenCalledWith('room-1');
   });
 
   it('inviteCode로 Room에 입장하고 응답 데이터를 조합한다', async () => {
-    const { service, roomRepo, playlistRepo, chatRepo } = makeService();
+    const { service, roomRepo, playlistRepo, chatRepo, playbackService } = makeService();
 
     await expect(service.joinRoom('user-2', 'ABC123')).resolves.toEqual({
       room: roomDetail,
@@ -263,7 +271,7 @@ describe('RoomService', () => {
     expect(roomRepo.findRoomByInviteCode).toHaveBeenCalledWith('ABC123');
     expect(roomRepo.upsertMembership).toHaveBeenCalledWith('room-1', 'user-2');
     expect(roomRepo.upsertRecentRoom).toHaveBeenCalledWith('user-2', 'room-1');
-    expect(roomRepo.findPlaybackState).toHaveBeenCalledWith('room-1');
+    expect(playbackService.getPlaybackStateForJoin).toHaveBeenCalledWith('room-1');
     expect(playlistRepo.getPlaylist).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMembers).toHaveBeenCalledWith('room-1');
     expect(chatRepo.findLatestChats).toHaveBeenCalledWith('room-1', 50);
@@ -317,33 +325,20 @@ describe('RoomService', () => {
     expect(roomRepo.upsertMembership).not.toHaveBeenCalled();
   });
 
-  it('PlaybackState가 없으면 SERVER_INTERNAL_ERROR를 던진다', async () => {
+  it('PlaybackState 조회 실패는 그대로 전파한다', async () => {
+    const error = Object.assign(new Error('missing playback state'), {
+      status: 500,
+      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
+    });
     const { service } = makeService({
-      roomRepo: { findPlaybackState: vi.fn().mockResolvedValue(null) },
+      playbackService: makePlaybackService({
+        getPlaybackStateForJoin: vi.fn().mockRejectedValue(error),
+      }),
     });
 
     await expect(service.joinRoom('user-2', 'ABC123')).rejects.toMatchObject({
       status: 500,
       code: ERROR_CODES.SERVER_INTERNAL_ERROR,
-    });
-  });
-
-  it('재생 중이면 serverStartedAt 기준으로 currentTime을 역산한다', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
-    const { service } = makeService({
-      roomRepo: {
-        findPlaybackState: vi.fn().mockResolvedValue({
-          ...playbackState,
-          baseCurrentTime: 30,
-          isPlaying: true,
-          serverStartedAt: new Date('2026-07-01T12:00:00.000Z'),
-        }),
-      },
-    });
-
-    await expect(service.joinRoom('user-2', 'ABC123')).resolves.toMatchObject({
-      playbackState: { currentTime: 35 },
     });
   });
 
@@ -514,12 +509,12 @@ describe('RoomService', () => {
   });
 
   it('Host가 Room을 나가면 Room을 종료한다', async () => {
-    const { service, roomRepo, cache } = makeService();
+    const { service, roomRepo, playbackService, cache } = makeService();
 
     await expect(service.leaveRoom('room-1', 'user-1')).resolves.toEqual({ type: 'closed' });
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
-    expect(cache.del).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'));
+    expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
     expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
     expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
   });
@@ -549,12 +544,12 @@ describe('RoomService', () => {
   });
 
   it('Host가 Room을 닫으면 Room 종료와 캐시 삭제 후 Room 정보를 반환한다', async () => {
-    const { service, roomRepo, cache } = makeService();
+    const { service, roomRepo, playbackService, cache } = makeService();
 
     await expect(service.closeRoom('room-1', 'user-1')).resolves.toEqual(roomDetail);
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
-    expect(cache.del).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'));
+    expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
     expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
   });
 
@@ -582,12 +577,12 @@ describe('RoomService', () => {
 
   it('REST Room 종료 성공 시 room:closed를 broadcast하고 Socket Room을 해제한다', async () => {
     const { io, emitter } = makeIo();
-    const { service, roomRepo, cache } = makeService({ io });
+    const { service, roomRepo, playbackService, cache } = makeService({ io });
 
     await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).resolves.toBeUndefined();
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
-    expect(cache.del).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'));
+    expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
     expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
     expect(io.to).toHaveBeenCalledWith('room:room-1');
     expect(emitter.emit).toHaveBeenCalledWith('room:closed', {
@@ -670,88 +665,5 @@ describe('RoomService', () => {
       code: ERROR_CODES.SERVER_INTERNAL_ERROR,
     });
     expect(roomRepo.closeRoom).not.toHaveBeenCalled();
-  });
-
-  it('소켓용 PlaybackState 조회는 캐시 히트 시 DB를 조회하지 않는다', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
-    const cache = makeCache();
-    cache.get = vi.fn().mockReturnValue({
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      baseCurrentTime: 30,
-      isPlaying: true,
-      serverStartedAt: '2026-07-01T12:00:00.000Z',
-      serverPausedAt: null,
-    });
-    const { service, roomRepo } = makeService({ cache });
-
-    await expect(service.getPlaybackStateForSocket('room-1')).resolves.toEqual({
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      currentTime: 35,
-      isPlaying: true,
-    });
-    expect(roomRepo.findPlaybackState).not.toHaveBeenCalled();
-  });
-
-  it('소켓용 PlaybackState 캐시 히트 시 일시정지 상태는 baseCurrentTime을 그대로 반환한다', async () => {
-    const cache = makeCache();
-    cache.get = vi.fn().mockReturnValue({
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      baseCurrentTime: 30,
-      isPlaying: false,
-      serverStartedAt: '2026-07-01T12:00:00.000Z',
-      serverPausedAt: '2026-07-01T12:00:05.000Z',
-    });
-    const { service } = makeService({ cache });
-
-    await expect(service.getPlaybackStateForSocket('room-1')).resolves.toMatchObject({
-      currentTime: 30,
-    });
-  });
-
-  it('소켓용 PlaybackState 캐시 미스 시 DB에서 조회하고 캐시를 재구성한다', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
-    const { service, roomRepo, cache } = makeService({
-      roomRepo: {
-        findPlaybackState: vi.fn().mockResolvedValue({
-          ...playbackState,
-          baseCurrentTime: 30,
-          isPlaying: true,
-          serverStartedAt: new Date('2026-07-01T12:00:00.000Z'),
-          serverPausedAt: null,
-        }),
-      },
-    });
-
-    await expect(service.getPlaybackStateForSocket('room-1')).resolves.toEqual({
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      currentTime: 35,
-      isPlaying: true,
-    });
-    expect(roomRepo.findPlaybackState).toHaveBeenCalledWith('room-1');
-    expect(cache.set).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'), {
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      baseCurrentTime: 30,
-      isPlaying: true,
-      serverStartedAt: '2026-07-01T12:00:00.000Z',
-      serverPausedAt: null,
-    });
-  });
-
-  it('소켓용 PlaybackState가 캐시와 DB에 모두 없으면 SERVER_INTERNAL_ERROR를 던진다', async () => {
-    const { service } = makeService({
-      roomRepo: { findPlaybackState: vi.fn().mockResolvedValue(null) },
-    });
-
-    await expect(service.getPlaybackStateForSocket('room-1')).rejects.toMatchObject({
-      status: 500,
-      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
-    });
   });
 });

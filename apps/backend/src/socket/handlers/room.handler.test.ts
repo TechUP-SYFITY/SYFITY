@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { registerRoomHandlers } from './room.handler';
 import { AppError } from '../../errors/appError';
+import type { PlaybackService } from '../../services/playback.service';
 import type { RoomService } from '../../services/room.service';
 import type { RoomMemberRecord } from '../../types/room';
 import type { RoomJoinAck, RoomJoinPayload, RoomLeavePayload } from '../../types/socket';
@@ -15,10 +16,8 @@ type RoomJoinCallback = (
 ) => Promise<void>;
 type RoomLeaveCallback = (payload: RoomLeavePayload | null | undefined) => Promise<void>;
 type RoomHandlerCallback = RoomJoinCallback | RoomLeaveCallback;
-type RoomHandlerService = Pick<
-  RoomService,
-  'setMemberOnline' | 'leaveRoom' | 'getPlaybackStateForSocket'
->;
+type RoomHandlerService = Pick<RoomService, 'setMemberOnline' | 'leaveRoom'>;
+type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 
 const member: RoomMemberRecord = {
   id: 'member-1',
@@ -40,6 +39,14 @@ function makeRoomService(overrides: Partial<RoomHandlerService> = {}): RoomHandl
   return {
     setMemberOnline: vi.fn().mockResolvedValue(member),
     leaveRoom: vi.fn().mockResolvedValue({ type: 'left', member: { ...member, status: 'left' } }),
+    ...overrides,
+  };
+}
+
+function makePlaybackService(
+  overrides: Partial<RoomHandlerPlaybackService> = {},
+): RoomHandlerPlaybackService {
+  return {
     getPlaybackStateForSocket: vi.fn().mockResolvedValue(playbackState),
     ...overrides,
   };
@@ -98,13 +105,14 @@ describe('registerRoomHandlers', () => {
     const { io, roomEmit } = makeIo();
     const { socket, handlers } = makeSocket();
     const roomService = makeRoomService();
+    const playbackService = makePlaybackService();
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService });
     const ack = vi.fn();
     await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
 
     expect(roomService.setMemberOnline).toHaveBeenCalledWith('room-1', 'user-1');
-    expect(roomService.getPlaybackStateForSocket).toHaveBeenCalledWith('room-1');
+    expect(playbackService.getPlaybackStateForSocket).toHaveBeenCalledWith('room-1', 'user-1');
     expect(socket.join).toHaveBeenCalledWith('room:room-1');
     expect(io.to).toHaveBeenCalledWith('room:room-1');
     expect(roomEmit).toHaveBeenCalledWith('presence:update', {
@@ -121,8 +129,9 @@ describe('registerRoomHandlers', () => {
     const { io, roomEmit } = makeIo();
     const { socket, handlers } = makeSocket();
     const roomService = makeRoomService();
+    const playbackService = makePlaybackService();
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService });
     const ack = vi.fn();
     await getJoinHandler(handlers)({} as RoomJoinPayload, ack);
 
@@ -147,7 +156,7 @@ describe('registerRoomHandlers', () => {
         ),
     });
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     const ack = vi.fn();
     await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
 
@@ -169,7 +178,7 @@ describe('registerRoomHandlers', () => {
       setMemberOnline: vi.fn().mockRejectedValue(new Error('boom')),
     });
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     const ack = vi.fn();
     await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
 
@@ -190,7 +199,7 @@ describe('registerRoomHandlers', () => {
       leaveRoom: vi.fn().mockResolvedValue({ type: 'left', member: leftMember }),
     });
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     await getLeaveHandler(handlers)({ roomId: 'room-1' });
 
     expect(roomService.leaveRoom).toHaveBeenCalledWith('room-1', 'user-1');
@@ -213,7 +222,7 @@ describe('registerRoomHandlers', () => {
       leaveRoom: vi.fn().mockResolvedValue({ type: 'closed' }),
     });
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     await getLeaveHandler(handlers)({ roomId: 'room-1' });
 
     expect(socket.leave).toHaveBeenCalledWith('room:room-1');
@@ -230,7 +239,7 @@ describe('registerRoomHandlers', () => {
     const { socket, handlers } = makeSocket();
     const roomService = makeRoomService();
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     await expect(getLeaveHandler(handlers)({} as RoomLeavePayload)).resolves.toBeUndefined();
 
     expect(roomService.leaveRoom).not.toHaveBeenCalled();
@@ -245,7 +254,7 @@ describe('registerRoomHandlers', () => {
       leaveRoom: vi.fn().mockRejectedValue(new Error('boom')),
     });
 
-    registerRoomHandlers(io, socket, { roomService });
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
     await expect(getLeaveHandler(handlers)({ roomId: 'room-1' })).resolves.toBeUndefined();
 
     expect(socket.leave).not.toHaveBeenCalled();

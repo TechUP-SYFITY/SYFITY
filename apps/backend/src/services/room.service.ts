@@ -2,37 +2,26 @@ import { randomBytes } from 'node:crypto';
 
 import { ERROR_CODES } from '@syfity/shared';
 
+import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
 import { CacheKeys } from '../lib/cache/cacheKeys';
-import type { PlaybackStateCache } from '../types/cache';
 import type { IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
   IRoomRepository,
   JoinRoomResult,
   LeaveRoomResult,
-  PlaybackStateRecord,
-  PlaybackStateResult,
   RoomDetailRecord,
   RoomMemberRecord,
   RoomRecord,
   RoomUpdateRecord,
 } from '../types/room';
-import type { PlaybackStatePayload, RoomClosedPayload } from '../types/socket';
+import type { RoomClosedPayload } from '../types/socket';
 import { assertActiveRoomMember } from '../utils/roomAccess';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
 const RECENT_CHAT_LIMIT = 50;
-
-const INITIAL_PLAYBACK_STATE: PlaybackStateCache = {
-  videoId: null,
-  playlistItemId: null,
-  baseCurrentTime: 0,
-  isPlaying: false,
-  serverStartedAt: null,
-  serverPausedAt: null,
-};
 
 type RoomClosedEmitter = {
   emit(event: 'room:closed', payload: RoomClosedPayload): boolean;
@@ -49,6 +38,10 @@ export class RoomService {
     private readonly cache: ICache,
     private readonly playlistRepo: Pick<IPlaylistRepository, 'getPlaylist'>,
     private readonly chatRepo: Pick<IChatRepository, 'findLatestChats'>,
+    private readonly playbackService: Pick<
+      PlaybackService,
+      'getPlaybackStateForJoin' | 'initializeCache' | 'clearCache'
+    >,
     private readonly io?: RoomSocketServer,
   ) {}
 
@@ -56,7 +49,7 @@ export class RoomService {
     const inviteCode = await this.generateUniqueInviteCode();
     const room = await this.roomRepo.createRoom({ name, hostId: userId, inviteCode });
 
-    this.cache.set(CacheKeys.playbackState(room.id), INITIAL_PLAYBACK_STATE);
+    this.playbackService.initializeCache(room.id);
 
     return room;
   }
@@ -76,24 +69,16 @@ export class RoomService {
     await this.roomRepo.upsertMembership(room.id, userId);
     await this.roomRepo.upsertRecentRoom(userId, room.id);
 
-    const [playbackRecord, playlist, members, recentChats] = await Promise.all([
-      this.roomRepo.findPlaybackState(room.id),
+    const [playbackState, playlist, members, recentChats] = await Promise.all([
+      this.playbackService.getPlaybackStateForJoin(room.id),
       this.playlistRepo.getPlaylist(room.id),
       this.roomRepo.findMembers(room.id),
       this.chatRepo.findLatestChats(room.id, RECENT_CHAT_LIMIT),
     ]);
 
-    if (!playbackRecord) {
-      throw new AppError(
-        500,
-        ERROR_CODES.SERVER_INTERNAL_ERROR,
-        'PlaybackState를 찾을 수 없습니다.',
-      );
-    }
-
     return {
       room,
-      playbackState: this.toPlaybackStateResult(playbackRecord),
+      playbackState,
       playlist,
       members,
       recentChats,
@@ -155,7 +140,7 @@ export class RoomService {
     }
 
     await this.roomRepo.closeRoom(roomId);
-    this.cache.del(CacheKeys.playbackState(roomId));
+    this.playbackService.clearCache(roomId);
     this.cache.del(CacheKeys.presence(roomId));
 
     return room;
@@ -177,35 +162,6 @@ export class RoomService {
     this.io.socketsLeave(`room:${roomId}`);
   }
 
-  async getPlaybackStateForSocket(roomId: string): Promise<PlaybackStatePayload> {
-    const cached = this.cache.get<PlaybackStateCache>(CacheKeys.playbackState(roomId));
-    if (cached) {
-      return this.toPlaybackStatePayload(cached);
-    }
-
-    const record = await this.roomRepo.findPlaybackState(roomId);
-    if (!record) {
-      throw new AppError(
-        500,
-        ERROR_CODES.SERVER_INTERNAL_ERROR,
-        'PlaybackState를 찾을 수 없습니다.',
-      );
-    }
-
-    const nextCache: PlaybackStateCache = {
-      videoId: record.videoId,
-      playlistItemId: record.playlistItemId,
-      baseCurrentTime: record.baseCurrentTime,
-      isPlaying: record.isPlaying,
-      serverStartedAt: record.serverStartedAt?.toISOString() ?? null,
-      serverPausedAt: record.serverPausedAt?.toISOString() ?? null,
-    };
-
-    this.cache.set(CacheKeys.playbackState(roomId), nextCache);
-
-    return this.toPlaybackStatePayload(nextCache);
-  }
-
   private async generateUniqueInviteCode(): Promise<string> {
     for (let attempt = 0; attempt < INVITE_CODE_RETRY_LIMIT; attempt += 1) {
       const code = randomBytes(3).toString('hex').toUpperCase();
@@ -218,35 +174,6 @@ export class RoomService {
       ERROR_CODES.SERVER_INVITE_CODE_GENERATION_FAILED,
       '초대 코드 생성에 실패했습니다.',
     );
-  }
-
-  private toPlaybackStateResult(record: PlaybackStateRecord): PlaybackStateResult {
-    const currentTime =
-      record.isPlaying && record.serverStartedAt
-        ? record.baseCurrentTime + (Date.now() - record.serverStartedAt.getTime()) / 1000
-        : record.baseCurrentTime;
-
-    return {
-      videoId: record.videoId,
-      playlistItemId: record.playlistItemId,
-      currentTime,
-      isPlaying: record.isPlaying,
-      updatedAt: record.updatedAt.toISOString(),
-    };
-  }
-
-  private toPlaybackStatePayload(cached: PlaybackStateCache): PlaybackStatePayload {
-    const currentTime =
-      cached.isPlaying && cached.serverStartedAt
-        ? cached.baseCurrentTime + (Date.now() - new Date(cached.serverStartedAt).getTime()) / 1000
-        : cached.baseCurrentTime;
-
-    return {
-      videoId: cached.videoId,
-      playlistItemId: cached.playlistItemId,
-      currentTime,
-      isPlaying: cached.isPlaying,
-    };
   }
 
   private async findRequiredMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord> {

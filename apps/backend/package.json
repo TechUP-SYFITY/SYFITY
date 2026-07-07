@@ -4,8 +4,12 @@
   "scripts": {
     "generate": "tsoa spec-and-routes",
     "dev": "tsoa spec-and-routes && tsx watch src/server.ts",
+    "prebuild": "pnpm --filter @syfity/shared build",
     "build": "tsoa spec-and-routes && tsc -p tsconfig.build.json",
-    "start": "node dist/server.js",
+    "postbuild": "mkdir -p dist/src/generated && cp src/generated/swagger.json dist/src/generated/swagger.json",
+    "prestart": "pnpm --filter @syfity/shared build",
+    "start": "node dist/src/server.js",
+    "pretest": "pnpm --filter @syfity/shared build",
     "lint": "eslint .",
     "test": "vitest run"
   },

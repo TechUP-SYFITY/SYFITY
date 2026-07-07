@@ -109,7 +109,7 @@ describe('AuthController', () => {
     });
   });
 
-  it('production 환경에서는 secure strict 쿠키를 설정한다', async () => {
+  it('production 환경에서는 secure none 쿠키를 설정한다', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const { AuthController } = await import('./auth.controller');
     const authService = makeAuthService();
@@ -123,7 +123,7 @@ describe('AuthController', () => {
     expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'access-token', {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
     });
   });
 
@@ -238,12 +238,12 @@ describe('AuthController', () => {
     expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'new-access-token', {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
       path: '/api/v1/auth/refresh',
     });
   });

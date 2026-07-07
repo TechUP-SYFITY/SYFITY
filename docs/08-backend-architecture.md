@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.4                                                                                  |
-| 상태      | Socket 핸들러 DI 파라미터 패턴 및 socketAuth 경로 반영                                |
+| 버전      | v1.5                                                                                  |
+| 상태      | Render 운영 환경변수 설정 안내 추가                                                   |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -573,18 +573,27 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
 ### 빌드 플로우
 
 ```
-tsoa spec-and-routes  →  src/generated/routes.gen.ts + src/generated/swagger.json 생성
-tsc                   →  TypeScript 컴파일
+pnpm --filter @syfity/shared build  →  @syfity/shared 런타임 산출물 생성
+tsoa spec-and-routes                →  src/generated/routes.gen.ts + src/generated/swagger.json 생성
+tsc -p tsconfig.build.json          →  TypeScript 컴파일
+cp swagger.json                     →  dist/src/generated/swagger.json 복사
 ```
 
-`src/generated/`는 `.gitignore` 대상이며, 개발/빌드 스크립트에서 자동으로 생성한다.
+`src/generated/`는 `.gitignore` 대상이며, 개발/빌드 스크립트에서 자동으로 생성한다. `routes.gen.ts`는
+TypeScript 컴파일 대상이지만 `swagger.json`은 자동 복사되지 않으므로, 빌드 후 `dist/src/generated/`로 복사한다.
+`@syfity/shared`의 런타임 진입점은 `dist/index.js`이므로 백엔드 빌드/시작/테스트 전 shared 빌드를 먼저 실행한다.
 
 ```json
 // package.json scripts
 {
   "generate": "tsoa spec-and-routes",
   "dev": "tsoa spec-and-routes && tsx watch src/server.ts",
-  "build": "tsoa spec-and-routes && tsc"
+  "prebuild": "pnpm --filter @syfity/shared build",
+  "build": "tsoa spec-and-routes && tsc -p tsconfig.build.json",
+  "postbuild": "mkdir -p dist/src/generated && cp src/generated/swagger.json dist/src/generated/swagger.json",
+  "prestart": "pnpm --filter @syfity/shared build",
+  "start": "node dist/src/server.js",
+  "pretest": "pnpm --filter @syfity/shared build"
 }
 ```
 
@@ -639,3 +648,21 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:4000/api/v1/auth/google/callback
 ```
+
+### 10.1 운영(Render) 환경변수 설정
+
+Render Blueprint는 민감값을 `sync: false`로 선언하고, 실제 값은 Render 대시보드에서 직접 입력한다.
+
+| 키                                          | 운영 값 기준                                                                                             |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                                                                             |
+| `NODE_VERSION`                              | `22`                                                                                                     |
+| `CLIENT_URL`                                | T21에서 확정되는 FE 프로덕션 URL. T20 시점에는 임시값을 입력하고 T21 완료 후 `https://{domain}`으로 갱신 |
+| `ALLOWED_ORIGINS`                           | 프로덕션 커스텀 도메인 FE origin. Vercel Preview 도메인은 `cors.ts`의 `*.vercel.app` 허용 규칙으로 처리  |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                        |
+| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                      |
+| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                  |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                  |
+| `GOOGLE_CALLBACK_URL`                       | `https://api.{domain}/api/v1/auth/google/callback`                                                       |
+
+`PORT`는 Render web service가 자동 주입하므로 고정하지 않는다. Supabase Direct Connection은 IPv6 전용일 수 있어 Render에서는 Session Pooler 사용을 기본값으로 둔다.

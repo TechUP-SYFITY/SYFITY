@@ -15,11 +15,11 @@ export function RoomStatusBar({
   room: RoomDetail | null;
 }) {
   return (
-    <section className="flex h-14 items-center justify-between border-b border-white/[0.07] bg-gray-950/50 px-5 md:px-6">
+    <section className="flex h-14 items-center justify-between border-b border-border bg-background/50 px-5 md:px-6">
       <div>
         <h1 className="text-sm font-bold">{room?.name ?? 'Room'}</h1>
-        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-white/50">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary-400" />
+        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
           {onlineMemberCount}명 접속 중
         </p>
       </div>

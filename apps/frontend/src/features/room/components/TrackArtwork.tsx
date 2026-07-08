@@ -18,7 +18,7 @@ export function TrackArtwork({ track }: { track: PlaylistItem | undefined }) {
   }
 
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/[0.06] text-white/45">
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-input text-muted-foreground">
       <Music2 className="h-4 w-4" aria-hidden />
     </div>
   );

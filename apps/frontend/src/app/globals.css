@@ -112,30 +112,39 @@
 
 @layer components {
   .mini-player-volume-range {
+    --mini-player-volume-percent: 0%;
+
     width: 7rem;
     height: 0.125rem;
     cursor: pointer;
     appearance: none;
+    outline: none;
     border-radius: var(--radius-full);
-    background: color-mix(in srgb, var(--foreground) 18%, transparent);
-    accent-color: var(--primary);
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--foreground) 38%, transparent) 0%,
+      color-mix(in srgb, var(--foreground) 38%, transparent) var(--mini-player-volume-percent),
+      color-mix(in srgb, var(--foreground) 10%, transparent) var(--mini-player-volume-percent),
+      color-mix(in srgb, var(--foreground) 10%, transparent) 100%
+    );
+  }
+
+  .mini-player-volume-range:focus-visible {
+    box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--primary) 45%, transparent);
   }
 
   .mini-player-volume-range::-webkit-slider-thumb {
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0;
+    height: 0;
     appearance: none;
-    border-radius: var(--radius-full);
-    background: var(--primary);
-    box-shadow: 0 0 0.3125rem color-mix(in srgb, var(--primary) 65%, transparent);
+    background: transparent;
   }
 
   .mini-player-volume-range::-moz-range-thumb {
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0;
+    height: 0;
     border: 0;
-    border-radius: var(--radius-full);
-    background: var(--primary);
+    background: transparent;
   }
 }
 

@@ -7,13 +7,10 @@ import { RoomIcon } from './RoomIcon';
 
 export function RoomHeader({ currentUserName }: { currentUserName: string }) {
   return (
-    <header className="flex h-16 items-center justify-between border-b border-white/[0.07] bg-gray-950/50 px-5 md:px-6">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-background/50 px-5 md:px-6">
       <div className="flex items-center gap-2">
-        <RoomIcon
-          name="brand"
-          className="h-8 w-8 text-primary-400 drop-shadow-[0_0_14px_rgba(114,244,164,0.35)]"
-        />
-        <span className="text-base font-bold tracking-[-0.02em]">Syfity</span>
+        <RoomIcon name="brand" className="h-8 w-8 text-primary drop-shadow-lg" />
+        <span className="text-base font-bold tracking-tight">Syfity</span>
       </div>
       <Button
         variant="ghost"

@@ -1,7 +1,7 @@
 'use client';
 
 // Room 채팅 패널의 메시지 목록과 입력 영역 뼈대를 표시한다.
-import { Input } from '@/shared/components/ui';
+import { Button, Input } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
 import { formatChatTime } from './roomFormatters';
@@ -12,20 +12,22 @@ export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; co
   return (
     <aside
       className={
-        compact ? 'flex min-h-[360px] flex-col bg-[#09090b]' : 'flex min-h-0 flex-col bg-[#09090b]'
+        compact
+          ? 'flex min-h-96 flex-col bg-background'
+          : 'flex min-h-0 flex-1 flex-col bg-background'
       }
     >
       {!compact ? (
-        <div className="flex h-12 shrink-0 items-center border-b border-white/[0.07] px-4">
+        <div className="flex h-12 shrink-0 items-center border-b border-border px-4">
           <h2 className="text-xs font-semibold text-white/55">채팅</h2>
         </div>
       ) : null}
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-6">
-        <p className="mx-auto w-fit rounded-full bg-white/[0.055] px-3 py-1 text-xs text-white/35">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+        <p className="mx-auto w-fit rounded-full bg-input px-3 py-1 text-xs text-muted-foreground">
           방이 만들어졌습니다.
         </p>
         {chats.map((chat) => (
-          <div className="flex items-start gap-3" key={chat.id}>
+          <div className="flex items-start gap-3 py-0.5" key={chat.id}>
             <RoomMemberAvatar label={chat.nickname ?? 'S'} size="sm" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white/90">
@@ -39,17 +41,23 @@ export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; co
           </div>
         ))}
       </div>
-      <div className="relative shrink-0 border-t border-white/[0.07] p-4">
+      <div className="flex shrink-0 items-center gap-2 border-t border-border p-4">
         <Input
-          className="rounded-2xl bg-white/[0.055] pr-11"
+          className="h-10 min-w-0 flex-1 rounded-2xl bg-input"
           placeholder="메시지 입력..."
           readOnly
           aria-label="채팅 메시지 입력"
         />
-        <RoomIcon
-          name="send"
-          className="pointer-events-none absolute top-1/2 right-8 h-3 w-3 -translate-y-1/2 text-white/35"
-        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 rounded-xl border-0 bg-input text-white/35 hover:bg-muted/80"
+          type="button"
+          disabled
+          aria-label="메시지 보내기"
+        >
+          <RoomIcon name="send" className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </aside>
   );

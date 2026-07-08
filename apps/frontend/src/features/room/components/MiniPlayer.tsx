@@ -1,6 +1,8 @@
 'use client';
 
 // Room 하단에 고정되는 미니 플레이어 UI와 주입된 제어 상태를 표시한다.
+import type { CSSProperties } from 'react';
+
 import { cn } from '@/shared/lib/utils';
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
@@ -55,9 +57,10 @@ export function MiniPlayer({
   const previousControlDisabled = controlDisabled || previousDisabled;
   const nextControlDisabled = controlDisabled || nextDisabled;
   const isVolumeMuted = isMuted || volume === 0;
+  const visibleVolume = isVolumeMuted ? 0 : volume;
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-border bg-background/95 px-5 pt-px backdrop-blur lg:static lg:px-6">
+    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-border bg-background/95 px-5 pt-px backdrop-blur xl:static xl:px-6">
       <div className="flex w-56 min-w-0 flex-none items-center gap-3">
         <TrackArtwork track={currentTrack} />
         <div className="w-24 min-w-0 flex-none">
@@ -130,7 +133,7 @@ export function MiniPlayer({
             <RoomIcon name="repeat" className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-white/38 lg:flex">
+        <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-white/38 xl:flex">
           <span>{formatDuration(currentTime)}</span>
           <div
             className="relative h-1 min-w-0 flex-1 rounded-full bg-white/10"
@@ -141,12 +144,12 @@ export function MiniPlayer({
             aria-valuenow={currentTime}
           >
             <div
-              className="relative h-full rounded-full bg-gradient-to-r from-primary to-accent"
+              className="relative h-full rounded-full bg-primary"
               style={{ width: `${progressPercent}%` }}
             >
               {progressPercent > 0 ? (
                 <span
-                  className="absolute top-1/2 right-0 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow-lg"
+                  className="absolute top-1/2 right-0 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow-lg"
                   data-testid="mini-player-progress-thumb"
                 />
               ) : null}
@@ -158,13 +161,13 @@ export function MiniPlayer({
           {controlHint}
         </p>
         {commandError ? (
-          <p className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-full border border-red-400/30 bg-red-950/90 px-3 py-1 text-xs text-red-200 shadow-lg">
+          <p className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs text-destructive shadow-lg">
             {commandError}
           </p>
         ) : null}
       </div>
 
-      <div className="hidden w-36 flex-none items-center justify-end gap-2 lg:flex">
+      <div className="hidden w-36 flex-none items-center justify-end gap-2 xl:flex">
         <button
           className={getIconButtonClass(false)}
           type="button"
@@ -180,7 +183,12 @@ export function MiniPlayer({
           max={100}
           step={1}
           aria-label="볼륨 조절"
-          value={isVolumeMuted ? 0 : volume}
+          value={visibleVolume}
+          style={
+            {
+              '--mini-player-volume-percent': `${visibleVolume}%`,
+            } as CSSProperties
+          }
           onChange={(event) => onVolumeChange(Number(event.currentTarget.value))}
         />
       </div>

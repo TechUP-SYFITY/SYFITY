@@ -1,5 +1,8 @@
 import type { Server, Socket } from 'socket.io';
 
+import { ERROR_CODES } from '@syfity/shared';
+
+import { AppError } from '../../errors/appError';
 import {
   presenceService as defaultPresenceService,
   roomService as defaultRoomService,
@@ -132,8 +135,14 @@ async function handleHostTimeout(
   try {
     await deps.roomService.closeRoom(roomId, hostUserId);
   } catch (err) {
+    if (err instanceof AppError && err.code === ERROR_CODES.ROOM_ACCESS_DENIED) {
+      // eslint-disable-next-line no-console
+      console.error('[presence] host-timeout closeRoom 생략(이미 종료됨)', err);
+      return;
+    }
+
     // eslint-disable-next-line no-console
-    console.error('[presence] host-timeout closeRoom 실패(이미 종료된 것으로 추정)', err);
+    console.error('[presence] host-timeout closeRoom 실패', err);
     return;
   }
 

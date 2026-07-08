@@ -1,7 +1,10 @@
 import type { Server, Socket } from 'socket.io';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ERROR_CODES } from '@syfity/shared';
+
 import { registerPresenceHandlers } from './presence.handler';
+import { AppError } from '../../errors/appError';
 import type { PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
 import type { ChatMessageRecord } from '../../types/chat';
@@ -253,7 +256,7 @@ describe('registerPresenceHandlers', () => {
     expect(roomEmit).not.toHaveBeenCalled();
   });
 
-  it('host-timeout에서 Room 종료가 실패하면 종료 이벤트를 broadcast하지 않는다', async () => {
+  it('host-timeout에서 Room이 이미 종료된 경우 종료 이벤트를 broadcast하지 않는다', async () => {
     const { io, roomEmit, socketsLeave } = makeIo();
     const { socket, handlers } = makeSocket();
     const presenceService = makePresenceService({
@@ -261,13 +264,47 @@ describe('registerPresenceHandlers', () => {
       setMemberOffline: vi.fn().mockResolvedValue(null),
     });
     const roomService = makeRoomService({
-      closeRoom: vi.fn().mockRejectedValue(new Error('already closed')),
+      closeRoom: vi
+        .fn()
+        .mockRejectedValue(
+          new AppError(403, ERROR_CODES.ROOM_ACCESS_DENIED, 'Room 참여자만 접근할 수 있습니다.'),
+        ),
     });
 
     registerPresenceHandlers(io, socket, { presenceService, roomService });
     handlers.disconnecting();
     await flushAsyncHandlers();
 
+    expect(consoleError).toHaveBeenCalledWith(
+      '[presence] host-timeout closeRoom 생략(이미 종료됨)',
+      expect.any(AppError),
+    );
+    expect(roomService.createSystemMessage).not.toHaveBeenCalled();
+    expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
+    expect(roomEmit).not.toHaveBeenCalledWith('room:closed', expect.anything());
+    expect(socketsLeave).not.toHaveBeenCalled();
+  });
+
+  it('host-timeout에서 예상 밖 Room 종료 실패는 별도 메시지로 로깅한다', async () => {
+    const { io, roomEmit, socketsLeave } = makeIo();
+    const { socket, handlers } = makeSocket();
+    const presenceService = makePresenceService({
+      getActiveMembershipRole: vi.fn().mockResolvedValue('host'),
+      setMemberOffline: vi.fn().mockResolvedValue(null),
+    });
+    const unexpectedError = new Error('db failed');
+    const roomService = makeRoomService({
+      closeRoom: vi.fn().mockRejectedValue(unexpectedError),
+    });
+
+    registerPresenceHandlers(io, socket, { presenceService, roomService });
+    handlers.disconnecting();
+    await flushAsyncHandlers();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      '[presence] host-timeout closeRoom 실패',
+      unexpectedError,
+    );
     expect(roomService.createSystemMessage).not.toHaveBeenCalled();
     expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
     expect(roomEmit).not.toHaveBeenCalledWith('room:closed', expect.anything());

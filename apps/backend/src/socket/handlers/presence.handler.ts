@@ -63,6 +63,15 @@ async function hasOtherActiveSocket(
   return sockets.some((s) => s.id !== socket.id && s.data.userId === userId);
 }
 
+async function hasActiveSocketForUser(
+  io: Server,
+  roomKey: string,
+  userId: string,
+): Promise<boolean> {
+  const sockets = await io.in(roomKey).fetchSockets();
+  return sockets.some((s) => s.data.userId === userId);
+}
+
 async function handleRoomDisconnect(
   io: Server,
   socket: Socket,
@@ -76,6 +85,10 @@ async function handleRoomDisconnect(
 
     const role = await deps.presenceService.getActiveMembershipRole(roomId, userId);
     if (!role) return;
+
+    // getActiveMembershipRole 대기 중 재연결(room:join)이 먼저 끝나 취소할 타이머가
+    // 없는 채로 지나갔을 수 있으므로, 스케줄 직전에 다시 한 번 확인한다.
+    if (await hasOtherActiveSocket(io, socket, roomKey, userId)) return;
 
     deps.presenceService.scheduleMemberOfflineTimer(roomId, userId, () => {
       void handleMemberOfflineTimeout(io, roomId, userId, deps);
@@ -107,6 +120,10 @@ async function handleMemberOfflineTimeout(
   deps.presenceService.cancelMemberOfflineTimer(roomId, userId);
 
   try {
+    // 타이머 예약 이후 재연결이 뒤늦게 완료돼 취소가 누락됐을 수 있으므로,
+    // 실제로 offline 전환하기 전에 현재 활성 소켓 여부를 한번 더 확인한다.
+    if (await hasActiveSocketForUser(io, `room:${roomId}`, userId)) return;
+
     const member = await deps.presenceService.setMemberOffline(roomId, userId);
     if (!member) return;
 
@@ -133,6 +150,10 @@ async function handleHostTimeout(
   deps.presenceService.cancelHostCloseTimer(roomId);
 
   try {
+    // 타이머 예약 이후 Host가 뒤늦게 재연결해 취소가 누락됐을 수 있으므로,
+    // Room을 닫기 전에 현재 활성 소켓 여부를 한번 더 확인한다.
+    if (await hasActiveSocketForUser(io, `room:${roomId}`, hostUserId)) return;
+
     await deps.roomService.closeRoom(roomId, hostUserId);
   } catch (err) {
     if (err instanceof AppError && err.code === ERROR_CODES.ROOM_ACCESS_DENIED) {

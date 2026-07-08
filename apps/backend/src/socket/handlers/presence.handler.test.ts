@@ -328,6 +328,76 @@ describe('registerPresenceHandlers', () => {
     expect(roomEmit).not.toHaveBeenCalledWith('presence:update', expect.anything());
   });
 
+  it('역할 조회 중 재연결이 완료되면 오프라인 타이머를 예약하지 않는다', async () => {
+    const { io, roomEmit, fetchSockets } = makeIo();
+    fetchSockets
+      .mockResolvedValueOnce([]) // 최초 확인: 다른 활성 소켓 없음
+      .mockResolvedValueOnce([{ id: 'socket-2', data: { userId: 'user-1' } }]); // 스케줄 직전 재확인: 재연결됨
+    const { socket, handlers } = makeSocket();
+    const presenceService = makePresenceService();
+
+    registerPresenceHandlers(io, socket, {
+      presenceService,
+      roomService: makeRoomService(),
+    });
+    handlers.disconnecting();
+    await flushAsyncHandlers();
+
+    expect(presenceService.getActiveMembershipRole).toHaveBeenCalledWith('room-1', 'user-1');
+    expect(presenceService.scheduleMemberOfflineTimer).not.toHaveBeenCalled();
+    expect(roomEmit).not.toHaveBeenCalled();
+  });
+
+  it('오프라인 타이머 발화 시점에 재연결되어 있으면 offline 처리를 건너뛴다', async () => {
+    const { io, roomEmit, fetchSockets } = makeIo();
+    fetchSockets
+      .mockResolvedValueOnce([]) // 최초 확인
+      .mockResolvedValueOnce([]) // 스케줄 직전 재확인
+      .mockResolvedValueOnce([{ id: 'socket-2', data: { userId: 'user-1' } }]); // 타이머 발화 시점: 재연결됨
+    const { socket, handlers } = makeSocket();
+    const presenceService = makePresenceService();
+
+    registerPresenceHandlers(io, socket, {
+      presenceService,
+      roomService: makeRoomService(),
+    });
+    handlers.disconnecting();
+    await flushAsyncHandlers();
+
+    expect(presenceService.scheduleMemberOfflineTimer).toHaveBeenCalled();
+    expect(presenceService.setMemberOffline).not.toHaveBeenCalled();
+    expect(roomEmit).not.toHaveBeenCalledWith('presence:update', expect.anything());
+  });
+
+  it('Host 타이머 발화 시점에 재연결되어 있으면 offline 처리와 Room 종료를 모두 건너뛴다', async () => {
+    const { io, roomEmit, socketsLeave, fetchSockets } = makeIo();
+    fetchSockets
+      .mockResolvedValueOnce([]) // 최초 확인
+      .mockResolvedValueOnce([]) // 스케줄 직전 재확인
+      .mockResolvedValueOnce([{ id: 'socket-2', data: { userId: 'user-1' } }]) // member 오프라인 타이머 발화 시점: 재연결됨
+      .mockResolvedValueOnce([{ id: 'socket-2', data: { userId: 'user-1' } }]); // host 타이머 발화 시점: 재연결됨
+    const { socket, handlers } = makeSocket();
+    const presenceService = makePresenceService({
+      getActiveMembershipRole: vi.fn().mockResolvedValue('host'),
+    });
+    const roomService = makeRoomService();
+
+    registerPresenceHandlers(io, socket, { presenceService, roomService });
+    handlers.disconnecting();
+    await flushAsyncHandlers();
+
+    expect(roomEmit).toHaveBeenCalledWith('room:host-disconnected', {
+      roomId: 'room-1',
+      waitUntil: '2026-07-01T12:01:00.000Z',
+    });
+    expect(presenceService.setMemberOffline).not.toHaveBeenCalled();
+    expect(roomService.closeRoom).not.toHaveBeenCalled();
+    expect(roomEmit).not.toHaveBeenCalledWith('presence:update', expect.anything());
+    expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
+    expect(roomEmit).not.toHaveBeenCalledWith('room:closed', expect.anything());
+    expect(socketsLeave).not.toHaveBeenCalled();
+  });
+
   it('disconnect 처리 중 에러가 나도 핸들러 밖으로 전파하지 않는다', async () => {
     const { io, roomEmit } = makeIo();
     const { socket, handlers } = makeSocket();

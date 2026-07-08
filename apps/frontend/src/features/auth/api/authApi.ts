@@ -4,7 +4,6 @@ import { apiClient, getBaseUrl } from '@/shared/lib/api/apiClient';
 import type { ApiClientError } from '@/shared/types/api';
 
 export type UserProfile = UserProfileResponse['data'];
-
 export type AuthApiError = ApiClientError;
 
 const getMe = async (): Promise<UserProfile> => {

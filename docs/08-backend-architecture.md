@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.7                                                                                  |
-| 상태      | Playlist Socket stub 제거에 따른 핸들러 목록과 등록 예시 정정                         |
+| 버전      | v1.8                                                                                  |
+| 상태      | Presence 서비스 추가                                                                  |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -61,6 +61,7 @@ apps/backend/
       playlist.service.ts
       chat.service.ts
       playback.service.ts  → Socket 핸들러에서 호출
+      presence.service.ts  → Socket 핸들러에서 호출, 연결 해제 유예 타이머 관리
       search.service.ts    → YouTube API 직접 호출 (Repository 없음)
 
     repositories/       → Prisma 직접 호출, DB 접근 전담

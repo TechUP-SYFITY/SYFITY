@@ -14,8 +14,8 @@ export function PlaylistErrorState({ errorMessage, onRetry }: PlaylistErrorState
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive">
         <CircleAlert className="h-5 w-5" aria-hidden />
       </div>
-      <p className="mt-4 text-sm font-bold text-white">재생목록을 불러오지 못했어요</p>
-      <p className="mt-2 text-xs leading-5 text-white/45">{errorMessage}</p>
+      <p className="mt-4 text-sm font-bold text-foreground">재생목록을 불러오지 못했어요</p>
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">{errorMessage}</p>
       <Button
         variant="ghost"
         size="sm"

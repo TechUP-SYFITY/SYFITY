@@ -66,12 +66,7 @@ export function PlaylistItemRow({
               <CircleAlert className="ml-1 inline-block h-3 w-3 text-destructive" aria-hidden />
             ) : null}
           </p>
-          <p
-            className={cn(
-              'mt-1 truncate text-xs',
-              isUnavailable ? 'text-white/25' : 'text-white/42',
-            )}
-          >
+          <p className={cn('mt-1 truncate text-xs', 'text-muted-foreground')}>
             {item.channelTitle}
             <span className="mx-1">·</span>
             {formatDuration(item.duration)}
@@ -81,7 +76,7 @@ export function PlaylistItemRow({
           variant="ghost"
           size="icon"
           className={cn(
-            'h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5',
+            'h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-muted-foreground opacity-100 hover:bg-muted',
             actionVisibilityClass,
             !isHost && 'hidden',
           )}
@@ -103,7 +98,7 @@ export function PlaylistItemRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full border-0 bg-transparent text-white/35 hover:bg-white/5"
+            className="h-7 w-7 rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted"
             disabled={!isReady || !isHost || isCurrent}
             type="button"
             data-testid={`playlist-move-up-${item.id}`}
@@ -116,7 +111,7 @@ export function PlaylistItemRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full border-0 bg-transparent text-white/35 hover:bg-white/5"
+            className="h-7 w-7 rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted"
             disabled={!isReady || !isHost || isLast}
             type="button"
             data-testid={`playlist-move-down-${item.id}`}
@@ -149,7 +144,7 @@ function getTitleColorClass(isCurrent: boolean, isUnavailable: boolean) {
     return 'text-primary';
   }
 
-  return isUnavailable ? 'text-white/42' : 'text-white';
+  return isUnavailable ? 'text-muted-foreground' : 'text-foreground';
 }
 
 function formatDuration(duration: number) {

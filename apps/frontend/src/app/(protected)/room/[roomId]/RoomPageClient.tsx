@@ -9,6 +9,7 @@ import type { PlaybackState, PlaylistItem, RoomMember } from '@/shared/types/dom
 import { playbackCommands } from '@/features/player/playbackCommands';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
+import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
 import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
 import { usePlayerControls } from '@/features/player/usePlayerControls';
 import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
@@ -45,6 +46,10 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const playbackState = usePlayerStore((state) => state.playbackState);
+  const miniPlayerIsMuted = usePlayerVolumeStore((state) => state.isMuted);
+  const setMiniPlayerVolume = usePlayerVolumeStore((state) => state.setVolume);
+  const toggleMiniPlayerMute = usePlayerVolumeStore((state) => state.toggleMuted);
+  const miniPlayerVolume = usePlayerVolumeStore((state) => state.volume);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
 
@@ -147,10 +152,13 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       miniPlayerControlDisabled={
         shouldShowPreviewData ? !miniPlayerHasPlayableTrack : miniPlayerControls.controlDisabled
       }
+      miniPlayerIsMuted={miniPlayerIsMuted}
       miniPlayerNextDisabled={!nextItem}
       miniPlayerPendingCommand={shouldShowPreviewData ? null : miniPlayerControls.pendingCommand}
       miniPlayerPreviousDisabled={!previousItem}
+      miniPlayerVolume={miniPlayerVolume}
       members={visibleMembers}
+      onMiniPlayerMuteToggle={toggleMiniPlayerMute}
       onMiniPlayerNextTrack={
         shouldShowPreviewData
           ? () => handlePreviewTrackChange(nextItem)
@@ -164,6 +172,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
           ? () => handlePreviewTrackChange(previousItem)
           : miniPlayerControls.handlePreviousTrack
       }
+      onMiniPlayerVolumeChange={setMiniPlayerVolume}
       onMobileTabChange={setActiveMobileTab}
       playbackState={visiblePlaybackState}
       playlist={visiblePlaylist}

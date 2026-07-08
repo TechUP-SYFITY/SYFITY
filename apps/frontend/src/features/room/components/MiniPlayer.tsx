@@ -15,13 +15,17 @@ interface MiniPlayerProps {
   controlDisabled: boolean;
   currentTrack: PlaylistItem | undefined;
   isHost: boolean;
+  isMuted: boolean;
   nextDisabled: boolean;
+  onMiniPlayerMuteToggle: () => void;
   onNextTrack: () => void;
   onPlayPause: () => void;
   onPreviousTrack: () => void;
+  onVolumeChange: (volume: number) => void;
   pendingCommand: MiniPlayerPendingCommand;
   playbackState: PlaybackState | null;
   previousDisabled: boolean;
+  volume: number;
 }
 
 export function MiniPlayer({
@@ -29,13 +33,17 @@ export function MiniPlayer({
   controlDisabled,
   currentTrack,
   isHost,
+  isMuted,
   nextDisabled,
+  onMiniPlayerMuteToggle,
   onNextTrack,
   onPlayPause,
   onPreviousTrack,
+  onVolumeChange,
   pendingCommand,
   playbackState,
   previousDisabled,
+  volume,
 }: MiniPlayerProps) {
   const duration = currentTrack?.duration ?? 0;
   const currentTime = getBoundedCurrentTime(playbackState?.currentTime ?? 0, duration);
@@ -46,6 +54,7 @@ export function MiniPlayer({
   const playPauseDisabled = controlDisabled;
   const previousControlDisabled = controlDisabled || previousDisabled;
   const nextControlDisabled = controlDisabled || nextDisabled;
+  const isVolumeMuted = isMuted || volume === 0;
 
   return (
     <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-white/[0.08] bg-[#09090b]/[0.97] px-5 pt-px backdrop-blur lg:static lg:px-6">
@@ -155,15 +164,25 @@ export function MiniPlayer({
         ) : null}
       </div>
 
-      <div className="hidden flex-[0_0_144px] items-center justify-end gap-2 lg:flex">
-        <RoomIcon name="volume" className="h-3.5 w-3.5 text-white/25" />
-        <div
-          className="h-1 w-[123px] rounded-full bg-white/10"
-          aria-label="볼륨 조절 기능 준비 중"
-          aria-disabled="true"
+      <div className="hidden flex-[0_0_164px] items-center justify-end gap-2 lg:flex">
+        <button
+          className={getIconButtonClass(false)}
+          type="button"
+          aria-label={isVolumeMuted ? '음소거 해제' : '음소거'}
+          onClick={onMiniPlayerMuteToggle}
         >
-          <div className="h-full w-0 rounded-full bg-white/25" />
-        </div>
+          <RoomIcon name={isVolumeMuted ? 'volumeMuted' : 'volume'} className="h-3.5 w-3.5" />
+        </button>
+        <input
+          className="h-1 w-[123px] cursor-pointer accent-[#72f4a4]"
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          aria-label="볼륨 조절"
+          value={isVolumeMuted ? 0 : volume}
+          onChange={(event) => onVolumeChange(Number(event.currentTarget.value))}
+        />
       </div>
     </footer>
   );
@@ -186,15 +205,15 @@ function getControlHint({
   isHost: boolean;
 }) {
   if (!isHost) {
-    return 'Host만 재생을 제어할 수 있어요.';
+    return 'Host만 재생을 제어할 수 있어요';
   }
 
   if (!currentTrack) {
-    return '재생 가능한 곡이 없어요.';
+    return '재생 가능한 곡이 없어요';
   }
 
   if (controlDisabled) {
-    return '재생 제어를 사용할 수 없어요.';
+    return '재생 제어를 사용할 수 없어요';
   }
 
   return 'Host 제어 가능';

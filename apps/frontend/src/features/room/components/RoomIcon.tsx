@@ -20,6 +20,7 @@ import {
   type LucideIcon,
   Users,
   Volume2,
+  VolumeX,
   WifiOff,
 } from 'lucide-react';
 
@@ -41,6 +42,7 @@ export type RoomIconName =
   | 'shuffle'
   | 'users'
   | 'volume'
+  | 'volumeMuted'
   | 'wifiOff';
 
 const ROOM_ICONS: Record<RoomIconName, LucideIcon> = {
@@ -61,6 +63,7 @@ const ROOM_ICONS: Record<RoomIconName, LucideIcon> = {
   shuffle: Shuffle,
   users: Users,
   volume: Volume2,
+  volumeMuted: VolumeX,
   wifiOff: WifiOff,
 };
 

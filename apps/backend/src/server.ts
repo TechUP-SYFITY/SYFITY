@@ -5,6 +5,8 @@ import { Server } from 'socket.io';
 
 import { setIo } from './lib/io';
 
+import { startPlaybackTick } from './socket/handlers/tick.handler';
+
 import app from './app';
 import { config } from './config';
 import { initSocket } from './socket';
@@ -29,6 +31,7 @@ const io = new Server(httpServer, {
 
 setIo(io);
 initSocket(io);
+startPlaybackTick(io);
 
 httpServer.listen(config.port, () => {
   // eslint-disable-next-line no-console

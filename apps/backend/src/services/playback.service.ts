@@ -42,6 +42,8 @@ export type PlaybackPlayResult = {
 };
 
 export class PlaybackService {
+  private readonly playingRoomIds = new Set<string>();
+
   constructor(
     private readonly playbackRepo: IPlaybackRepository,
     private readonly roomRepo: PlaybackRoomRepo,
@@ -56,6 +58,21 @@ export class PlaybackService {
 
   clearCache(roomId: string): void {
     this.cache.del(CacheKeys.playbackState(roomId));
+    this.playingRoomIds.delete(roomId);
+  }
+
+  /** tick.handler가 매 tick마다 순회할 Room ID 스냅샷을 반환한다. */
+  getPlayingRoomIds(): string[] {
+    return Array.from(this.playingRoomIds);
+  }
+
+  /**
+   * 서버 tick 타이머가 내부적으로 추적 중인 roomId만 조회한다.
+   * 사용자 요청 경로가 아니므로 active member 권한 검증은 수행하지 않는다.
+   */
+  async getStateForTick(roomId: string): Promise<PlaybackStatePayload> {
+    const cached = await this.readCurrentState(roomId);
+    return this.toPlaybackStatePayload(cached);
   }
 
   async getPlaybackStateForSocket(roomId: string, userId: string): Promise<PlaybackStatePayload> {
@@ -242,6 +259,13 @@ export class PlaybackService {
     const record = await this.playbackRepo.updateState(roomId, data);
     const cacheValue = this.toCache(record);
     this.cache.set(CacheKeys.playbackState(roomId), cacheValue);
+
+    if (data.isPlaying) {
+      this.playingRoomIds.add(roomId);
+    } else {
+      this.playingRoomIds.delete(roomId);
+    }
+
     return this.toPlaybackStatePayload(cacheValue);
   }
 

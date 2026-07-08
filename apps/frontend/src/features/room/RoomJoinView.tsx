@@ -16,6 +16,8 @@ import type { FormEvent } from 'react';
 import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
+import { RoomIcon } from './components/RoomIcon';
+
 type RoomJoinState = 'default' | 'loading' | 'invalid-code' | 'closed' | 'inactive';
 
 interface RoomJoinViewProps {
@@ -85,8 +87,11 @@ export function RoomJoinView({
       <div className="relative z-10 flex w-full max-w-md flex-col gap-6">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="room-entry-brand-mark flex size-8 items-center justify-center rounded-2xl text-background">
+            <span className="room-entry-brand-mark flex size-8 items-center justify-center rounded-2xl text-background md:hidden">
               <Headphones className="size-4" aria-hidden />
+            </span>
+            <span className="hidden md:inline-flex">
+              <RoomIcon name="brand" className="h-8 w-8 text-primary drop-shadow-lg" />
             </span>
             <span className="font-bold tracking-tight">Syfity</span>
           </div>

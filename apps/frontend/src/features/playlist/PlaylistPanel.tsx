@@ -123,10 +123,10 @@ export function PlaylistPanel({
   };
 
   return (
-    <aside className="relative flex min-h-[360px] flex-col border-r border-white/[0.07] bg-[#09090b]">
-      <div className="hidden h-12 items-center justify-between border-b border-white/[0.07] px-4 lg:flex">
+    <aside className="relative flex min-h-0 flex-1 flex-col border-r border-border bg-background">
+      <div className="hidden h-12 items-center justify-between border-b border-border px-4 xl:flex">
         <h2 className="flex items-center gap-2 text-xs font-semibold text-white/65">
-          <ListMusic className="h-3.5 w-3.5 text-[#72f4a4]" aria-hidden />
+          <ListMusic className="h-3.5 w-3.5 text-primary" aria-hidden />
           재생목록
           <span className="font-normal text-white/35">{visiblePlaylist.length}곡</span>
           {isBackgroundFetching ? (
@@ -151,9 +151,9 @@ export function PlaylistPanel({
       </div>
 
       {isAddFormOpen ? (
-        <form className="flex gap-2 border-b border-white/[0.07] px-4 py-3" onSubmit={handleSubmit}>
+        <form className="flex gap-2 border-b border-border px-4 py-3" onSubmit={handleSubmit}>
           <Input
-            className="min-w-0 rounded-xl border-white/[0.08] bg-white/[0.05]"
+            className="min-w-0 rounded-xl border-border bg-input"
             error={addPlaylistItem.isError ? mutationErrorMessage : undefined}
             leadingIcon={<ListMusic aria-hidden />}
             placeholder="YouTube URL"
@@ -174,7 +174,7 @@ export function PlaylistPanel({
       ) : null}
 
       {mutationErrorMessage && !addPlaylistItem.isError ? (
-        <p className="border-b border-white/[0.07] px-4 py-2 text-xs text-destructive" role="alert">
+        <p className="border-b border-border px-4 py-2 text-xs text-destructive" role="alert">
           {mutationErrorMessage}
         </p>
       ) : null}
@@ -187,7 +187,7 @@ export function PlaylistPanel({
           </div>
         ) : null}
         {isPlaylistError ? (
-          <div className="flex min-h-[240px] flex-col items-center justify-center px-6 text-center">
+          <div className="flex min-h-60 flex-col items-center justify-center px-6 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive">
               <CircleAlert className="h-5 w-5" aria-hidden />
             </div>
@@ -207,8 +207,8 @@ export function PlaylistPanel({
           </div>
         ) : null}
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
-          <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.04] text-white/40">
+          <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-input text-white/40">
               <Inbox className="h-5 w-5" aria-hidden />
             </div>
             <p className="mt-4 text-sm font-bold text-white">아직 곡이 없어요</p>
@@ -232,13 +232,13 @@ export function PlaylistPanel({
           const isCurrent = index === 0;
           const isUnavailable = item.status === 'unavailable';
           const titleColorClass = isCurrent
-            ? 'text-[#72f4a4]'
+            ? 'text-primary'
             : getUnavailableAwareTextClass(isUnavailable);
 
           return (
             <div
-              className={`group border-b border-white/[0.055] px-4 py-3 transition ${
-                isCurrent ? 'bg-[#72f4a4]/[0.035]' : 'hover:bg-white/[0.025]'
+              className={`group border-b border-border px-4 py-3 transition ${
+                isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20'
               }`}
               key={item.id}
             >
@@ -311,7 +311,7 @@ export function PlaylistPanel({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-full border-0 bg-transparent text-rose-400/70 hover:bg-rose-500/10"
+                    className="h-7 w-7 rounded-full border-0 bg-transparent text-destructive/70 hover:bg-destructive/10"
                     disabled={!isReady || deletePlaylistItem.isPending}
                     type="button"
                     aria-label={`${item.title} 삭제`}
@@ -330,7 +330,7 @@ export function PlaylistPanel({
       </div>
 
       <Button
-        className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-[0_0_28px_rgba(114,244,164,0.45)] lg:hidden"
+        className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-lg xl:hidden"
         type="button"
         onClick={() => {
           resetMutationErrors();

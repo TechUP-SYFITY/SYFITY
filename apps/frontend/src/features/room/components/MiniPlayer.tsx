@@ -1,6 +1,8 @@
 'use client';
 
 // Room 하단에 고정되는 미니 플레이어 UI와 주입된 제어 상태를 표시한다.
+import type { CSSProperties } from 'react';
+
 import { cn } from '@/shared/lib/utils';
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
@@ -55,6 +57,7 @@ export function MiniPlayer({
   const previousControlDisabled = controlDisabled || previousDisabled;
   const nextControlDisabled = controlDisabled || nextDisabled;
   const isVolumeMuted = isMuted || volume === 0;
+  const visibleVolume = isVolumeMuted ? 0 : volume;
 
   return (
     <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-border bg-background/95 px-5 pt-px backdrop-blur xl:static xl:px-6">
@@ -180,7 +183,12 @@ export function MiniPlayer({
           max={100}
           step={1}
           aria-label="볼륨 조절"
-          value={isVolumeMuted ? 0 : volume}
+          value={visibleVolume}
+          style={
+            {
+              '--mini-player-volume-percent': `${visibleVolume}%`,
+            } as CSSProperties
+          }
           onChange={(event) => onVolumeChange(Number(event.currentTarget.value))}
         />
       </div>

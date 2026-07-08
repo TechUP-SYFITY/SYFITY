@@ -106,7 +106,7 @@ function withPlaylistStoryFrame() {
 
     return (
       <QueryClientProvider client={createQueryClient()}>
-        <div className="h-[640px] w-[320px] overflow-hidden border border-white/[0.07] bg-background">
+        <div className="h-96 w-80 overflow-hidden border border-border bg-background">
           <Story />
         </div>
       </QueryClientProvider>

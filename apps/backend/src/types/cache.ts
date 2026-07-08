@@ -7,6 +7,3 @@ export type PlaybackStateCache = {
   serverStartedAt: string | null; // ISO 8601 문자열
   serverPausedAt: string | null; // ISO 8601 문자열
 };
-
-/** presence:{roomId} 키에 저장되는 참여자 온라인 상태 캐시 */
-export type PresenceCache = Record<string, 'online' | 'offline'>;

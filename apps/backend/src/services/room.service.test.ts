@@ -5,7 +5,6 @@ import { ERROR_CODES } from '@syfity/shared';
 import type { PlaybackService } from './playback.service';
 import { RoomService, type RoomSocketServer } from './room.service';
 import type { ICache } from '../lib/cache/cache.interface';
-import { CacheKeys } from '../lib/cache/cacheKeys';
 import type { ChatRecord, IChatRepository } from '../types/chat';
 import type { PlaybackStateResult } from '../types/playback';
 import type { IPlaylistRepository, PlaylistItemRecord } from '../types/playlist';
@@ -95,7 +94,6 @@ const systemChat: ChatRecord = {
   createdAt: new Date('2026-07-01T12:30:00.000Z'),
 };
 
-
 function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
   return {
     existsInviteCode: vi.fn().mockResolvedValue(false),
@@ -183,7 +181,14 @@ function makeService(
   const cache = overrides.cache ?? makeCache();
 
   return {
-    service: new RoomService(roomRepo, cache, playlistRepo, chatRepo, playbackService, overrides.io),
+    service: new RoomService(
+      roomRepo,
+      cache,
+      playlistRepo,
+      chatRepo,
+      playbackService,
+      overrides.io,
+    ),
     roomRepo,
     playlistRepo,
     chatRepo,
@@ -538,13 +543,12 @@ describe('RoomService', () => {
   });
 
   it('Host가 Room을 나가면 Room을 종료한다', async () => {
-    const { service, roomRepo, playbackService, cache } = makeService();
+    const { service, roomRepo, playbackService } = makeService();
 
     await expect(service.leaveRoom('room-1', 'user-1')).resolves.toEqual({ type: 'closed' });
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
     expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
-    expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
     expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
   });
 
@@ -573,13 +577,12 @@ describe('RoomService', () => {
   });
 
   it('Host가 Room을 닫으면 Room 종료와 캐시 삭제 후 Room 정보를 반환한다', async () => {
-    const { service, roomRepo, playbackService, cache } = makeService();
+    const { service, roomRepo, playbackService } = makeService();
 
     await expect(service.closeRoom('room-1', 'user-1')).resolves.toEqual(roomDetail);
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
     expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
-    expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
   });
 
   it('시스템 메시지를 저장하고 결과를 반환한다', async () => {
@@ -638,13 +641,12 @@ describe('RoomService', () => {
 
   it('REST Room 종료 성공 시 chat:system과 room:closed를 broadcast하고 Socket Room을 해제한다', async () => {
     const { io, emitter } = makeIo();
-    const { service, roomRepo, chatRepo, playbackService, cache } = makeService({ io });
+    const { service, roomRepo, chatRepo, playbackService } = makeService({ io });
 
     await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).resolves.toBeUndefined();
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
     expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
-    expect(cache.del).toHaveBeenCalledWith(CacheKeys.presence('room-1'));
     expect(io.to).toHaveBeenCalledWith('room:room-1');
     expect(chatRepo.createMessage).toHaveBeenCalledWith({
       roomId: 'room-1',

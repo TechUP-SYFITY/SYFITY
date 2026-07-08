@@ -2,9 +2,11 @@ import type { Server, Socket } from 'socket.io';
 
 import {
   playbackService as defaultPlaybackService,
+  presenceService as defaultPresenceService,
   roomService as defaultRoomService,
 } from '../../ioc';
 import type { PlaybackService } from '../../services/playback.service';
+import type { PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
 import type {
   PresenceUpdatePayload,
@@ -17,12 +19,20 @@ import { toChatSystemPayload } from '../../utils/chatPayload';
 import { toSocketAckError } from '../socketError';
 import { assertRoomId } from '../socketValidators';
 
-type RoomHandlerService = Pick<RoomService, 'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'>;
+type RoomHandlerService = Pick<
+  RoomService,
+  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+>;
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
+type RoomHandlerPresenceService = Pick<
+  PresenceService,
+  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer'
+>;
 
 type RoomHandlerDeps = {
   roomService: RoomHandlerService;
   playbackService: RoomHandlerPlaybackService;
+  presenceService: RoomHandlerPresenceService;
 };
 
 export function registerRoomHandlers(
@@ -31,9 +41,10 @@ export function registerRoomHandlers(
   deps: RoomHandlerDeps = {
     roomService: defaultRoomService,
     playbackService: defaultPlaybackService,
+    presenceService: defaultPresenceService,
   },
 ): void {
-  const { roomService, playbackService } = deps;
+  const { roomService, playbackService, presenceService } = deps;
 
   socket.on(
     'room:join',
@@ -44,9 +55,16 @@ export function registerRoomHandlers(
         const userId = socket.data.userId;
 
         const { member, wasOnline } = await roomService.setMemberOnline(roomId, userId);
+        presenceService.cancelMemberOfflineTimer(roomId, userId);
+        const hostReconnected =
+          member.role === 'host' && presenceService.cancelHostCloseTimer(roomId);
         const playbackState = await playbackService.getPlaybackStateForSocket(roomId, userId);
 
         socket.join(`room:${roomId}`);
+
+        if (hostReconnected) {
+          io.to(`room:${roomId}`).emit('room:host-reconnected', { roomId });
+        }
 
         const presencePayload: PresenceUpdatePayload = {
           userId: member.userId,
@@ -82,10 +100,13 @@ export function registerRoomHandlers(
       const { roomId } = payload;
       const userId = socket.data.userId;
 
+      presenceService.cancelMemberOfflineTimer(roomId, userId);
       const result = await roomService.leaveRoom(roomId, userId);
       socket.leave(`room:${roomId}`);
 
       if (result.type === 'closed') {
+        presenceService.cancelHostCloseTimer(roomId);
+
         const systemMessage = await roomService.createSystemMessage(
           roomId,
           'Room이 종료되었습니다.',

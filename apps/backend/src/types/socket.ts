@@ -76,6 +76,15 @@ export type RoomClosedPayload = {
   reason: RoomClosedReason;
 };
 
+export type RoomHostDisconnectedPayload = {
+  roomId: string;
+  waitUntil: string;
+};
+
+export type RoomHostReconnectedPayload = {
+  roomId: string;
+};
+
 export type ChatSendPayload = {
   roomId: string;
   message: string;

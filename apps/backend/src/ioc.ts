@@ -18,6 +18,7 @@ import { ChatService } from './services/chat.service';
 import { HealthService } from './services/health.service';
 import { PlaybackService } from './services/playback.service';
 import { PlaylistService } from './services/playlist.service';
+import { PresenceService } from './services/presence.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
 import { UserService } from './services/user.service';
@@ -63,6 +64,7 @@ export const playbackService = new PlaybackService(
   cache,
   playlistYoutubeClient,
 );
+export const presenceService = new PresenceService(roomRepository, cache);
 export const chatService = new ChatService(chatRepository, roomRepository);
 export const roomService = new RoomService(
   roomRepository,

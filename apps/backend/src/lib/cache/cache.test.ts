@@ -16,4 +16,13 @@ describe('NodeCacheStore', () => {
     expect(cache.has('test')).toBe(false);
     expect(cache.get<string>('test')).toBeUndefined();
   });
+
+  it('저장한 객체 참조를 그대로 반환한다', () => {
+    const cache = new NodeCacheStore();
+    const value = { kind: 'timer-ref' };
+
+    cache.set('object', value);
+
+    expect(cache.get<typeof value>('object')).toBe(value);
+  });
 });

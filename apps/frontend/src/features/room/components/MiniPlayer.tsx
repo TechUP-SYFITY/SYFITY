@@ -141,12 +141,12 @@ export function MiniPlayer({
             aria-valuenow={currentTime}
           >
             <div
-              className="relative h-full rounded-full bg-gradient-to-r from-primary to-accent"
+              className="relative h-full rounded-full bg-primary"
               style={{ width: `${progressPercent}%` }}
             >
               {progressPercent > 0 ? (
                 <span
-                  className="absolute top-1/2 right-0 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow-lg"
+                  className="absolute top-1/2 right-0 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow-lg"
                   data-testid="mini-player-progress-thumb"
                 />
               ) : null}

@@ -116,9 +116,14 @@
     height: 0.125rem;
     cursor: pointer;
     appearance: none;
+    outline: none;
     border-radius: var(--radius-full);
     background: color-mix(in srgb, var(--foreground) 18%, transparent);
     accent-color: var(--primary);
+  }
+
+  .mini-player-volume-range:focus-visible {
+    box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--primary) 45%, transparent);
   }
 
   .mini-player-volume-range::-webkit-slider-thumb {

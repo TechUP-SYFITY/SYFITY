@@ -81,6 +81,10 @@ const request = async <T>(
       }
       return request<T>(url, options, true);
     }
+
+    if (hasRetried) {
+      redirectToReauth();
+    }
   }
 
   if (!response.ok) {

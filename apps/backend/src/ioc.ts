@@ -73,21 +73,7 @@ export const roomService = new RoomService(
   chatRepository,
   playbackService,
 );
-let roomServiceWithIo: RoomService | null = null;
 let playlistService: PlaylistService | null = null;
-
-function getRoomServiceWithIo(): RoomService {
-  roomServiceWithIo ??= new RoomService(
-    roomRepository,
-    cache,
-    playlistRepository,
-    chatRepository,
-    playbackService,
-    getIo(),
-  );
-
-  return roomServiceWithIo;
-}
 
 function getPlaylistService(): PlaylistService {
   playlistService ??= new PlaylistService(
@@ -102,7 +88,7 @@ function getPlaylistService(): PlaylistService {
 }
 
 register(UserController, () => new UserController(userService));
-register(RoomController, () => new RoomController(userService, getRoomServiceWithIo()));
+register(RoomController, () => new RoomController(userService, roomService));
 register(ChatController, () => new ChatController(chatService));
 register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);

@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 import type { PlaybackService } from './playback.service';
 import { RoomService, type RoomSocketServer } from './room.service';
 import type { ICache } from '../lib/cache/cache.interface';
+import { getIo } from '../lib/io';
 import type { ChatRecord, IChatRepository } from '../types/chat';
 import type { PlaybackStateResult } from '../types/playback';
 import type { IPlaylistRepository, PlaylistItemRecord } from '../types/playlist';
@@ -15,6 +16,12 @@ import type {
   RoomRecord,
   RoomUpdateRecord,
 } from '../types/room';
+
+vi.mock('../lib/io', () => ({
+  getIo: vi.fn(() => {
+    throw new Error('Socket.IO not initialized');
+  }),
+}));
 
 const room: RoomRecord = {
   id: 'room-1',
@@ -180,15 +187,13 @@ function makeService(
   const playbackService = overrides.playbackService ?? makePlaybackService();
   const cache = overrides.cache ?? makeCache();
 
+  if (overrides.io) {
+    const io = overrides.io;
+    vi.mocked(getIo).mockReturnValue(io as never);
+  }
+
   return {
-    service: new RoomService(
-      roomRepo,
-      cache,
-      playlistRepo,
-      chatRepo,
-      playbackService,
-      overrides.io,
-    ),
+    service: new RoomService(roomRepo, cache, playlistRepo, chatRepo, playbackService),
     roomRepo,
     playlistRepo,
     chatRepo,
@@ -200,6 +205,9 @@ function makeService(
 describe('RoomService', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.mocked(getIo).mockImplementation(() => {
+      throw new Error('Socket.IO not initialized');
+    });
   });
 
   it('첫 번째 시도에 고유 초대 코드를 생성하고 Room을 생성한다', async () => {
@@ -754,13 +762,12 @@ describe('RoomService', () => {
     expect(io.socketsLeave).not.toHaveBeenCalled();
   });
 
-  it('REST Room 종료 시 io가 없으면 SERVER_INTERNAL_ERROR를 던지고 Room을 닫지 않는다', async () => {
+  it('REST Room 종료 시 Socket.IO가 초기화되지 않았으면 에러를 던지고 Room을 닫지 않는다', async () => {
     const { service, roomRepo } = makeService();
 
-    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).rejects.toMatchObject({
-      status: 500,
-      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
-    });
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).rejects.toThrow(
+      'Socket.IO not initialized',
+    );
     expect(roomRepo.closeRoom).not.toHaveBeenCalled();
   });
 });

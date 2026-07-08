@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
+import { getIo } from '../lib/io';
 import type { ChatMessageRecord, IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
@@ -43,7 +44,6 @@ export class RoomService {
       PlaybackService,
       'getPlaybackStateForJoin' | 'initializeCache' | 'clearCache'
     >,
-    private readonly io?: RoomSocketServer,
   ) {}
 
   async createRoom(userId: string, name: string): Promise<RoomRecord> {
@@ -170,24 +170,17 @@ export class RoomService {
   }
 
   async closeRoomAndBroadcast(roomId: string, userId: string): Promise<void> {
-    if (!this.io) {
-      throw new AppError(
-        500,
-        ERROR_CODES.SERVER_INTERNAL_ERROR,
-        'Socket 서버가 초기화되지 않았습니다.',
-      );
-    }
-
+    const io: RoomSocketServer = getIo();
     await this.closeRoom(roomId, userId);
 
     const systemMessage = await this.createSystemMessage(roomId, 'Room이 종료되었습니다.');
     if (systemMessage) {
-      this.io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
+      io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
     }
 
     const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
-    this.io.to(`room:${roomId}`).emit('room:closed', payload);
-    this.io.socketsLeave(`room:${roomId}`);
+    io.to(`room:${roomId}`).emit('room:closed', payload);
+    io.socketsLeave(`room:${roomId}`);
   }
 
   private async generateUniqueInviteCode(): Promise<string> {

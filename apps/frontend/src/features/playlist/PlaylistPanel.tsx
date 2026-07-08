@@ -123,7 +123,7 @@ export function PlaylistPanel({
   };
 
   return (
-    <aside className="relative flex min-h-0 flex-1 flex-col border-r border-border bg-background">
+    <aside className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border bg-background">
       <div className="hidden h-12 items-center justify-between border-b border-border px-4 xl:flex">
         <h2 className="flex items-center gap-2 text-xs font-semibold text-white/65">
           <ListMusic className="h-3.5 w-3.5 text-primary" aria-hidden />
@@ -179,7 +179,7 @@ export function PlaylistPanel({
         </p>
       ) : null}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-w-0 flex-1 overflow-y-auto">
         {isInitialLoading ? (
           <div className="flex items-center gap-2 p-4 text-sm text-white/45" aria-live="polite">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -237,12 +237,12 @@ export function PlaylistPanel({
 
           return (
             <div
-              className={`group border-b border-border px-4 py-3 transition ${
+              className={`group min-w-0 overflow-hidden border-b border-border px-4 py-3 transition ${
                 isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20'
               }`}
               key={item.id}
             >
-              <div className="flex min-h-10 items-center gap-3">
+              <div className="flex min-h-10 min-w-0 items-center gap-3">
                 <TrackArtwork item={item} />
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-bold ${titleColorClass}`}>
@@ -269,7 +269,7 @@ export function PlaylistPanel({
                   size="icon"
                   className={
                     isHost
-                      ? 'h-7 w-7 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5 lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100'
+                      ? 'h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5 xl:opacity-0 xl:group-focus-within:opacity-100 xl:group-hover:opacity-100'
                       : 'hidden'
                   }
                   disabled={!isReady || !isHost || isUnavailable}
@@ -282,7 +282,7 @@ export function PlaylistPanel({
                 <div
                   className={
                     isHost
-                      ? 'flex items-center gap-1 opacity-100 transition lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100'
+                      ? 'flex shrink-0 items-center gap-1 opacity-100 transition xl:opacity-0 xl:group-focus-within:opacity-100 xl:group-hover:opacity-100'
                       : 'hidden'
                   }
                 >

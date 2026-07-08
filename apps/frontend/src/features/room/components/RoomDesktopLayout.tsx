@@ -27,8 +27,8 @@ export function RoomDesktopLayout({
       <div className="min-w-0 flex-1 self-stretch border-r border-border px-6 py-6">
         {renderPlayerPanel()}
       </div>
-      <div className="flex w-64 shrink-0 self-stretch xl:w-72">{renderPlaylistPanel()}</div>
-      <div className="flex w-64 shrink-0 self-stretch xl:w-72">
+      <div className="flex w-64 min-w-0 shrink-0 self-stretch xl:w-72">{renderPlaylistPanel()}</div>
+      <div className="flex w-64 min-w-0 shrink-0 self-stretch xl:w-72">
         <ChatPanel chats={chats} />
       </div>
     </section>

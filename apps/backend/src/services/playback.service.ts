@@ -61,7 +61,7 @@ export class PlaybackService {
     this.playingRoomIds.delete(roomId);
   }
 
-  /** 현재 재생 중으로 추적 중인 Room ID의 스냅샷을 반환한다. */
+  /** tick.handler가 매 tick마다 순회할 Room ID 스냅샷을 반환한다. */
   getPlayingRoomIds(): string[] {
     return Array.from(this.playingRoomIds);
   }

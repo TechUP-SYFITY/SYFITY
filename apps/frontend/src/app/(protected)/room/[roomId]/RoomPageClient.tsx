@@ -67,6 +67,10 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       { roomId },
       {
         onError: () => {
+          if (process.env.NODE_ENV === 'development') {
+            setPlaylist(ROOM_PREVIEW_PLAYLIST);
+          }
+
           setHasJoinedRoom(false);
         },
         onSuccess: (data) => {
@@ -82,8 +86,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const shouldShowPreviewData = process.env.NODE_ENV === 'development' && joinRoom.isError;
   const visibleRoom = shouldShowPreviewData ? ROOM_PREVIEW_ROOM : roomFromStore;
   const visibleMembers = shouldShowPreviewData ? ROOM_PREVIEW_MEMBERS : members;
-  const previewPlaylist = playlist.length > 0 ? playlist : ROOM_PREVIEW_PLAYLIST;
-  const visiblePlaylist = shouldShowPreviewData ? previewPlaylist : playlist;
+  const visiblePlaylist = playlist;
   const visibleChats = shouldShowPreviewData ? ROOM_PREVIEW_CHATS : [];
   const visiblePlaybackState = shouldShowPreviewData ? previewPlaybackState : playbackState;
   const currentUserId = getCurrentUserId();
@@ -104,12 +107,6 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     previousItemId: previousItem?.id,
     roomId,
   });
-
-  useEffect(() => {
-    if (shouldShowPreviewData && playlist.length === 0) {
-      setPlaylist(ROOM_PREVIEW_PLAYLIST);
-    }
-  }, [playlist.length, setPlaylist, shouldShowPreviewData]);
 
   const handlePreviewPlayPause = () => {
     if (!shouldShowPreviewData || !currentTrack) {

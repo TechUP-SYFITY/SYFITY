@@ -1,15 +1,13 @@
 'use client';
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
-import { AlertTriangle, Loader2, Pause, Play, Radio, RefreshCcw, SkipForward } from 'lucide-react';
+import { AlertTriangle, Play } from 'lucide-react';
 
-import { Button } from '@/shared/components/ui';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
 import { usePlayerStore } from './playerStore';
-import { usePlayerControls } from './usePlayerControls';
 import { YouTubePlayer } from './YouTubePlayer';
 
 interface PlayerPanelProps {
@@ -28,33 +26,40 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
     ? playlist.findIndex((item) => item.id === currentTrack.id)
     : -1;
   const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
-  const isPlaying = playbackState?.isPlaying ?? false;
-  const currentTime = playbackState?.currentTime ?? 0;
-  const hasPlayableTrack = Boolean(currentTrack && playbackState?.videoId);
-  const {
-    commandError,
-    controlDisabled,
-    handleNextTrack,
-    handlePlayPause,
-    handleSyncRequest,
-    pendingCommand,
-    syncDisabled,
-    syncStatus,
-  } = usePlayerControls({
-    currentTime,
-    hasPlayableTrack,
-    isHost,
-    isPlaying,
-    nextItemId: nextItem?.id,
-    roomId,
-  });
+
+  function handleBufferingRecovered() {
+    if (!playbackState?.videoId) {
+      return;
+    }
+
+    try {
+      playbackCommands.requestSync(roomId);
+    } catch {
+      // 자동 동기화 요청은 다음 서버 tick에서 다시 보정된다.
+    }
+  }
+
+  function handleNextTrack() {
+    if (!isHost) {
+      return;
+    }
+
+    if (!nextItem) {
+      void playbackCommands.pause(roomId, 0).catch(() => undefined);
+      return;
+    }
+
+    void playbackCommands.changeTrack(roomId, nextItem.id).catch(() => undefined);
+  }
 
   function handlePlayerError(errorCode: number) {
     if (!isHost || !playbackState?.videoId) {
       return;
     }
 
-    void playbackCommands.reportError(roomId, playbackState.videoId, errorCode);
+    void playbackCommands
+      .reportError(roomId, playbackState.videoId, errorCode)
+      .catch(() => undefined);
   }
 
   return (
@@ -62,7 +67,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
       <div className="relative overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border">
         <YouTubePlayer
           playbackState={playbackState}
-          onBufferingRecovered={handleSyncRequest}
+          onBufferingRecovered={handleBufferingRecovered}
           onEnded={isHost ? handleNextTrack : () => undefined}
           onError={handlePlayerError}
         />
@@ -106,57 +111,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-input p-3">
-        <Button
-          variant={isPlaying ? 'ghost' : 'primary'}
-          size="md"
-          className="min-w-28 rounded-2xl"
-          disabled={controlDisabled}
-          isLoading={pendingCommand === 'play' || pendingCommand === 'pause'}
-          type="button"
-          onClick={handlePlayPause}
-        >
-          {isPlaying ? <Pause aria-hidden /> : <Play aria-hidden />}
-          {isPlaying ? '일시정지' : '재생'}
-        </Button>
-        <Button
-          variant="ghost"
-          size="md"
-          className="rounded-2xl"
-          disabled={controlDisabled || !nextItem}
-          isLoading={pendingCommand === 'next'}
-          type="button"
-          onClick={handleNextTrack}
-        >
-          <SkipForward aria-hidden />
-          다음 곡
-        </Button>
-        <Button
-          variant="accent-soft"
-          size="md"
-          className="rounded-2xl"
-          disabled={syncDisabled}
-          type="button"
-          onClick={handleSyncRequest}
-        >
-          <RefreshCcw aria-hidden />
-          동기화
-        </Button>
-        <div className="ml-auto flex min-h-9 items-center gap-2 text-xs text-muted-foreground">
-          {pendingCommand ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
-          <Radio className="h-3.5 w-3.5 text-primary" aria-hidden />
-          {isHost ? 'Host 제어 가능' : 'Host만 재생을 제어할 수 있어요.'}
-        </div>
-      </div>
-
       <div className="min-h-5 space-y-1 text-sm text-muted-foreground">
-        {syncStatus ? <p>{syncStatus}</p> : null}
-        {commandError ? (
-          <p className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" aria-hidden />
-            {commandError}
-          </p>
-        ) : null}
         {playbackError ? (
           <p className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-4 w-4" aria-hidden />

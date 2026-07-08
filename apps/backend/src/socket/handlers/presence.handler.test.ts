@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { registerPresenceHandlers } from './presence.handler';
 import { AppError } from '../../errors/appError';
+import { logger } from '../../lib/logger';
 import type { PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
 import type { ChatMessageRecord } from '../../types/chat';
@@ -116,16 +117,16 @@ async function flushAsyncHandlers(): Promise<void> {
 }
 
 describe('registerPresenceHandlers', () => {
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let loggerError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-01T12:00:00.000Z'));
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleError.mockRestore();
+    loggerError.mockRestore();
     vi.useRealTimers();
   });
 
@@ -275,9 +276,9 @@ describe('registerPresenceHandlers', () => {
     handlers.disconnecting();
     await flushAsyncHandlers();
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: expect.any(AppError), roomId: 'room-1', hostUserId: 'user-1' },
       '[presence] host-timeout closeRoom 생략(이미 종료됨)',
-      expect.any(AppError),
     );
     expect(roomService.createSystemMessage).not.toHaveBeenCalled();
     expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
@@ -301,9 +302,9 @@ describe('registerPresenceHandlers', () => {
     handlers.disconnecting();
     await flushAsyncHandlers();
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: unexpectedError, roomId: 'room-1', hostUserId: 'user-1' },
       '[presence] host-timeout closeRoom 실패',
-      unexpectedError,
     );
     expect(roomService.createSystemMessage).not.toHaveBeenCalled();
     expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
@@ -413,6 +414,9 @@ describe('registerPresenceHandlers', () => {
     expect(() => handlers.disconnecting()).not.toThrow();
     await flushAsyncHandlers();
     expect(roomEmit).not.toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalledWith('[presence] disconnect 처리 실패', expect.any(Error));
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: expect.any(Error), roomId: 'room-1', userId: 'user-1' },
+      '[presence] disconnect 처리 실패',
+    );
   });
 });

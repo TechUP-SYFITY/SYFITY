@@ -22,6 +22,7 @@
 | ORM           | Prisma                | 마이그레이션 + 타입 자동 생성                             |
 | DB            | Supabase (PostgreSQL) |                                                           |
 | 캐시          | node-cache            | ICache 인터페이스로 추상화, Redis 교체 가능 (현재 미구현) |
+| 로깅          | pino                  | 구조화 로깅. 개발 환경은 pino-pretty로 포맷               |
 | 인증          | JWT                   | httpOnly 쿠키, Refresh Token Rotation                     |
 | Google OAuth  | google-auth-library   | OAuth2Client로 인증 URL 생성, 토큰 교환, 사용자 정보 조회 |
 | 외부 API      | YouTube Data API v3   | 서버사이드 프록시                                         |
@@ -98,6 +99,7 @@ apps/backend/
     lib/                → 공통 유틸
       prisma.ts         → PrismaClient 싱글턴
       io.ts             → Socket.IO 서버 인스턴스 getter/setter (setIo/getIo)
+      logger.ts         → pino 로거 싱글턴 (production: JSON, development: pino-pretty, test: silent)
       cache/
         cache.interface.ts → ICache 인터페이스 정의
         cacheKeys.ts        → 캐시 키/TTL 상수

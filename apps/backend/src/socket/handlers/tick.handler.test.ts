@@ -2,6 +2,7 @@ import type { Server } from 'socket.io';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PLAYBACK_TICK_INTERVAL_MS, startPlaybackTick, stopPlaybackTick } from './tick.handler';
+import { logger } from '../../lib/logger';
 import type { PlaybackService } from '../../services/playback.service';
 import type { PlaybackStatePayload } from '../../types/socket';
 
@@ -43,15 +44,15 @@ function makeIo(): { io: Server; emits: EmitRecord[] } {
 }
 
 describe('startPlaybackTick', () => {
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let loggerError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleError.mockRestore();
+    loggerError.mockRestore();
     vi.useRealTimers();
   });
 
@@ -129,7 +130,10 @@ describe('startPlaybackTick', () => {
     expect(emits).toEqual([
       { room: 'room:room-1', event: 'playback:tick', payload: playbackState },
     ]);
-    expect(consoleError).toHaveBeenCalledWith('[playback:tick] roomId=room-2 처리 실패', error);
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: error, roomId: 'room-2' },
+      '[playback:tick] 처리 실패',
+    );
   });
 
   it('30초 경과 시 3회 broadcast한다', async () => {

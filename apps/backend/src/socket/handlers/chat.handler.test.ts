@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { registerChatHandlers } from './chat.handler';
 import { AppError } from '../../errors/appError';
+import { logger } from '../../lib/logger';
 import type { ChatService } from '../../services/chat.service';
 import type { ChatMessageRecord } from '../../types/chat';
 import type { ChatSendAck, ChatSendPayload } from '../../types/socket';
@@ -59,14 +60,14 @@ function getSendHandler(handlers: Record<string, ChatSendCallback>): ChatSendCal
 }
 
 describe('registerChatHandlers', () => {
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let loggerError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleError.mockRestore();
+    loggerError.mockRestore();
   });
 
   it('chat:send 성공 시 메시지를 저장하고 chat:received를 broadcast한 뒤 성공 ack를 보낸다', async () => {

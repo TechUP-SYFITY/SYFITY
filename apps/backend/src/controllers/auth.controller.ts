@@ -6,6 +6,7 @@ import { ERROR_CODES, type LogoutResponse, type RefreshResponse } from '@syfity/
 
 import { config } from '../config';
 import { AppError } from '../errors/appError';
+import { logger } from '../lib/logger';
 import type { AuthService } from '../services/auth.service';
 
 type AuthControllerService = Pick<
@@ -52,8 +53,7 @@ export class AuthController {
         Location: this.authService.getPostLoginRedirectUrl(state),
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[auth:google/callback] 처리 실패', err);
+      logger.error({ err }, '[auth:google/callback] 처리 실패');
       return redirect(302, undefined, { Location: AUTH_FAILED_REDIRECT });
     }
   }

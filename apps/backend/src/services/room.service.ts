@@ -6,6 +6,7 @@ import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
 import { getIo } from '../lib/io';
+import { logger } from '../lib/logger';
 import type { ChatMessageRecord, IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
@@ -169,8 +170,7 @@ export class RoomService {
       });
     } catch (err) {
       // 시스템 메시지는 부가 기능이므로 실패해도 입장/퇴장/종료 흐름을 막지 않는다.
-      // eslint-disable-next-line no-console
-      console.error('[RoomService.createSystemMessage] 시스템 메시지 생성 실패', err);
+      logger.error({ err, roomId }, '[RoomService.createSystemMessage] 시스템 메시지 생성 실패');
       return null;
     }
   }

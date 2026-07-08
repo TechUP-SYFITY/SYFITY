@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { registerRoomHandlers as registerRoomHandlersBase } from './room.handler';
 import { AppError } from '../../errors/appError';
+import { logger } from '../../lib/logger';
 import type { PlaybackService } from '../../services/playback.service';
 import type { PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
@@ -143,14 +144,14 @@ function getLeaveHandler(handlers: Record<string, RoomHandlerCallback>): RoomLea
 }
 
 describe('registerRoomHandlers', () => {
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let loggerError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleError.mockRestore();
+    loggerError.mockRestore();
   });
 
   it('room:join 성공 시 Socket Room에 참가하고 presence:update, chat:system, 성공 ack를 보낸다', async () => {

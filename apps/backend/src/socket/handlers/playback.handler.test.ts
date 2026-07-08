@@ -5,6 +5,7 @@ import { ERROR_CODES, type PlaylistItem } from '@syfity/shared';
 
 import { registerPlaybackHandlers } from './playback.handler';
 import { AppError } from '../../errors/appError';
+import { logger } from '../../lib/logger';
 import type { PlaybackService } from '../../services/playback.service';
 import type {
   PlaybackAck,
@@ -107,14 +108,14 @@ function makeIo(): { io: Server; roomEmit: ReturnType<typeof vi.fn> } {
 }
 
 describe('registerPlaybackHandlers', () => {
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let loggerError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleError.mockRestore();
+    loggerError.mockRestore();
   });
 
   it('playback:play 성공 시 반환된 이벤트명으로 Room 전체에 broadcast한다', async () => {

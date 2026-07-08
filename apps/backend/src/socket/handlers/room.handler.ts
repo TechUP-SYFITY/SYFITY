@@ -5,6 +5,7 @@ import {
   presenceService as defaultPresenceService,
   roomService as defaultRoomService,
 } from '../../ioc';
+import { logger } from '../../lib/logger';
 import type { PlaybackService } from '../../services/playback.service';
 import type { PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
@@ -87,8 +88,10 @@ export function registerRoomHandlers(
 
         ack({ success: true, data: { playbackState } });
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[room:join] 처리 실패', err);
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[room:join] 처리 실패',
+        );
         ack({ success: false, error: toSocketAckError(err) });
       }
     },
@@ -144,8 +147,10 @@ export function registerRoomHandlers(
     } catch (err) {
       // room:leave는 ack가 없는 이벤트다. 클라이언트에 에러를 알릴 채널이 없으므로
       // broadcast로 대체하지 않고 서버 로그만 남긴다.
-      // eslint-disable-next-line no-console
-      console.error('[room:leave] 처리 실패', err);
+      logger.error(
+        { err, roomId: payload?.roomId, userId: socket.data.userId },
+        '[room:leave] 처리 실패',
+      );
     }
   });
 }

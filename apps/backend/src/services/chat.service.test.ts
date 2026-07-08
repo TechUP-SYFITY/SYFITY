@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ERROR_CODES } from '@syfity/shared';
 
 import { ChatService } from './chat.service';
+import { logger } from '../lib/logger';
 import type { ChatRecord, IChatRepository } from '../types/chat';
 import type { IRoomRepository, RoomDetailRecord } from '../types/room';
 
@@ -85,7 +86,7 @@ describe('ChatService', () => {
 
   it('Room lastActivity 갱신 실패는 채팅 전송을 실패시키지 않는다', async () => {
     const error = new Error('touch failed');
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const chatRepo = makeChatRepo();
     const roomRepo = makeRoomRepo({ touchLastActivity: vi.fn().mockRejectedValue(error) });
     const service = new ChatService(chatRepo, roomRepo);
@@ -106,12 +107,12 @@ describe('ChatService', () => {
         message: 'hello',
       });
       expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
-      expect(consoleError).toHaveBeenCalledWith(
+      expect(loggerError).toHaveBeenCalledWith(
+        { err: error, roomId: 'room-1' },
         '[ChatService.sendMessage] Room lastActivity 갱신 실패',
-        error,
       );
     } finally {
-      consoleError.mockRestore();
+      loggerError.mockRestore();
     }
   });
 

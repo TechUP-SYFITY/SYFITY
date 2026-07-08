@@ -6,6 +6,7 @@ import type { PlaybackService } from './playback.service';
 import { RoomService, type RoomSocketServer } from './room.service';
 import type { ICache } from '../lib/cache/cache.interface';
 import { getIo } from '../lib/io';
+import { logger } from '../lib/logger';
 import type { ChatRecord, IChatRepository } from '../types/chat';
 import type { PlaybackStateResult } from '../types/playback';
 import type { IPlaylistRepository, PlaylistItemRecord } from '../types/playlist';
@@ -625,7 +626,7 @@ describe('RoomService', () => {
   });
 
   it('시스템 메시지 저장 실패는 null을 반환하고 에러를 전파하지 않는다', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const { service } = makeService({
       chatRepo: { createMessage: vi.fn().mockRejectedValue(new Error('db failed')) },
     });
@@ -634,11 +635,11 @@ describe('RoomService', () => {
       service.createSystemMessage('room-1', 'Room이 종료되었습니다.'),
     ).resolves.toBeNull();
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: expect.any(Error), roomId: 'room-1' },
       '[RoomService.createSystemMessage] 시스템 메시지 생성 실패',
-      expect.any(Error),
     );
-    consoleError.mockRestore();
+    loggerError.mockRestore();
   });
 
   it('Host가 아닌 사용자가 Room을 닫으려 하면 AUTH_FORBIDDEN을 던진다', async () => {
@@ -695,7 +696,7 @@ describe('RoomService', () => {
   });
 
   it('REST Room 종료 시 시스템 메시지 생성 실패에도 room:closed를 broadcast한다', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const { io, emitter } = makeIo();
     const { service } = makeService({
       io,
@@ -710,7 +711,7 @@ describe('RoomService', () => {
       reason: 'host-closed',
     });
     expect(io.socketsLeave).toHaveBeenCalledWith('room:room-1');
-    consoleError.mockRestore();
+    loggerError.mockRestore();
   });
 
   it('REST Room 종료 시 Room이 없으면 broadcast하지 않는다', async () => {

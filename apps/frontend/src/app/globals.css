@@ -96,6 +96,10 @@
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 9999px;
+
+  --spacing-room-members: 17.5rem;
+  --spacing-room-side: 20rem;
+  --spacing-room-mini-player: 5rem;
 }
 
 @layer base {

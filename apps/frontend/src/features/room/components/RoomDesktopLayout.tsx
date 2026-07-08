@@ -21,14 +21,14 @@ export function RoomDesktopLayout({
 }) {
   return (
     <section className="hidden min-h-0 flex-1 overflow-hidden border-b border-border xl:flex">
-      <div className="flex w-52 shrink-0 self-stretch">
+      <div className="flex w-room-members shrink-0 self-stretch">
         <MemberSidebar members={members} />
       </div>
       <div className="min-w-0 flex-1 self-stretch border-r border-border px-6 py-6">
         {renderPlayerPanel()}
       </div>
-      <div className="flex w-72 min-w-0 shrink-0 self-stretch">{renderPlaylistPanel()}</div>
-      <div className="flex w-72 min-w-0 shrink-0 self-stretch">
+      <div className="flex w-room-side min-w-0 shrink-0 self-stretch">{renderPlaylistPanel()}</div>
+      <div className="flex w-room-side min-w-0 shrink-0 self-stretch">
         <ChatPanel chats={chats} />
       </div>
     </section>

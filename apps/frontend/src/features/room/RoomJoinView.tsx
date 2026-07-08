@@ -35,7 +35,7 @@ const roomJoinErrorContent = {
     icon: DoorClosed,
     title: '이미 종료된 방이에요',
     description: '호스트가 방을 닫았어요. 다른 방을 찾아보거나 새 방을 만들어보세요.',
-    toneClass: 'room-entry-status-accent text-accent-400',
+    toneClass: 'room-entry-status-accent text-accent',
   },
   inactive: {
     icon: Clock,
@@ -108,7 +108,7 @@ export function RoomJoinView({
         <section className="room-entry-card rounded-2xl p-5 md:p-6">
           <div className="flex flex-col gap-5">
             <RoomJoinCardHeader />
-            <div className="h-px bg-white/10" />
+            <div className="h-px bg-border" />
 
             {content}
           </div>
@@ -145,14 +145,14 @@ function RoomJoinCodeField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold text-white/55" htmlFor="room-join-code-input">
+      <label className="text-xs font-semibold text-muted-foreground" htmlFor="room-join-code-input">
         초대 코드
       </label>
       <input
         id="room-join-code-input"
         className={cn(
           'h-14 rounded-2xl border bg-input px-4 text-center font-mono text-lg font-bold tracking-widest text-primary uppercase transition-colors outline-none',
-          'placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-white/45',
+          'placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground',
           'focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/30',
           hasError
             ? 'border-destructive/60 bg-destructive/10 text-destructive focus-visible:ring-destructive/30'
@@ -184,7 +184,7 @@ function RoomJoinCodeField({
           유효하지 않은 초대 코드예요. 다시 확인해주세요.
         </span>
       ) : (
-        <span id="room-join-code-count" className="text-right text-xs text-white/25">
+        <span id="room-join-code-count" className="text-right text-xs text-muted-foreground">
           {code.length} / {ROOM_JOIN_MAX_LENGTH}
         </span>
       )}
@@ -254,7 +254,7 @@ function RoomJoinUnavailable({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-2xl border border-border bg-white/5 px-4 py-3 text-center font-mono text-lg font-bold tracking-widest text-white/25 uppercase">
+      <div className="rounded-2xl border border-border bg-input px-4 py-3 text-center font-mono text-lg font-bold tracking-widest text-muted-foreground uppercase">
         {code || '3F9A2C'}
       </div>
       <div className={cn('rounded-2xl border px-4 py-5 text-center', content.toneClass)}>

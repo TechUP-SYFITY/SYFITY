@@ -110,6 +110,35 @@
   }
 }
 
+@layer components {
+  .mini-player-volume-range {
+    width: 7rem;
+    height: 0.125rem;
+    cursor: pointer;
+    appearance: none;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--foreground) 18%, transparent);
+    accent-color: var(--primary);
+  }
+
+  .mini-player-volume-range::-webkit-slider-thumb {
+    width: 0.5rem;
+    height: 0.5rem;
+    appearance: none;
+    border-radius: var(--radius-full);
+    background: var(--primary);
+    box-shadow: 0 0 0.3125rem color-mix(in srgb, var(--primary) 65%, transparent);
+  }
+
+  .mini-player-volume-range::-moz-range-thumb {
+    width: 0.5rem;
+    height: 0.5rem;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--primary);
+  }
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;

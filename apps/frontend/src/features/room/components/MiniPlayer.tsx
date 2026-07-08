@@ -57,10 +57,10 @@ export function MiniPlayer({
   const isVolumeMuted = isMuted || volume === 0;
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-white/[0.08] bg-[#09090b]/[0.97] px-5 pt-px backdrop-blur lg:static lg:px-6">
-      <div className="flex min-w-0 flex-[0_0_224px] items-center gap-3">
+    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-border bg-background/95 px-5 pt-px backdrop-blur lg:static lg:px-6">
+      <div className="flex w-56 min-w-0 flex-none items-center gap-3">
         <TrackArtwork track={currentTrack} />
-        <div className="min-w-0 flex-[0_1_84px]">
+        <div className="w-24 min-w-0 flex-none">
           <p className="truncate text-xs font-semibold text-white">
             {currentTrack?.title ?? '재생 대기'}
           </p>
@@ -100,7 +100,7 @@ export function MiniPlayer({
           </button>
           <button
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-full bg-[#72f4a4] text-xs font-bold text-[#07150d] shadow-[0_0_9px_rgba(114,244,164,0.31)] transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:shadow-none',
+              'flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-lg transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:shadow-none',
               pendingCommand === 'play' || pendingCommand === 'pause' ? 'animate-pulse' : '',
             )}
             type="button"
@@ -141,12 +141,12 @@ export function MiniPlayer({
             aria-valuenow={currentTime}
           >
             <div
-              className="relative h-full rounded-full bg-gradient-to-r from-[#72f4a4] to-[#885cf6]"
+              className="relative h-full rounded-full bg-gradient-to-r from-primary to-accent"
               style={{ width: `${progressPercent}%` }}
             >
               {progressPercent > 0 ? (
                 <span
-                  className="absolute top-1/2 right-0 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-[#09090b] bg-[#72f4a4] shadow-[0_0_8px_rgba(114,244,164,0.8)]"
+                  className="absolute top-1/2 right-0 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow-lg"
                   data-testid="mini-player-progress-thumb"
                 />
               ) : null}
@@ -164,7 +164,7 @@ export function MiniPlayer({
         ) : null}
       </div>
 
-      <div className="hidden flex-[0_0_148px] items-center justify-end gap-2 lg:flex">
+      <div className="hidden w-36 flex-none items-center justify-end gap-2 lg:flex">
         <button
           className={getIconButtonClass(false)}
           type="button"
@@ -174,7 +174,7 @@ export function MiniPlayer({
           <RoomIcon name={isVolumeMuted ? 'volumeMuted' : 'volume'} className="h-3.5 w-3.5" />
         </button>
         <input
-          className="h-0.5 w-[108px] cursor-pointer appearance-none rounded-full bg-white/18 accent-[#72f4a4] [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:w-2 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[#72f4a4] [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#72f4a4] [&::-webkit-slider-thumb]:shadow-[0_0_5px_rgba(114,244,164,0.65)]"
+          className="mini-player-volume-range"
           type="range"
           min={0}
           max={100}

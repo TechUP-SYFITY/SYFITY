@@ -13,7 +13,7 @@ export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; co
     <aside
       className={
         compact
-          ? 'flex min-h-96 flex-col bg-background'
+          ? 'flex h-full min-h-0 flex-col bg-background'
           : 'flex min-h-0 flex-1 flex-col bg-background'
       }
     >

@@ -42,6 +42,8 @@ export type PlaybackPlayResult = {
 };
 
 export class PlaybackService {
+  private readonly playingRoomIds = new Set<string>();
+
   constructor(
     private readonly playbackRepo: IPlaybackRepository,
     private readonly roomRepo: PlaybackRoomRepo,
@@ -56,6 +58,16 @@ export class PlaybackService {
 
   clearCache(roomId: string): void {
     this.cache.del(CacheKeys.playbackState(roomId));
+    this.playingRoomIds.delete(roomId);
+  }
+
+  getPlayingRoomIds(): string[] {
+    return Array.from(this.playingRoomIds);
+  }
+
+  async getStateForTick(roomId: string): Promise<PlaybackStatePayload> {
+    const cached = await this.readCurrentState(roomId);
+    return this.toPlaybackStatePayload(cached);
   }
 
   async getPlaybackStateForSocket(roomId: string, userId: string): Promise<PlaybackStatePayload> {
@@ -242,6 +254,13 @@ export class PlaybackService {
     const record = await this.playbackRepo.updateState(roomId, data);
     const cacheValue = this.toCache(record);
     this.cache.set(CacheKeys.playbackState(roomId), cacheValue);
+
+    if (data.isPlaying) {
+      this.playingRoomIds.add(roomId);
+    } else {
+      this.playingRoomIds.delete(roomId);
+    }
+
     return this.toPlaybackStatePayload(cacheValue);
   }
 

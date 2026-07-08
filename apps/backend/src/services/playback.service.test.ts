@@ -164,6 +164,15 @@ describe('PlaybackService', () => {
     expect(cache.del).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'));
   });
 
+  it('Room 종료 시 재생 중 Room 목록에서도 제거한다', async () => {
+    const { service } = makeFixture();
+
+    await service.play('room-1', 'host-1', 0);
+    service.clearCache('room-1');
+
+    expect(service.getPlayingRoomIds()).not.toContain('room-1');
+  });
+
   it('소켓용 조회는 활성 참여자 검증 후 캐시 히트 값을 반환한다', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
@@ -229,6 +238,70 @@ describe('PlaybackService', () => {
     });
   });
 
+  it('tick용 조회는 권한 검증 없이 캐시 히트 값을 반환한다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
+    const cache = makeCache({
+      getResult: {
+        videoId: 'video-1',
+        playlistItemId: 'playlist-item-1',
+        baseCurrentTime: 30,
+        isPlaying: true,
+        serverStartedAt: '2026-07-01T12:00:00.000Z',
+        serverPausedAt: null,
+      },
+    });
+    const { service, playbackRepo, roomRepo } = makeFixture({ cache });
+
+    await expect(service.getStateForTick('room-1')).resolves.toEqual({
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      currentTime: 35,
+      isPlaying: true,
+    });
+    expect(roomRepo.findMembership).not.toHaveBeenCalled();
+    expect(playbackRepo.findByRoomId).not.toHaveBeenCalled();
+  });
+
+  it('tick용 조회는 캐시 미스 시 DB 값으로 캐시를 재구성한다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-01T12:00:05.000Z'));
+    const { service, playbackRepo, cache } = makeFixture({
+      playbackRecord: {
+        ...playbackState,
+        baseCurrentTime: 30,
+        isPlaying: true,
+        serverStartedAt: new Date('2026-07-01T12:00:00.000Z'),
+        serverPausedAt: null,
+      },
+    });
+
+    await expect(service.getStateForTick('room-1')).resolves.toEqual({
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      currentTime: 35,
+      isPlaying: true,
+    });
+    expect(playbackRepo.findByRoomId).toHaveBeenCalledWith('room-1');
+    expect(cache.set).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'), {
+      videoId: 'video-1',
+      playlistItemId: 'playlist-item-1',
+      baseCurrentTime: 30,
+      isPlaying: true,
+      serverStartedAt: '2026-07-01T12:00:00.000Z',
+      serverPausedAt: null,
+    });
+  });
+
+  it('tick용 조회는 캐시와 DB에 모두 없으면 SERVER_INTERNAL_ERROR를 던진다', async () => {
+    const { service } = makeFixture({ playbackRecord: null });
+
+    await expect(service.getStateForTick('room-1')).rejects.toMatchObject({
+      status: 500,
+      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
+    });
+  });
+
   it('join용 조회는 DB 원본에서 updatedAt 포함 결과를 반환한다', async () => {
     const { service } = makeFixture();
 
@@ -264,6 +337,7 @@ describe('PlaybackService', () => {
       serverStartedAt: new Date('2026-07-01T12:10:00.000Z'),
       serverPausedAt: null,
     });
+    expect(service.getPlayingRoomIds()).toContain('room-1');
   });
 
   it('play는 트랙 미선택 상태이면 플레이리스트 첫 곡으로 change-track을 수행한다', async () => {
@@ -345,6 +419,7 @@ describe('PlaybackService', () => {
   it('pause는 현재 트랙을 유지하고 일시정지 상태로 갱신한다', async () => {
     const { service, playbackRepo } = makeFixture();
 
+    await service.play('room-1', 'host-1', 0);
     await expect(service.pause('room-1', 'host-1', 50)).resolves.toMatchObject({
       videoId: 'video-1',
       playlistItemId: 'playlist-item-1',
@@ -361,6 +436,7 @@ describe('PlaybackService', () => {
         serverStartedAt: null,
       }),
     );
+    expect(service.getPlayingRoomIds()).not.toContain('room-1');
   });
 
   it('seek는 재생 중이면 재생 상태를 유지하고 시작 기준 시각을 갱신한다', async () => {
@@ -409,6 +485,7 @@ describe('PlaybackService', () => {
         isPlaying: true,
       }),
     );
+    expect(service.getPlayingRoomIds()).toContain('room-1');
   });
 
   it('changeTrack은 다른 Room 항목이면 PLAYLIST_ITEM_NOT_FOUND를 던진다', async () => {
@@ -459,6 +536,7 @@ describe('PlaybackService', () => {
   it('reportError는 삭제/비공개가 확인되면 unavailable 마킹 후 playlist payload를 반환한다', async () => {
     const { service, playlistRepo } = makeFixture({ videoDetails: [] });
 
+    await service.play('room-1', 'host-1', 0);
     await expect(service.reportError('room-1', 'host-1', 'video-1', 150)).resolves.toEqual({
       errorPayload: { videoId: 'video-1', errorCode: 150 },
       playlist: [
@@ -477,6 +555,7 @@ describe('PlaybackService', () => {
     });
     expect(playlistRepo.markUnavailable).toHaveBeenCalledWith('playlist-item-1');
     expect(playlistRepo.getPlaylist).toHaveBeenCalledWith('room-1');
+    expect(service.getPlayingRoomIds()).toContain('room-1');
   });
 
   it('reportError는 stale 리포트이면 YouTube 재확인을 하지 않는다', async () => {

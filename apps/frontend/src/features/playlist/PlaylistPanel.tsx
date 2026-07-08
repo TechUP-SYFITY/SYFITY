@@ -269,7 +269,7 @@ export function PlaylistPanel({
                   size="icon"
                   className={
                     isHost
-                      ? 'h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5 xl:opacity-0 xl:group-focus-within:opacity-100 xl:group-hover:opacity-100'
+                      ? 'h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5 xl:opacity-0 xl:group-hover:opacity-100'
                       : 'hidden'
                   }
                   disabled={!isReady || !isHost || isUnavailable}
@@ -282,7 +282,7 @@ export function PlaylistPanel({
                 <div
                   className={
                     isHost
-                      ? 'flex shrink-0 items-center gap-1 opacity-100 transition xl:opacity-0 xl:group-focus-within:opacity-100 xl:group-hover:opacity-100'
+                      ? 'flex shrink-0 items-center gap-1 opacity-100 transition xl:opacity-0 xl:group-hover:opacity-100'
                       : 'hidden'
                   }
                 >
@@ -292,6 +292,7 @@ export function PlaylistPanel({
                     className="h-7 w-7 rounded-full border-0 bg-transparent text-white/35 hover:bg-white/5"
                     disabled={!isReady || !isHost || isCurrent}
                     type="button"
+                    data-testid={`playlist-move-up-${item.id}`}
                     onClick={() => handleMove(item.id, -1)}
                     aria-label={`${item.title} 위로 이동`}
                   >
@@ -303,6 +304,7 @@ export function PlaylistPanel({
                     className="h-7 w-7 rounded-full border-0 bg-transparent text-white/35 hover:bg-white/5"
                     disabled={!isReady || !isHost || index === visiblePlaylist.length - 1}
                     type="button"
+                    data-testid={`playlist-move-down-${item.id}`}
                     onClick={() => handleMove(item.id, 1)}
                     aria-label={`${item.title} 아래로 이동`}
                   >

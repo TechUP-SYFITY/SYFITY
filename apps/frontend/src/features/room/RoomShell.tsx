@@ -95,6 +95,7 @@ export function RoomShell({
         <RoomMobileLayout
           activeMobileTab={activeMobileTab}
           chats={chats}
+          currentUserName={currentUserName}
           isHost={isHost}
           members={members}
           onMobileTabChange={onMobileTabChange}

@@ -8,7 +8,13 @@ import { formatChatTime } from './roomFormatters';
 import { RoomIcon } from './RoomIcon';
 import { RoomMemberAvatar } from './RoomMemberAvatar';
 
-export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; compact?: boolean }) {
+interface ChatPanelProps {
+  chats: ChatMessage[];
+  compact?: boolean;
+  currentUserName?: string;
+}
+
+export function ChatPanel({ chats, compact = false, currentUserName = '게스트' }: ChatPanelProps) {
   return (
     <aside
       className={
@@ -48,7 +54,7 @@ export function ChatPanel({ chats, compact = false }: { chats: ChatMessage[]; co
             : 'flex shrink-0 items-center gap-2 border-t border-border p-4'
         }
       >
-        {compact ? <RoomMemberAvatar label="나" size="sm" /> : null}
+        {compact ? <RoomMemberAvatar label={currentUserName} size="sm" /> : null}
         <div className="flex h-11 min-w-0 flex-1 items-center rounded-2xl border border-border bg-input px-3">
           <div className="min-w-0 flex-1">
             <Input

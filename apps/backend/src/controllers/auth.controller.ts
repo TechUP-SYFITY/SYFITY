@@ -42,9 +42,9 @@ export class AuthController {
     try {
       const { accessToken, refreshToken } = await this.authService.handleCallback(code);
       const res = req.res!;
-      res.cookie('access_token', accessToken, this.getCookieOptions());
+      res.cookie('access_token', accessToken, this.getCookieOptions(config.jwt.accessExpiresInMs));
       res.cookie('refresh_token', refreshToken, {
-        ...this.getCookieOptions(),
+        ...this.getCookieOptions(config.jwt.refreshExpiresInMs),
         path: '/api/v1/auth/refresh',
       });
 
@@ -82,20 +82,21 @@ export class AuthController {
       await this.authService.refresh(refreshToken);
 
     const res = req.res!;
-    res.cookie('access_token', accessToken, this.getCookieOptions());
+    res.cookie('access_token', accessToken, this.getCookieOptions(config.jwt.accessExpiresInMs));
     res.cookie('refresh_token', newRefreshToken, {
-      ...this.getCookieOptions(),
+      ...this.getCookieOptions(config.jwt.refreshExpiresInMs),
       path: '/api/v1/auth/refresh',
     });
 
     return { success: true, data: { message: 'token refreshed' } };
   }
 
-  private getCookieOptions(): CookieOptions {
+  private getCookieOptions(maxAge: number): CookieOptions {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
       sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
+      maxAge,
     };
   }
 }

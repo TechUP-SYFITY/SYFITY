@@ -82,11 +82,13 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 60 * 60 * 1000,
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'refresh-token', {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/v1/auth/refresh',
     });
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, { Location: '/room/abc' });
@@ -124,6 +126,7 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      maxAge: 60 * 60 * 1000,
     });
   });
 
@@ -217,11 +220,13 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 60 * 60 * 1000,
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/v1/auth/refresh',
     });
   });
@@ -239,11 +244,13 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      maxAge: 60 * 60 * 1000,
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/v1/auth/refresh',
     });
   });

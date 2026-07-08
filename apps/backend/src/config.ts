@@ -8,7 +8,9 @@ export const config = {
     accessSecret: process.env.JWT_ACCESS_SECRET!,
     refreshSecret: process.env.JWT_REFRESH_SECRET!,
     accessExpiresIn: '1h',
+    accessExpiresInMs: 60 * 60 * 1000,
     refreshExpiresIn: '30d',
+    refreshExpiresInMs: 30 * 24 * 60 * 60 * 1000,
   },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID!,

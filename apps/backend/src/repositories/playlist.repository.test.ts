@@ -56,13 +56,13 @@ function makePrisma(
     delete: vi.fn().mockResolvedValue({}),
   };
 
-  const defaultTransaction = vi.fn((async (arg: unknown) => {
+  const defaultTransaction = vi.fn(async (arg: unknown) => {
     if (Array.isArray(arg)) {
       return Promise.all(arg);
     }
     const fn = arg as (tx: { playlistItem: typeof playlistItemClient }) => unknown;
     return fn({ playlistItem: playlistItemClient });
-  }) as PlaylistRepositoryPrisma['$transaction']);
+  }) as unknown as PlaylistRepositoryPrisma['$transaction'];
 
   return {
     playlistItem: playlistItemClient,

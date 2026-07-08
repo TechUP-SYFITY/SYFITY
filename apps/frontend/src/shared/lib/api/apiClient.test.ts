@@ -68,5 +68,7 @@ describe('apiClient request', () => {
       String(call[0]).includes('/auth/refresh'),
     );
     expect(refreshCalls).toHaveLength(1);
+    // refresh 후에도 401이면 세션 복구 불가 → 재인증 리다이렉트
+    expect(window.location.href).toBe('/login?reauth=1');
   });
 });

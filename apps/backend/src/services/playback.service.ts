@@ -61,10 +61,15 @@ export class PlaybackService {
     this.playingRoomIds.delete(roomId);
   }
 
+  /** 현재 재생 중으로 추적 중인 Room ID의 스냅샷을 반환한다. */
   getPlayingRoomIds(): string[] {
     return Array.from(this.playingRoomIds);
   }
 
+  /**
+   * 서버 tick 타이머가 내부적으로 추적 중인 roomId만 조회한다.
+   * 사용자 요청 경로가 아니므로 active member 권한 검증은 수행하지 않는다.
+   */
   async getStateForTick(roomId: string): Promise<PlaybackStatePayload> {
     const cached = await this.readCurrentState(roomId);
     return this.toPlaybackStatePayload(cached);

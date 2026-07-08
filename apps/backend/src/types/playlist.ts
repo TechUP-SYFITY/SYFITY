@@ -20,7 +20,6 @@ export type AddPlaylistItemData = {
   channelTitle: string;
   thumbnailUrl: string;
   duration: number;
-  position: number;
   addedBy: string;
 };
 
@@ -40,7 +39,6 @@ export type ReorderPlaylistItemInput = {
 
 export interface IPlaylistRepository {
   getPlaylist(roomId: string): Promise<PlaylistItemRecord[]>;
-  getMaxPosition(roomId: string): Promise<number | null>;
   addItem(data: AddPlaylistItemData): Promise<PlaylistItemRecord>;
   findItemById(itemId: string): Promise<PlaylistItemLookupRecord | null>;
   markUnavailable(itemId: string): Promise<void>;

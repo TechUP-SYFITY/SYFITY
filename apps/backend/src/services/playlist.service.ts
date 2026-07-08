@@ -65,7 +65,6 @@ export class PlaylistService {
       );
     }
 
-    const maxPosition = await this.playlistRepo.getMaxPosition(roomId);
     const item = await this.playlistRepo.addItem({
       roomId,
       videoId: video.videoId,
@@ -73,7 +72,6 @@ export class PlaylistService {
       channelTitle: video.channelTitle,
       thumbnailUrl: video.thumbnailUrl,
       duration: video.duration,
-      position: maxPosition === null ? 1 : maxPosition + 1,
       addedBy: userId,
     });
 

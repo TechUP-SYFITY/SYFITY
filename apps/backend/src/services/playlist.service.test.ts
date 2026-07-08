@@ -109,7 +109,6 @@ function makeFixture(
   overrides: {
     room?: RoomDetailRecord | null;
     playlist?: PlaylistItemRecord[];
-    maxPosition?: number | null;
     addedItem?: PlaylistItemRecord;
     lookupItem?: PlaylistItemLookupRecord | null;
     playbackState?: PlaybackStateRecord | null;
@@ -118,7 +117,6 @@ function makeFixture(
 ) {
   const playlistRepo = {
     getPlaylist: vi.fn().mockResolvedValue(overrides.playlist ?? [playlistItem]),
-    getMaxPosition: vi.fn().mockResolvedValue(overrides.maxPosition ?? null),
     addItem: vi.fn().mockResolvedValue(overrides.addedItem ?? playlistItem),
     findItemById: vi.fn().mockResolvedValue(overrides.lookupItem ?? null),
     markUnavailable: vi.fn().mockResolvedValue(undefined),
@@ -230,7 +228,6 @@ describe('PlaylistService', () => {
       channelTitle: 'Channel One',
       thumbnailUrl: 'https://example.com/thumb.jpg',
       duration: 180,
-      position: 1,
       addedBy: 'user-1',
     });
   });
@@ -315,18 +312,6 @@ describe('PlaylistService', () => {
       },
     );
     expect(playlistRepo.addItem).not.toHaveBeenCalled();
-  });
-
-  it('기존 항목이 있으면 최대 position + 1로 추가한다', async () => {
-    const { service, playlistRepo } = makeFixture({ maxPosition: 3 });
-
-    await service.addItem('room-1', 'user-1', { videoId: 'video-1' });
-
-    expect(playlistRepo.addItem).toHaveBeenCalledWith(
-      expect.objectContaining({
-        position: 4,
-      }),
-    );
   });
 
   it('곡 추가 후 lastActivityAt을 갱신하고 playlist:updated를 broadcast한다', async () => {

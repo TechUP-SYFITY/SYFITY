@@ -17,7 +17,7 @@ interface MiniPlayerProps {
   isHost: boolean;
   isMuted: boolean;
   nextDisabled: boolean;
-  onMiniPlayerMuteToggle: () => void;
+  onMuteToggle: () => void;
   onNextTrack: () => void;
   onPlayPause: () => void;
   onPreviousTrack: () => void;
@@ -35,7 +35,7 @@ export function MiniPlayer({
   isHost,
   isMuted,
   nextDisabled,
-  onMiniPlayerMuteToggle,
+  onMuteToggle,
   onNextTrack,
   onPlayPause,
   onPreviousTrack,
@@ -169,7 +169,7 @@ export function MiniPlayer({
           className={getIconButtonClass(false)}
           type="button"
           aria-label={isVolumeMuted ? '음소거 해제' : '음소거'}
-          onClick={onMiniPlayerMuteToggle}
+          onClick={onMuteToggle}
         >
           <RoomIcon name={isVolumeMuted ? 'volumeMuted' : 'volume'} className="h-3.5 w-3.5" />
         </button>

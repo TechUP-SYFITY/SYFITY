@@ -35,7 +35,7 @@ interface RoomShellProps {
   miniPlayerVolume: number;
   members: RoomMember[];
   onInviteClick?: () => void;
-  onMiniPlayerMuteToggle: () => void;
+  onMuteToggle: () => void;
   onMiniPlayerNextTrack: () => void;
   onMiniPlayerPlayPause: () => void;
   onMiniPlayerPreviousTrack: () => void;
@@ -62,7 +62,7 @@ export function RoomShell({
   miniPlayerVolume,
   members,
   onInviteClick,
-  onMiniPlayerMuteToggle,
+  onMuteToggle,
   onMiniPlayerNextTrack,
   onMiniPlayerPlayPause,
   onMiniPlayerPreviousTrack,
@@ -109,7 +109,7 @@ export function RoomShell({
           isHost={isHost}
           isMuted={miniPlayerIsMuted}
           nextDisabled={miniPlayerNextDisabled}
-          onMiniPlayerMuteToggle={onMiniPlayerMuteToggle}
+          onMuteToggle={onMuteToggle}
           onNextTrack={onMiniPlayerNextTrack}
           onPlayPause={onMiniPlayerPlayPause}
           onPreviousTrack={onMiniPlayerPreviousTrack}

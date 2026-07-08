@@ -36,7 +36,7 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     isHost: true,
     isMuted: false,
     nextDisabled: false,
-    onMiniPlayerMuteToggle: vi.fn(),
+    onMuteToggle: vi.fn(),
     onNextTrack: vi.fn(),
     onPlayPause: vi.fn(),
     onPreviousTrack: vi.fn(),
@@ -135,13 +135,13 @@ describe('MiniPlayer', () => {
   });
 
   it('음소거 버튼을 누르면 주입된 핸들러를 호출한다', () => {
-    const onMiniPlayerMuteToggle = vi.fn();
+    const onMuteToggle = vi.fn();
 
-    renderMiniPlayer({ onMiniPlayerMuteToggle });
+    renderMiniPlayer({ onMuteToggle });
 
     fireEvent.click(screen.getByRole('button', { name: '음소거' }));
 
-    expect(onMiniPlayerMuteToggle).toHaveBeenCalledTimes(1);
+    expect(onMuteToggle).toHaveBeenCalledTimes(1);
   });
 
   it('음소거 상태에서는 슬라이더 값을 0으로 표시한다', () => {

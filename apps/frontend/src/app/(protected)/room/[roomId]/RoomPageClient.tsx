@@ -158,7 +158,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       miniPlayerPreviousDisabled={!previousItem}
       miniPlayerVolume={miniPlayerVolume}
       members={visibleMembers}
-      onMiniPlayerMuteToggle={toggleMiniPlayerMute}
+      onMuteToggle={toggleMiniPlayerMute}
       onMiniPlayerNextTrack={
         shouldShowPreviewData
           ? () => handlePreviewTrackChange(nextItem)

@@ -130,10 +130,12 @@ describe('AuthController', () => {
     });
   });
 
-  it('콜백 실패 시 clientUrl 에러 쿼리로 리다이렉트한다', async () => {
+  it('콜백 실패 시 clientUrl 에러 쿼리로 리다이렉트하고 에러를 로깅한다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { AuthController } = await import('./auth.controller');
     const authService = makeAuthService();
-    authService.handleCallback.mockRejectedValue(new Error('invalid callback'));
+    const error = new Error('invalid callback');
+    authService.handleCallback.mockRejectedValue(error);
     const controller = new AuthController(authService);
     const req = makeRequest();
     const redirectMock = vi.fn();
@@ -144,6 +146,8 @@ describe('AuthController', () => {
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
       Location: 'http://localhost:3000/login?error=auth_failed',
     });
+    expect(consoleError).toHaveBeenCalledWith('[auth:google/callback] 처리 실패', error);
+    consoleError.mockRestore();
   });
 
   it('콜백 code가 없으면 Google 처리 없이 clientUrl 에러 쿼리로 리다이렉트한다', async () => {

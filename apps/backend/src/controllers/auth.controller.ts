@@ -51,7 +51,9 @@ export class AuthController {
       return redirect(302, undefined, {
         Location: this.authService.getPostLoginRedirectUrl(state),
       });
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[auth:google/callback] 처리 실패', err);
       return redirect(302, undefined, { Location: AUTH_FAILED_REDIRECT });
     }
   }

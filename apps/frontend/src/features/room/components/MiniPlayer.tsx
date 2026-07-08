@@ -158,7 +158,7 @@ export function MiniPlayer({
           {controlHint}
         </p>
         {commandError ? (
-          <p className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-full border border-red-400/30 bg-red-950/90 px-3 py-1 text-xs text-red-200 shadow-lg">
+          <p className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs text-destructive shadow-lg">
             {commandError}
           </p>
         ) : null}

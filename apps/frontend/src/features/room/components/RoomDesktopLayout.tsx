@@ -20,11 +20,15 @@ export function RoomDesktopLayout({
   renderPlaylistPanel: () => ReactNode;
 }) {
   return (
-    <section className="hidden min-h-0 flex-1 grid-cols-[200px_minmax(320px,1fr)_280px_280px] overflow-hidden border-b border-white/[0.07] lg:grid">
-      <MemberSidebar members={members} />
-      <div className="min-w-0 border-r border-white/[0.07] px-6 py-6">{renderPlayerPanel()}</div>
-      {renderPlaylistPanel()}
-      <ChatPanel chats={chats} />
+    <section className="hidden min-h-0 flex-1 overflow-hidden border-b border-border lg:flex">
+      <div className="w-52 shrink-0">
+        <MemberSidebar members={members} />
+      </div>
+      <div className="min-w-80 flex-1 border-r border-border px-6 py-6">{renderPlayerPanel()}</div>
+      <div className="w-72 shrink-0">{renderPlaylistPanel()}</div>
+      <div className="w-72 shrink-0">
+        <ChatPanel chats={chats} />
+      </div>
     </section>
   );
 }

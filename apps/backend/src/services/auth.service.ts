@@ -5,6 +5,7 @@ import { ERROR_CODES } from '@syfity/shared';
 import { config } from '../config';
 import { AppError } from '../errors/appError';
 import type { IAuthRepository, UserRecord } from '../types/auth';
+import { hashToken } from '../utils/tokenHash';
 
 export type AuthTokens = {
   user: UserRecord;
@@ -65,7 +66,7 @@ export class AuthService {
     const accessToken = this.signAccessToken(user);
     const refreshToken = this.signRefreshToken(user);
 
-    await this.authRepo.saveRefreshToken(user.id, refreshToken);
+    await this.authRepo.saveRefreshToken(user.id, hashToken(refreshToken));
 
     return { user, accessToken, refreshToken };
   }
@@ -85,7 +86,7 @@ export class AuthService {
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
     const payload = this.verifyRefreshToken(refreshToken);
-    const user = await this.authRepo.findUserByRefreshToken(payload.id, refreshToken);
+    const user = await this.authRepo.findUserByRefreshToken(payload.id, hashToken(refreshToken));
 
     if (!user) {
       throw new AppError(
@@ -98,7 +99,7 @@ export class AuthService {
     const accessToken = this.signAccessToken(user);
     const newRefreshToken = this.signRefreshToken(user);
 
-    await this.authRepo.saveRefreshToken(user.id, newRefreshToken);
+    await this.authRepo.saveRefreshToken(user.id, hashToken(newRefreshToken));
 
     return { user, accessToken, refreshToken: newRefreshToken };
   }

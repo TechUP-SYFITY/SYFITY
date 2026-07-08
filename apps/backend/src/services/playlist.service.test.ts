@@ -429,6 +429,21 @@ describe('PlaylistService', () => {
     expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
   });
 
+  it('순서 변경 요청에 중복된 position 값이 있으면 VALIDATION_ERROR를 반환한다', async () => {
+    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem, secondPlaylistItem] });
+
+    await expect(
+      service.reorderPlaylist('room-1', 'user-1', [
+        { id: 'playlist-item-1', position: 1 },
+        { id: 'playlist-item-2', position: 1 },
+      ]),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: ERROR_CODES.VALIDATION_ERROR,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
+
   it('Host가 전체 항목 id를 보내면 position 값을 그대로 저장하고 playlist:updated를 broadcast한다', async () => {
     const items = [
       { id: 'playlist-item-1', position: 2 },

@@ -94,6 +94,12 @@ export class PlaylistService {
   ): Promise<void> {
     await assertRoomHost(this.roomRepo, roomId, userId);
 
+    // getPlaylist는 position ASC로만 정렬하므로 값이 중복되면 동률 항목의 순서가 보장되지 않는다.
+    const positionSet = new Set(items.map((item) => item.position));
+    if (positionSet.size !== items.length) {
+      throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, '중복된 position 값이 있습니다.');
+    }
+
     const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
     const currentIdSet = new Set(currentPlaylist.map((item) => item.id));
     const requestIdSet = new Set(items.map((item) => item.id));

@@ -1,4 +1,4 @@
-// MiniPlayer가 주입된 재생 상태와 제어 핸들러를 UI에 반영하는지 검증한다.
+// MiniPlayer가 주입된 재생, 진행률, 로컬 볼륨 상태를 UI에 반영하는지 검증한다.
 import '@testing-library/jest-dom/vitest';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -34,13 +34,17 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     controlDisabled: false,
     currentTrack: track,
     isHost: true,
+    isMuted: false,
     nextDisabled: false,
+    onMuteToggle: vi.fn(),
     onNextTrack: vi.fn(),
     onPlayPause: vi.fn(),
     onPreviousTrack: vi.fn(),
+    onVolumeChange: vi.fn(),
     pendingCommand: null,
     playbackState,
     previousDisabled: false,
+    volume: 70,
   };
 
   return render(<MiniPlayer {...defaultProps} {...props} />);
@@ -109,12 +113,41 @@ describe('MiniPlayer', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '이전 곡' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '다음 곡' })).toBeDisabled();
-    expect(screen.getByText('Host만 재생을 제어할 수 있어요.')).toBeInTheDocument();
+    expect(screen.getByText('Host만 재생을 제어할 수 있어요')).toBeInTheDocument();
   });
 
   it('제어 명령 실패 메시지를 MiniPlayer 위에 표시한다', () => {
     renderMiniPlayer({ commandError: '서버에 연결하지 못했어요.' });
 
     expect(screen.getByText('서버에 연결하지 못했어요.')).toBeInTheDocument();
+  });
+
+  it('볼륨 슬라이더 변경 값을 주입된 핸들러로 전달한다', () => {
+    const onVolumeChange = vi.fn();
+
+    renderMiniPlayer({ onVolumeChange, volume: 70 });
+
+    fireEvent.change(screen.getByRole('slider', { name: '볼륨 조절' }), {
+      target: { value: '35' },
+    });
+
+    expect(onVolumeChange).toHaveBeenCalledWith(35);
+  });
+
+  it('음소거 버튼을 누르면 주입된 핸들러를 호출한다', () => {
+    const onMuteToggle = vi.fn();
+
+    renderMiniPlayer({ onMuteToggle });
+
+    fireEvent.click(screen.getByRole('button', { name: '음소거' }));
+
+    expect(onMuteToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('음소거 상태에서는 슬라이더 값을 0으로 표시한다', () => {
+    renderMiniPlayer({ isMuted: true, volume: 70 });
+
+    expect(screen.getByRole('button', { name: '음소거 해제' })).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: '볼륨 조절' })).toHaveValue('0');
   });
 });

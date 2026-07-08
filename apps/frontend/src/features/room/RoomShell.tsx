@@ -28,14 +28,18 @@ interface RoomShellProps {
   isHost: boolean;
   miniPlayerCommandError: string | null;
   miniPlayerControlDisabled: boolean;
+  miniPlayerIsMuted: boolean;
   miniPlayerNextDisabled: boolean;
   miniPlayerPendingCommand: MiniPlayerPendingCommand;
   miniPlayerPreviousDisabled: boolean;
+  miniPlayerVolume: number;
   members: RoomMember[];
   onInviteClick?: () => void;
+  onMuteToggle: () => void;
   onMiniPlayerNextTrack: () => void;
   onMiniPlayerPlayPause: () => void;
   onMiniPlayerPreviousTrack: () => void;
+  onMiniPlayerVolumeChange: (volume: number) => void;
   onMobileTabChange: (tab: RoomMobileTab) => void;
   playbackState: PlaybackState | null;
   playlist: PlaylistItem[];
@@ -51,14 +55,18 @@ export function RoomShell({
   isHost,
   miniPlayerCommandError,
   miniPlayerControlDisabled,
+  miniPlayerIsMuted,
   miniPlayerNextDisabled,
   miniPlayerPendingCommand,
   miniPlayerPreviousDisabled,
+  miniPlayerVolume,
   members,
   onInviteClick,
+  onMuteToggle,
   onMiniPlayerNextTrack,
   onMiniPlayerPlayPause,
   onMiniPlayerPreviousTrack,
+  onMiniPlayerVolumeChange,
   onMobileTabChange,
   playbackState,
   playlist,
@@ -99,13 +107,17 @@ export function RoomShell({
           controlDisabled={miniPlayerControlDisabled}
           currentTrack={currentTrack}
           isHost={isHost}
+          isMuted={miniPlayerIsMuted}
           nextDisabled={miniPlayerNextDisabled}
+          onMuteToggle={onMuteToggle}
           onNextTrack={onMiniPlayerNextTrack}
           onPlayPause={onMiniPlayerPlayPause}
           onPreviousTrack={onMiniPlayerPreviousTrack}
+          onVolumeChange={onMiniPlayerVolumeChange}
           pendingCommand={miniPlayerPendingCommand}
           playbackState={playbackState}
           previousDisabled={miniPlayerPreviousDisabled}
+          volume={miniPlayerVolume}
         />
       </div>
     </main>

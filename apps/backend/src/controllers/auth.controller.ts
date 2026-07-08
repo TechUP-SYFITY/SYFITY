@@ -13,6 +13,8 @@ type AuthControllerService = Pick<
   'getAuthorizationUrl' | 'getPostLoginRedirectUrl' | 'handleCallback' | 'logout' | 'refresh'
 >;
 
+const AUTH_FAILED_REDIRECT = `${config.clientUrl}/login?error=auth_failed`;
+
 @Route('auth')
 export class AuthController {
   constructor(private readonly authService: AuthControllerService) {}
@@ -34,7 +36,7 @@ export class AuthController {
     @Query() state?: string,
   ): Promise<void> {
     if (!code) {
-      return redirect(302, undefined, { Location: `${config.clientUrl}?error=auth_failed` });
+      return redirect(302, undefined, { Location: AUTH_FAILED_REDIRECT });
     }
 
     try {
@@ -50,7 +52,7 @@ export class AuthController {
         Location: this.authService.getPostLoginRedirectUrl(state),
       });
     } catch {
-      return redirect(302, undefined, { Location: `${config.clientUrl}?error=auth_failed` });
+      return redirect(302, undefined, { Location: AUTH_FAILED_REDIRECT });
     }
   }
 

@@ -139,7 +139,7 @@ describe('AuthController', () => {
     await controller.googleCallback(req, redirect, 'invalid-code');
 
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
-      Location: 'http://localhost:3000?error=auth_failed',
+      Location: 'http://localhost:3000/login?error=auth_failed',
     });
   });
 
@@ -155,7 +155,7 @@ describe('AuthController', () => {
 
     expect(authService.handleCallback).not.toHaveBeenCalled();
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
-      Location: 'http://localhost:3000?error=auth_failed',
+      Location: 'http://localhost:3000/login?error=auth_failed',
     });
   });
 

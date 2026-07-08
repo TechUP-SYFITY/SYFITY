@@ -1,4 +1,3 @@
-// 로그인 랜딩: 다크 풀스크린 위 LoginCard + 푸터.
 import { LoginCard } from '@/features/auth/components/LoginCard';
 
 interface LoginPageProps {

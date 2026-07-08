@@ -1,7 +1,8 @@
-// 인증 쿠키 기반 REST API 호출을 공통 처리한다.
 import { ApiClientError, type ApiError, type ApiResponse } from '@/shared/types/api';
 
 const DEFAULT_API_URL = 'http://localhost:4000/api/v1';
+
+export const REAUTH_PATH = '/login?reauth=1';
 
 export const getBaseUrl = () => {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL;
@@ -28,9 +29,9 @@ const parseJson = async <T>(response: Response): Promise<T | null> => {
   return JSON.parse(text) as T;
 };
 
-const redirectToLanding = () => {
+const redirectToReauth = () => {
   if (typeof window !== 'undefined') {
-    window.location.href = '/';
+    window.location.href = REAUTH_PATH;
   }
 };
 
@@ -70,12 +71,19 @@ const request = async <T>(
       parsed.error.code === 'AUTH_UNAUTHORIZED' || parsed.error.code === 'AUTH_TOKEN_EXPIRED';
 
     if (shouldRefresh && !hasRetried) {
-      await refreshAccessToken();
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        if (error instanceof ApiClientError && error.code === 'AUTH_REFRESH_EXPIRED') {
+          redirectToReauth();
+        }
+        throw error;
+      }
       return request<T>(url, options, true);
     }
 
-    if (parsed.error.code === 'AUTH_REFRESH_EXPIRED') {
-      redirectToLanding();
+    if (hasRetried) {
+      redirectToReauth();
     }
   }
 

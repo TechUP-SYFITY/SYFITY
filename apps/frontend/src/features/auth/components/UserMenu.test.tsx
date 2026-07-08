@@ -25,7 +25,8 @@ const makeApi = (over: Partial<AuthApi> = {}): AuthApi =>
 
 const renderWith = (ui: ReactElement) => {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    // useMe는 자체 retry 옵션(5xx 1회 재시도)을 쓰므로 retryDelay를 0으로 두어 재시도가 즉시 끝나게 한다
+    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };

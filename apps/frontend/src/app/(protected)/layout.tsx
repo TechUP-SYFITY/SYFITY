@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { PropsWithChildren } from 'react';
 
-import { getBaseUrl } from '@/shared/lib/api/apiClient';
+import { getBaseUrl, REAUTH_PATH } from '@/shared/lib/api/apiClient';
 
 export default async function ProtectedLayout({ children }: PropsWithChildren) {
   const cookieHeader = (await cookies()).toString();
@@ -24,5 +24,5 @@ export default async function ProtectedLayout({ children }: PropsWithChildren) {
     return <>{children}</>;
   }
 
-  redirect('/login?reauth=1');
+  redirect(REAUTH_PATH);
 }

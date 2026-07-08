@@ -13,6 +13,10 @@ export const useMe = (api: AuthApi = authApi): UseQueryResult<UserProfile, AuthA
   useQuery({
     queryKey: authQueryKeys.me(),
     queryFn: () => api.getMe(),
+    retry: (failureCount, error) =>
+      error.status !== undefined && error.status >= 400 && error.status < 500
+        ? false
+        : failureCount < 1,
   });
 
 export const useLogout = (api: AuthApi = authApi) => {

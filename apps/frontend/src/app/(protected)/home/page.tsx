@@ -1,5 +1,3 @@
-'use client';
-
 import { UserMenu } from '@/features/auth/components/UserMenu';
 export default function HomePage() {
   return (

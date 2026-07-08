@@ -15,7 +15,7 @@
 ## 2. 설계 원칙
 
 1. 모든 테이블은 `id`를 UUID로 사용한다.
-2. 데이터는 물리 삭제하지 않고 상태값으로 관리한다.
+2. 데이터는 물리 삭제하지 않고 상태값으로 관리한다. (예외: `playlist_items` — 4.5절 참고)
 3. 상태값 컬럼은 PostgreSQL enum 타입으로 정의한다. Prisma schema에서도 enum으로 선언하여 TypeScript 타입과 연결한다.
 4. Timestamp 컬럼은 `TIMESTAMPTZ`로 저장한다. 애플리케이션에서는 ISO 8601 문자열로 직렬화한다.
 5. 스키마 변경은 반드시 Prisma migrate로 관리한다. Supabase 대시보드 직접 수정은 금지한다.
@@ -258,6 +258,13 @@ Room의 공동 플레이리스트 항목을 저장한다.
 
 - `position`은 1부터 시작하는 정수로 관리한다.
 - Host가 순서 변경 시 영향받는 항목의 `position`을 트랜잭션으로 일괄 업데이트한다.
+
+**삭제 정책 (설계 원칙 #2 예외)**
+
+- 곡 삭제(`DELETE /rooms/:roomId/playlist/:itemId`)는 물리 삭제(hard delete)한다.
+- `status`(available/unavailable)는 "삭제 여부"가 아니라 "재생 가능 여부"를 나타내는 별개의 의미로 이미 쓰이고 있어(`unavailable`인 곡도 목록엔 계속 노출됨), 삭제에 재사용할 수 없다. 삭제까지 상태값으로 관리하려면 `status`에 별도 값을 추가하거나 `deleted_at` 컬럼을 새로 두는 스키마 변경이 필요하다.
+- 삭제 대상 곡이 현재 재생 중(`playback_states.playlist_item_id`)이면, 삭제 전에 `playback_states`를 다음 곡(또는 재생 초기화)으로 먼저 갱신해 FK 참조를 해제한다 — 순서가 바뀌면 FK 제약 위반이 날 수 있으므로 반드시 참조 해제 → 삭제 순서를 지켜야 한다.
+- soft delete 전환은 삭제 취소·최근 삭제 목록 같은 기능이 실제로 필요해지는 시점에 재검토한다.
 
 ---
 

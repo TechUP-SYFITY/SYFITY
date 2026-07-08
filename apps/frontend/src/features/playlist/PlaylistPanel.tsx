@@ -44,6 +44,7 @@ export function PlaylistPanel({
   onPlayItem,
   playlistApiClient,
 }: PlaylistPanelProps) {
+  const [focusedActionItemId, setFocusedActionItemId] = useState<string | null>(null);
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const shouldUseParentPlaylist = Boolean(playlistItems);
@@ -70,6 +71,22 @@ export function PlaylistPanel({
     addPlaylistItem.reset();
     deletePlaylistItem.reset();
     reorderPlaylist.reset();
+  };
+
+  const preventMouseFocus = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === 'mouse') {
+      event.preventDefault();
+    }
+  };
+
+  const handleRowBlur = (event: React.FocusEvent<HTMLDivElement>, itemId: string) => {
+    const nextTarget = event.relatedTarget;
+
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+
+    setFocusedActionItemId((currentItemId) => (currentItemId === itemId ? null : currentItemId));
   };
 
   useEffect(() => {
@@ -231,6 +248,10 @@ export function PlaylistPanel({
         {visiblePlaylist.map((item, index) => {
           const isCurrent = index === 0;
           const isUnavailable = item.status === 'unavailable';
+          const actionVisibilityClass =
+            focusedActionItemId === item.id
+              ? 'xl:opacity-100'
+              : 'xl:opacity-0 xl:group-hover:opacity-100';
           const titleColorClass = isCurrent
             ? 'text-primary'
             : getUnavailableAwareTextClass(isUnavailable);
@@ -241,6 +262,8 @@ export function PlaylistPanel({
                 isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20'
               }`}
               key={item.id}
+              onBlurCapture={(event) => handleRowBlur(event, item.id)}
+              onFocusCapture={() => setFocusedActionItemId(item.id)}
             >
               <div className="flex min-h-10 min-w-0 items-center gap-3">
                 <TrackArtwork item={item} />
@@ -269,12 +292,13 @@ export function PlaylistPanel({
                   size="icon"
                   className={
                     isHost
-                      ? 'h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5 xl:opacity-0 xl:group-hover:opacity-100'
+                      ? `h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-white/40 opacity-100 hover:bg-white/5 ${actionVisibilityClass}`
                       : 'hidden'
                   }
                   disabled={!isReady || !isHost || isUnavailable}
                   type="button"
                   aria-label={`${item.title} 재생`}
+                  onPointerDown={preventMouseFocus}
                   onClick={() => onPlayItem(item.id)}
                 >
                   <Play className="h-3.5 w-3.5" aria-hidden />
@@ -282,7 +306,7 @@ export function PlaylistPanel({
                 <div
                   className={
                     isHost
-                      ? 'flex shrink-0 items-center gap-1 opacity-100 transition xl:opacity-0 xl:group-hover:opacity-100'
+                      ? `flex shrink-0 items-center gap-1 opacity-100 transition ${actionVisibilityClass}`
                       : 'hidden'
                   }
                 >
@@ -293,6 +317,7 @@ export function PlaylistPanel({
                     disabled={!isReady || !isHost || isCurrent}
                     type="button"
                     data-testid={`playlist-move-up-${item.id}`}
+                    onPointerDown={preventMouseFocus}
                     onClick={() => handleMove(item.id, -1)}
                     aria-label={`${item.title} 위로 이동`}
                   >
@@ -305,6 +330,7 @@ export function PlaylistPanel({
                     disabled={!isReady || !isHost || index === visiblePlaylist.length - 1}
                     type="button"
                     data-testid={`playlist-move-down-${item.id}`}
+                    onPointerDown={preventMouseFocus}
                     onClick={() => handleMove(item.id, 1)}
                     aria-label={`${item.title} 아래로 이동`}
                   >
@@ -317,6 +343,7 @@ export function PlaylistPanel({
                     disabled={!isReady || deletePlaylistItem.isPending}
                     type="button"
                     aria-label={`${item.title} 삭제`}
+                    onPointerDown={preventMouseFocus}
                     onClick={() => {
                       resetMutationErrors();
                       deletePlaylistItem.mutate(item.id);

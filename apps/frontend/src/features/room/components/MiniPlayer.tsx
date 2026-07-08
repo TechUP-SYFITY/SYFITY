@@ -164,7 +164,7 @@ export function MiniPlayer({
         ) : null}
       </div>
 
-      <div className="hidden flex-[0_0_164px] items-center justify-end gap-2 lg:flex">
+      <div className="hidden flex-[0_0_148px] items-center justify-end gap-2 lg:flex">
         <button
           className={getIconButtonClass(false)}
           type="button"
@@ -174,7 +174,7 @@ export function MiniPlayer({
           <RoomIcon name={isVolumeMuted ? 'volumeMuted' : 'volume'} className="h-3.5 w-3.5" />
         </button>
         <input
-          className="h-1 w-[123px] cursor-pointer accent-[#72f4a4]"
+          className="h-0.5 w-[108px] cursor-pointer appearance-none rounded-full bg-white/18 accent-[#72f4a4] [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:w-2 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[#72f4a4] [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#72f4a4] [&::-webkit-slider-thumb]:shadow-[0_0_5px_rgba(114,244,164,0.65)]"
           type="range"
           min={0}
           max={100}

@@ -53,6 +53,7 @@ export type JoinRoomResponse = {
       id: string;
       userId: string | null;
       nickname: string | null;
+      profileImage: string | null;
       type: 'user' | 'system';
       message: string;
       createdAt: string;

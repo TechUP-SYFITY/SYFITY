@@ -7,6 +7,7 @@ import { registerRoomHandlers } from './room.handler';
 import { AppError } from '../../errors/appError';
 import type { PlaybackService } from '../../services/playback.service';
 import type { RoomService } from '../../services/room.service';
+import type { ChatMessageRecord } from '../../types/chat';
 import type { RoomMemberRecord } from '../../types/room';
 import type { RoomJoinAck, RoomJoinPayload, RoomLeavePayload } from '../../types/socket';
 
@@ -16,7 +17,10 @@ type RoomJoinCallback = (
 ) => Promise<void>;
 type RoomLeaveCallback = (payload: RoomLeavePayload | null | undefined) => Promise<void>;
 type RoomHandlerCallback = RoomJoinCallback | RoomLeaveCallback;
-type RoomHandlerService = Pick<RoomService, 'setMemberOnline' | 'leaveRoom'>;
+type RoomHandlerService = Pick<
+  RoomService,
+  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+>;
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 
 const member: RoomMemberRecord = {
@@ -35,10 +39,27 @@ const playbackState = {
   isPlaying: false,
 };
 
+function makeSystemMessage(message: string): ChatMessageRecord {
+  return {
+    id: 'message-system',
+    userId: null,
+    nickname: null,
+    profileImage: null,
+    type: 'system',
+    message,
+    createdAt: new Date('2026-07-01T12:01:00.000Z'),
+  };
+}
+
 function makeRoomService(overrides: Partial<RoomHandlerService> = {}): RoomHandlerService {
   return {
-    setMemberOnline: vi.fn().mockResolvedValue(member),
+    setMemberOnline: vi.fn().mockResolvedValue({ member, wasOnline: false }),
     leaveRoom: vi.fn().mockResolvedValue({ type: 'left', member: { ...member, status: 'left' } }),
+    createSystemMessage: vi
+      .fn()
+      .mockImplementation((_roomId: string, message: string) =>
+        Promise.resolve(makeSystemMessage(message)),
+      ),
     ...overrides,
   };
 }
@@ -101,7 +122,7 @@ describe('registerRoomHandlers', () => {
     consoleError.mockRestore();
   });
 
-  it('room:join 성공 시 Socket Room에 참가하고 presence:update와 성공 ack를 보낸다', async () => {
+  it('room:join 성공 시 Socket Room에 참가하고 presence:update, chat:system, 성공 ack를 보낸다', async () => {
     const { io, roomEmit } = makeIo();
     const { socket, handlers } = makeSocket();
     const roomService = makeRoomService();
@@ -122,6 +143,47 @@ describe('registerRoomHandlers', () => {
       role: 'member',
       status: 'online',
     });
+    expect(roomService.createSystemMessage).toHaveBeenCalledWith(
+      'room-1',
+      'Alice님이 입장했습니다.',
+    );
+    expect(roomEmit).toHaveBeenCalledWith('chat:system', {
+      id: 'message-system',
+      type: 'system',
+      message: 'Alice님이 입장했습니다.',
+      createdAt: '2026-07-01T12:01:00.000Z',
+    });
+    expect(ack).toHaveBeenCalledWith({ success: true, data: { playbackState } });
+  });
+
+  it('room:join에서 이미 online 상태면 시스템 메시지를 생성하지 않는다', async () => {
+    const { io, roomEmit } = makeIo();
+    const { socket, handlers } = makeSocket();
+    const roomService = makeRoomService({
+      setMemberOnline: vi.fn().mockResolvedValue({ member, wasOnline: true }),
+    });
+
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
+    const ack = vi.fn();
+    await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
+
+    expect(roomService.createSystemMessage).not.toHaveBeenCalled();
+    expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
+    expect(ack).toHaveBeenCalledWith({ success: true, data: { playbackState } });
+  });
+
+  it('room:join 시스템 메시지 생성 실패 시 chat:system 없이 성공 ack를 보낸다', async () => {
+    const { io, roomEmit } = makeIo();
+    const { socket, handlers } = makeSocket();
+    const roomService = makeRoomService({
+      createSystemMessage: vi.fn().mockResolvedValue(null),
+    });
+
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
+    const ack = vi.fn();
+    await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
+
+    expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
     expect(ack).toHaveBeenCalledWith({ success: true, data: { playbackState } });
   });
 
@@ -140,6 +202,7 @@ describe('registerRoomHandlers', () => {
       error: { code: ERROR_CODES.VALIDATION_ERROR, message: 'roomId가 필요합니다.' },
     });
     expect(roomService.setMemberOnline).not.toHaveBeenCalled();
+    expect(roomService.createSystemMessage).not.toHaveBeenCalled();
     expect(socket.join).not.toHaveBeenCalled();
     expect(io.to).not.toHaveBeenCalled();
     expect(roomEmit).not.toHaveBeenCalled();
@@ -191,7 +254,7 @@ describe('registerRoomHandlers', () => {
     });
   });
 
-  it('room:leave 일반 멤버는 Socket Room에서 제거하고 presence:update를 보낸다', async () => {
+  it('room:leave 일반 멤버는 Socket Room에서 제거하고 presence:update와 chat:system을 보낸다', async () => {
     const { io, roomEmit, socketsLeave } = makeIo();
     const { socket, handlers } = makeSocket();
     const leftMember: RoomMemberRecord = { ...member, status: 'left' };
@@ -211,11 +274,21 @@ describe('registerRoomHandlers', () => {
       role: 'member',
       status: 'left',
     });
+    expect(roomService.createSystemMessage).toHaveBeenCalledWith(
+      'room-1',
+      'Alice님이 퇴장했습니다.',
+    );
+    expect(roomEmit).toHaveBeenCalledWith('chat:system', {
+      id: 'message-system',
+      type: 'system',
+      message: 'Alice님이 퇴장했습니다.',
+      createdAt: '2026-07-01T12:01:00.000Z',
+    });
     expect(roomEmit).not.toHaveBeenCalledWith('room:closed', expect.anything());
     expect(socketsLeave).not.toHaveBeenCalled();
   });
 
-  it('room:leave Host는 room:closed를 보낸 뒤 Socket Room을 해제한다', async () => {
+  it('room:leave Host는 chat:system, room:closed를 보낸 뒤 Socket Room을 해제한다', async () => {
     const { io, roomEmit, socketsLeave } = makeIo();
     const { socket, handlers } = makeSocket();
     const roomService = makeRoomService({
@@ -226,10 +299,24 @@ describe('registerRoomHandlers', () => {
     await getLeaveHandler(handlers)({ roomId: 'room-1' });
 
     expect(socket.leave).toHaveBeenCalledWith('room:room-1');
+    expect(roomService.createSystemMessage).toHaveBeenCalledWith(
+      'room-1',
+      'Room이 종료되었습니다.',
+    );
+    expect(roomEmit).toHaveBeenCalledWith('chat:system', {
+      id: 'message-system',
+      type: 'system',
+      message: 'Room이 종료되었습니다.',
+      createdAt: '2026-07-01T12:01:00.000Z',
+    });
     expect(roomEmit).toHaveBeenCalledWith('room:closed', {
       roomId: 'room-1',
       reason: 'host-left',
     });
+    const systemCall = roomEmit.mock.calls.findIndex((call) => call[0] === 'chat:system');
+    const closedCall = roomEmit.mock.calls.findIndex((call) => call[0] === 'room:closed');
+    expect(systemCall).toBeGreaterThanOrEqual(0);
+    expect(systemCall).toBeLessThan(closedCall);
     expect(roomEmit).not.toHaveBeenCalledWith('presence:update', expect.anything());
     expect(socketsLeave).toHaveBeenCalledWith('room:room-1');
   });
@@ -243,6 +330,7 @@ describe('registerRoomHandlers', () => {
     await expect(getLeaveHandler(handlers)({} as RoomLeavePayload)).resolves.toBeUndefined();
 
     expect(roomService.leaveRoom).not.toHaveBeenCalled();
+    expect(roomService.createSystemMessage).not.toHaveBeenCalled();
     expect(socket.leave).not.toHaveBeenCalled();
     expect(io.to).not.toHaveBeenCalled();
   });
@@ -258,6 +346,7 @@ describe('registerRoomHandlers', () => {
     await expect(getLeaveHandler(handlers)({ roomId: 'room-1' })).resolves.toBeUndefined();
 
     expect(socket.leave).not.toHaveBeenCalled();
+    expect(roomService.createSystemMessage).not.toHaveBeenCalled();
     expect(io.to).not.toHaveBeenCalled();
   });
 });

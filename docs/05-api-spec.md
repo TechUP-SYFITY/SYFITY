@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
-| 버전      | v1.5                                                                                            |
-| 상태      | Room 종료 API 에러 코드 실제 동작 반영                                                          |
+| 버전      | v1.6                                                                                            |
+| 상태      | 채팅 응답 profileImage 필드 반영                                                                |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
 
@@ -386,6 +386,7 @@ Access Token 갱신. Refresh Token Rotation 적용으로 새 Refresh Token도 �
         id: string,
         userId: string | null,
         nickname: string | null,
+        profileImage: string | null,
         type: ChatMessageType,
         message: string,
         createdAt: string
@@ -675,6 +676,7 @@ MVP에서 중복 추가를 허용한다.
         id: string,
         userId: string | null,
         nickname: string | null,
+        profileImage: string | null,
         type: ChatMessageType,
         message: string,
         createdAt: string

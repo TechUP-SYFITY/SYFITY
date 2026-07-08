@@ -6,7 +6,7 @@ import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
 import { CacheKeys } from '../lib/cache/cacheKeys';
-import type { IChatRepository } from '../types/chat';
+import type { ChatMessageRecord, IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
   IRoomRepository,
@@ -17,7 +17,8 @@ import type {
   RoomRecord,
   RoomUpdateRecord,
 } from '../types/room';
-import type { RoomClosedPayload } from '../types/socket';
+import type { ChatSystemPayload, RoomClosedPayload } from '../types/socket';
+import { toChatSystemPayload } from '../utils/chatPayload';
 import { assertActiveRoomMember } from '../utils/roomAccess';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
@@ -25,6 +26,7 @@ const RECENT_CHAT_LIMIT = 50;
 
 type RoomClosedEmitter = {
   emit(event: 'room:closed', payload: RoomClosedPayload): boolean;
+  emit(event: 'chat:system', payload: ChatSystemPayload): boolean;
 };
 
 export type RoomSocketServer = {
@@ -37,7 +39,7 @@ export class RoomService {
     private readonly roomRepo: IRoomRepository,
     private readonly cache: ICache,
     private readonly playlistRepo: Pick<IPlaylistRepository, 'getPlaylist'>,
-    private readonly chatRepo: Pick<IChatRepository, 'findLatestChats'>,
+    private readonly chatRepo: Pick<IChatRepository, 'findLatestChats' | 'createMessage'>,
     private readonly playbackService: Pick<
       PlaybackService,
       'getPlaybackStateForJoin' | 'initializeCache' | 'clearCache'
@@ -111,12 +113,19 @@ export class RoomService {
     return this.roomRepo.updateRoomName(roomId, name);
   }
 
-  async setMemberOnline(roomId: string, userId: string): Promise<RoomMemberRecord> {
+  async setMemberOnline(
+    roomId: string,
+    userId: string,
+  ): Promise<{ member: RoomMemberRecord; wasOnline: boolean }> {
     await assertActiveRoomMember(this.roomRepo, roomId, userId);
+    const previousMembership = await this.roomRepo.findMembership(roomId, userId);
+    const wasOnline = previousMembership?.status === 'online';
+
     await this.roomRepo.updateMemberStatus(roomId, userId, 'online');
     await this.roomRepo.touchLastActivity(roomId);
+    const member = await this.findRequiredMemberInfo(roomId, userId);
 
-    return this.findRequiredMemberInfo(roomId, userId);
+    return { member, wasOnline };
   }
 
   async leaveRoom(roomId: string, userId: string): Promise<LeaveRoomResult> {
@@ -146,6 +155,22 @@ export class RoomService {
     return room;
   }
 
+  async createSystemMessage(roomId: string, message: string): Promise<ChatMessageRecord | null> {
+    try {
+      return await this.chatRepo.createMessage({
+        roomId,
+        userId: null,
+        type: 'system',
+        message,
+      });
+    } catch (err) {
+      // 시스템 메시지는 부가 기능이므로 실패해도 입장/퇴장/종료 흐름을 막지 않는다.
+      // eslint-disable-next-line no-console
+      console.error('[RoomService.createSystemMessage] 시스템 메시지 생성 실패', err);
+      return null;
+    }
+  }
+
   async closeRoomAndBroadcast(roomId: string, userId: string): Promise<void> {
     if (!this.io) {
       throw new AppError(
@@ -156,6 +181,11 @@ export class RoomService {
     }
 
     await this.closeRoom(roomId, userId);
+
+    const systemMessage = await this.createSystemMessage(roomId, 'Room이 종료되었습니다.');
+    if (systemMessage) {
+      this.io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
+    }
 
     const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
     this.io.to(`room:${roomId}`).emit('room:closed', payload);

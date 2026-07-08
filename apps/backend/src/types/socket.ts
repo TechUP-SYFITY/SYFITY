@@ -75,3 +75,29 @@ export type RoomClosedPayload = {
   roomId: string;
   reason: RoomClosedReason;
 };
+
+export type ChatSendPayload = {
+  roomId: string;
+  message: string;
+};
+
+export type ChatSendAck =
+  | { success: true; data: { id: string; createdAt: string } }
+  | { success: false; error: SocketAckError };
+
+export type ChatReceivedPayload = {
+  id: string;
+  userId: string;
+  nickname: string;
+  profileImage: string | null;
+  type: 'user';
+  message: string;
+  createdAt: string;
+};
+
+export type ChatSystemPayload = {
+  id: string;
+  type: 'system';
+  message: string;
+  createdAt: string;
+};

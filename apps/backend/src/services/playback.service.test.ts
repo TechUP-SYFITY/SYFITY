@@ -146,14 +146,18 @@ describe('PlaybackService', () => {
 
     service.initializeCache('room-1');
 
-    expect(cache.set).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'), {
-      videoId: null,
-      playlistItemId: null,
-      baseCurrentTime: 0,
-      isPlaying: false,
-      serverStartedAt: null,
-      serverPausedAt: null,
-    });
+    expect(cache.set).toHaveBeenCalledWith(
+      CacheKeys.playbackState('room-1'),
+      {
+        videoId: null,
+        playlistItemId: null,
+        baseCurrentTime: 0,
+        isPlaying: false,
+        serverStartedAt: null,
+        serverPausedAt: null,
+      },
+      0,
+    );
   });
 
   it('Room 종료 시 PlaybackState 캐시를 삭제한다', () => {
@@ -228,14 +232,18 @@ describe('PlaybackService', () => {
       isPlaying: true,
     });
     expect(playbackRepo.findByRoomId).toHaveBeenCalledWith('room-1');
-    expect(cache.set).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'), {
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      baseCurrentTime: 30,
-      isPlaying: true,
-      serverStartedAt: '2026-07-01T12:00:00.000Z',
-      serverPausedAt: null,
-    });
+    expect(cache.set).toHaveBeenCalledWith(
+      CacheKeys.playbackState('room-1'),
+      {
+        videoId: 'video-1',
+        playlistItemId: 'playlist-item-1',
+        baseCurrentTime: 30,
+        isPlaying: true,
+        serverStartedAt: '2026-07-01T12:00:00.000Z',
+        serverPausedAt: null,
+      },
+      0,
+    );
   });
 
   it('tick용 조회는 권한 검증 없이 캐시 히트 값을 반환한다', async () => {
@@ -283,14 +291,18 @@ describe('PlaybackService', () => {
       isPlaying: true,
     });
     expect(playbackRepo.findByRoomId).toHaveBeenCalledWith('room-1');
-    expect(cache.set).toHaveBeenCalledWith(CacheKeys.playbackState('room-1'), {
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      baseCurrentTime: 30,
-      isPlaying: true,
-      serverStartedAt: '2026-07-01T12:00:00.000Z',
-      serverPausedAt: null,
-    });
+    expect(cache.set).toHaveBeenCalledWith(
+      CacheKeys.playbackState('room-1'),
+      {
+        videoId: 'video-1',
+        playlistItemId: 'playlist-item-1',
+        baseCurrentTime: 30,
+        isPlaying: true,
+        serverStartedAt: '2026-07-01T12:00:00.000Z',
+        serverPausedAt: null,
+      },
+      0,
+    );
   });
 
   it('tick용 조회는 캐시와 DB에 모두 없으면 SERVER_INTERNAL_ERROR를 던진다', async () => {

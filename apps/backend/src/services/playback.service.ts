@@ -53,7 +53,7 @@ export class PlaybackService {
   ) {}
 
   initializeCache(roomId: string): void {
-    this.cache.set(CacheKeys.playbackState(roomId), INITIAL_PLAYBACK_STATE_CACHE);
+    this.cache.set(CacheKeys.playbackState(roomId), INITIAL_PLAYBACK_STATE_CACHE, 0);
   }
 
   clearCache(roomId: string): void {
@@ -248,7 +248,7 @@ export class PlaybackService {
     }
 
     const cacheValue = this.toCache(record);
-    this.cache.set(CacheKeys.playbackState(roomId), cacheValue);
+    this.cache.set(CacheKeys.playbackState(roomId), cacheValue, 0);
     return cacheValue;
   }
 
@@ -258,7 +258,7 @@ export class PlaybackService {
   ): Promise<PlaybackStatePayload> {
     const record = await this.playbackRepo.updateState(roomId, data);
     const cacheValue = this.toCache(record);
-    this.cache.set(CacheKeys.playbackState(roomId), cacheValue);
+    this.cache.set(CacheKeys.playbackState(roomId), cacheValue, 0);
 
     if (data.isPlaying) {
       this.playingRoomIds.add(roomId);

@@ -25,7 +25,7 @@ export function ChatPanel({ chats, compact = false, currentUserName = '게스트
     >
       {!compact ? (
         <div className="flex h-12 shrink-0 items-center border-b border-border px-4">
-          <h2 className="text-xs font-semibold text-white/55">채팅</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground">채팅</h2>
         </div>
       ) : null}
       <div className="min-h-0 flex-1 scrollbar-none space-y-4 overflow-y-auto px-6 py-5">
@@ -36,13 +36,13 @@ export function ChatPanel({ chats, compact = false, currentUserName = '게스트
           <div className="flex items-start gap-3 py-0.5" key={chat.id}>
             <RoomMemberAvatar label={chat.nickname ?? 'S'} size="sm" />
             <div className="min-w-0">
-              <p className="text-xs font-bold text-white/90">
+              <p className="text-xs font-bold text-foreground">
                 {chat.nickname}
-                <span className="ml-1 font-normal text-white/25">
+                <span className="ml-1 font-normal text-muted-foreground">
                   {formatChatTime(chat.createdAt)}
                 </span>
               </p>
-              <p className="mt-1 text-sm leading-5 text-white/72">{chat.message}</p>
+              <p className="mt-1 text-sm leading-5 text-foreground">{chat.message}</p>
             </div>
           </div>
         ))}
@@ -67,7 +67,7 @@ export function ChatPanel({ chats, compact = false, currentUserName = '게스트
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 rounded-xl border-0 bg-transparent text-white/35 hover:bg-transparent disabled:opacity-100"
+            className="h-7 w-7 shrink-0 rounded-xl border-0 bg-transparent text-muted-foreground hover:bg-transparent disabled:opacity-100"
             type="button"
             disabled
             aria-label="메시지 보내기"

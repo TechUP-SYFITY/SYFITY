@@ -64,10 +64,10 @@ export function MiniPlayer({
       <div className="flex w-56 min-w-0 flex-none items-center gap-3">
         <TrackArtwork track={currentTrack} />
         <div className="w-24 min-w-0 flex-none">
-          <p className="truncate text-xs font-semibold text-white">
+          <p className="truncate text-xs font-semibold text-foreground">
             {currentTrack?.title ?? '재생 대기'}
           </p>
-          <p className="truncate text-xs text-white/45">
+          <p className="truncate text-xs text-muted-foreground">
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>
@@ -103,7 +103,7 @@ export function MiniPlayer({
           </button>
           <button
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-lg transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:shadow-none',
+              'flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-lg transition disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none',
               pendingCommand === 'play' || pendingCommand === 'pause' ? 'animate-pulse' : '',
             )}
             type="button"
@@ -133,10 +133,10 @@ export function MiniPlayer({
             <RoomIcon name="repeat" className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-white/38 xl:flex">
+        <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-muted-foreground xl:flex">
           <span>{formatDuration(currentTime)}</span>
           <div
-            className="relative h-1 min-w-0 flex-1 rounded-full bg-white/10"
+            className="relative h-1 min-w-0 flex-1 rounded-full bg-muted"
             role="progressbar"
             aria-label="재생 진행률"
             aria-valuemin={0}
@@ -199,7 +199,9 @@ export function MiniPlayer({
 function getIconButtonClass(disabled: boolean) {
   return cn(
     'flex h-5 w-5 items-center justify-center text-sm transition',
-    disabled ? 'cursor-not-allowed text-white/20' : 'text-white/55 hover:text-white',
+    disabled
+      ? 'cursor-not-allowed text-muted-foreground opacity-50'
+      : 'text-muted-foreground hover:text-foreground',
   );
 }
 

@@ -78,7 +78,7 @@ export function RoomShell({
   const onlineMemberCount = members.filter((member) => member.status === 'online').length;
 
   return (
-    <main className="h-dvh overflow-hidden bg-gray-950 text-white">
+    <main className="h-dvh overflow-hidden bg-background text-foreground">
       <div className="flex h-full min-h-0 flex-col">
         <RoomHeader currentUserName={currentUserName} />
         <RoomStatusBar

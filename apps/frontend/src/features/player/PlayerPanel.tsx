@@ -59,7 +59,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 xl:mx-0">
-      <div className="relative overflow-hidden rounded-2xl bg-black shadow-lg ring-1 ring-border">
+      <div className="relative overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border">
         <YouTubePlayer
           playbackState={playbackState}
           onBufferingRecovered={handleSyncRequest}
@@ -92,10 +92,10 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="truncate text-lg font-bold text-white">
+          <h2 className="truncate text-lg font-bold text-foreground">
             {currentTrack?.title ?? '재생 대기'}
           </h2>
-          <p className="mt-1 truncate text-sm text-white/48">
+          <p className="mt-1 truncate text-sm text-muted-foreground">
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>
@@ -142,14 +142,14 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
           <RefreshCcw aria-hidden />
           동기화
         </Button>
-        <div className="ml-auto flex min-h-9 items-center gap-2 text-xs text-white/45">
+        <div className="ml-auto flex min-h-9 items-center gap-2 text-xs text-muted-foreground">
           {pendingCommand ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
           <Radio className="h-3.5 w-3.5 text-primary" aria-hidden />
           {isHost ? 'Host 제어 가능' : 'Host만 재생을 제어할 수 있어요.'}
         </div>
       </div>
 
-      <div className="min-h-5 space-y-1 text-sm text-white/45">
+      <div className="min-h-5 space-y-1 text-sm text-muted-foreground">
         {syncStatus ? <p>{syncStatus}</p> : null}
         {commandError ? (
           <p className="flex items-center gap-2 text-destructive">

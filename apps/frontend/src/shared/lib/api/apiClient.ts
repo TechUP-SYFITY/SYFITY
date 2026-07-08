@@ -28,9 +28,9 @@ const parseJson = async <T>(response: Response): Promise<T | null> => {
   return JSON.parse(text) as T;
 };
 
-const redirectToLanding = () => {
+const redirectToReauth = () => {
   if (typeof window !== 'undefined') {
-    window.location.href = '/';
+    window.location.href = '/login?reauth=1';
   }
 };
 
@@ -70,12 +70,15 @@ const request = async <T>(
       parsed.error.code === 'AUTH_UNAUTHORIZED' || parsed.error.code === 'AUTH_TOKEN_EXPIRED';
 
     if (shouldRefresh && !hasRetried) {
-      await refreshAccessToken();
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        if (error instanceof ApiClientError && error.code === 'AUTH_REFRESH_EXPIRED') {
+          redirectToReauth();
+        }
+        throw error;
+      }
       return request<T>(url, options, true);
-    }
-
-    if (parsed.error.code === 'AUTH_REFRESH_EXPIRED') {
-      redirectToLanding();
     }
   }
 

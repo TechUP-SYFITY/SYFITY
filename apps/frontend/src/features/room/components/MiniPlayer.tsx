@@ -57,7 +57,7 @@ export function MiniPlayer({
   const isVolumeMuted = isMuted || volume === 0;
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-border bg-background/95 px-5 pt-px backdrop-blur lg:static lg:px-6">
+    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 items-center gap-4 border-t border-border bg-background/95 px-5 pt-px backdrop-blur xl:static xl:px-6">
       <div className="flex w-56 min-w-0 flex-none items-center gap-3">
         <TrackArtwork track={currentTrack} />
         <div className="w-24 min-w-0 flex-none">
@@ -130,7 +130,7 @@ export function MiniPlayer({
             <RoomIcon name="repeat" className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-white/38 lg:flex">
+        <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-white/38 xl:flex">
           <span>{formatDuration(currentTime)}</span>
           <div
             className="relative h-1 min-w-0 flex-1 rounded-full bg-white/10"
@@ -164,7 +164,7 @@ export function MiniPlayer({
         ) : null}
       </div>
 
-      <div className="hidden w-36 flex-none items-center justify-end gap-2 lg:flex">
+      <div className="hidden w-36 flex-none items-center justify-end gap-2 xl:flex">
         <button
           className={getIconButtonClass(false)}
           type="button"

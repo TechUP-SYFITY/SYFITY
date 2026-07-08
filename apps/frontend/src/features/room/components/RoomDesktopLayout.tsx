@@ -20,7 +20,7 @@ export function RoomDesktopLayout({
   renderPlaylistPanel: () => ReactNode;
 }) {
   return (
-    <section className="hidden min-h-0 flex-1 overflow-hidden border-b border-border lg:flex">
+    <section className="hidden min-h-0 flex-1 overflow-hidden border-b border-border xl:flex">
       <div className="w-48 shrink-0 xl:w-52">
         <MemberSidebar members={members} />
       </div>

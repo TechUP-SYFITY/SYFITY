@@ -29,7 +29,7 @@ export function RoomMobileLayout({
   renderPlaylistPanel: () => ReactNode;
 }) {
   return (
-    <section className="flex flex-1 flex-col overflow-hidden lg:hidden">
+    <section className="flex flex-1 flex-col overflow-hidden xl:hidden">
       {!isHost ? <HostConnectionNotice /> : null}
       <div className="px-5 py-4">{renderPlayerPanel()}</div>
       <MobileTabs activeTab={activeMobileTab} onChange={onMobileTabChange} />

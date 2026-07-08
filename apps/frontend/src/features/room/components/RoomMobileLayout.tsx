@@ -33,7 +33,7 @@ export function RoomMobileLayout({
       {!isHost ? <HostConnectionNotice /> : null}
       <div className="shrink-0 px-5 py-4">{renderPlayerPanel()}</div>
       <MobileTabs activeTab={activeMobileTab} onChange={onMobileTabChange} />
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border pb-room-mini-player">
+      <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-16">
         {activeMobileTab === 'playlist' ? renderPlaylistPanel() : null}
         {activeMobileTab === 'members' ? <MemberList members={members} /> : null}
         {activeMobileTab === 'chat' ? <ChatPanel chats={chats} compact /> : null}

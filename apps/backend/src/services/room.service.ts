@@ -5,7 +5,6 @@ import { ERROR_CODES } from '@syfity/shared';
 import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
-import { CacheKeys } from '../lib/cache/cacheKeys';
 import type { ChatMessageRecord, IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
@@ -150,7 +149,6 @@ export class RoomService {
 
     await this.roomRepo.closeRoom(roomId);
     this.playbackService.clearCache(roomId);
-    this.cache.del(CacheKeys.presence(roomId));
 
     return room;
   }

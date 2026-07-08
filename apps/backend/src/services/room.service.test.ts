@@ -113,7 +113,7 @@ function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
     upsertMembership: vi.fn().mockResolvedValue(undefined),
     findMembers: vi.fn().mockResolvedValue([member]),
     upsertRecentRoom: vi.fn().mockResolvedValue(undefined),
-    updateMemberStatus: vi.fn().mockResolvedValue(undefined),
+    updateMemberStatus: vi.fn().mockResolvedValue(true),
     findMemberInfo: vi.fn().mockResolvedValue(member),
     closeRoom: vi.fn().mockResolvedValue(undefined),
     updateRoomName: vi.fn().mockResolvedValue(updatedRoom),
@@ -480,15 +480,17 @@ describe('RoomService', () => {
 
     expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
-    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'online');
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'online', [
+      'offline',
+    ]);
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-1');
   });
 
-  it('online 전환 전 상태가 online이면 wasOnline true를 반환한다', async () => {
+  it('이미 online 상태라 전환이 일어나지 않으면 wasOnline true를 반환한다', async () => {
     const { service } = makeService({
       roomRepo: {
-        findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'online' }),
+        updateMemberStatus: vi.fn().mockResolvedValue(false),
       },
     });
 
@@ -544,10 +546,24 @@ describe('RoomService', () => {
       member: leftMember,
     });
 
-    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-2', 'left');
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-2', 'left', [
+      'online',
+      'offline',
+    ]);
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-2');
     expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('이미 나간 상태로 전환이 일어나지 않으면 noop을 반환하고 시스템 메시지용 조회를 하지 않는다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { updateMemberStatus: vi.fn().mockResolvedValue(false) },
+    });
+
+    await expect(service.leaveRoom('room-1', 'user-2')).resolves.toEqual({ type: 'noop' });
+
+    expect(roomRepo.touchLastActivity).not.toHaveBeenCalled();
+    expect(roomRepo.findMemberInfo).not.toHaveBeenCalled();
   });
 
   it('Host가 Room을 나가면 Room을 종료한다', async () => {

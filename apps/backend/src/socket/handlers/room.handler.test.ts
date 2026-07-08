@@ -400,6 +400,22 @@ describe('registerRoomHandlers', () => {
     expect(socketsLeave).not.toHaveBeenCalled();
   });
 
+  it('room:leave가 noop이면(이미 나간 상태) Socket Room에서만 제거하고 아무것도 broadcast하지 않는다', async () => {
+    const { io, roomEmit, socketsLeave } = makeIo();
+    const { socket, handlers } = makeSocket();
+    const roomService = makeRoomService({
+      leaveRoom: vi.fn().mockResolvedValue({ type: 'noop' }),
+    });
+
+    registerRoomHandlers(io, socket, { roomService, playbackService: makePlaybackService() });
+    await getLeaveHandler(handlers)({ roomId: 'room-1' });
+
+    expect(socket.leave).toHaveBeenCalledWith('room:room-1');
+    expect(roomService.createSystemMessage).not.toHaveBeenCalled();
+    expect(roomEmit).not.toHaveBeenCalled();
+    expect(socketsLeave).not.toHaveBeenCalled();
+  });
+
   it('room:leave 일반 멤버는 자기 offline 타이머만 취소한다', async () => {
     const { io } = makeIo();
     const { socket, handlers } = makeSocket();

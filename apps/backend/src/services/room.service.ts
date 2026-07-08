@@ -117,14 +117,13 @@ export class RoomService {
     userId: string,
   ): Promise<{ member: RoomMemberRecord; wasOnline: boolean }> {
     await assertActiveRoomMember(this.roomRepo, roomId, userId);
-    const previousMembership = await this.roomRepo.findMembership(roomId, userId);
-    const wasOnline = previousMembership?.status === 'online';
-
-    await this.roomRepo.updateMemberStatus(roomId, userId, 'online');
+    const didTransition = await this.roomRepo.updateMemberStatus(roomId, userId, 'online', [
+      'offline',
+    ]);
     await this.roomRepo.touchLastActivity(roomId);
     const member = await this.findRequiredMemberInfo(roomId, userId);
 
-    return { member, wasOnline };
+    return { member, wasOnline: !didTransition };
   }
 
   async leaveRoom(roomId: string, userId: string): Promise<LeaveRoomResult> {
@@ -134,7 +133,14 @@ export class RoomService {
       return { type: 'closed' };
     }
 
-    await this.roomRepo.updateMemberStatus(roomId, userId, 'left');
+    const didTransition = await this.roomRepo.updateMemberStatus(roomId, userId, 'left', [
+      'online',
+      'offline',
+    ]);
+    if (!didTransition) {
+      return { type: 'noop' };
+    }
+
     await this.roomRepo.touchLastActivity(roomId);
     const member = await this.findRequiredMemberInfo(roomId, userId);
 

@@ -121,6 +121,10 @@ export function registerRoomHandlers(
         return;
       }
 
+      if (result.type === 'noop') {
+        return;
+      }
+
       const presencePayload: PresenceUpdatePayload = {
         userId: result.member.userId,
         nickname: result.member.nickname,

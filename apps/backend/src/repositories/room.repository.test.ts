@@ -95,7 +95,7 @@ function makePrisma(
           ),
         findMany: vi.fn().mockResolvedValue(overrides.membersResult ?? []),
         upsert: vi.fn().mockResolvedValue({}),
-        update: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       recentRoom: {
         upsert: vi.fn().mockResolvedValue({}),
@@ -399,10 +399,12 @@ describe('RoomRepository', () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.updateMemberStatus('room-1', 'user-1', 'online')).resolves.toBeUndefined();
+    await expect(repo.updateMemberStatus('room-1', 'user-1', 'online', ['offline'])).resolves.toBe(
+      true,
+    );
 
-    expect(prisma.roomMember.update).toHaveBeenCalledWith({
-      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', userId: 'user-1', status: { in: ['offline'] } },
       data: {
         status: 'online',
         lastSeenAt: expect.any(Date),
@@ -414,10 +416,12 @@ describe('RoomRepository', () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.updateMemberStatus('room-1', 'user-1', 'offline')).resolves.toBeUndefined();
+    await expect(repo.updateMemberStatus('room-1', 'user-1', 'offline', ['online'])).resolves.toBe(
+      true,
+    );
 
-    expect(prisma.roomMember.update).toHaveBeenCalledWith({
-      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', userId: 'user-1', status: { in: ['online'] } },
       data: {
         status: 'offline',
         lastSeenAt: expect.any(Date),
@@ -429,16 +433,28 @@ describe('RoomRepository', () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.updateMemberStatus('room-1', 'user-1', 'left')).resolves.toBeUndefined();
+    await expect(
+      repo.updateMemberStatus('room-1', 'user-1', 'left', ['online', 'offline']),
+    ).resolves.toBe(true);
 
-    expect(prisma.roomMember.update).toHaveBeenCalledWith({
-      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', userId: 'user-1', status: { in: ['online', 'offline'] } },
       data: {
         status: 'left',
         leftAt: expect.any(Date),
         lastSeenAt: expect.any(Date),
       },
     });
+  });
+
+  it('허용된 이전 상태가 아니면 전환되지 않고 false를 반환한다', async () => {
+    const { prisma } = makePrisma();
+    prisma.roomMember.updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.updateMemberStatus('room-1', 'user-1', 'offline', ['online'])).resolves.toBe(
+      false,
+    );
   });
 
   it('left 상태도 포함해 단일 멤버 정보를 조회한다', async () => {

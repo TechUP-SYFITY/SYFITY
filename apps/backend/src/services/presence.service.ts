@@ -58,10 +58,11 @@ export class PresenceService {
   }
 
   async setMemberOffline(roomId: string, userId: string): Promise<RoomMemberRecord | null> {
-    const membership = await this.roomRepo.findMembership(roomId, userId);
-    if (membership?.status !== 'online') return null;
+    const didTransition = await this.roomRepo.updateMemberStatus(roomId, userId, 'offline', [
+      'online',
+    ]);
+    if (!didTransition) return null;
 
-    await this.roomRepo.updateMemberStatus(roomId, userId, 'offline');
     return this.roomRepo.findMemberInfo(roomId, userId);
   }
 }

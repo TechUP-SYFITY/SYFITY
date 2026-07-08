@@ -1,22 +1,31 @@
 import { ERROR_CODES, type AddPlaylistItemRequest, type PlaylistItem } from '@syfity/shared';
 
+import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { IYouTubeClient } from '../lib/youtube/youtube.client';
 import {
   toPlaylistItem,
   type IPlaylistRepository,
   type PlaylistItemRecord,
+  type ReorderPlaylistItemInput,
 } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
-import { assertActiveRoomMember } from '../utils/roomAccess';
+import type { PlaybackStatePayload } from '../types/socket';
+import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 
 type PlaylistRoomEmitter = {
   emit(event: 'playlist:updated', payload: { playlist: PlaylistItem[] }): boolean;
+  emit(event: 'playback:change-track' | 'playback:pause', payload: PlaybackStatePayload): boolean;
 };
 
 export type PlaylistSocketServer = {
   to(room: string): PlaylistRoomEmitter;
 };
+
+type PlaylistPlaybackService = Pick<
+  PlaybackService,
+  'getPlaybackState' | 'setTrack' | 'resetPlayback'
+>;
 
 export class PlaylistService {
   constructor(
@@ -27,6 +36,7 @@ export class PlaylistService {
     >,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
     private readonly io: PlaylistSocketServer,
+    private readonly playbackService: PlaylistPlaybackService,
   ) {}
 
   async getPlaylist(roomId: string, userId: string): Promise<PlaylistItemRecord[]> {
@@ -55,7 +65,6 @@ export class PlaylistService {
       );
     }
 
-    const maxPosition = await this.playlistRepo.getMaxPosition(roomId);
     const item = await this.playlistRepo.addItem({
       roomId,
       videoId: video.videoId,
@@ -63,7 +72,6 @@ export class PlaylistService {
       channelTitle: video.channelTitle,
       thumbnailUrl: video.thumbnailUrl,
       duration: video.duration,
-      position: maxPosition === null ? 1 : maxPosition + 1,
       addedBy: userId,
     });
 
@@ -75,6 +83,98 @@ export class PlaylistService {
     });
 
     return item;
+  }
+
+  async reorderPlaylist(
+    roomId: string,
+    userId: string,
+    items: ReorderPlaylistItemInput[],
+  ): Promise<void> {
+    await assertRoomHost(this.roomRepo, roomId, userId);
+
+    // getPlaylist는 position ASC로만 정렬하므로 값이 중복되면 동률 항목의 순서가 보장되지 않는다.
+    const positionSet = new Set(items.map((item) => item.position));
+    if (positionSet.size !== items.length) {
+      throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, '중복된 position 값이 있습니다.');
+    }
+
+    const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
+    const currentIdSet = new Set(currentPlaylist.map((item) => item.id));
+    const requestIdSet = new Set(items.map((item) => item.id));
+    const isSameSet =
+      requestIdSet.size === currentIdSet.size &&
+      [...requestIdSet].every((id) => currentIdSet.has(id));
+
+    if (!isSameSet) {
+      throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '일부 항목을 찾을 수 없습니다.');
+    }
+
+    await this.playlistRepo.reorderItems(items);
+    await this.roomRepo.touchLastActivity(roomId);
+
+    const playlist = await this.playlistRepo.getPlaylist(roomId);
+    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+      playlist: playlist.map(toPlaylistItem),
+    });
+  }
+
+  async deleteItem(roomId: string, userId: string, itemId: string): Promise<void> {
+    const room = await assertActiveRoomMember(this.roomRepo, roomId, userId);
+
+    const item = await this.playlistRepo.findItemById(itemId);
+    if (item?.roomId !== roomId) {
+      throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '항목을 찾을 수 없습니다.');
+    }
+
+    const isHost = room.hostId === userId;
+    if (!isHost && item.addedBy !== userId) {
+      throw new AppError(
+        403,
+        ERROR_CODES.AUTH_FORBIDDEN,
+        '다른 사용자가 추가한 곡은 삭제할 수 없습니다.',
+      );
+    }
+
+    const playbackState = await this.playbackService.getPlaybackState(roomId);
+    if (!playbackState) {
+      throw new AppError(
+        500,
+        ERROR_CODES.SERVER_INTERNAL_ERROR,
+        'PlaybackState를 찾을 수 없습니다.',
+      );
+    }
+
+    const isCurrentTrack = playbackState.playlistItemId === itemId;
+    let statePayload: PlaybackStatePayload | null = null;
+    let broadcastEvent: 'playback:change-track' | 'playback:pause' | null = null;
+
+    if (isCurrentTrack) {
+      const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
+      const nextItem =
+        currentPlaylist.find(
+          (candidate) => candidate.position > item.position && candidate.status === 'available',
+        ) ?? null;
+
+      if (nextItem) {
+        statePayload = await this.playbackService.setTrack(roomId, nextItem.videoId, nextItem.id);
+        broadcastEvent = 'playback:change-track';
+      } else {
+        statePayload = await this.playbackService.resetPlayback(roomId);
+        broadcastEvent = 'playback:pause';
+      }
+    }
+
+    await this.playlistRepo.deleteItem(itemId);
+    await this.roomRepo.touchLastActivity(roomId);
+
+    const updatedPlaylist = await this.playlistRepo.getPlaylist(roomId);
+
+    if (broadcastEvent && statePayload) {
+      this.io.to(`room:${roomId}`).emit(broadcastEvent, statePayload);
+    }
+    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+      playlist: updatedPlaylist.map(toPlaylistItem),
+    });
   }
 
   private resolveVideoId(request: AddPlaylistItemRequest): string {

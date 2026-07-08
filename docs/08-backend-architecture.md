@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.6                                                                                  |
-| 상태      | 서비스/레포지토리 파일명 표기와 Playback Socket 의존성 예시 정정                      |
+| 버전      | v1.7                                                                                  |
+| 상태      | Playlist Socket stub 제거에 따른 핸들러 목록과 등록 예시 정정                         |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -77,7 +77,6 @@ apps/backend/
       handlers/
         room.handler.ts
         playback.handler.ts
-        playlist.handler.ts
         chat.handler.ts
         presence.handler.ts
 
@@ -397,7 +396,6 @@ import { registerRoomHandlers } from './handlers/room.handler';
 import { registerPlaybackHandlers } from './handlers/playback.handler';
 import { registerChatHandlers } from './handlers/chat.handler';
 import { registerPresenceHandlers } from './handlers/presence.handler';
-import { registerPlaylistHandlers } from './handlers/playlist.handler';
 
 export function initSocket(io: Server) {
   io.on('connection', (socket) => {
@@ -405,7 +403,6 @@ export function initSocket(io: Server) {
     registerPlaybackHandlers(io, socket);
     registerChatHandlers(io, socket);
     registerPresenceHandlers(io, socket);
-    registerPlaylistHandlers(io, socket);
   });
 }
 ```

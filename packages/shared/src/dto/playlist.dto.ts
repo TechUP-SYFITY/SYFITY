@@ -26,3 +26,22 @@ export type AddPlaylistItemResponse = {
   success: true;
   data: PlaylistItem;
 };
+
+export type ReorderPlaylistItem = {
+  id: string;
+  position: number;
+};
+
+export type ReorderPlaylistRequest = {
+  items: ReorderPlaylistItem[];
+};
+
+export type ReorderPlaylistResponse = {
+  success: true;
+  data: { message: string };
+};
+
+export type DeletePlaylistItemResponse = {
+  success: true;
+  data: { message: string };
+};

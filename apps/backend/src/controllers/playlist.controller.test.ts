@@ -27,6 +27,8 @@ function makePlaylistService() {
   return {
     getPlaylist: vi.fn().mockResolvedValue([playlistItem]),
     addItem: vi.fn().mockResolvedValue(playlistItem),
+    reorderPlaylist: vi.fn().mockResolvedValue(undefined),
+    deleteItem: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -88,5 +90,57 @@ describe('PlaylistController', () => {
     const controller = new PlaylistController(playlistService);
 
     await expect(controller.getPlaylist('room-1', makeRequest())).rejects.toThrow(error);
+  });
+
+  it('PATCH /rooms/:roomId/playlist/reorder 응답을 반환한다', async () => {
+    const playlistService = makePlaylistService();
+    const controller = new PlaylistController(playlistService);
+    const body = {
+      items: [
+        { id: 'playlist-item-1', position: 2 },
+        { id: 'playlist-item-2', position: 1 },
+      ],
+    };
+
+    await expect(controller.reorderPlaylist('room-1', makeRequest(), body)).resolves.toEqual({
+      success: true,
+      data: { message: 'playlist reordered' },
+    });
+    expect(playlistService.reorderPlaylist).toHaveBeenCalledWith('room-1', 'user-1', body.items);
+  });
+
+  it('DELETE /rooms/:roomId/playlist/:itemId 응답을 반환한다', async () => {
+    const playlistService = makePlaylistService();
+    const controller = new PlaylistController(playlistService);
+
+    await expect(
+      controller.deleteItem('room-1', 'playlist-item-1', makeRequest()),
+    ).resolves.toEqual({
+      success: true,
+      data: { message: 'playlist item deleted' },
+    });
+    expect(playlistService.deleteItem).toHaveBeenCalledWith('room-1', 'user-1', 'playlist-item-1');
+  });
+
+  it('순서 변경 Service 에러를 그대로 전파한다', async () => {
+    const error = new Error('reorder failed');
+    const playlistService = makePlaylistService();
+    playlistService.reorderPlaylist.mockRejectedValue(error);
+    const controller = new PlaylistController(playlistService);
+
+    await expect(
+      controller.reorderPlaylist('room-1', makeRequest(), { items: [] }),
+    ).rejects.toThrow(error);
+  });
+
+  it('곡 삭제 Service 에러를 그대로 전파한다', async () => {
+    const error = new Error('delete failed');
+    const playlistService = makePlaylistService();
+    playlistService.deleteItem.mockRejectedValue(error);
+    const controller = new PlaylistController(playlistService);
+
+    await expect(controller.deleteItem('room-1', 'playlist-item-1', makeRequest())).rejects.toThrow(
+      error,
+    );
   });
 });

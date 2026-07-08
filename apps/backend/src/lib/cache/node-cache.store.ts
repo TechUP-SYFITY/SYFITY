@@ -6,7 +6,7 @@ export class NodeCacheStore implements ICache {
   private readonly cache: NodeCache;
 
   constructor(defaultTtl = 300) {
-    this.cache = new NodeCache({ stdTTL: defaultTtl });
+    this.cache = new NodeCache({ stdTTL: defaultTtl, useClones: false });
   }
 
   get<T>(key: string): T | undefined {

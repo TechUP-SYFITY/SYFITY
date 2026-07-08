@@ -148,6 +148,11 @@ export class PlaylistService {
     let statePayload: PlaybackStatePayload | null = null;
     let broadcastEvent: 'playback:change-track' | 'playback:pause' | null = null;
 
+    // playback_states(FK로 이 곡을 참조 중)를 먼저 옮기고 나서 playlist_items를 지운다.
+    // 순서를 바꾸면 참조가 남아있는 채로 삭제를 시도해 FK 제약에 걸린다.
+    // 두 단계가 하나의 트랜잭션은 아니라서(PlaybackService/PlaylistRepository가 별도 Repository),
+    // 중간에 실패하면 재생 상태는 이미 넘어갔는데 곡은 아직 안 지워진 채로 남을 수 있다 —
+    // 사용자가 삭제를 재시도하면 해소되는 낮은 위험으로 판단해 트랜잭션 통합은 보류했다.
     if (isCurrentTrack) {
       const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
       const nextItem =

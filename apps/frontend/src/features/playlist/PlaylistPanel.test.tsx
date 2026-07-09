@@ -124,6 +124,8 @@ describe('PlaylistPanel', () => {
 
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.getByText('Song Two')).toBeInTheDocument();
+    expect(getMetaText('Channel One·3:00')).toHaveClass('text-muted-foreground');
+    expect(getMetaText('Channel Two·3:20')).toHaveClass('text-muted-foreground/60');
     expect(screen.getByLabelText('Song Two 썸네일')).toHaveClass('opacity-45');
   });
 
@@ -137,3 +139,7 @@ describe('PlaylistPanel', () => {
     expect(screen.queryByText('Playlist 불러오는 중')).not.toBeInTheDocument();
   });
 });
+
+function getMetaText(text: string) {
+  return screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === text);
+}

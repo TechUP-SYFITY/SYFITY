@@ -66,7 +66,7 @@ export function PlaylistItemRow({
               <CircleAlert className="ml-1 inline-block h-3 w-3 text-destructive" aria-hidden />
             ) : null}
           </p>
-          <p className={cn('mt-1 truncate text-xs', 'text-muted-foreground')}>
+          <p className={cn('mt-1 truncate text-xs', getMetaColorClass(isUnavailable))}>
             {item.channelTitle}
             <span className="mx-1">·</span>
             {formatDuration(item.duration)}
@@ -145,6 +145,10 @@ function getTitleColorClass(isCurrent: boolean, isUnavailable: boolean) {
   }
 
   return isUnavailable ? 'text-muted-foreground' : 'text-foreground';
+}
+
+function getMetaColorClass(isUnavailable: boolean) {
+  return isUnavailable ? 'text-muted-foreground/60' : 'text-muted-foreground';
 }
 
 function formatDuration(duration: number) {

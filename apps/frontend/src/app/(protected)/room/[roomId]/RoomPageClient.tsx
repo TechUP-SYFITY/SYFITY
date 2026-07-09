@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { RoomMember } from '@/shared/types/domain';
 
+import { UserMenu } from '@/features/auth/components/UserMenu';
 import { playbackCommands } from '@/features/player/playbackCommands';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
@@ -90,6 +91,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
 
   return (
     <RoomShell
+      headerActions={<UserMenu />}
       activeMobileTab={activeMobileTab}
       chats={[]}
       isHost={isHost}

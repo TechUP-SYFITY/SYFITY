@@ -1,7 +1,7 @@
-// Player 제어 UI가 Socket 명령 계약에 맞게 동작하는지 검증한다.
+// PlayerPanel이 Figma 기준 표시 UI와 자동 playback 이벤트를 유지하는지 검증한다.
 import '@testing-library/jest-dom/vitest';
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -11,10 +11,26 @@ import { PlayerPanel } from './PlayerPanel';
 import { usePlayerStore } from './playerStore';
 
 vi.mock('./YouTubePlayer', () => ({
-  YouTubePlayer: ({ onEnded }: { onEnded: () => void }) => (
-    <button type="button" onClick={onEnded}>
-      mock ended
-    </button>
+  YouTubePlayer: ({
+    onBufferingRecovered,
+    onEnded,
+    onError,
+  }: {
+    onBufferingRecovered: () => void;
+    onEnded: () => void;
+    onError: (errorCode: number) => void;
+  }) => (
+    <div>
+      <button type="button" onClick={onEnded}>
+        mock ended
+      </button>
+      <button type="button" onClick={onBufferingRecovered}>
+        mock buffering recovered
+      </button>
+      <button type="button" onClick={() => onError(150)}>
+        mock player error
+      </button>
+    </div>
   ),
 }));
 
@@ -82,37 +98,37 @@ describe('PlayerPanel', () => {
     usePlayerStore.getState().clearPlayback();
   });
 
-  it('Host가 재생 버튼을 누르면 playback:play 명령을 보낸다', async () => {
+  it('현재 재생 곡 정보와 Figma 기준 표시 UI를 렌더링한다', () => {
     seedPlayback(false);
     render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '재생' }));
-
-    await waitFor(() => {
-      expect(playbackCommands.play).toHaveBeenCalledWith(roomId, 12);
-    });
+    expect(screen.getByRole('heading', { name: 'Song One' })).toBeInTheDocument();
+    expect(screen.getByText('Channel One')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '재생' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다음 곡' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '동기화' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Host 제어 가능')).not.toBeInTheDocument();
   });
 
-  it('Host가 일시정지 버튼을 누르면 playback:pause 명령을 보낸다', async () => {
-    seedPlayback(true);
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
-
-    fireEvent.click(screen.getByRole('button', { name: '일시정지' }));
-
-    await waitFor(() => {
-      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 12);
-    });
-  });
-
-  it('Host가 다음 곡 버튼을 누르면 다음 playlistItemId로 곡 변경 명령을 보낸다', async () => {
+  it('Host에서 영상 종료 시 다음 playlistItemId로 곡 변경 명령을 보낸다', async () => {
     seedPlayback(false);
     render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '다음 곡' }));
+    fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
 
     await waitFor(() => {
       expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
     });
+  });
+
+  it('Member에서 영상 종료 시 곡 변경 명령을 보내지 않는다', () => {
+    seedPlayback(false);
+    render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
+
+    expect(playbackCommands.changeTrack).not.toHaveBeenCalled();
+    expect(playbackCommands.pause).not.toHaveBeenCalled();
   });
 
   it('마지막 곡 종료 시 0초 pause 명령으로 재생 상태를 정리한다', async () => {
@@ -126,43 +142,26 @@ describe('PlayerPanel', () => {
     });
   });
 
-  it('Member에게는 재생 제어 버튼이 비활성화된다', () => {
-    seedPlayback(false);
-    render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
-
-    expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '다음 곡' })).toBeDisabled();
-    expect(screen.getByText('Host만 재생을 제어할 수 있어요.')).toBeInTheDocument();
-  });
-
-  it('동기화 버튼을 누르면 sync request를 보내고 피드백을 표시한다', () => {
+  it('버퍼링 회복 시 자동 동기화 요청을 보낸다', () => {
     seedPlayback(false);
     render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '동기화' }));
+    fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
-    expect(screen.getByText('동기화 요청을 보냈어요.')).toBeInTheDocument();
   });
 
-  it('playback:tick 수신만으로는 동기화 피드백을 표시하지 않는다', () => {
+  it('Socket 미연결 상태의 버퍼링 회복은 표시 UI를 깨뜨리지 않는다', () => {
     seedPlayback(false);
+    vi.mocked(playbackCommands.requestSync).mockImplementation(() => {
+      throw new Error('Socket is not connected.');
+    });
     render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
 
-    act(() => {
-      usePlayerStore.getState().setPlaybackState(
-        {
-          currentTime: 22,
-          isPlaying: true,
-          playlistItemId: 'playlist-item-1',
-          videoId: 'video-1',
-        },
-        'tick',
-      );
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
-    expect(screen.queryByText('서버 기준 재생 위치를 확인했어요.')).not.toBeInTheDocument();
-    expect(screen.queryByText('서버 재생 위치와 동기화됐어요.')).not.toBeInTheDocument();
+    expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(screen.getByRole('heading', { name: 'Song One' })).toBeInTheDocument();
   });
 
   it('playback:error 상태를 사용자 메시지로 표시한다', () => {
@@ -174,29 +173,24 @@ describe('PlayerPanel', () => {
     expect(screen.getByText('재생할 수 없는 영상이에요. 오류 코드 150')).toBeInTheDocument();
   });
 
-  it('제어 명령 실패 시 사용자 메시지를 표시한다', async () => {
+  it('Host에서 player error 발생 시 서버에 재생 실패를 보고한다', async () => {
     seedPlayback(false);
-    vi.mocked(playbackCommands.play).mockRejectedValue(
-      new Error('AUTH_FORBIDDEN: Host가 아닙니다.'),
-    );
+    vi.mocked(playbackCommands.reportError).mockResolvedValue(undefined);
     render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '재생' }));
+    fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Host만 재생을 제어할 수 있어요.')).toBeInTheDocument();
+      expect(playbackCommands.reportError).toHaveBeenCalledWith(roomId, 'video-1', 150);
     });
   });
 
-  it('알 수 없는 제어 명령 실패 시 fallback 메시지를 표시한다', async () => {
+  it('Member에서 player error 발생 시 서버에 재생 실패를 보고하지 않는다', () => {
     seedPlayback(false);
-    vi.mocked(playbackCommands.play).mockRejectedValue(new Error('UPSTREAM_UNKNOWN'));
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '재생' }));
+    fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 
-    await waitFor(() => {
-      expect(screen.getByText('재생 제어 요청에 실패했어요.')).toBeInTheDocument();
-    });
+    expect(playbackCommands.reportError).not.toHaveBeenCalled();
   });
 });

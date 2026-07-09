@@ -23,7 +23,7 @@ export function RoomMobileLayout({
 }: {
   activeMobileTab: RoomMobileTab;
   chats: ChatMessage[];
-  currentUserName?: string;
+  currentUserName: string;
   isHost: boolean;
   members: RoomMember[];
   onMobileTabChange: (tab: RoomMobileTab) => void;

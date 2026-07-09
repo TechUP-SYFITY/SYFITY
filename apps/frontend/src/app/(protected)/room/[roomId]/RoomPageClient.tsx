@@ -7,6 +7,7 @@ import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { RoomMember } from '@/shared/types/domain';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
+import { useMe } from '@/features/auth/hooks/useAuth';
 import { playbackCommands } from '@/features/player/playbackCommands';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
@@ -58,6 +59,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     setPlaybackState(joinRoom.data.playbackState, 'room-join');
   }, [joinRoom.data, setJoinedRoom, setPlaybackState, setPlaylist]);
 
+  const { data: me } = useMe();
   const currentUserId = getCurrentUserId();
   const isHost = isCurrentUserHost(members, currentUserId);
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
@@ -94,6 +96,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       headerActions={<UserMenu />}
       activeMobileTab={activeMobileTab}
       chats={[]}
+      currentUserName={me?.nickname}
       isHost={isHost}
       miniPlayerCommandError={miniPlayerControls.commandError}
       miniPlayerControlDisabled={miniPlayerControls.controlDisabled}

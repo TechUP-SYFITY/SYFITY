@@ -24,6 +24,7 @@ export type { RoomMobileTab } from './components/MobileTabs';
 interface RoomShellProps {
   activeMobileTab: RoomMobileTab;
   chats: ChatMessage[];
+  currentUserName?: string;
   headerActions?: ReactNode;
   isHost: boolean;
   miniPlayerCommandError: string | null;
@@ -51,6 +52,7 @@ interface RoomShellProps {
 export function RoomShell({
   activeMobileTab,
   chats,
+  currentUserName = '',
   headerActions,
   isHost,
   miniPlayerCommandError,

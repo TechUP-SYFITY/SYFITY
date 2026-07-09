@@ -17,6 +17,7 @@ export default defineConfig({
         extends: true,
         test: {
           environment: 'jsdom',
+          setupFiles: ['./src/shared/mocks/vitest-setup.ts'],
         },
       },
       {

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { pretendard } from '@/shared/lib/fonts';
 import { QueryProvider } from '@/shared/lib/query/QueryProvider';
+import { MockingProvider } from '@/shared/mocks/MockingProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -17,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <QueryProvider>{children}</QueryProvider>
+        <MockingProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </MockingProvider>
       </body>
     </html>
   );

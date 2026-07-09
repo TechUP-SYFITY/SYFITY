@@ -1,9 +1,14 @@
 import type { Preview } from '@storybook/nextjs-vite';
+import { initialize, mswLoader } from 'msw-storybook-addon';
+import { handlers } from '../src/shared/mocks/handlers';
 import { pretendard } from '../src/shared/lib/fonts';
 import '../src/app/globals.css';
 
+initialize({ onUnhandledRequest: 'bypass' });
+
 const preview: Preview = {
   tags: ['autodocs'],
+  loaders: [mswLoader],
   parameters: {
     controls: {
       matchers: {
@@ -21,6 +26,10 @@ const preview: Preview = {
 
     backgrounds: {
       options: { 'syfity-dark': { name: 'Syfity Dark', value: '#09090B' } },
+    },
+
+    msw: {
+      handlers,
     },
   },
 

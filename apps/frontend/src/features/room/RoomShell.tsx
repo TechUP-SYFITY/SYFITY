@@ -78,8 +78,8 @@ export function RoomShell({
   const onlineMemberCount = members.filter((member) => member.status === 'online').length;
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      <div className="flex min-h-screen flex-col">
+    <main className="h-dvh overflow-hidden bg-background text-foreground">
+      <div className="flex h-full min-h-0 flex-col">
         <RoomHeader currentUserName={currentUserName} />
         <RoomStatusBar
           onInviteClick={onInviteClick}
@@ -95,6 +95,7 @@ export function RoomShell({
         <RoomMobileLayout
           activeMobileTab={activeMobileTab}
           chats={chats}
+          currentUserName={currentUserName}
           isHost={isHost}
           members={members}
           onMobileTabChange={onMobileTabChange}

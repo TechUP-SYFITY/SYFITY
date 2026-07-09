@@ -59,7 +59,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 xl:mx-0">
-      <div className="relative overflow-hidden rounded-2xl bg-black shadow-lg ring-1 ring-border">
+      <div className="relative overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border">
         <YouTubePlayer
           playbackState={playbackState}
           onBufferingRecovered={handleSyncRequest}
@@ -71,30 +71,31 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
             <div
               className="h-full w-full bg-cover bg-center opacity-80"
               style={{
-                backgroundImage: `linear-gradient(90deg, rgba(12,16,25,0.45), rgba(255,255,255,0.08) 48%, rgba(145,35,35,0.4)), radial-gradient(circle at 26% 68%, rgba(104,180,220,0.55), transparent 32%), radial-gradient(circle at 70% 62%, rgba(238,74,67,0.62), transparent 30%), radial-gradient(circle at 52% 36%, rgba(230,238,224,0.8), transparent 38%), url(${posterUrl})`,
+                backgroundImage: `url(${posterUrl})`,
               }}
             />
-            <div className="absolute inset-0 bg-black/10" />
-            <div className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white">
+            <div className="absolute inset-0 bg-linear-to-r from-background/50 via-foreground/5 to-accent/20" />
+            <div className="absolute inset-0 bg-background/10" />
+            <div className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-background/60 text-foreground">
               <Play className="h-6 w-6 translate-x-0.5" aria-hidden />
             </div>
           </div>
         ) : null}
-        <div className="pointer-events-none absolute top-4 left-4 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-primary">
+        <div className="pointer-events-none absolute top-4 left-4 rounded-full bg-background/70 px-3 py-1 text-xs font-bold text-primary">
           <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
           LIVE SYNC
         </div>
-        <span className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-black/70 px-2 py-1 text-xs font-bold text-white">
+        <span className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-background/80 px-2 py-1 text-xs font-bold text-foreground">
           {currentTrack ? formatDuration(currentTrack.duration) : '0:00'}
         </span>
       </div>
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="truncate text-lg font-bold text-white">
+          <h2 className="truncate text-lg font-bold text-foreground">
             {currentTrack?.title ?? '재생 대기'}
           </h2>
-          <p className="mt-1 truncate text-sm text-white/48">
+          <p className="mt-1 truncate text-sm text-muted-foreground">
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>
@@ -141,14 +142,14 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
           <RefreshCcw aria-hidden />
           동기화
         </Button>
-        <div className="ml-auto flex min-h-9 items-center gap-2 text-xs text-white/45">
+        <div className="ml-auto flex min-h-9 items-center gap-2 text-xs text-muted-foreground">
           {pendingCommand ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
           <Radio className="h-3.5 w-3.5 text-primary" aria-hidden />
           {isHost ? 'Host 제어 가능' : 'Host만 재생을 제어할 수 있어요.'}
         </div>
       </div>
 
-      <div className="min-h-5 space-y-1 text-sm text-white/45">
+      <div className="min-h-5 space-y-1 text-sm text-muted-foreground">
         {syncStatus ? <p>{syncStatus}</p> : null}
         {commandError ? (
           <p className="flex items-center gap-2 text-destructive">

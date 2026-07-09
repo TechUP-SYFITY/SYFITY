@@ -14,6 +14,7 @@ import type { RoomMobileTab } from './MobileTabs';
 export function RoomMobileLayout({
   activeMobileTab,
   chats,
+  currentUserName,
   isHost,
   members,
   onMobileTabChange,
@@ -22,6 +23,7 @@ export function RoomMobileLayout({
 }: {
   activeMobileTab: RoomMobileTab;
   chats: ChatMessage[];
+  currentUserName: string;
   isHost: boolean;
   members: RoomMember[];
   onMobileTabChange: (tab: RoomMobileTab) => void;
@@ -29,14 +31,16 @@ export function RoomMobileLayout({
   renderPlaylistPanel: () => ReactNode;
 }) {
   return (
-    <section className="flex flex-1 flex-col overflow-hidden xl:hidden">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden xl:hidden">
       {!isHost ? <HostConnectionNotice /> : null}
-      <div className="px-5 py-4">{renderPlayerPanel()}</div>
+      <div className="shrink-0 px-5 py-4">{renderPlayerPanel()}</div>
       <MobileTabs activeTab={activeMobileTab} onChange={onMobileTabChange} />
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-border pb-20">
+      <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-16">
         {activeMobileTab === 'playlist' ? renderPlaylistPanel() : null}
         {activeMobileTab === 'members' ? <MemberList members={members} /> : null}
-        {activeMobileTab === 'chat' ? <ChatPanel chats={chats} compact /> : null}
+        {activeMobileTab === 'chat' ? (
+          <ChatPanel chats={chats} compact currentUserName={currentUserName} />
+        ) : null}
       </div>
     </section>
   );

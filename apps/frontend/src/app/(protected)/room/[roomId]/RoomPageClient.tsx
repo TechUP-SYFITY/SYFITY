@@ -1,7 +1,7 @@
 'use client';
 
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { RoomMember } from '@/shared/types/domain';
@@ -27,9 +27,8 @@ interface RoomPageClientProps {
 }
 
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
-  const hasRequestedJoin = useRef(false);
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
-  const joinRoom = useJoinRoom();
+  const joinRoom = useJoinRoom(roomId);
   const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
@@ -49,22 +48,14 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   useRoomSocket(hasJoinedRoom ? roomId : '');
 
   useEffect(() => {
-    if (hasRequestedJoin.current) {
+    if (!joinRoom.data) {
       return;
     }
 
-    hasRequestedJoin.current = true;
-    joinRoom.mutate(
-      { roomId },
-      {
-        onSuccess: (data) => {
-          setJoinedRoom(data);
-          setPlaylist(data.playlist);
-          setPlaybackState(data.playbackState, 'room-join');
-        },
-      },
-    );
-  }, [joinRoom, roomId, setJoinedRoom, setPlaybackState, setPlaylist]);
+    setJoinedRoom(joinRoom.data);
+    setPlaylist(joinRoom.data.playlist);
+    setPlaybackState(joinRoom.data.playbackState, 'room-join');
+  }, [joinRoom.data, setJoinedRoom, setPlaybackState, setPlaylist]);
 
   const currentUserId = getCurrentUserId();
   const isHost = isCurrentUserHost(members, currentUserId);
@@ -85,7 +76,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     roomId,
   });
 
-  if (joinRoom.isPending || joinRoom.isIdle) {
+  if (joinRoom.isPending) {
     return <RoomLoadingState />;
   }
 

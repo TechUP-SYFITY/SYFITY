@@ -5,7 +5,8 @@ const DEFAULT_API_URL = 'http://localhost:4000/api/v1';
 export const REAUTH_PATH = '/login?reauth=1';
 
 export const getBaseUrl = () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL;
+  const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+  const baseUrl = rawBaseUrl && rawBaseUrl.trim().length > 0 ? rawBaseUrl : DEFAULT_API_URL;
   return baseUrl.replace(/\/$/, '');
 };
 

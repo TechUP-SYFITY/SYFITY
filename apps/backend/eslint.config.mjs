@@ -45,7 +45,7 @@ const eslintConfig = defineConfig([
       eqeqeq: 'error',
       'no-var': 'error',
       'prefer-const': 'error',
-      'no-console': 'warn',
+      'no-console': 'error',
       'no-nested-ternary': 'error',
 
       // Import 순서

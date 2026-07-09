@@ -5,6 +5,8 @@ import { ERROR_CODES } from '@syfity/shared';
 import type { PlaybackService } from './playback.service';
 import { RoomService, type RoomSocketServer } from './room.service';
 import type { ICache } from '../lib/cache/cache.interface';
+import { getIo } from '../lib/io';
+import { logger } from '../lib/logger';
 import type { ChatRecord, IChatRepository } from '../types/chat';
 import type { PlaybackStateResult } from '../types/playback';
 import type { IPlaylistRepository, PlaylistItemRecord } from '../types/playlist';
@@ -15,6 +17,12 @@ import type {
   RoomRecord,
   RoomUpdateRecord,
 } from '../types/room';
+
+vi.mock('../lib/io', () => ({
+  getIo: vi.fn(() => {
+    throw new Error('Socket.IO not initialized');
+  }),
+}));
 
 const room: RoomRecord = {
   id: 'room-1',
@@ -106,7 +114,7 @@ function makeRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository {
     upsertMembership: vi.fn().mockResolvedValue(undefined),
     findMembers: vi.fn().mockResolvedValue([member]),
     upsertRecentRoom: vi.fn().mockResolvedValue(undefined),
-    updateMemberStatus: vi.fn().mockResolvedValue(undefined),
+    updateMemberStatus: vi.fn().mockResolvedValue(true),
     findMemberInfo: vi.fn().mockResolvedValue(member),
     closeRoom: vi.fn().mockResolvedValue(undefined),
     updateRoomName: vi.fn().mockResolvedValue(updatedRoom),
@@ -180,15 +188,13 @@ function makeService(
   const playbackService = overrides.playbackService ?? makePlaybackService();
   const cache = overrides.cache ?? makeCache();
 
+  if (overrides.io) {
+    const io = overrides.io;
+    vi.mocked(getIo).mockReturnValue(io as never);
+  }
+
   return {
-    service: new RoomService(
-      roomRepo,
-      cache,
-      playlistRepo,
-      chatRepo,
-      playbackService,
-      overrides.io,
-    ),
+    service: new RoomService(roomRepo, cache, playlistRepo, chatRepo, playbackService),
     roomRepo,
     playlistRepo,
     chatRepo,
@@ -200,6 +206,9 @@ function makeService(
 describe('RoomService', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.mocked(getIo).mockImplementation(() => {
+      throw new Error('Socket.IO not initialized');
+    });
   });
 
   it('첫 번째 시도에 고유 초대 코드를 생성하고 Room을 생성한다', async () => {
@@ -472,15 +481,17 @@ describe('RoomService', () => {
 
     expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
-    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'online');
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'online', [
+      'offline',
+    ]);
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-1');
   });
 
-  it('online 전환 전 상태가 online이면 wasOnline true를 반환한다', async () => {
+  it('이미 online 상태라 전환이 일어나지 않으면 wasOnline true를 반환한다', async () => {
     const { service } = makeService({
       roomRepo: {
-        findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'online' }),
+        updateMemberStatus: vi.fn().mockResolvedValue(false),
       },
     });
 
@@ -536,10 +547,24 @@ describe('RoomService', () => {
       member: leftMember,
     });
 
-    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-2', 'left');
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-2', 'left', [
+      'online',
+      'offline',
+    ]);
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-2');
     expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('이미 나간 상태로 전환이 일어나지 않으면 noop을 반환하고 시스템 메시지용 조회를 하지 않는다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { updateMemberStatus: vi.fn().mockResolvedValue(false) },
+    });
+
+    await expect(service.leaveRoom('room-1', 'user-2')).resolves.toEqual({ type: 'noop' });
+
+    expect(roomRepo.touchLastActivity).not.toHaveBeenCalled();
+    expect(roomRepo.findMemberInfo).not.toHaveBeenCalled();
   });
 
   it('Host가 Room을 나가면 Room을 종료한다', async () => {
@@ -601,7 +626,7 @@ describe('RoomService', () => {
   });
 
   it('시스템 메시지 저장 실패는 null을 반환하고 에러를 전파하지 않는다', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const { service } = makeService({
       chatRepo: { createMessage: vi.fn().mockRejectedValue(new Error('db failed')) },
     });
@@ -610,11 +635,11 @@ describe('RoomService', () => {
       service.createSystemMessage('room-1', 'Room이 종료되었습니다.'),
     ).resolves.toBeNull();
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(loggerError).toHaveBeenCalledWith(
+      { err: expect.any(Error), roomId: 'room-1' },
       '[RoomService.createSystemMessage] 시스템 메시지 생성 실패',
-      expect.any(Error),
     );
-    consoleError.mockRestore();
+    loggerError.mockRestore();
   });
 
   it('Host가 아닌 사용자가 Room을 닫으려 하면 AUTH_FORBIDDEN을 던진다', async () => {
@@ -671,7 +696,7 @@ describe('RoomService', () => {
   });
 
   it('REST Room 종료 시 시스템 메시지 생성 실패에도 room:closed를 broadcast한다', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const { io, emitter } = makeIo();
     const { service } = makeService({
       io,
@@ -686,7 +711,7 @@ describe('RoomService', () => {
       reason: 'host-closed',
     });
     expect(io.socketsLeave).toHaveBeenCalledWith('room:room-1');
-    consoleError.mockRestore();
+    loggerError.mockRestore();
   });
 
   it('REST Room 종료 시 Room이 없으면 broadcast하지 않는다', async () => {
@@ -754,13 +779,12 @@ describe('RoomService', () => {
     expect(io.socketsLeave).not.toHaveBeenCalled();
   });
 
-  it('REST Room 종료 시 io가 없으면 SERVER_INTERNAL_ERROR를 던지고 Room을 닫지 않는다', async () => {
+  it('REST Room 종료 시 Socket.IO가 초기화되지 않았으면 에러를 던지고 Room을 닫지 않는다', async () => {
     const { service, roomRepo } = makeService();
 
-    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).rejects.toMatchObject({
-      status: 500,
-      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
-    });
+    await expect(service.closeRoomAndBroadcast('room-1', 'user-1')).rejects.toThrow(
+      'Socket.IO not initialized',
+    );
     expect(roomRepo.closeRoom).not.toHaveBeenCalled();
   });
 });

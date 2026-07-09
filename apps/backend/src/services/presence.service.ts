@@ -1,5 +1,5 @@
 import type { ICache } from '../lib/cache/cache.interface';
-import { CacheKeys } from '../lib/cache/cacheKeys';
+import { CacheKeys, CacheTTL } from '../lib/cache/cacheKeys';
 import type { IRoomRepository, RoomMemberRecord, RoomRole } from '../types/room';
 
 export const MEMBER_OFFLINE_GRACE_MS = 5_000;
@@ -27,7 +27,7 @@ export class PresenceService {
     this.cancelMemberOfflineTimer(roomId, userId);
     const timer = setTimeout(onExpire, MEMBER_OFFLINE_GRACE_MS);
 
-    this.cache.set(CacheKeys.memberOfflineTimer(roomId, userId), timer);
+    this.cache.set(CacheKeys.memberOfflineTimer(roomId, userId), timer, 0);
   }
 
   cancelMemberOfflineTimer(roomId: string, userId: string): boolean {
@@ -44,7 +44,7 @@ export class PresenceService {
     this.cancelHostCloseTimer(roomId);
     const timer = setTimeout(onExpire, HOST_CLOSE_TIMEOUT_MS);
 
-    this.cache.set(CacheKeys.hostTimer(roomId), timer);
+    this.cache.set(CacheKeys.hostTimer(roomId), timer, CacheTTL.HOST_TIMER);
   }
 
   cancelHostCloseTimer(roomId: string): boolean {
@@ -58,10 +58,11 @@ export class PresenceService {
   }
 
   async setMemberOffline(roomId: string, userId: string): Promise<RoomMemberRecord | null> {
-    const membership = await this.roomRepo.findMembership(roomId, userId);
-    if (membership?.status !== 'online') return null;
+    const didTransition = await this.roomRepo.updateMemberStatus(roomId, userId, 'offline', [
+      'online',
+    ]);
+    if (!didTransition) return null;
 
-    await this.roomRepo.updateMemberStatus(roomId, userId, 'offline');
     return this.roomRepo.findMemberInfo(roomId, userId);
   }
 }

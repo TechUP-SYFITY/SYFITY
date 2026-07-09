@@ -13,10 +13,10 @@ describe('isAllowedOrigin', () => {
     expect(isAllowedOrigin('https://app.example.com')).toBe(true);
   });
 
-  it('Vercel preview origin을 허용한다', async () => {
+  it('ALLOWED_ORIGINS에 없는 Vercel preview origin은 거부한다', async () => {
     const { isAllowedOrigin } = await import('./cors');
 
-    expect(isAllowedOrigin('https://syfity-git-main-team.vercel.app')).toBe(true);
+    expect(isAllowedOrigin('https://syfity-git-main-team.vercel.app')).toBe(false);
   });
 
   it('등록되지 않은 origin은 거부한다', async () => {

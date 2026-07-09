@@ -1,6 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 
 import { playbackService as defaultPlaybackService } from '../../ioc';
+import { logger } from '../../lib/logger';
 import type { PlaybackService } from '../../services/playback.service';
 import type {
   PlaybackAck,
@@ -50,8 +51,10 @@ export function registerPlaybackHandlers(
         io.to(`room:${roomId}`).emit(broadcastEvent, state);
         ack({ success: true });
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[playback:play] 처리 실패', err);
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:play] 처리 실패',
+        );
         ack({ success: false, error: toSocketAckError(err) });
       }
     },
@@ -73,8 +76,10 @@ export function registerPlaybackHandlers(
         io.to(`room:${roomId}`).emit('playback:pause', state);
         ack({ success: true });
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[playback:pause] 처리 실패', err);
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:pause] 처리 실패',
+        );
         ack({ success: false, error: toSocketAckError(err) });
       }
     },
@@ -96,8 +101,10 @@ export function registerPlaybackHandlers(
         io.to(`room:${roomId}`).emit('playback:seek', state);
         ack({ success: true });
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[playback:seek] 처리 실패', err);
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:seek] 처리 실패',
+        );
         ack({ success: false, error: toSocketAckError(err) });
       }
     },
@@ -119,8 +126,10 @@ export function registerPlaybackHandlers(
         io.to(`room:${roomId}`).emit('playback:change-track', state);
         ack({ success: true });
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[playback:change-track] 처리 실패', err);
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:change-track] 처리 실패',
+        );
         ack({ success: false, error: toSocketAckError(err) });
       }
     },
@@ -146,8 +155,10 @@ export function registerPlaybackHandlers(
         }
         ack({ success: true });
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[playback:error] 처리 실패', err);
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:error] 처리 실패',
+        );
         ack({ success: false, error: toSocketAckError(err) });
       }
     },
@@ -164,8 +175,10 @@ export function registerPlaybackHandlers(
         const state = await playbackService.getPlaybackStateForSocket(roomId, userId);
         socket.emit('playback:sync-response', state);
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[playback:sync-request] 처리 실패', err);
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:sync-request] 처리 실패',
+        );
       }
     },
   );

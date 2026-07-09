@@ -5,13 +5,13 @@ import { registerPlaybackHandlers } from './handlers/playback.handler';
 import { registerPresenceHandlers } from './handlers/presence.handler';
 import { registerRoomHandlers } from './handlers/room.handler';
 import { socketAuth } from './socketAuth';
+import { logger } from '../lib/logger';
 
 export function initSocket(io: Server): void {
   io.use(socketAuth);
 
   io.on('connection', (socket) => {
-    // eslint-disable-next-line no-console
-    console.log(`[Socket] 연결: socketId=${socket.id}, userId=${socket.data.userId}`);
+    logger.info({ socketId: socket.id, userId: socket.data.userId }, '[Socket] 연결');
 
     registerRoomHandlers(io, socket);
     registerPlaybackHandlers(io, socket);
@@ -19,10 +19,7 @@ export function initSocket(io: Server): void {
     registerPresenceHandlers(io, socket);
 
     socket.on('disconnect', (reason) => {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[Socket] 해제: socketId=${socket.id}, userId=${socket.data.userId}, reason=${reason}`,
-      );
+      logger.info({ socketId: socket.id, userId: socket.data.userId, reason }, '[Socket] 해제');
     });
   });
 }

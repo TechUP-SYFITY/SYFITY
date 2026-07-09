@@ -1,6 +1,7 @@
 import { ERROR_CODES } from '@syfity/shared';
 
 import { AppError } from '../errors/appError';
+import { logger } from '../lib/logger';
 import type { ChatMessageRecord, ChatRecord, IChatRepository } from '../types/chat';
 import type { IRoomRepository } from '../types/room';
 import { assertActiveRoomMember } from '../utils/roomAccess';
@@ -47,8 +48,10 @@ export class ChatService {
       await this.roomRepo.touchLastActivity(params.roomId);
     } catch (err) {
       // 메시지 저장은 이미 성공했으므로 lastActivity 갱신 실패가 실시간 전달을 막지 않게 한다.
-      // eslint-disable-next-line no-console
-      console.error('[ChatService.sendMessage] Room lastActivity 갱신 실패', err);
+      logger.error(
+        { err, roomId: params.roomId },
+        '[ChatService.sendMessage] Room lastActivity 갱신 실패',
+      );
     }
 
     return record;

@@ -60,7 +60,7 @@ function makeFixture(
       .mockResolvedValue(
         'membership' in overrides ? overrides.membership : { role: 'member', status: 'online' },
       ),
-    updateMemberStatus: vi.fn().mockResolvedValue(undefined),
+    updateMemberStatus: vi.fn().mockResolvedValue(true),
     findMemberInfo: vi
       .fn()
       .mockResolvedValue('memberInfo' in overrides ? overrides.memberInfo : member),
@@ -212,31 +212,24 @@ describe('PresenceService', () => {
   });
 
   it('online 멤버를 offline으로 전환하고 멤버 정보를 반환한다', async () => {
-    const { service, roomRepo } = makeFixture({
-      membership: { role: 'member', status: 'online' },
-    });
+    const { service, roomRepo } = makeFixture();
+    roomRepo.updateMemberStatus.mockResolvedValue(true);
 
     await expect(service.setMemberOffline('room-1', 'user-1')).resolves.toEqual(member);
-    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'offline');
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'offline', [
+      'online',
+    ]);
     expect(roomRepo.findMemberInfo).toHaveBeenCalledWith('room-1', 'user-1');
   });
 
-  it.each(['offline', 'left'] as const)(
-    '%s 상태 멤버는 offline으로 다시 전환하지 않는다',
-    async (status) => {
-      const { service, roomRepo } = makeFixture({ membership: { role: 'member', status } });
-
-      await expect(service.setMemberOffline('room-1', 'user-1')).resolves.toBeNull();
-      expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
-      expect(roomRepo.findMemberInfo).not.toHaveBeenCalled();
-    },
-  );
-
-  it('멤버십이 없으면 offline으로 전환하지 않는다', async () => {
-    const { service, roomRepo } = makeFixture({ membership: null });
+  it('이미 online이 아니면(offline/left/멤버십 없음) 전환하지 않고 null을 반환한다', async () => {
+    const { service, roomRepo } = makeFixture();
+    roomRepo.updateMemberStatus.mockResolvedValue(false);
 
     await expect(service.setMemberOffline('room-1', 'user-1')).resolves.toBeNull();
-    expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
+    expect(roomRepo.updateMemberStatus).toHaveBeenCalledWith('room-1', 'user-1', 'offline', [
+      'online',
+    ]);
     expect(roomRepo.findMemberInfo).not.toHaveBeenCalled();
   });
 });

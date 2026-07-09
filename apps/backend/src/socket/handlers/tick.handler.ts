@@ -1,6 +1,7 @@
 import type { Server } from 'socket.io';
 
 import { playbackService as defaultPlaybackService } from '../../ioc';
+import { logger } from '../../lib/logger';
 import type { PlaybackService } from '../../services/playback.service';
 
 export const PLAYBACK_TICK_INTERVAL_MS = 10_000;
@@ -28,8 +29,7 @@ export function startPlaybackTick(
     ).then((results) => {
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-          // eslint-disable-next-line no-console
-          console.error(`[playback:tick] roomId=${roomIds[index]} 처리 실패`, result.reason);
+          logger.error({ err: result.reason, roomId: roomIds[index] }, '[playback:tick] 처리 실패');
         }
       });
     });

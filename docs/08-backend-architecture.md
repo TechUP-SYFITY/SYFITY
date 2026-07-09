@@ -21,7 +21,8 @@
 | 실시간 통신   | Socket.IO             |                                                           |
 | ORM           | Prisma                | 마이그레이션 + 타입 자동 생성                             |
 | DB            | Supabase (PostgreSQL) |                                                           |
-| 캐시          | node-cache            | CacheStore 인터페이스로 추상화, Redis 교체 가능           |
+| 캐시          | node-cache            | ICache 인터페이스로 추상화, Redis 교체 가능 (현재 미구현) |
+| 로깅          | pino                  | 구조화 로깅. 개발 환경은 pino-pretty로 포맷               |
 | 인증          | JWT                   | httpOnly 쿠키, Refresh Token Rotation                     |
 | Google OAuth  | google-auth-library   | OAuth2Client로 인증 URL 생성, 토큰 교환, 사용자 정보 조회 |
 | 외부 API      | YouTube Data API v3   | 서버사이드 프록시                                         |
@@ -48,38 +49,43 @@ apps/backend/
 
     controllers/        → tsoa 데코레이터 + Service 주입
       auth.controller.ts
-      me.controller.ts
-      room.controller.ts
-      playlist.controller.ts
       chat.controller.ts
+      health.controller.ts
+      playlist.controller.ts
+      room.controller.ts
       search.controller.ts
+      user.controller.ts
 
     services/           → 비즈니스 로직, Repository 호출
       auth.service.ts
-      me.service.ts
-      room.service.ts
-      playlist.service.ts
       chat.service.ts
+      health.service.ts
       playback.service.ts  → Socket 핸들러에서 호출
+      playlist.service.ts
       presence.service.ts  → Socket 핸들러에서 호출, 연결 해제 유예 타이머 관리
+      room.service.ts
       search.service.ts    → YouTube API 직접 호출 (Repository 없음)
+      user.service.ts
 
     repositories/       → Prisma 직접 호출, DB 접근 전담
       auth.repository.ts
-      me.repository.ts
-      room.repository.ts
-      playlist.repository.ts
       chat.repository.ts
       playback.repository.ts
+      playlist.repository.ts
+      room.repository.ts
+      user.repository.ts
 
     socket/             → Socket.IO 이벤트 처리
       index.ts          → initSocket 함수 정의, 핸들러 등록
-      socketAuth.ts     → Socket.IO 인증
+      socketAuth.ts     → Socket.IO 인증 (JWT 검증 + DB 사용자 존재 재확인)
+      socketError.ts    → ack 에러 페이로드 변환 유틸
+      socketValidators.ts → 이벤트 payload 검증 유틸
       handlers/
-        room.handler.ts
-        playback.handler.ts
         chat.handler.ts
+        playback.handler.ts
         presence.handler.ts
+        room.handler.ts
+        tick.handler.ts  → 10초 주기 playback:tick broadcast
 
     authentication.ts   → tsoa Security 핸들러 (REST 인증)
     ioc.ts              → tsoa iocModule (팩토리 레지스트리)
@@ -91,16 +97,27 @@ apps/backend/
       error.middleware.ts → 전역 에러 응답 미들웨어
 
     lib/                → 공통 유틸
+      prisma.ts         → PrismaClient 싱글턴
+      io.ts             → Socket.IO 서버 인스턴스 getter/setter (setIo/getIo)
+      logger.ts         → pino 로거 싱글턴 (production: JSON, development: pino-pretty, test: silent)
       cache/
-        cache.interface.ts
-        node-cache.store.ts
-        redis.store.ts
+        cache.interface.ts → ICache 인터페이스 정의
+        cacheKeys.ts        → 캐시 키/TTL 상수
+        node-cache.store.ts → node-cache 구현체 (MVP, 현재 유일한 구현체)
         index.ts
       youtube/
         youtube.client.ts
 
-    types/              → 공통 타입
+    types/              → 도메인별 백엔드 타입 (auth/cache/chat/health/playback/playlist/room/search/socket/user)
       express.d.ts      → Request 객체 확장 (user 정보 등)
+      socket-data.d.ts  → Socket.data 확장 (userId, email)
+
+    utils/              → 순수 유틸 함수
+      authPayload.ts    → JWT payload 타입 가드
+      chatPayload.ts    → 채팅 broadcast payload 변환
+      cors.ts           → CORS origin 화이트리스트 검증
+      roomAccess.ts     → assertActiveRoomMember/assertRoomHost 권한 체크
+      tokenHash.ts      → Refresh Token 해시(SHA-256) 유틸
 ```
 
 ---
@@ -248,38 +265,60 @@ export class RoomService {
 
 `@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. REST 인증은 일반 Express 인증 미들웨어를 직접 붙이지 않고 tsoa Security 진입점을 사용한다. Socket.IO 인증은 별도로 `socket/socketAuth.ts`의 `socketAuth`를 사용한다.
 
+JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정이 삭제됐을 수 있으므로, `UserRepository.findUserById`로 DB 존재 여부까지 재확인한다.
+
 ```ts
 // src/authentication.ts
 import type { Request } from 'express';
 import jwt from 'jsonwebtoken';
 
+import { ERROR_CODES } from '@syfity/shared';
+
+import { prisma } from './lib/prisma';
+import { UserRepository } from './repositories/user.repository';
 import { config } from './config';
 import { AppError } from './errors/appError';
+import { isAuthPayload } from './utils/authPayload';
+
+const userRepository = new UserRepository(prisma);
 
 export function expressAuthentication(
   request: Request,
   securityName: string,
 ): Promise<{ id: string; email: string }> {
-  if (securityName === 'jwt') {
-    const token = request.cookies?.access_token as string | undefined;
-    if (!token) {
-      return Promise.reject(new AppError(401, 'AUTH_UNAUTHORIZED', '인증이 필요합니다.'));
-    }
-    return new Promise((resolve, reject) => {
-      jwt.verify(token, config.jwt.accessSecret, (err, payload) => {
-        if (err instanceof jwt.TokenExpiredError) {
-          reject(new AppError(401, 'AUTH_TOKEN_EXPIRED', '토큰이 만료되었습니다.'));
-        } else if (err) {
-          reject(new AppError(401, 'AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
-        } else {
-          const user = payload as { id: string; email: string };
-          request.user = user;
-          resolve(user);
-        }
-      });
-    });
+  if (securityName !== 'jwt') {
+    return Promise.reject(
+      new AppError(401, ERROR_CODES.AUTH_UNAUTHORIZED, '알 수 없는 보안 스킴입니다.'),
+    );
   }
-  return Promise.reject(new AppError(401, 'AUTH_UNAUTHORIZED', '알 수 없는 보안 스킴입니다.'));
+
+  const token = request.cookies?.access_token as string | undefined;
+  if (!token) {
+    return Promise.reject(new AppError(401, ERROR_CODES.AUTH_UNAUTHORIZED, '인증이 필요합니다.'));
+  }
+
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, config.jwt.accessSecret, async (err, payload) => {
+      if (err instanceof jwt.TokenExpiredError) {
+        reject(new AppError(401, ERROR_CODES.AUTH_TOKEN_EXPIRED, '토큰이 만료되었습니다.'));
+        return;
+      }
+      if (err || !isAuthPayload(payload)) {
+        reject(new AppError(401, ERROR_CODES.AUTH_UNAUTHORIZED, '유효하지 않은 토큰입니다.'));
+        return;
+      }
+
+      const storedUser = await userRepository.findUserById(payload.id);
+      if (!storedUser) {
+        reject(new AppError(404, ERROR_CODES.AUTH_USER_NOT_FOUND, '사용자를 찾을 수 없습니다.'));
+        return;
+      }
+
+      const user = { id: payload.id, email: payload.email };
+      request.user = user;
+      resolve(user);
+    });
+  });
 }
 ```
 
@@ -345,29 +384,42 @@ tsoa가 컨트롤러 메서드를 래핑하므로 Controller에서 try-catch가 
 
 ```ts
 // src/config.ts
+export function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`필수 환경변수 ${name}가 설정되지 않았습니다.`);
+  }
+  return value;
+}
+
 export const config = {
+  nodeEnv: process.env.NODE_ENV ?? 'development',
   port: process.env.PORT ?? '4000',
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:3000',
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
   jwt: {
-    accessSecret: process.env.JWT_ACCESS_SECRET!,
-    refreshSecret: process.env.JWT_REFRESH_SECRET!,
+    accessSecret: requireEnv('JWT_ACCESS_SECRET'),
+    refreshSecret: requireEnv('JWT_REFRESH_SECRET'),
     accessExpiresIn: '1h',
+    accessExpiresInMs: 60 * 60 * 1000,
     refreshExpiresIn: '30d',
+    refreshExpiresInMs: 30 * 24 * 60 * 60 * 1000,
   },
   google: {
-    clientId: process.env.GOOGLE_CLIENT_ID!,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    callbackUrl: process.env.GOOGLE_CALLBACK_URL!,
+    clientId: requireEnv('GOOGLE_CLIENT_ID'),
+    clientSecret: requireEnv('GOOGLE_CLIENT_SECRET'),
+    callbackUrl: requireEnv('GOOGLE_CALLBACK_URL'),
   },
   youtube: {
-    apiKey: process.env.YOUTUBE_API_KEY!,
+    apiKey: requireEnv('YOUTUBE_API_KEY'),
   },
   db: {
-    url: process.env.DATABASE_URL!,
+    url: requireEnv('DATABASE_URL'),
   },
 };
 ```
+
+`requireEnv`는 값이 없으면 모듈 로드 시점(서버 부팅 시)에 바로 에러를 던진다. env 하나가 비어도 서버가 뜨자마자 죽으므로, "런타임 중 예측 불가능한 위치에서 실패"하는 대신 배포 직후 바로 원인을 알 수 있다. 테스트 환경은 `vitest.setup.ts`가 이 값들의 기본값을 미리 채워 넣는다.
 
 ---
 
@@ -379,34 +431,67 @@ export const config = {
 // src/server.ts
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { setIo } from './lib/io';
+import { prisma } from './lib/prisma';
+import { startPlaybackTick, stopPlaybackTick } from './socket/handlers/tick.handler';
 import app from './app';
 import { initSocket } from './socket';
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { ... } });
 
+setIo(io);
 initSocket(io);
+const playbackTickTimer = startPlaybackTick(io);
+
+httpServer.listen(config.port, () => { /* ... */ });
+
+let isShuttingDown = false;
+function shutdown(signal: string): void {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  stopPlaybackTick(playbackTickTimer);
+  io.close();
+  httpServer.close(() => {
+    prisma.$disconnect().finally(() => process.exit(0));
+  });
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 ```
+
+`lib/io.ts`의 `setIo`/`getIo`는 Socket.IO 서버 인스턴스를 모듈 스코프에 저장해두고, REST에서 트리거되는 Service(`RoomService.closeRoomAndBroadcast` 등)가 호출 시점에 `getIo()`로 지연 조회할 수 있게 한다. `graceful shutdown`은 `SIGINT`/`SIGTERM` 수신 시 tick 타이머 정리 → Socket.IO 연결 종료 → HTTP 서버 종료 → Prisma 연결 해제 순으로 정리한다. Render가 재배포 시 보내는 `SIGTERM`을 처리하지 않으면 처리 중인 요청과 소켓 연결이 강제로 끊긴다.
 
 ### 핸들러 등록
 
 ```ts
 // src/socket/index.ts
-import { Server } from 'socket.io';
-import { registerRoomHandlers } from './handlers/room.handler';
-import { registerPlaybackHandlers } from './handlers/playback.handler';
+import type { Server } from 'socket.io';
 import { registerChatHandlers } from './handlers/chat.handler';
+import { registerPlaybackHandlers } from './handlers/playback.handler';
 import { registerPresenceHandlers } from './handlers/presence.handler';
+import { registerRoomHandlers } from './handlers/room.handler';
+import { socketAuth } from './socketAuth';
 
-export function initSocket(io: Server) {
+export function initSocket(io: Server): void {
+  io.use(socketAuth);
+
   io.on('connection', (socket) => {
     registerRoomHandlers(io, socket);
     registerPlaybackHandlers(io, socket);
     registerChatHandlers(io, socket);
     registerPresenceHandlers(io, socket);
+
+    socket.on('disconnect', (reason) => {
+      /* 로그만 남김 */
+    });
   });
 }
 ```
+
+`tick.handler.ts`의 `startPlaybackTick(io)`는 `initSocket`이 아니라 `server.ts`에서 별도로 호출한다 — 개별 소켓 연결과 무관하게 10초 주기로 재생 중인 모든 Room에 `playback:tick`을 broadcast하는 전역 타이머이기 때문이다.
 
 ### Socket 에러 처리
 
@@ -433,14 +518,27 @@ import type { Server, Socket } from 'socket.io';
 
 import {
   playbackService as defaultPlaybackService,
+  presenceService as defaultPresenceService,
   roomService as defaultRoomService,
 } from '../../ioc';
 import type { PlaybackService } from '../../services/playback.service';
+import type { PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
 
+type RoomHandlerService = Pick<
+  RoomService,
+  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+>;
+type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
+type RoomHandlerPresenceService = Pick<
+  PresenceService,
+  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer'
+>;
+
 type RoomHandlerDeps = {
-  roomService: Pick<RoomService, 'setMemberOnline' | 'leaveRoom'>;
-  playbackService: Pick<PlaybackService, 'getPlaybackStateForSocket'>;
+  roomService: RoomHandlerService;
+  playbackService: RoomHandlerPlaybackService;
+  presenceService: RoomHandlerPresenceService;
 };
 
 export function registerRoomHandlers(
@@ -449,16 +547,20 @@ export function registerRoomHandlers(
   deps: RoomHandlerDeps = {
     roomService: defaultRoomService,
     playbackService: defaultPlaybackService,
+    presenceService: defaultPresenceService,
   },
-) {
-  const { roomService, playbackService } = deps;
+): void {
+  const { roomService, playbackService, presenceService } = deps;
 
-  socket.on('room:join', async ({ roomId }, ack) => {
-    // roomService로 참여 상태 갱신, playbackService로 재생 상태 조회 후 ack 응답
+  socket.on('room:join', async (payload, ack) => {
+    // roomService로 참여 상태 갱신(원자적 조건부 UPDATE로 wasOnline 판단),
+    // presenceService로 대기 중인 유예 타이머 취소, playbackService로 재생 상태 조회 후 ack 응답.
+    // wasOnline이 false일 때만 입장 시스템 메시지 broadcast.
   });
 
-  socket.on('room:leave', async ({ roomId }) => {
-    // roomService 호출 후 broadcast 또는 로그 처리
+  socket.on('room:leave', async (payload) => {
+    // roomService.leaveRoom 결과가 'closed' | 'left' | 'noop' 중 하나.
+    // 'noop'(이미 나간 상태로 중복 emit)이면 broadcast/시스템 메시지 없이 종료.
   });
 }
 ```
@@ -476,9 +578,13 @@ REST 엔드포인트와 Socket.IO는 인증 방식이 다르다.
 | REST (`@Security('jwt')`) | `expressAuthentication` | `src/authentication.ts`    |
 | Socket.IO                 | `socketAuth` 미들웨어   | `src/socket/socketAuth.ts` |
 
+REST의 `expressAuthentication`과 마찬가지로, JWT 검증만으로는 부족해 `UserRepository.findUserById`로 DB 존재 여부까지 재확인한다 — 그렇지 않으면 계정 삭제 직후에도 만료 전 토큰으로 Socket 연결을 계속 쓸 수 있다.
+
 ```ts
 // src/socket/socketAuth.ts
-export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
+const userRepository = new UserRepository(prisma);
+
+export async function socketAuth(socket: Socket, next: (err?: Error) => void): Promise<void> {
   const rawCookie = socket.handshake.headers.cookie ?? '';
   const token = parseCookie(rawCookie).access_token;
 
@@ -491,6 +597,12 @@ export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
     const payload = jwt.verify(token, config.jwt.accessSecret);
     if (!isAuthPayload(payload)) {
       next(toSocketError('AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
+      return;
+    }
+
+    const user = await userRepository.findUserById(payload.id);
+    if (!user) {
+      next(toSocketError('AUTH_USER_NOT_FOUND', '사용자를 찾을 수 없습니다.'));
       return;
     }
 
@@ -659,16 +771,16 @@ GOOGLE_CALLBACK_URL=http://localhost:4000/api/v1/auth/google/callback
 
 Render Blueprint는 민감값을 `sync: false`로 선언하고, 실제 값은 Render 대시보드에서 직접 입력한다.
 
-| 키                                          | 운영 값 기준                                                                                             |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                  | `production`                                                                                             |
-| `NODE_VERSION`                              | `22`                                                                                                     |
-| `CLIENT_URL`                                | T21에서 확정되는 FE 프로덕션 URL. T20 시점에는 임시값을 입력하고 T21 완료 후 `https://{domain}`으로 갱신 |
-| `ALLOWED_ORIGINS`                           | 프로덕션 커스텀 도메인 FE origin. Vercel Preview 도메인은 `cors.ts`의 `*.vercel.app` 허용 규칙으로 처리  |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                        |
-| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                      |
-| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                  |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                  |
-| `GOOGLE_CALLBACK_URL`                       | `https://api.{domain}/api/v1/auth/google/callback`                                                       |
+| 키                                          | 운영 값 기준                                                                                                                                                                                                         |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                                                                                                                                                                                         |
+| `NODE_VERSION`                              | `22`                                                                                                                                                                                                                 |
+| `CLIENT_URL`                                | T21에서 확정되는 FE 프로덕션 URL. T20 시점에는 임시값을 입력하고 T21 완료 후 `https://{domain}`으로 갱신                                                                                                             |
+| `ALLOWED_ORIGINS`                           | 프로덕션 origin을 쉼표로 구분해 명시. `cors.ts`는 `*.vercel.app` 같은 와일드카드를 허용하지 않고 이 목록과 정확히 일치하는 origin만 허용한다 — Vercel Preview를 쓰려면 실제 preview origin을 이 목록에 추가해야 한다 |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                                                                                                                                    |
+| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                                                                                                                                  |
+| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                                                                                                                              |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                                                                                                                              |
+| `GOOGLE_CALLBACK_URL`                       | `https://api.{domain}/api/v1/auth/google/callback`                                                                                                                                                                   |
 
 `PORT`는 Render web service가 자동 주입하므로 고정하지 않는다. Supabase Direct Connection은 IPv6 전용일 수 있어 Render에서는 Session Pooler 사용을 기본값으로 둔다.

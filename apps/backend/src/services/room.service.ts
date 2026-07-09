@@ -5,6 +5,8 @@ import { ERROR_CODES } from '@syfity/shared';
 import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
+import { getIo } from '../lib/io';
+import { logger } from '../lib/logger';
 import type { ChatMessageRecord, IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
@@ -43,7 +45,6 @@ export class RoomService {
       PlaybackService,
       'getPlaybackStateForJoin' | 'initializeCache' | 'clearCache'
     >,
-    private readonly io?: RoomSocketServer,
   ) {}
 
   async createRoom(userId: string, name: string): Promise<RoomRecord> {
@@ -117,14 +118,13 @@ export class RoomService {
     userId: string,
   ): Promise<{ member: RoomMemberRecord; wasOnline: boolean }> {
     await assertActiveRoomMember(this.roomRepo, roomId, userId);
-    const previousMembership = await this.roomRepo.findMembership(roomId, userId);
-    const wasOnline = previousMembership?.status === 'online';
-
-    await this.roomRepo.updateMemberStatus(roomId, userId, 'online');
+    const didTransition = await this.roomRepo.updateMemberStatus(roomId, userId, 'online', [
+      'offline',
+    ]);
     await this.roomRepo.touchLastActivity(roomId);
     const member = await this.findRequiredMemberInfo(roomId, userId);
 
-    return { member, wasOnline };
+    return { member, wasOnline: !didTransition };
   }
 
   async leaveRoom(roomId: string, userId: string): Promise<LeaveRoomResult> {
@@ -134,7 +134,14 @@ export class RoomService {
       return { type: 'closed' };
     }
 
-    await this.roomRepo.updateMemberStatus(roomId, userId, 'left');
+    const didTransition = await this.roomRepo.updateMemberStatus(roomId, userId, 'left', [
+      'online',
+      'offline',
+    ]);
+    if (!didTransition) {
+      return { type: 'noop' };
+    }
+
     await this.roomRepo.touchLastActivity(roomId);
     const member = await this.findRequiredMemberInfo(roomId, userId);
 
@@ -163,31 +170,23 @@ export class RoomService {
       });
     } catch (err) {
       // 시스템 메시지는 부가 기능이므로 실패해도 입장/퇴장/종료 흐름을 막지 않는다.
-      // eslint-disable-next-line no-console
-      console.error('[RoomService.createSystemMessage] 시스템 메시지 생성 실패', err);
+      logger.error({ err, roomId }, '[RoomService.createSystemMessage] 시스템 메시지 생성 실패');
       return null;
     }
   }
 
   async closeRoomAndBroadcast(roomId: string, userId: string): Promise<void> {
-    if (!this.io) {
-      throw new AppError(
-        500,
-        ERROR_CODES.SERVER_INTERNAL_ERROR,
-        'Socket 서버가 초기화되지 않았습니다.',
-      );
-    }
-
+    const io: RoomSocketServer = getIo();
     await this.closeRoom(roomId, userId);
 
     const systemMessage = await this.createSystemMessage(roomId, 'Room이 종료되었습니다.');
     if (systemMessage) {
-      this.io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
+      io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
     }
 
     const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
-    this.io.to(`room:${roomId}`).emit('room:closed', payload);
-    this.io.socketsLeave(`room:${roomId}`);
+    io.to(`room:${roomId}`).emit('room:closed', payload);
+    io.socketsLeave(`room:${roomId}`);
   }
 
   private async generateUniqueInviteCode(): Promise<string> {

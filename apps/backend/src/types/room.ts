@@ -56,7 +56,8 @@ export type JoinRoomResult = {
   recentChats: ChatRecord[];
 };
 
-export type LeaveRoomResult = { type: 'closed' } | { type: 'left'; member: RoomMemberRecord };
+export type LeaveRoomResult =
+  { type: 'closed' } | { type: 'left'; member: RoomMemberRecord } | { type: 'noop' };
 
 export interface IRoomRepository {
   existsInviteCode(inviteCode: string): Promise<boolean>;
@@ -69,7 +70,12 @@ export interface IRoomRepository {
   upsertMembership(roomId: string, userId: string): Promise<void>;
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
   upsertRecentRoom(userId: string, roomId: string): Promise<void>;
-  updateMemberStatus(roomId: string, userId: string, status: RoomMemberStatus): Promise<void>;
+  updateMemberStatus(
+    roomId: string,
+    userId: string,
+    status: RoomMemberStatus,
+    fromStatuses: RoomMemberStatus[],
+  ): Promise<boolean>;
   findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
   closeRoom(roomId: string): Promise<void>;
   updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord>;

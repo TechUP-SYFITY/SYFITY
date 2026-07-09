@@ -4,8 +4,10 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 import { setIo } from './lib/io';
+import { logger } from './lib/logger';
+import { prisma } from './lib/prisma';
 
-import { startPlaybackTick } from './socket/handlers/tick.handler';
+import { startPlaybackTick, stopPlaybackTick } from './socket/handlers/tick.handler';
 
 import app from './app';
 import { config } from './config';
@@ -31,9 +33,24 @@ const io = new Server(httpServer, {
 
 setIo(io);
 initSocket(io);
-startPlaybackTick(io);
+const playbackTickTimer = startPlaybackTick(io);
 
 httpServer.listen(config.port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`서버 실행 중: http://localhost:${config.port}`);
+  logger.info(`서버 실행 중: http://localhost:${config.port}`);
 });
+
+let isShuttingDown = false;
+function shutdown(signal: string): void {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  logger.info(`${signal} 수신, 서버 종료 중...`);
+
+  stopPlaybackTick(playbackTickTimer);
+  io.close();
+  httpServer.close(() => {
+    prisma.$disconnect().finally(() => process.exit(0));
+  });
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

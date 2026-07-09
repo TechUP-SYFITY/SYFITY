@@ -19,6 +19,13 @@
 - Socket은 Room 입장 시 연결하고 퇴장 시 해제한다.
 - 연결 전 반드시 `POST /api/v1/rooms/join` (REST)를 먼저 호출하여 입장 자격을 검증한다.
 - Socket 인증은 httpOnly 쿠키의 JWT를 핸드셰이크 시 자동으로 전송하여 처리한다.
+- 인증은 개별 이벤트 ack가 아니라 연결(handshake) 단계에서 검증되며, 실패 시 `connect_error` 이벤트로 전달된다. 이 단계를 통과하면 이후 모든 이벤트 핸들러는 이미 인증된 소켓에서만 실행된다.
+
+| 코드                  | 설명                                           |
+| --------------------- | ---------------------------------------------- |
+| `AUTH_UNAUTHORIZED`   | access_token 쿠키 없음 또는 서명/형식 오류     |
+| `AUTH_TOKEN_EXPIRED`  | access_token 만료                              |
+| `AUTH_USER_NOT_FOUND` | 토큰은 유효하지만 DB에서 사용자를 찾을 수 없음 |
 
 ### 2.2 네임스페이스
 
@@ -181,7 +188,8 @@ REST `POST /rooms/join` 완료 후 Socket Room에 참여한다. 재연결 시에
 | `ROOM_NOT_FOUND`     | Room 없음                         |
 | `ROOM_ACCESS_DENIED` | Room 참여 이력이 없거나 이미 나감 |
 | `VALIDATION_ERROR`   | roomId가 없거나 빈 문자열         |
-| `AUTH_UNAUTHORIZED`  | 인증 실패                         |
+
+인증 실패는 이 ack가 아니라 연결 단계의 `connect_error`로 처리된다(2.1절 참고).
 
 ---
 
@@ -615,6 +623,7 @@ FE는 optimistic update로 먼저 UI에 표시 후 ack 수신 시 실제 id/crea
 | 코드                 | 설명                                                 |
 | -------------------- | ---------------------------------------------------- |
 | `VALIDATION_ERROR`   | roomId/message 누락, 공백 메시지, 300자 초과 메시지  |
+| `ROOM_NOT_FOUND`     | Room 없음                                            |
 | `ROOM_ACCESS_DENIED` | Room 참여 이력이 없거나 이미 나간 사용자의 전송 시도 |
 
 ---

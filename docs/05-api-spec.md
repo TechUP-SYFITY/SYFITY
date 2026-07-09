@@ -641,11 +641,12 @@ MVP에서 중복 추가를 허용한다.
 
 **에러**
 
-| 코드                      | HTTP | 설명           |
-| ------------------------- | ---- | -------------- |
-| `ROOM_NOT_FOUND`          | 404  | Room 없음      |
-| `AUTH_FORBIDDEN`          | 403  | Host가 아님    |
-| `PLAYLIST_ITEM_NOT_FOUND` | 404  | 항목 ID 불일치 |
+| 코드                      | HTTP | 설명                      |
+| ------------------------- | ---- | ------------------------- |
+| `ROOM_NOT_FOUND`          | 404  | Room 없음                 |
+| `AUTH_FORBIDDEN`          | 403  | Host가 아님               |
+| `PLAYLIST_ITEM_NOT_FOUND` | 404  | 항목 ID 불일치            |
+| `VALIDATION_ERROR`        | 400  | 요청에 중복된 position 값 |
 
 ---
 
@@ -689,10 +690,11 @@ MVP에서 중복 추가를 허용한다.
 
 **에러**
 
-| 코드                 | HTTP | 설명               |
-| -------------------- | ---- | ------------------ |
-| `ROOM_NOT_FOUND`     | 404  | Room 없음          |
-| `ROOM_ACCESS_DENIED` | 403  | Room 참여자가 아님 |
+| 코드                 | HTTP | 설명                            |
+| -------------------- | ---- | ------------------------------- |
+| `ROOM_NOT_FOUND`     | 404  | Room 없음                       |
+| `ROOM_ACCESS_DENIED` | 403  | Room 참여자가 아님              |
+| `VALIDATION_ERROR`   | 400  | cursorTime이 유효하지 않은 형식 |
 
 ---
 
@@ -731,5 +733,6 @@ YouTube 영상 검색. 서버에서 YouTube Data API `search.list`를 호출한�
 
 | 코드                            | HTTP | 설명                       |
 | ------------------------------- | ---- | -------------------------- |
+| `SEARCH_QUERY_REQUIRED`         | 400  | 검색어(q)가 비어있음       |
 | `SERVER_YOUTUBE_API_ERROR`      | 502  | YouTube API 호출 실패      |
 | `SERVER_YOUTUBE_QUOTA_EXCEEDED` | 429  | YouTube API 일일 쿼터 초과 |

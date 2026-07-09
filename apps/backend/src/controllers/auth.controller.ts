@@ -6,6 +6,7 @@ import { ERROR_CODES, type LogoutResponse, type RefreshResponse } from '@syfity/
 
 import { config } from '../config';
 import { AppError } from '../errors/appError';
+import { logger } from '../lib/logger';
 import type { AuthService } from '../services/auth.service';
 
 type AuthControllerService = Pick<
@@ -42,16 +43,17 @@ export class AuthController {
     try {
       const { accessToken, refreshToken } = await this.authService.handleCallback(code);
       const res = req.res!;
-      res.cookie('access_token', accessToken, this.getCookieOptions());
+      res.cookie('access_token', accessToken, this.getCookieOptions(config.jwt.accessExpiresInMs));
       res.cookie('refresh_token', refreshToken, {
-        ...this.getCookieOptions(),
+        ...this.getCookieOptions(config.jwt.refreshExpiresInMs),
         path: '/api/v1/auth/refresh',
       });
 
       return redirect(302, undefined, {
         Location: this.authService.getPostLoginRedirectUrl(state),
       });
-    } catch {
+    } catch (err) {
+      logger.error({ err }, '[auth:google/callback] 처리 실패');
       return redirect(302, undefined, { Location: AUTH_FAILED_REDIRECT });
     }
   }
@@ -82,20 +84,21 @@ export class AuthController {
       await this.authService.refresh(refreshToken);
 
     const res = req.res!;
-    res.cookie('access_token', accessToken, this.getCookieOptions());
+    res.cookie('access_token', accessToken, this.getCookieOptions(config.jwt.accessExpiresInMs));
     res.cookie('refresh_token', newRefreshToken, {
-      ...this.getCookieOptions(),
+      ...this.getCookieOptions(config.jwt.refreshExpiresInMs),
       path: '/api/v1/auth/refresh',
     });
 
     return { success: true, data: { message: 'token refreshed' } };
   }
 
-  private getCookieOptions(): CookieOptions {
+  private getCookieOptions(maxAge: number): CookieOptions {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
       sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
+      maxAge,
     };
   }
 }

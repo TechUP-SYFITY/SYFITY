@@ -1,11 +1,7 @@
 import { Get, Route } from 'tsoa';
 
-import type { HealthService, HealthStatus } from '../services/health.service';
-
-interface HealthResponse {
-  success: true;
-  data: HealthStatus;
-}
+import type { HealthService } from '../services/health.service';
+import type { HealthResponse } from '../types/health';
 
 @Route('health')
 export class HealthController {

@@ -1,6 +1,4 @@
-export interface HealthStatus {
-  status: 'ok';
-}
+import type { HealthStatus } from '../types/health';
 
 export class HealthService {
   getHealth(): HealthStatus {

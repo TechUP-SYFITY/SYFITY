@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 import type { Socket } from 'socket.io';
 
 import { config } from '../config';
+import { prisma } from '../lib/prisma';
+import { UserRepository } from '../repositories/user.repository';
 import { isAuthPayload } from '../utils/authPayload';
+
+const userRepository = new UserRepository(prisma);
 
 interface SocketAuthError extends Error {
   data: {
@@ -15,7 +19,7 @@ function toSocketError(code: string, message: string): SocketAuthError {
   return Object.assign(new Error(message), { data: { code } });
 }
 
-export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
+export async function socketAuth(socket: Socket, next: (err?: Error) => void): Promise<void> {
   const rawCookie = socket.handshake.headers.cookie ?? '';
   const token = parseCookie(rawCookie).access_token;
 
@@ -28,6 +32,12 @@ export function socketAuth(socket: Socket, next: (err?: Error) => void): void {
     const payload = jwt.verify(token, config.jwt.accessSecret);
     if (!isAuthPayload(payload)) {
       next(toSocketError('AUTH_UNAUTHORIZED', '유효하지 않은 토큰입니다.'));
+      return;
+    }
+
+    const user = await userRepository.findUserById(payload.id);
+    if (!user) {
+      next(toSocketError('AUTH_USER_NOT_FOUND', '사용자를 찾을 수 없습니다.'));
       return;
     }
 

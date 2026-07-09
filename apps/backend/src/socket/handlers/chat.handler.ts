@@ -4,6 +4,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { AppError } from '../../errors/appError';
 import { chatService as defaultChatService } from '../../ioc';
+import { logger } from '../../lib/logger';
 import type { ChatService } from '../../services/chat.service';
 import type { ChatSendAck, ChatSendPayload } from '../../types/socket';
 import { toChatReceivedPayload } from '../../utils/chatPayload';
@@ -44,8 +45,10 @@ export function registerChatHandlers(
 
         ack({ success: true, data: { id: record.id, createdAt: record.createdAt.toISOString() } });
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[chat:send] 처리 실패', err);
+        logger.error(
+          { err, userId: socket.data.userId, roomId: payload?.roomId },
+          '[chat:send] 처리 실패',
+        );
         ack({ success: false, error: toSocketAckError(err) });
       }
     },

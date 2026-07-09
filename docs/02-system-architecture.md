@@ -82,7 +82,7 @@ graph TD
     Client["Browser<br>Next.js / Vercel"]
 
     subgraph Express["Express Server (Render)"]
-        API["REST API Router<br>/auth /rooms /playlist<br>/youtube /me"]
+        API["REST API Router<br>/auth /rooms /rooms/:id/playlist<br>/rooms/:id/chats /search /me /health"]
         Socket["Socket.IO Server<br>room:join playback:play<br>playlist:updated chat:send ..."]
         Prisma["Prisma Client"]
         Cache["Cache Layer<br>node-cache (→ Redis 교체 가능)"]
@@ -104,14 +104,14 @@ graph TD
 
 ### 컴포넌트 역할
 
-| 컴포넌트           | 역할                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| Next.js (Vercel)   | UI 렌더링 전용. 데이터 관련 로직 없음                                                             |
-| Express (Render)   | REST API + Socket.IO + YouTube API 프록시                                                         |
-| Supabase           | 영구 데이터 저장 (PostgreSQL)                                                                     |
-| Prisma             | DB 접근 레이어, 마이그레이션 관리, 타입 생성                                                      |
-| Cache (node-cache) | Host 타이머, 검색 결과 캐싱, 참여자 상태. CacheStore 인터페이스로 추상화하여 추후 Redis 교체 가능 |
-| YouTube Data API   | 영상 검색, 영상 정보 조회                                                                         |
+| 컴포넌트           | 역할                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| Next.js (Vercel)   | UI 렌더링 전용. 데이터 관련 로직 없음                                                         |
+| Express (Render)   | REST API + Socket.IO + YouTube API 프록시                                                     |
+| Supabase           | 영구 데이터 저장 (PostgreSQL)                                                                 |
+| Prisma             | DB 접근 레이어, 마이그레이션 관리, 타입 생성                                                  |
+| Cache (node-cache) | Host 타이머, 검색 결과 캐싱, 참여자 상태. ICache 인터페이스로 추상화하여 추후 Redis 교체 가능 |
+| YouTube Data API   | 영상 검색, 영상 정보 조회                                                                     |
 
 ---
 
@@ -227,25 +227,26 @@ PR description에 스키마 변경 여부를 명시하는 것을 컨벤션으로
 
 ### 추상화 구조
 
-MVP에서는 node-cache를 사용하되, `CacheStore` 인터페이스로 추상화하여 추후 Redis로 교체 가능하도록 설계한다.
+MVP에서는 node-cache를 사용하되, `ICache` 인터페이스로 추상화하여 추후 Redis로 교체 가능하도록 설계한다.
 
 ```
 apps/backend/src/lib/cache/
-  cache.interface.ts   → CacheStore 인터페이스 정의
-  node-cache.store.ts  → node-cache 구현체 (MVP)
-  redis.store.ts       → Redis 구현체 (추후 교체)
+  cache.interface.ts   → ICache 인터페이스 정의
+  cacheKeys.ts         → 캐시 키/TTL 상수
+  node-cache.store.ts  → node-cache 구현체 (MVP, 현재 유일한 구현체)
   index.ts             → 구현체 주입 (교체 시 이 파일만 수정)
 ```
 
-실제 사용하는 코드는 `CacheStore` 인터페이스만 바라보므로, Redis로 교체 시 비즈니스 로직 수정이 불필요하다.
+실제 사용하는 코드는 `ICache` 인터페이스만 바라보므로, Redis로 교체 시 비즈니스 로직 수정이 불필요하다. 현재 Redis 구현체(`redis.store.ts`)는 존재하지 않으며, 아래 "추후 Redis 교체 조건"이 충족될 때 추가한다.
 
 ### 캐시 사용 대상
 
-| 용도                    | key                   | TTL                  |
-| ----------------------- | --------------------- | -------------------- |
-| Host 타이머 상태        | `host-timer:{roomId}` | 60초                 |
-| YouTube 검색 결과       | `yt-search:{검색어}`  | 5분                  |
-| Room 참여자 온라인 상태 | `presence:{roomId}`   | Socket 이벤트로 갱신 |
+| 용도                       | key                                      | TTL                                                 |
+| -------------------------- | ---------------------------------------- | --------------------------------------------------- |
+| Host 연결 해제 유예 타이머 | `host-timer:{roomId}`                    | 60초                                                |
+| 멤버 연결 해제 유예 타이머 | `member-offline-timer:{roomId}:{userId}` | 없음 (재연결/타임아웃 시 수동 삭제)                 |
+| YouTube 검색 결과          | `yt-search:{검색어}`                     | 5분                                                 |
+| PlaybackState              | `playback:{roomId}`                      | 없음 (play/pause/seek 등으로 갱신, 방 종료 시 삭제) |
 
 ### 추후 Redis 교체 조건
 
@@ -292,13 +293,12 @@ FE와 BE의 도메인이 다르기 때문에 Express에서 CORS를 명시적으�
 ```ts
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'];
 
-const isAllowedOrigin = (origin: string) => {
-  if (allowedOrigins.includes(origin)) return true;
-  // Vercel Preview URL 패턴 허용 (프로젝트명 확정 후 수정)
-  if (/^https:\/\/.*\.vercel\.app$/.test(origin)) return true;
-  return false;
-};
+const isAllowedOrigin = (origin: string) => allowedOrigins.includes(origin);
+```
 
+`*.vercel.app` 같은 와일드카드 패턴은 사용하지 않는다. Vercel은 누구나 무료로 임의의 `*.vercel.app` 서브도메인을 배포할 수 있어, 와일드카드를 허용하면 `credentials: true` 쿠키와 결합해 CSRF 공격 표면이 된다. FE 프리뷰 배포가 필요해지면 `ALLOWED_ORIGINS`에 실제 프로덕션/프리뷰 origin을 명시적으로 추가한다.
+
+```ts
 app.use(
   cors({
     origin: (origin, callback) => {

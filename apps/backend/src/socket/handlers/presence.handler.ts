@@ -7,6 +7,7 @@ import {
   presenceService as defaultPresenceService,
   roomService as defaultRoomService,
 } from '../../ioc';
+import { logger } from '../../lib/logger';
 import { HOST_CLOSE_TIMEOUT_MS, type PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
 import type {
@@ -106,8 +107,7 @@ async function handleRoomDisconnect(
       });
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[presence] disconnect 처리 실패', err);
+    logger.error({ err, roomId, userId }, '[presence] disconnect 처리 실패');
   }
 }
 
@@ -136,8 +136,7 @@ async function handleMemberOfflineTimeout(
     };
     io.to(`room:${roomId}`).emit('presence:update', payload);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[presence] offline 처리 실패', err);
+    logger.error({ err, roomId, userId }, '[presence] offline 처리 실패');
   }
 }
 
@@ -157,13 +156,14 @@ async function handleHostTimeout(
     await deps.roomService.closeRoom(roomId, hostUserId);
   } catch (err) {
     if (err instanceof AppError && err.code === ERROR_CODES.ROOM_ACCESS_DENIED) {
-      // eslint-disable-next-line no-console
-      console.error('[presence] host-timeout closeRoom 생략(이미 종료됨)', err);
+      logger.error(
+        { err, roomId, hostUserId },
+        '[presence] host-timeout closeRoom 생략(이미 종료됨)',
+      );
       return;
     }
 
-    // eslint-disable-next-line no-console
-    console.error('[presence] host-timeout closeRoom 실패', err);
+    logger.error({ err, roomId, hostUserId }, '[presence] host-timeout closeRoom 실패');
     return;
   }
 

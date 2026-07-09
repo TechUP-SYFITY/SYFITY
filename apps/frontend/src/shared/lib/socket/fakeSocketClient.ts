@@ -11,7 +11,6 @@ import type {
   PlaybackCurrentTimePayload,
   PlaybackErrorPayload,
   PlaybackSeekPayload,
-  PlaybackSyncRequestPayload,
 } from '@/shared/types/socket';
 
 import type { SocketClient, SyfityListenEvents, SyfitySocket } from './types';
@@ -176,10 +175,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
     }
 
     case 'playback:sync-request': {
-      const payload = args[0] as PlaybackSyncRequestPayload;
-      if (payload.roomId) {
-        ctx.emitLocal('playback:sync-response', ctx.getPlaybackState());
-      }
+      ctx.emitLocal('playback:sync-response', ctx.getPlaybackState());
       break;
     }
 

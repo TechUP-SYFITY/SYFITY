@@ -60,7 +60,7 @@ export function MiniPlayer({
   const visibleVolume = isVolumeMuted ? 0 : volume;
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/95 px-5 backdrop-blur xl:static xl:h-20 xl:px-6">
+    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/95 px-5 backdrop-blur xl:static xl:h-room-mini-player xl:px-6">
       <div className="flex w-56 min-w-0 flex-none items-center gap-3">
         <TrackArtwork track={currentTrack} />
         <div className="w-24 min-w-0 flex-none">

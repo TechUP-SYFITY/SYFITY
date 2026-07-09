@@ -17,7 +17,7 @@ export function PlaylistPanelHeader({
   return (
     <div className="hidden h-12 items-center justify-between border-b border-border px-4 xl:flex">
       <h2 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-        <ListMusic className="h-3.5 w-3.5 text-primary" aria-hidden />
+        <ListMusic className="h-4 w-4 text-primary" aria-hidden />
         재생목록
         <span className="font-normal text-muted-foreground">{itemCount}곡</span>
         {isBackgroundFetching ? (

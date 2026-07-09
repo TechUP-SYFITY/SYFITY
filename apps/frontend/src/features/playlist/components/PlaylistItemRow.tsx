@@ -76,7 +76,7 @@ export function PlaylistItemRow({
           variant="ghost"
           size="icon"
           className={cn(
-            'h-7 w-7 shrink-0 rounded-full border-0 bg-transparent text-muted-foreground opacity-100 hover:bg-muted',
+            'h-8 w-8 shrink-0 rounded-full border-0 bg-transparent text-muted-foreground opacity-100 hover:bg-muted',
             actionVisibilityClass,
             !isHost && 'hidden',
           )}
@@ -86,7 +86,7 @@ export function PlaylistItemRow({
           onPointerDown={onPreventMouseFocus}
           onClick={() => onPlay(item.id)}
         >
-          <Play className="h-3.5 w-3.5" aria-hidden />
+          <Play className="h-4 w-4" aria-hidden />
         </Button>
         <div
           className={cn(
@@ -98,7 +98,7 @@ export function PlaylistItemRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted"
+            className="h-8 w-8 rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted"
             disabled={!isReady || !isHost || isCurrent}
             type="button"
             data-testid={`playlist-move-up-${item.id}`}
@@ -111,7 +111,7 @@ export function PlaylistItemRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted"
+            className="h-8 w-8 rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted"
             disabled={!isReady || !isHost || isLast}
             type="button"
             data-testid={`playlist-move-down-${item.id}`}
@@ -124,14 +124,14 @@ export function PlaylistItemRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full border-0 bg-transparent text-destructive/70 hover:bg-destructive/10"
+            className="h-8 w-8 rounded-full border-0 bg-transparent text-destructive/70 hover:bg-destructive/10"
             disabled={!isReady || isDeletePending}
             type="button"
             aria-label={`${item.title} 삭제`}
             onPointerDown={onPreventMouseFocus}
             onClick={() => onDelete(item.id)}
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            <Trash2 className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       </div>

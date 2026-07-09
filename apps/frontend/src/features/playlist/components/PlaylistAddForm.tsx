@@ -37,7 +37,7 @@ export function PlaylistAddForm({
         isLoading={isPending}
         type="submit"
       >
-        {!isPending ? <Plus className="h-3.5 w-3.5" aria-hidden /> : null}
+        {!isPending ? <Plus className="h-4 w-4" aria-hidden /> : null}
         추가
       </Button>
     </form>

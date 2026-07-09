@@ -1,5 +1,3 @@
-// 최근 참여한 방 목록 미리보기용 목 데이터.
-// TODO: 백엔드 연동/데이터 확정 후 제거하고 실제 응답만 사용한다.
 import type { RoomSummary } from '@/shared/types/domain';
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();

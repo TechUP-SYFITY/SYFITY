@@ -1,5 +1,3 @@
-'use client';
-
 import { Inbox, LogIn, Plus } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/Button';

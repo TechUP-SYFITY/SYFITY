@@ -1,5 +1,3 @@
-'use client';
-
 import { AudioLines, ChevronRight, Clock, LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 

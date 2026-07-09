@@ -29,7 +29,6 @@ interface RoomPageClientProps {
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const hasRequestedJoin = useRef(false);
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
-  const [joinError, setJoinError] = useState<unknown>(null);
   const joinRoom = useJoinRoom();
   const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
@@ -54,27 +53,17 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       return;
     }
 
-    let isMounted = true;
     hasRequestedJoin.current = true;
-    void joinRoom
-      .mutateAsync({ roomId })
-      .then((data) => {
-        if (isMounted) {
-          setJoinError(null);
+    joinRoom.mutate(
+      { roomId },
+      {
+        onSuccess: (data) => {
           setJoinedRoom(data);
           setPlaylist(data.playlist);
           setPlaybackState(data.playbackState, 'room-join');
-        }
-      })
-      .catch((error: unknown) => {
-        if (isMounted) {
-          setJoinError(error);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+        },
+      },
+    );
   }, [joinRoom, roomId, setJoinedRoom, setPlaybackState, setPlaylist]);
 
   const currentUserId = getCurrentUserId();
@@ -95,10 +84,6 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     previousItemId: previousItem?.id,
     roomId,
   });
-
-  if (joinError) {
-    return <RoomErrorState error={joinError} roomId={roomId} />;
-  }
 
   if (joinRoom.isPending || joinRoom.isIdle) {
     return <RoomLoadingState />;

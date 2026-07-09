@@ -82,7 +82,13 @@ describe('PlaylistPanel reorder', () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(screen.getByTestId(`playlist-move-down-${firstItem.id}`));
+    fireEvent.dragStart(screen.getByTestId(`playlist-drag-handle-${firstItem.id}`), {
+      dataTransfer: { effectAllowed: 'move' },
+    });
+    fireEvent.dragOver(screen.getByTestId(`playlist-row-${secondItem.id}`), {
+      dataTransfer: { dropEffect: 'move' },
+    });
+    fireEvent.drop(screen.getByTestId(`playlist-row-${secondItem.id}`));
 
     await waitFor(() => {
       expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {

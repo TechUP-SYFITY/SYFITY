@@ -38,9 +38,9 @@ export function PlaylistPanel({
   roomId,
   isHost,
   isReady,
-  onPlayItem,
   playlistApiClient,
 }: PlaylistPanelProps) {
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const [focusedActionItemId, setFocusedActionItemId] = useState<string | null>(null);
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -121,11 +121,26 @@ export function PlaylistPanel({
     );
   };
 
-  const handleMove = (itemId: string, direction: -1 | 1) => {
-    const currentIndex = visiblePlaylist.findIndex((item) => item.id === itemId);
-    const nextIndex = currentIndex + direction;
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!isReady || !isHost || !draggingItemId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (targetItemId: string) => {
+    if (!isReady || !isHost || !draggingItemId || draggingItemId === targetItemId) {
+      setDraggingItemId(null);
+      return;
+    }
+
+    const currentIndex = visiblePlaylist.findIndex((item) => item.id === draggingItemId);
+    const nextIndex = visiblePlaylist.findIndex((item) => item.id === targetItemId);
 
     if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePlaylist.length) {
+      setDraggingItemId(null);
       return;
     }
 
@@ -133,11 +148,13 @@ export function PlaylistPanel({
     const [targetItem] = nextPlaylist.splice(currentIndex, 1);
 
     if (!targetItem) {
+      setDraggingItemId(null);
       return;
     }
 
     nextPlaylist.splice(nextIndex, 0, targetItem);
     resetMutationErrors();
+    setDraggingItemId(null);
     reorderPlaylist.mutate({
       items: nextPlaylist.map((item, index) => ({
         id: item.id,
@@ -193,16 +210,18 @@ export function PlaylistPanel({
               key={item.id}
               isCurrent={isCurrent}
               isDeletePending={deletePlaylistItem.isPending}
+              isDragging={draggingItemId === item.id}
               isFocused={focusedActionItemId === item.id}
               isHost={isHost}
-              isLast={index === visiblePlaylist.length - 1}
               isReady={isReady}
               item={item}
               onBlurWithin={(event) => handleRowBlur(event, item.id)}
               onDelete={handleDelete}
+              onDragEnd={() => setDraggingItemId(null)}
+              onDragOver={handleDragOver}
+              onDragStart={setDraggingItemId}
+              onDrop={handleDrop}
               onFocusWithin={() => setFocusedActionItemId(item.id)}
-              onMove={handleMove}
-              onPlay={onPlayItem}
               onPreventMouseFocus={preventMouseFocus}
             />
           );

@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -138,20 +138,26 @@ describe('PlaylistPanel', () => {
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.queryByText('Playlist 불러오는 중')).not.toBeInTheDocument();
   });
-  it('keeps playlist row actions hidden on mobile while preserving desktop hover activation.', () => {
+  it('matches playlist row actions to the Figma desktop and mobile affordances.', () => {
     renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
 
-    expect(screen.getByTestId(`playlist-play-${availableItem.id}`)).toHaveClass(
+    const actions = screen.getByTestId(`playlist-actions-${availableItem.id}`);
+    expect(actions).toHaveClass('hidden', 'xl:flex', 'xl:opacity-0', 'xl:group-hover:opacity-100');
+    expect(screen.queryByTestId(`playlist-play-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`playlist-move-up-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`playlist-move-down-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.getByTestId(`playlist-drag-handle-${availableItem.id}`)).toHaveClass(
       'hidden',
       'xl:inline-flex',
-      'xl:opacity-0',
-      'xl:group-hover:opacity-100',
     );
-    expect(screen.getByTestId(`playlist-actions-${availableItem.id}`)).toHaveClass(
-      'hidden',
-      'xl:flex',
-      'xl:opacity-0',
-      'xl:group-hover:opacity-100',
+
+    fireEvent.focus(screen.getByTestId(`playlist-row-${availableItem.id}`));
+
+    expect(actions).toHaveClass('flex', 'opacity-100');
+    expect(screen.getByRole('button', { name: 'Song One 삭제' })).toHaveClass(
+      'bg-destructive/10',
+      'xl:bg-transparent',
+      'xl:text-destructive/70',
     );
   });
 });

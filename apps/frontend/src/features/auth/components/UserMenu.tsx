@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut } from 'lucide-react';
+import { ChevronDown, LogOut } from 'lucide-react';
 import { useEffect } from 'react';
 
 import {
@@ -37,7 +37,7 @@ export function UserMenu({ api = authApi }: UserMenuProps) {
     return null;
   }
   if (isPending) {
-    return <div className="size-10 animate-pulse rounded-full bg-white/10" aria-hidden />;
+    return <div className="h-10 w-24 animate-pulse rounded-full bg-white/10" aria-hidden />;
   }
 
   if (!me) {
@@ -50,12 +50,14 @@ export function UserMenu({ api = authApi }: UserMenuProps) {
         <button
           type="button"
           aria-label="사용자 메뉴"
-          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex cursor-pointer items-center gap-2 rounded-full text-white outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Avatar>
+          <Avatar size="sm">
             {me.profileImage && <AvatarImage src={me.profileImage} alt={me.nickname} />}
             <AvatarFallback>{getInitial(me.nickname)}</AvatarFallback>
           </Avatar>
+          <span className="text-sm font-bold">{me.nickname}</span>
+          <ChevronDown className="size-4 text-white/45" aria-hidden />
         </button>
       </DropdownMenuTrigger>
 

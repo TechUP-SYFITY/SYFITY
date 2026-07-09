@@ -138,6 +138,22 @@ describe('PlaylistPanel', () => {
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.queryByText('Playlist 불러오는 중')).not.toBeInTheDocument();
   });
+  it('keeps playlist row actions hidden on mobile while preserving desktop hover activation.', () => {
+    renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
+
+    expect(screen.getByTestId(`playlist-play-${availableItem.id}`)).toHaveClass(
+      'hidden',
+      'xl:inline-flex',
+      'xl:opacity-0',
+      'xl:group-hover:opacity-100',
+    );
+    expect(screen.getByTestId(`playlist-actions-${availableItem.id}`)).toHaveClass(
+      'hidden',
+      'xl:flex',
+      'xl:opacity-0',
+      'xl:group-hover:opacity-100',
+    );
+  });
 });
 
 function getMetaText(text: string) {

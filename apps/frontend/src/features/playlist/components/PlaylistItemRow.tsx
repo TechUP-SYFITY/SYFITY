@@ -42,6 +42,8 @@ export function PlaylistItemRow({
   const actionVisibilityClass = isFocused
     ? 'xl:opacity-100'
     : 'xl:opacity-0 xl:group-hover:opacity-100';
+  const playActionDisplayClass = isHost ? 'hidden xl:inline-flex' : 'hidden';
+  const groupActionDisplayClass = isHost ? 'hidden xl:flex' : 'hidden';
 
   return (
     <div
@@ -75,10 +77,11 @@ export function PlaylistItemRow({
         <Button
           variant="ghost"
           size="icon"
+          data-testid={`playlist-play-${item.id}`}
           className={cn(
-            'h-8 w-8 shrink-0 rounded-full border-0 bg-transparent text-muted-foreground opacity-100 hover:bg-muted',
+            'h-8 w-8 shrink-0 rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted',
+            playActionDisplayClass,
             actionVisibilityClass,
-            !isHost && 'hidden',
           )}
           disabled={!isReady || !isHost || isUnavailable}
           type="button"
@@ -89,10 +92,11 @@ export function PlaylistItemRow({
           <Play className="h-4 w-4" aria-hidden />
         </Button>
         <div
+          data-testid={`playlist-actions-${item.id}`}
           className={cn(
-            'flex shrink-0 items-center gap-1 opacity-100 transition',
+            'shrink-0 items-center gap-1 transition',
+            groupActionDisplayClass,
             actionVisibilityClass,
-            !isHost && 'hidden',
           )}
         >
           <Button

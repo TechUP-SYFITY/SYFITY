@@ -74,7 +74,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
                 backgroundImage: `url(${posterUrl})`,
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-foreground/5 to-destructive/30" />
+            <div className="absolute inset-0 bg-linear-to-r from-background/50 via-foreground/5 to-accent/20" />
             <div className="absolute inset-0 bg-background/10" />
             <div className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-background/60 text-foreground">
               <Play className="h-6 w-6 translate-x-0.5" aria-hidden />

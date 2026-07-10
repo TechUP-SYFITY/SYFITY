@@ -10,6 +10,10 @@ const preview: Preview = {
   tags: ['autodocs'],
   loaders: [mswLoader],
   parameters: {
+    nextjs: {
+      appDirectory: true,
+    },
+
     controls: {
       matchers: {
         color: /(background|color)$/i,

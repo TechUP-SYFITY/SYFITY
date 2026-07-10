@@ -14,11 +14,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <main className="relative flex min-h-full flex-1 flex-col overflow-hidden bg-background px-6 pt-16 pb-8">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(60% 50% at 50% 30%, rgba(114,244,164,0.10), transparent 70%)',
-        }}
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_30%,rgba(114,244,164,0.10),transparent_70%)]"
       />
 
       <div className="relative flex flex-1 items-center justify-center">

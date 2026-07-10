@@ -3,6 +3,7 @@
 // Room 화면의 PC와 모바일 레이아웃을 features 컴포넌트로 조립한다.
 import type { ReactNode } from 'react';
 
+import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type {
   ChatMessage,
@@ -15,7 +16,6 @@ import type {
 import { MiniPlayer, type MiniPlayerPendingCommand } from './components/MiniPlayer';
 import type { RoomMobileTab } from './components/MobileTabs';
 import { RoomDesktopLayout } from './components/RoomDesktopLayout';
-import { RoomHeader } from './components/RoomHeader';
 import { RoomMobileLayout } from './components/RoomMobileLayout';
 import { RoomStatusBar } from './components/RoomStatusBar';
 
@@ -25,6 +25,7 @@ interface RoomShellProps {
   activeMobileTab: RoomMobileTab;
   chats: ChatMessage[];
   currentUserName?: string;
+  headerActions?: ReactNode;
   isHost: boolean;
   miniPlayerCommandError: string | null;
   miniPlayerControlDisabled: boolean;
@@ -52,6 +53,7 @@ export function RoomShell({
   activeMobileTab,
   chats,
   currentUserName = '게스트',
+  headerActions,
   isHost,
   miniPlayerCommandError,
   miniPlayerControlDisabled,
@@ -80,7 +82,7 @@ export function RoomShell({
   return (
     <main className="h-dvh overflow-hidden bg-background text-foreground">
       <div className="flex h-full min-h-0 flex-col">
-        <RoomHeader currentUserName={currentUserName} />
+        <Header variant="app" actions={headerActions} />
         <RoomStatusBar
           onInviteClick={onInviteClick}
           onlineMemberCount={onlineMemberCount}

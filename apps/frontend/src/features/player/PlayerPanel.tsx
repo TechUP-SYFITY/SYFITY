@@ -4,7 +4,7 @@
 import { AlertTriangle, Play } from 'lucide-react';
 
 import { formatDuration } from '@/shared/lib/formatDuration';
-import { getCurrentPlaylistItem } from '@/shared/lib/playback';
+import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
@@ -23,10 +23,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const posterUrl = currentTrack ? getThumbnailUrl(currentTrack) : null;
   const shouldShowPoster = Boolean(posterUrl) && !playbackState?.isPlaying;
-  const currentIndex = currentTrack
-    ? playlist.findIndex((item) => item.id === currentTrack.id)
-    : -1;
-  const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
+  const { nextItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
 
   function handleBufferingRecovered() {
     if (!playbackState?.videoId) {

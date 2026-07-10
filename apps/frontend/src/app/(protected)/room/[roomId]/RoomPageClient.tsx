@@ -3,7 +3,7 @@
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
 import { useEffect, useState } from 'react';
 
-import { getCurrentPlaylistItem } from '@/shared/lib/playback';
+import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
 
 import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
@@ -65,11 +65,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
-  const currentIndex = currentTrack
-    ? playlist.findIndex((item) => item.id === currentTrack.id)
-    : -1;
-  const previousItem = currentIndex > 0 ? playlist[currentIndex - 1] : undefined;
-  const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
+  const { nextItem, previousItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
   const currentTime =
     localPlaybackPosition && localPlaybackPosition.videoId === playbackState?.videoId
       ? localPlaybackPosition.currentTime

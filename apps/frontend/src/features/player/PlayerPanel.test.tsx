@@ -129,6 +129,22 @@ describe('PlayerPanel', () => {
     });
   });
 
+  it('Host에서 영상 종료 시 unavailable 곡을 건너뛰고 다음 곡을 변경한다', async () => {
+    seedPlayback(false);
+    const playlistWithUnavailable = [
+      playlist[0],
+      { ...playlist[1], status: 'unavailable' as const },
+      { ...playlist[1], id: 'playlist-item-3', position: 3, videoId: 'video-3' },
+    ];
+    render(<PlayerPanel roomId={roomId} isHost playlist={playlistWithUnavailable} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
+
+    await waitFor(() => {
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-3');
+    });
+  });
+
   it('Member에서 영상 종료 시 곡 변경 명령을 보내지 않는다', () => {
     seedPlayback(false);
     render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);

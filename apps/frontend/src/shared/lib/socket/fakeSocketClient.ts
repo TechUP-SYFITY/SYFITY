@@ -168,7 +168,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
       const ack = readAck(args[1]);
       const targetItem = roomFixture.playlist.find((item) => item.id === payload.playlistItemId);
 
-      if (!targetItem) {
+      if (targetItem?.status !== 'available') {
         ack?.({
           success: false,
           error: {

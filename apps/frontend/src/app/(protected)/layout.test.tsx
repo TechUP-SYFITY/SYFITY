@@ -35,6 +35,8 @@ describe('ProtectedLayout auth boundary', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_API_MOCKING = 'disabled';
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = 'disabled';
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     redirectMock.mockClear();

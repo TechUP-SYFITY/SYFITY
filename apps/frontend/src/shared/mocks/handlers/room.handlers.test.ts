@@ -30,16 +30,16 @@ describe('room MSW handlers', () => {
     });
   });
 
-  it('keeps roomId-only join unsupported to match the backend contract', async () => {
+  it('joins the fixture room by roomId for protected route preview', async () => {
     const { data, status } = await joinRoom({ roomId: roomFixture.room.id });
 
-    expect(status).toBe(404);
+    expect(status).toBe(200);
     expect(data).toEqual({
-      success: false,
-      error: {
-        code: 'ROOM_NOT_FOUND',
-        message: 'Room not found',
-      },
+      success: true,
+      data: expect.objectContaining({
+        playlist: roomFixture.playlist,
+        room: roomFixture.room,
+      }),
     });
   });
 });

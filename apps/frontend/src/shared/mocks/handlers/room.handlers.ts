@@ -23,6 +23,10 @@ const notFound = (code: string, message: string) =>
     status: 404,
   });
 
+type MockJoinRoomRequest = Partial<JoinRoomRequest> & {
+  roomId?: string;
+};
+
 export const roomHandlers = [
   http.get(`${API}/rooms/recent`, () =>
     HttpResponse.json({
@@ -54,9 +58,9 @@ export const roomHandlers = [
     } satisfies CreateRoomResponse);
   }),
   http.post(`${API}/rooms/join`, async ({ request }) => {
-    const body = (await request.json()) as Partial<JoinRoomRequest>;
+    const body = (await request.json()) as MockJoinRoomRequest;
 
-    if (body.inviteCode !== roomFixture.room.inviteCode) {
+    if (body.inviteCode !== roomFixture.room.inviteCode && body.roomId !== roomFixture.room.id) {
       return notFound('ROOM_NOT_FOUND', 'Room not found');
     }
 

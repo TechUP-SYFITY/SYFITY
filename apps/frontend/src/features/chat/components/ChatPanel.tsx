@@ -5,6 +5,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
+import { useSendChatMessage } from '../chatHooks';
+import { useChatStore } from '../chatStore';
 import { ChatInputForm } from './ChatInputForm';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSystemMessage } from './ChatSystemMessage';
@@ -20,10 +22,12 @@ export function ChatPanel({
   currentUserName,
   currentUserProfileImage,
   messages,
-  roomId: _roomId,
+  roomId,
 }: ChatPanelProps) {
-  const visibleMessages = messages ?? [];
-  const sendMessage = (_message: string) => undefined;
+  const storeMessages = useChatStore((state) => state.messages);
+  const sendError = useChatStore((state) => state.sendError);
+  const { sendMessage } = useSendChatMessage(roomId, currentUserName, currentUserProfileImage);
+  const visibleMessages = messages ?? storeMessages;
 
   return (
     <aside className="flex h-full min-h-0 flex-1 flex-col bg-background">
@@ -46,7 +50,7 @@ export function ChatPanel({
           <AvatarImage src={currentUserProfileImage ?? undefined} alt={currentUserName ?? '나'} />
           <AvatarFallback>{(currentUserName ?? 'S').slice(0, 1)}</AvatarFallback>
         </Avatar>
-        <ChatInputForm onSubmit={sendMessage} />
+        <ChatInputForm errorMessage={sendError ?? undefined} onSubmit={sendMessage} />
       </div>
     </aside>
   );

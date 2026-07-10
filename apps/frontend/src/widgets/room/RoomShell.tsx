@@ -1,7 +1,7 @@
 'use client';
 
 // Room 화면의 PC와 모바일 레이아웃을 features 컴포넌트로 조립한다.
-import type { ReactNode } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 
 import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
@@ -21,6 +21,8 @@ import { RoomDesktopLayout } from './components/RoomDesktopLayout';
 import { RoomMobileLayout } from './components/RoomMobileLayout';
 
 export type { RoomMobileTab } from '@/features/room/components/MobileTabs';
+
+const DESKTOP_MEDIA_QUERY = '(min-width: 80rem)';
 
 interface RoomShellProps {
   activeMobileTab: RoomMobileTab;
@@ -79,6 +81,11 @@ export function RoomShell({
   renderPlaylistPanel,
   room,
 }: RoomShellProps) {
+  const isDesktop = useSyncExternalStore(
+    subscribeToDesktopViewport,
+    getDesktopViewportSnapshot,
+    getServerViewportSnapshot,
+  );
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const onlineMemberCount = members.filter((member) => member.status === 'online').length;
 
@@ -91,22 +98,25 @@ export function RoomShell({
           onlineMemberCount={onlineMemberCount}
           room={room}
         />
-        <RoomDesktopLayout
-          chats={chats}
-          members={members}
-          renderPlayerPanel={renderPlayerPanel}
-          renderPlaylistPanel={renderPlaylistPanel}
-        />
-        <RoomMobileLayout
-          activeMobileTab={activeMobileTab}
-          chats={chats}
-          currentUserName={currentUserName}
-          isHost={isHost}
-          members={members}
-          onMobileTabChange={onMobileTabChange}
-          renderPlayerPanel={renderPlayerPanel}
-          renderPlaylistPanel={renderPlaylistPanel}
-        />
+        {isDesktop ? (
+          <RoomDesktopLayout
+            chats={chats}
+            members={members}
+            renderPlayerPanel={renderPlayerPanel}
+            renderPlaylistPanel={renderPlaylistPanel}
+          />
+        ) : (
+          <RoomMobileLayout
+            activeMobileTab={activeMobileTab}
+            chats={chats}
+            currentUserName={currentUserName}
+            isHost={isHost}
+            members={members}
+            onMobileTabChange={onMobileTabChange}
+            renderPlayerPanel={renderPlayerPanel}
+            renderPlaylistPanel={renderPlaylistPanel}
+          />
+        )}
 
         <MiniPlayer
           commandError={miniPlayerCommandError}
@@ -129,4 +139,25 @@ export function RoomShell({
       </div>
     </main>
   );
+}
+
+function subscribeToDesktopViewport(onStoreChange: () => void) {
+  if (typeof window.matchMedia !== 'function') {
+    return () => undefined;
+  }
+
+  const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+  mediaQuery.addEventListener('change', onStoreChange);
+
+  return () => mediaQuery.removeEventListener('change', onStoreChange);
+}
+
+function getDesktopViewportSnapshot() {
+  return typeof window.matchMedia === 'function'
+    ? window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+    : false;
+}
+
+function getServerViewportSnapshot() {
+  return false;
 }

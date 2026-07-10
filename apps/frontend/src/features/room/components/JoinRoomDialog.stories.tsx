@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 
 import { ApiClientError } from '@/shared/types/api';
-import type { JoinedRoomData } from '@/shared/types/domain';
 
 import type { RoomApi } from '../roomApi';
 import { JoinRoomDialog } from './JoinRoomDialog';
@@ -12,19 +11,21 @@ import { JoinRoomDialog } from './JoinRoomDialog';
 type RoomApiOverride = Partial<RoomApi>;
 type StoryRender = () => ReactNode;
 
-const joinedRoomData: JoinedRoomData = {
+const joinedRoomData = {
   room: {
     id: 'story-room',
     name: 'Chill Night',
-    status: 'active',
+    status: 'active' as const,
     inviteCode: '3F9A2C',
     hostId: 'story-host',
+    createdAt: new Date().toISOString(),
   },
   playbackState: {
     videoId: null,
     playlistItemId: null,
     currentTime: 0,
     isPlaying: false,
+    updatedAt: new Date().toISOString(),
   },
   playlist: [],
   members: [],

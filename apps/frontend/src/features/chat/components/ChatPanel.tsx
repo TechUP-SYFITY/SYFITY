@@ -35,15 +35,13 @@ export function ChatPanel({
         <h2 className="text-xs font-semibold text-muted-foreground">채팅</h2>
       </div>
       <div className="min-h-0 flex-1 scrollbar-none space-y-4 overflow-y-auto px-6 py-5">
-        {visibleMessages.map((chat) => (
-          <div key={chat.id}>
-            {chat.type === 'system' ? (
-              <ChatSystemMessage chat={chat} />
-            ) : (
-              <ChatMessageItem chat={chat} />
-            )}
-          </div>
-        ))}
+        {visibleMessages.map((chat) =>
+          chat.type === 'system' ? (
+            <ChatSystemMessage key={chat.id} chat={chat} />
+          ) : (
+            <ChatMessageItem key={chat.id} chat={chat} />
+          ),
+        )}
       </div>
       <div className="flex shrink-0 items-start gap-3 border-t border-border px-5 py-3 xl:gap-2 xl:p-4">
         <Avatar size="sm" className="mt-2 size-6 text-xs xl:hidden">

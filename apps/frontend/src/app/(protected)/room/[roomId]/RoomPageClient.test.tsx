@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -163,5 +163,40 @@ describe('RoomPageClient', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('재생할 수 없는 영상이에요.');
     expect(requestedRoomId).toBe(roomFixture.room.id);
+  });
+
+  it('곡 추가 패널의 링크 탭에서 YouTube URL을 추가한다', async () => {
+    let requestedBody: unknown;
+
+    server.use(
+      http.post('*/api/v1/rooms/:roomId/playlist', async ({ request }) => {
+        requestedBody = await request.json();
+
+        return HttpResponse.json({
+          success: true,
+          data: roomFixture.playlist[0],
+        });
+      }),
+    );
+
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(openSearchButton as HTMLButtonElement);
+    fireEvent.click(await screen.findByRole('tab', { name: '링크' }));
+    fireEvent.change(screen.getByPlaceholderText('YouTube URL'), {
+      target: { value: 'https://youtu.be/yellow' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '링크 추가' }));
+
+    await waitFor(() => {
+      expect(requestedBody).toEqual({ youtubeUrl: 'https://youtu.be/yellow' });
+    });
   });
 });

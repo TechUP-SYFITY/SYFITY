@@ -106,6 +106,15 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     addSearchResult.mutate({ videoId: result.videoId });
   };
 
+  const handleAddYoutubeUrl = (youtubeUrl: string) => {
+    if (!hasJoinedRoom) {
+      return;
+    }
+
+    addSearchResult.reset();
+    addSearchResult.mutate({ youtubeUrl });
+  };
+
   return (
     <>
       <RoomShell
@@ -147,9 +156,11 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         addErrorMessage={
           addSearchResult.isError ? getPlaylistErrorMessage(addSearchResult.error) : undefined
         }
+        isAddPending={addSearchResult.isPending}
         isOpen={isSearchPanelOpen}
         roomName={room?.name ?? 'Room'}
         onAddResult={handleAddSearchResult}
+        onAddUrl={handleAddYoutubeUrl}
         onClose={handleCloseSearch}
       />
     </>

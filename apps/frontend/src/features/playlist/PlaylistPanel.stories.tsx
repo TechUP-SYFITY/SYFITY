@@ -59,6 +59,7 @@ const meta = {
     roomId,
     isHost: true,
     isReady: true,
+    onOpenSearch: () => undefined,
     playlistApiClient: createPlaylistApiMock(),
   },
 } satisfies Meta<typeof PlaylistPanel>;
@@ -126,14 +127,6 @@ function getButtonAt(buttons: HTMLElement[], index: number) {
   return button;
 }
 
-async function openAddForm(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement);
-
-  await userEvent.click(getButtonAt(canvas.getAllByRole('button'), 0));
-
-  return canvas;
-}
-
 export const ApiSuccess: Story = {
   decorators: [withPlaylistStoryFrame()],
 };
@@ -179,25 +172,6 @@ export const MemberView: Story = {
     isHost: false,
   },
   decorators: [withPlaylistStoryFrame()],
-};
-
-export const AddFailureInteraction: Story = {
-  args: {
-    playlistApiClient: createPlaylistApiMock({
-      addPlaylistItem: async () => {
-        throw new Error('add failed');
-      },
-    }),
-  },
-  decorators: [withPlaylistStoryFrame()],
-  play: async ({ canvasElement }) => {
-    const canvas = await openAddForm(canvasElement);
-
-    await userEvent.type(canvas.getByPlaceholderText('YouTube URL'), 'https://youtu.be/fail');
-    await userEvent.keyboard('{Enter}');
-
-    await expect(canvas.findByText('add failed')).resolves.toBeInTheDocument();
-  },
 };
 
 export const DeleteFailureInteraction: Story = {

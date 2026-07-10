@@ -4,6 +4,7 @@ import {
   ChevronDown,
   CircleAlert,
   Inbox,
+  Link2,
   LoaderCircle,
   Music2,
   Plus,
@@ -11,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
@@ -24,27 +25,51 @@ const SEARCH_DEBOUNCE_DELAY = 350;
 
 interface SearchPanelProps {
   addErrorMessage?: string;
+  isAddPending?: boolean;
   isOpen: boolean;
   roomName: string;
   initialQuery?: string;
   onAddResult?: (result: YoutubeSearchResult) => void;
+  onAddUrl?: (youtubeUrl: string) => void;
   onClose: () => void;
 }
 
+type AddMode = 'search' | 'link';
+
 export function SearchPanel({
   addErrorMessage,
+  isAddPending = false,
   isOpen,
   roomName,
   initialQuery = '',
   onAddResult,
+  onAddUrl,
   onClose,
 }: SearchPanelProps) {
+  const [addMode, setAddMode] = useState<AddMode>('search');
   const [query, setQuery] = useState(initialQuery);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const linkInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_DELAY);
-  const searchQuery = useYoutubeSearchQuery(isOpen ? debouncedQuery.trim() : '');
+  const searchQuery = useYoutubeSearchQuery(
+    isOpen && addMode === 'search' ? debouncedQuery.trim() : '',
+  );
   const results = searchQuery.data ?? [];
   const trimmedQuery = query.trim();
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (addMode === 'search') {
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    linkInputRef.current?.focus();
+  }, [addMode, isOpen]);
 
   if (!isOpen) {
     return null;
@@ -61,6 +86,17 @@ export function SearchPanel({
     }
   };
 
+  const handleLinkSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const trimmedUrl = youtubeUrl.trim();
+    if (!trimmedUrl || !onAddUrl || isAddPending) {
+      return;
+    }
+
+    onAddUrl(trimmedUrl);
+  };
+
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
@@ -75,7 +111,12 @@ export function SearchPanel({
           className="fixed right-0 bottom-0 left-0 z-50 flex h-[80dvh] max-h-[calc(100dvh-1rem)] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 outline-none slide-in-from-bottom-4 lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-[448px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            searchInputRef.current?.focus();
+            if (addMode === 'search') {
+              searchInputRef.current?.focus();
+              return;
+            }
+
+            linkInputRef.current?.focus();
           }}
         >
           <div className="flex h-5 items-center justify-center border-b border-white/[0.04] lg:hidden">
@@ -106,30 +147,41 @@ export function SearchPanel({
             </DialogPrimitive.Close>
           </header>
 
-          <div className="border-b border-white/[0.07] px-4 py-4">
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
-                aria-hidden
-              />
-              <input
-                ref={searchInputRef}
-                className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-11 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09]"
-                placeholder="YouTube 영상 검색"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {query ? (
-                <button
-                  className="absolute top-1/2 right-4 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-white/38 transition hover:text-white/70"
-                  type="button"
-                  aria-label="검색어 지우기"
-                  onClick={() => setQuery('')}
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              ) : null}
-            </div>
+          <div
+            className="grid grid-cols-2 gap-1 border-b border-white/[0.07] bg-white/[0.025] p-1"
+            role="tablist"
+            aria-label="곡 추가 방식"
+          >
+            <button
+              className={cn(
+                'rounded-xl px-3 py-2 text-xs font-bold transition',
+                addMode === 'search'
+                  ? 'bg-white/[0.09] text-[#72f4a4]'
+                  : 'text-white/45 hover:text-white/70',
+              )}
+              type="button"
+              role="tab"
+              aria-controls="search-panel-search"
+              aria-selected={addMode === 'search'}
+              onClick={() => setAddMode('search')}
+            >
+              검색
+            </button>
+            <button
+              className={cn(
+                'rounded-xl px-3 py-2 text-xs font-bold transition',
+                addMode === 'link'
+                  ? 'bg-white/[0.09] text-[#72f4a4]'
+                  : 'text-white/45 hover:text-white/70',
+              )}
+              type="button"
+              role="tab"
+              aria-controls="search-panel-link"
+              aria-selected={addMode === 'link'}
+              onClick={() => setAddMode('link')}
+            >
+              링크
+            </button>
           </div>
 
           {addErrorMessage ? (
@@ -142,37 +194,118 @@ export function SearchPanel({
             </p>
           ) : null}
 
-          <div className="min-h-[280px] flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
-            {searchQuery.isLoading ? <SearchPanelLoading /> : null}
-            {searchQuery.isError ? <SearchPanelError message={searchQuery.error.message} /> : null}
-            {!searchQuery.isLoading && !searchQuery.isError && hasResults ? (
-              <>
-                <p className="border-b border-white/[0.055] px-4 py-3 text-xs text-white/45">
-                  검색 결과 {results.length}개
-                </p>
-                <ul>
-                  {results.map((result) => (
-                    <SearchResultItem
-                      key={result.videoId}
-                      result={result}
-                      onAdd={onAddResult ? () => onAddResult(result) : undefined}
-                    />
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {shouldShowEmpty ? <SearchPanelEmpty query={trimmedQuery} /> : null}
-            {!hasSearchQuery && !searchQuery.isLoading && !searchQuery.isError ? (
-              <SearchPanelIdle />
-            ) : null}
-          </div>
+          {addMode === 'search' ? (
+            <div id="search-panel-search" className="flex min-h-0 flex-1 flex-col" role="tabpanel">
+              <div className="border-b border-white/[0.07] px-4 py-4">
+                <div className="relative">
+                  <Search
+                    className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
+                    aria-hidden
+                  />
+                  <input
+                    ref={searchInputRef}
+                    className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-11 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09]"
+                    placeholder="YouTube 영상 검색"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                  {query ? (
+                    <button
+                      className="absolute top-1/2 right-4 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-white/38 transition hover:text-white/70"
+                      type="button"
+                      aria-label="검색어 지우기"
+                      onClick={() => setQuery('')}
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div className="min-h-[280px] flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                {searchQuery.isLoading ? <SearchPanelLoading /> : null}
+                {searchQuery.isError ? (
+                  <SearchPanelError message={searchQuery.error.message} />
+                ) : null}
+                {!searchQuery.isLoading && !searchQuery.isError && hasResults ? (
+                  <>
+                    <p className="border-b border-white/[0.055] px-4 py-3 text-xs text-white/45">
+                      검색 결과 {results.length}개
+                    </p>
+                    <ul>
+                      {results.map((result) => (
+                        <SearchResultItem
+                          key={result.videoId}
+                          isAddPending={isAddPending}
+                          result={result}
+                          onAdd={onAddResult ? () => onAddResult(result) : undefined}
+                        />
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+                {shouldShowEmpty ? <SearchPanelEmpty query={trimmedQuery} /> : null}
+                {!hasSearchQuery && !searchQuery.isLoading && !searchQuery.isError ? (
+                  <SearchPanelIdle />
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <form
+              id="search-panel-link"
+              className="flex min-h-[360px] flex-1 flex-col px-5 py-6"
+              role="tabpanel"
+              onSubmit={handleLinkSubmit}
+            >
+              <label className="text-sm font-bold text-white" htmlFor="search-panel-youtube-url">
+                YouTube 링크
+              </label>
+              <p className="mt-1 text-xs leading-5 text-white/45">
+                YouTube 또는 YouTube Music의 공유 링크를 붙여 넣어주세요.
+              </p>
+              <div className="relative mt-5">
+                <Link2
+                  className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
+                  aria-hidden
+                />
+                <input
+                  ref={linkInputRef}
+                  id="search-panel-youtube-url"
+                  className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-4 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="YouTube URL"
+                  value={youtubeUrl}
+                  disabled={isAddPending}
+                  onChange={(event) => setYoutubeUrl(event.target.value)}
+                />
+              </div>
+              <button
+                className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[18px] bg-[#72f4a4] px-4 text-sm font-bold text-black transition hover:bg-[#8af7b5] disabled:cursor-not-allowed disabled:opacity-45"
+                type="submit"
+                disabled={!youtubeUrl.trim() || !onAddUrl || isAddPending}
+              >
+                {isAddPending ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Plus className="h-4 w-4" aria-hidden />
+                )}
+                링크 추가
+              </button>
+            </form>
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   );
 }
 
-function SearchResultItem({ result, onAdd }: { result: YoutubeSearchResult; onAdd?: () => void }) {
+function SearchResultItem({
+  isAddPending,
+  result,
+  onAdd,
+}: {
+  isAddPending: boolean;
+  result: YoutubeSearchResult;
+  onAdd?: () => void;
+}) {
   return (
     <li className="flex min-h-[68px] items-center gap-3 border-b border-white/[0.055] px-4 py-3 transition hover:bg-white/[0.025] lg:min-h-[69px]">
       <span
@@ -192,7 +325,7 @@ function SearchResultItem({ result, onAdd }: { result: YoutubeSearchResult; onAd
         className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#72f4a4]/20 bg-[#72f4a4]/10 px-3 text-xs font-bold text-[#72f4a4] transition hover:bg-[#72f4a4]/15 disabled:cursor-not-allowed disabled:opacity-45"
         type="button"
         aria-label={`${result.title} 추가`}
-        disabled={!onAdd}
+        disabled={!onAdd || isAddPending}
         onClick={onAdd}
       >
         <Plus className="h-3 w-3" aria-hidden />

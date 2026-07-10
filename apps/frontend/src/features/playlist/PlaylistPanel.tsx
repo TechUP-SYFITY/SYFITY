@@ -7,7 +7,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/shared/components/ui';
 import type { PlaylistItem } from '@/shared/types/domain';
 
-import { PlaylistAddForm } from './components/PlaylistAddForm';
 import { PlaylistEmptyState } from './components/PlaylistEmptyState';
 import { PlaylistErrorState } from './components/PlaylistErrorState';
 import { PlaylistItemRow } from './components/PlaylistItemRow';
@@ -16,12 +15,7 @@ import { PlaylistMutationError } from './components/PlaylistMutationError';
 import { PlaylistPanelHeader } from './components/PlaylistPanelHeader';
 import type { PlaylistApi } from './playlistApi';
 import { getPlaylistErrorMessage } from './playlistErrorMessage';
-import {
-  useAddPlaylistItem,
-  useDeletePlaylistItem,
-  usePlaylist,
-  useReorderPlaylist,
-} from './playlistHooks';
+import { useDeletePlaylistItem, usePlaylist, useReorderPlaylist } from './playlistHooks';
 import { usePlaylistStore } from './playlistStore';
 
 interface PlaylistPanelProps {
@@ -29,7 +23,7 @@ interface PlaylistPanelProps {
   roomId: string;
   isHost: boolean;
   isReady: boolean;
-  onOpenSearch?: () => void;
+  onOpenSearch: () => void;
   playlistApiClient?: PlaylistApi;
 }
 
@@ -44,8 +38,6 @@ export function PlaylistPanel({
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const draggingItemIdRef = useRef<string | null>(null);
   const [focusedActionItemId, setFocusedActionItemId] = useState<string | null>(null);
-  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-  const [youtubeUrl, setYoutubeUrl] = useState('');
   const shouldUseParentPlaylist = Boolean(playlistItems);
   const {
     data,
@@ -55,7 +47,6 @@ export function PlaylistPanel({
     isLoading,
     refetch,
   } = usePlaylist(roomId, isReady && !shouldUseParentPlaylist, playlistApiClient);
-  const addPlaylistItem = useAddPlaylistItem(roomId, playlistApiClient);
   const deletePlaylistItem = useDeletePlaylistItem(roomId, playlistApiClient);
   const reorderPlaylist = useReorderPlaylist(roomId, playlistApiClient);
   const playlist = usePlaylistStore((state) => state.playlist);
@@ -63,11 +54,10 @@ export function PlaylistPanel({
   const visiblePlaylist = playlistItems ?? playlist;
   const isInitialLoading = isLoading && visiblePlaylist.length === 0;
   const isBackgroundFetching = isFetching && !isLoading && visiblePlaylist.length > 0;
-  const mutationError = addPlaylistItem.error ?? deletePlaylistItem.error ?? reorderPlaylist.error;
+  const mutationError = deletePlaylistItem.error ?? reorderPlaylist.error;
   const mutationErrorMessage = mutationError ? getPlaylistErrorMessage(mutationError) : undefined;
 
   const resetMutationErrors = () => {
-    addPlaylistItem.reset();
     deletePlaylistItem.reset();
     reorderPlaylist.reset();
   };
@@ -93,26 +83,9 @@ export function PlaylistPanel({
     setFocusedActionItemId((currentItemId) => (currentItemId === itemId ? null : currentItemId));
   };
 
-  const handleToggleAddForm = () => {
+  const handleOpenSearch = () => {
     resetMutationErrors();
-
-    if (onOpenSearch) {
-      onOpenSearch();
-      return;
-    }
-
-    setIsAddFormOpen((value) => !value);
-  };
-
-  const handleOpenAddForm = () => {
-    resetMutationErrors();
-
-    if (onOpenSearch) {
-      onOpenSearch();
-      return;
-    }
-
-    setIsAddFormOpen(true);
+    onOpenSearch();
   };
 
   useEffect(() => {
@@ -120,25 +93,6 @@ export function PlaylistPanel({
       setPlaylist(data.playlist);
     }
   }, [data?.playlist, setPlaylist, shouldUseParentPlaylist]);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const trimmedUrl = youtubeUrl.trim();
-    if (!isReady || !trimmedUrl || addPlaylistItem.isPending) {
-      return;
-    }
-
-    resetMutationErrors();
-    addPlaylistItem.mutate(
-      { youtubeUrl: trimmedUrl },
-      {
-        onSuccess: () => {
-          setYoutubeUrl('');
-        },
-      },
-    );
-  };
 
   const handleDrop = (targetItemId: string) => {
     const currentDraggingItemId = draggingItemIdRef.current;
@@ -256,23 +210,10 @@ export function PlaylistPanel({
       <PlaylistPanelHeader
         isBackgroundFetching={isBackgroundFetching}
         itemCount={visiblePlaylist.length}
-        onAddClick={handleToggleAddForm}
+        onAddClick={handleOpenSearch}
       />
 
-      {isAddFormOpen ? (
-        <PlaylistAddForm
-          errorMessage={addPlaylistItem.isError ? mutationErrorMessage : undefined}
-          isPending={addPlaylistItem.isPending}
-          isReady={isReady}
-          onSubmit={handleSubmit}
-          onYoutubeUrlChange={setYoutubeUrl}
-          youtubeUrl={youtubeUrl}
-        />
-      ) : null}
-
-      {mutationErrorMessage && !addPlaylistItem.isError ? (
-        <PlaylistMutationError message={mutationErrorMessage} />
-      ) : null}
+      {mutationErrorMessage ? <PlaylistMutationError message={mutationErrorMessage} /> : null}
 
       <div className="min-w-0 flex-1 overflow-y-auto">
         {isInitialLoading ? <PlaylistLoadingState /> : null}
@@ -283,7 +224,7 @@ export function PlaylistPanel({
           />
         ) : null}
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
-          <PlaylistEmptyState isReady={isReady} onAddClick={handleOpenAddForm} />
+          <PlaylistEmptyState isReady={isReady} onAddClick={handleOpenSearch} />
         ) : null}
         {visiblePlaylist.map((item, index) => {
           const isCurrent = index === 0;
@@ -315,7 +256,7 @@ export function PlaylistPanel({
       <Button
         className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-lg xl:hidden"
         type="button"
-        onClick={handleToggleAddForm}
+        onClick={handleOpenSearch}
       >
         <Plus className="h-4 w-4" aria-hidden />곡 추가
       </Button>

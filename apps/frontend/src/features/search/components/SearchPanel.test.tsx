@@ -69,7 +69,7 @@ describe('SearchPanel', () => {
     expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeTruthy();
     expect(screen.getByDisplayValue('Coldplay')).toBeTruthy();
     expect(screen.getByPlaceholderText('YouTube 영상 검색')).toBeTruthy();
-    expect(screen.queryByText(/링크/)).toBeNull();
+    expect(screen.getByRole('tab', { name: '링크' })).toBeTruthy();
     expect(screen.getByText('검색 결과 1개')).toBeTruthy();
     expect(screen.getByText('Yellow')).toBeTruthy();
     expect(screen.getByText('Coldplay')).toBeTruthy();
@@ -94,6 +94,19 @@ describe('SearchPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yellow 추가' }));
 
     expect(onAddResult).toHaveBeenCalledWith(results[0]);
+  });
+
+  it('링크 탭에서 YouTube URL을 제출한다', () => {
+    const onAddUrl = vi.fn();
+    renderPanel({ onAddUrl });
+
+    fireEvent.click(screen.getByRole('tab', { name: '링크' }));
+    fireEvent.change(screen.getByPlaceholderText('YouTube URL'), {
+      target: { value: '  https://youtu.be/yellow  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '링크 추가' }));
+
+    expect(onAddUrl).toHaveBeenCalledWith('https://youtu.be/yellow');
   });
 
   it('renders a playlist add error inside the search panel', () => {

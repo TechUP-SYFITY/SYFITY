@@ -19,6 +19,7 @@ import { useDeletePlaylistItem, usePlaylist, useReorderPlaylist } from './playli
 import { usePlaylistStore } from './playlistStore';
 
 interface PlaylistPanelProps {
+  currentPlaylistItemId: string | null;
   playlistItems?: PlaylistItem[];
   roomId: string;
   isHost: boolean;
@@ -28,6 +29,7 @@ interface PlaylistPanelProps {
 }
 
 export function PlaylistPanel({
+  currentPlaylistItemId,
   playlistItems,
   roomId,
   isHost,
@@ -234,8 +236,8 @@ export function PlaylistPanel({
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
           <PlaylistEmptyState isReady={isReady} onAddClick={handleOpenSearch} />
         ) : null}
-        {visiblePlaylist.map((item, index) => {
-          const isCurrent = index === 0;
+        {visiblePlaylist.map((item) => {
+          const isCurrent = item.id === currentPlaylistItemId;
 
           return (
             <PlaylistItemRow

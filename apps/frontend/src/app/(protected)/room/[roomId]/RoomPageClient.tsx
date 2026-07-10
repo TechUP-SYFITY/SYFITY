@@ -152,6 +152,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         )}
         renderPlaylistPanel={() => (
           <PlaylistPanel
+            currentPlaylistItemId={currentTrack?.id ?? null}
             roomId={roomId}
             isHost={isHost}
             isReady={hasJoinedRoom}

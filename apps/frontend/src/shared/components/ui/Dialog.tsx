@@ -26,16 +26,17 @@ export function DialogContent({
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-      <DialogPrimitive.Content
-        className={cn(
-          // 모바일: 좌우 여백(계산폭) + 세로 넘칠 때 스크롤
-          'fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card/82 text-foreground shadow-[0_40px_100px_rgba(0,0,0,0.7),0_0_80px_rgba(114,244,164,0.06)] backdrop-blur-xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
-          className,
-        )}
-        {...props}
-      >
-        {children}
-      </DialogPrimitive.Content>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <DialogPrimitive.Content
+          className={cn(
+            'grid max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card/82 text-foreground shadow-[0_40px_100px_rgba(0,0,0,0.7),0_0_80px_rgba(114,244,164,0.06)] backdrop-blur-xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </DialogPrimitive.Content>
+      </div>
     </DialogPrimitive.Portal>
   );
 }
@@ -107,5 +108,10 @@ export function DialogBody({ className, ...props }: React.ComponentProps<'div'>)
 }
 
 export function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('flex gap-2.5 px-5 pb-5', className)} {...props} />;
+  return (
+    <div
+      className={cn('flex flex-col-reverse gap-3 px-5 pb-5 sm:flex-row sm:gap-2.5', className)}
+      {...props}
+    />
+  );
 }

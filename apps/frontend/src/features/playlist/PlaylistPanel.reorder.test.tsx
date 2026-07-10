@@ -46,6 +46,8 @@ const secondItem: PlaylistItem = {
   videoId: 'video-2',
 };
 
+const originalElementFromPoint = document.elementFromPoint;
+
 function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -63,6 +65,14 @@ describe('PlaylistPanel reorder', () => {
 
   afterEach(() => {
     cleanup();
+    if (originalElementFromPoint) {
+      Object.defineProperty(document, 'elementFromPoint', {
+        configurable: true,
+        value: originalElementFromPoint,
+      });
+    } else {
+      Reflect.deleteProperty(document, 'elementFromPoint');
+    }
     usePlaylistStore.getState().clearPlaylist();
   });
 
@@ -81,11 +91,9 @@ describe('PlaylistPanel reorder', () => {
       const firstRow = screen.getByTestId(`playlist-row-${firstItem.id}`);
       const secondRow = screen.getByTestId(`playlist-row-${secondItem.id}`);
       const firstHandle = screen.getByTestId(`playlist-drag-handle-${firstItem.id}`);
-      const originalElementFromPoint = document.elementFromPoint;
-      const elementFromPointMock = vi.fn(() => secondRow);
       Object.defineProperty(document, 'elementFromPoint', {
         configurable: true,
-        value: elementFromPointMock,
+        value: vi.fn(() => secondRow),
       });
 
       fireEvent.focus(firstRow);
@@ -120,11 +128,6 @@ describe('PlaylistPanel reorder', () => {
         secondItem.id,
         firstItem.id,
       ]);
-
-      Object.defineProperty(document, 'elementFromPoint', {
-        configurable: true,
-        value: originalElementFromPoint,
-      });
     },
   );
 

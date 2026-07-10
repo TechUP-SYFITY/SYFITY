@@ -21,7 +21,9 @@ export function ChatMessageItem({ chat }: ChatMessageItemProps) {
             {formatChatTime(chat.createdAt)}
           </span>
         </p>
-        <p className="mt-1 text-sm leading-5 break-words text-foreground">{chat.message}</p>
+        <p className="mt-1 text-sm leading-5 break-words whitespace-pre-wrap text-foreground">
+          {chat.message}
+        </p>
       </div>
     </div>
   );

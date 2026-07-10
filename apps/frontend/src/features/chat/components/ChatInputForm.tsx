@@ -1,10 +1,11 @@
 'use client';
 
 import { Send } from 'lucide-react';
-import { useState } from 'react';
-import type { FormEvent } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 
-import { Button, Input } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui';
+import { cn } from '@/shared/lib/utils';
 
 import { CHAT_MAX_MESSAGE_LENGTH } from '../chatConstants';
 
@@ -14,9 +15,38 @@ interface ChatInputFormProps {
 }
 
 export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
+  const errorId = useId();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const visibleError = localError ?? errorMessage;
+  const maxLengthError = `메시지는 ${CHAT_MAX_MESSAGE_LENGTH}자를 초과할 수 없어요.`;
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [value]);
+
+  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const nextValue = event.target.value;
+
+    if (nextValue.length > CHAT_MAX_MESSAGE_LENGTH) {
+      setValue(nextValue.slice(0, CHAT_MAX_MESSAGE_LENGTH));
+      setLocalError(maxLengthError);
+      return;
+    }
+
+    if (localError) {
+      setLocalError(null);
+    }
+    setValue(nextValue);
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,7 +57,7 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
     }
 
     if (trimmed.length > CHAT_MAX_MESSAGE_LENGTH) {
-      setLocalError(`메시지는 ${CHAT_MAX_MESSAGE_LENGTH}자를 초과할 수 없어요.`);
+      setLocalError(maxLengthError);
       return;
     }
 
@@ -36,36 +66,50 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
     setValue('');
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  };
+
   return (
-    <form
-      className="flex h-11 min-w-0 flex-1 items-center rounded-2xl border border-border bg-input px-3"
-      onSubmit={handleSubmit}
-    >
-      <div className="min-w-0 flex-1">
-        <Input
-          className="h-10 border-0 bg-transparent px-0 focus-visible:ring-0"
-          error={visibleError}
-          maxLength={CHAT_MAX_MESSAGE_LENGTH}
+    <form className="min-w-0 flex-1" onSubmit={handleSubmit}>
+      <div
+        className={cn(
+          'flex min-h-11 min-w-0 items-end rounded-2xl border bg-input px-3 py-1.5 transition-colors',
+          visibleError ? 'border-destructive' : 'border-border',
+        )}
+      >
+        <textarea
+          ref={textareaRef}
+          className="max-h-28 min-h-8 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-sm leading-5 text-foreground outline-none placeholder:text-white/50 focus-visible:ring-0"
           placeholder="메시지 입력..."
+          rows={1}
           value={value}
-          onChange={(event) => {
-            if (localError) {
-              setLocalError(null);
-            }
-            setValue(event.target.value);
-          }}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          aria-describedby={visibleError ? errorId : undefined}
+          aria-invalid={Boolean(visibleError)}
           aria-label="채팅 메시지 입력"
         />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mb-0.5 h-7 w-7 shrink-0 rounded-xl border-0 bg-transparent text-muted-foreground hover:bg-transparent"
+          type="submit"
+          aria-label="메시지 보내기"
+        >
+          <Send className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+        </Button>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 shrink-0 rounded-xl border-0 bg-transparent text-muted-foreground hover:bg-transparent"
-        type="submit"
-        aria-label="메시지 보내기"
-      >
-        <Send className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
-      </Button>
+      {visibleError ? (
+        <p id={errorId} className="px-1 pt-1.5 text-xs text-destructive">
+          {visibleError}
+        </p>
+      ) : null}
     </form>
   );
 }

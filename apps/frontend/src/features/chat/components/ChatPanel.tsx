@@ -45,8 +45,8 @@ export function ChatPanel({
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 items-center gap-3 border-t border-border px-5 py-3 xl:gap-2 xl:p-4">
-        <Avatar size="sm" className="size-6 text-xs xl:hidden">
+      <div className="flex shrink-0 items-start gap-3 border-t border-border px-5 py-3 xl:gap-2 xl:p-4">
+        <Avatar size="sm" className="mt-2 size-6 text-xs xl:hidden">
           <AvatarImage src={currentUserProfileImage ?? undefined} alt={currentUserName ?? '나'} />
           <AvatarFallback>{(currentUserName ?? 'S').slice(0, 1)}</AvatarFallback>
         </Avatar>

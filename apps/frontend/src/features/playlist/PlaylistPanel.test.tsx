@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -63,13 +63,7 @@ function renderPlaylistPanel(options?: {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <PlaylistPanel
-        playlistItems={options?.playlistItems}
-        roomId={roomId}
-        isHost
-        isReady
-        onPlayItem={vi.fn()}
-      />
+      <PlaylistPanel playlistItems={options?.playlistItems} roomId={roomId} isHost isReady />
     </QueryClientProvider>,
   );
 }
@@ -124,6 +118,8 @@ describe('PlaylistPanel', () => {
 
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.getByText('Song Two')).toBeInTheDocument();
+    expect(getMetaText('Channel One·3:00')).toHaveClass('text-muted-foreground');
+    expect(getMetaText('Channel Two·3:20')).toHaveClass('text-muted-foreground/60');
     expect(screen.getByLabelText('Song Two 썸네일')).toHaveClass('opacity-45');
   });
 
@@ -136,4 +132,31 @@ describe('PlaylistPanel', () => {
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.queryByText('Playlist 불러오는 중')).not.toBeInTheDocument();
   });
+  it('matches playlist row actions to the Figma desktop and mobile affordances.', () => {
+    renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
+
+    const actions = screen.getByTestId(`playlist-actions-${availableItem.id}`);
+    expect(actions).toHaveClass('hidden', 'xl:flex', 'xl:opacity-0', 'xl:group-hover:opacity-100');
+    expect(screen.queryByTestId(`playlist-play-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`playlist-move-up-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`playlist-move-down-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.getByTestId(`playlist-drag-handle-${availableItem.id}`)).toHaveClass(
+      'cursor-grab',
+      'bg-transparent',
+    );
+
+    fireEvent.focus(screen.getByTestId(`playlist-row-${availableItem.id}`));
+
+    expect(actions).toHaveClass('flex', 'opacity-100');
+    expect(screen.getByRole('button', { name: 'Song One 순서 변경' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Song One 삭제' })).toHaveClass(
+      'bg-destructive/10',
+      'xl:bg-transparent',
+      'xl:text-destructive/70',
+    );
+  });
 });
+
+function getMetaText(text: string) {
+  return screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === text);
+}

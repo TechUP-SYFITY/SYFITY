@@ -38,7 +38,11 @@ export const useCreateRoom = () => {
 export const useJoinRoom = (roomId: string) =>
   useQuery({
     enabled: roomId.length > 0,
-    queryFn: () => roomApi.joinRoom({ inviteCode: roomId }),
+    queryFn: async () => {
+      const room = await roomApi.getRoom(roomId);
+
+      return roomApi.joinRoom({ inviteCode: room.inviteCode });
+    },
     queryKey: roomQueryKeys.join(roomId),
     retry: false,
     // room join is a mount-time POST, but useQuery handles Strict Mode remounts

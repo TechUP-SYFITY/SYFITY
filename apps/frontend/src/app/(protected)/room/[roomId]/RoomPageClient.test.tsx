@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import type { UserProfileResponse } from '@syfity/shared';
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
@@ -14,6 +16,11 @@ import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { useRoomStore } from '@/features/room/roomStore';
 
 import { RoomPageClient } from './RoomPageClient';
+import { useRoomLiveConnections } from './useRoomLiveConnections';
+
+vi.mock('./useRoomLiveConnections', () => ({
+  useRoomLiveConnections: vi.fn(),
+}));
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -30,6 +37,7 @@ function createWrapper() {
 describe('RoomPageClient', () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
     useRoomStore.getState().clearRoom();
     usePlaylistStore.getState().clearPlaylist();
     usePlayerStore.getState().clearPlayback();
@@ -41,13 +49,57 @@ describe('RoomPageClient', () => {
     render(
       <StrictMode>
         <Wrapper>
-          <RoomPageClient roomId="preview-room" />
+          <RoomPageClient roomId="unknown-room" />
         </Wrapper>
       </StrictMode>,
     );
 
     expect(await screen.findByText('Room에 입장하지 못했어요')).toBeInTheDocument();
     expect(screen.getByText('존재하지 않거나 입장할 수 없는 Room입니다.')).toBeInTheDocument();
+  });
+
+  it('mocking 활성 시 Room에 정상 입장하고 현재 사용자명을 표시한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getAllByText(roomFixture.members[0].nickname).length).toBeGreaterThan(0);
+    expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+  });
+
+  it('현재 사용자가 host가 아니면 host 전용 제어 안내를 표시한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            email: 'jimin@example.com',
+            id: 'fallback-member-1',
+            nickname: '지민',
+            profileImage: null,
+          },
+        } satisfies UserProfileResponse),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(
+      screen.getByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
   });
 
   it('검색 결과 곡 추가 실패를 SearchPanel 안에 표시한다', async () => {
@@ -74,7 +126,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.inviteCode} />
+        <RoomPageClient roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 

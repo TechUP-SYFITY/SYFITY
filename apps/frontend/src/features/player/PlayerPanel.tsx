@@ -3,6 +3,7 @@
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
 import { AlertTriangle, Play } from 'lucide-react';
 
+import { formatDuration } from '@/shared/lib/formatDuration';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
@@ -129,10 +130,4 @@ function getThumbnailUrl(track: PlaylistItem) {
   }
 
   return `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
-}
-
-function formatDuration(duration: number) {
-  const minutes = Math.floor(duration / 60);
-  const seconds = String(duration % 60).padStart(2, '0');
-  return `${minutes}:${seconds}`;
 }

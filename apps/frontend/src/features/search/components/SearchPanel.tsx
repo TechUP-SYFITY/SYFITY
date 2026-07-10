@@ -13,6 +13,7 @@ import {
 import type { MouseEvent } from 'react';
 import { useState } from 'react';
 
+import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
 
 import type { YoutubeSearchResult } from '../api/searchApi';
@@ -244,12 +245,6 @@ function EmptyStateIcon({ className }: { className?: string }) {
       <Inbox className="h-6 w-6" aria-hidden />
     </span>
   );
-}
-
-function formatDuration(duration: number) {
-  const minutes = Math.floor(duration / 60);
-  const seconds = String(duration % 60).padStart(2, '0');
-  return `${minutes}:${seconds}`;
 }
 
 export type { SearchPanelProps };

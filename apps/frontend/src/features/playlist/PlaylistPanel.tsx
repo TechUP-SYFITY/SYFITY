@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 
 import { Button, Input } from '@/shared/components/ui';
+import { formatDuration } from '@/shared/lib/formatDuration';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import type { PlaylistApi } from './playlistApi';
@@ -410,10 +411,4 @@ function getThumbnailUrl(item: PlaylistItem) {
 
 function getUnavailableAwareTextClass(isUnavailable: boolean) {
   return isUnavailable ? 'text-white/42' : 'text-white';
-}
-
-function formatDuration(duration: number) {
-  const minutes = Math.floor(duration / 60);
-  const seconds = String(duration % 60).padStart(2, '0');
-  return `${minutes}:${seconds}`;
 }

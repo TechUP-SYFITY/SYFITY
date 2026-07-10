@@ -3,10 +3,10 @@
 // Room 하단에 고정되는 미니 플레이어 UI와 주입된 제어 상태를 표시한다.
 import type { CSSProperties } from 'react';
 
+import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
-import { formatDuration } from './roomFormatters';
 import { RoomIcon } from './RoomIcon';
 import { TrackArtwork } from './TrackArtwork';
 

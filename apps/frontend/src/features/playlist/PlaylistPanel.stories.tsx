@@ -59,7 +59,6 @@ const meta = {
     roomId,
     isHost: true,
     isReady: true,
-    onPlayItem: () => undefined,
     playlistApiClient: createPlaylistApiMock(),
   },
 } satisfies Meta<typeof PlaylistPanel>;

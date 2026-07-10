@@ -29,7 +29,6 @@ interface PlaylistPanelProps {
   roomId: string;
   isHost: boolean;
   isReady: boolean;
-  onPlayItem: (playlistItemId: string) => void;
   playlistApiClient?: PlaylistApi;
 }
 

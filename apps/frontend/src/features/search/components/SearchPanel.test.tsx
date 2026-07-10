@@ -160,10 +160,23 @@ describe('SearchPanel', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('Escape 키를 누르면 패널을 닫는다', () => {
+    const { onClose } = renderPanel();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('패널이 열리면 검색 입력창으로 포커스를 이동한다', () => {
+    renderPanel();
+
+    expect(screen.getByPlaceholderText('YouTube 영상 검색')).toHaveFocus();
+  });
+
   it('calls onClose when the backdrop is clicked', () => {
     const { onClose } = renderPanel();
-    const dialog = screen.getByRole('dialog');
-    const backdrop = dialog.parentElement;
+    const backdrop = document.querySelector('div[data-state="open"]');
 
     expect(backdrop).toBeTruthy();
     fireEvent.click(backdrop as HTMLElement);

@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Frontend Architecture                                                          |
-| 버전      | v1.0                                                                                  |
-| 상태      | 초안                                                                                  |
+| 버전      | v1.1                                                                                  |
+| 상태      | `widgets` 레이어 채택 사례 반영                                                       |
 | 작성 목적 | Syfity MVP 프론트엔드 구조 정의                                                       |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -34,7 +34,7 @@
 
 ## 3. 폴더 구조
 
-FSD(Feature Sliced Design)를 Syfity에 맞게 간소화하여 적용한다. 원본 FSD의 `entities`와 `features`를 `features`로 통합하고, `widgets` 레이어는 생략한다. 단, 여러 feature를 조합하는 복합 UI가 필요한 경우 (예: Room Page) `widgets` 레이어를 추가하는 것을 고려할 수 있다.
+FSD(Feature Sliced Design)를 Syfity에 맞게 간소화하여 적용한다. 원본 FSD의 `entities`와 `features`를 `features`로 통합한다. 여러 feature를 조합하는 복합 UI는 `widgets` 레이어에 둔다. Room Page는 `widgets/room`에서 `room`/`player`/`playlist`/`chat`/`presence` feature를 조합한다.
 
 ```
 apps/frontend/
@@ -64,6 +64,9 @@ apps/frontend/
       chat/
       presence/
       search/
+
+    widgets/                  → 여러 feature를 조합하는 복합 UI
+      room/                   → Room Page 조립 UI (RoomShell, PC/모바일 레이아웃)
 
     shared/                   → 공통 모듈
       components/             → 공통 UI 컴포넌트 (디자인 시스템 문서 참조)
@@ -110,17 +113,25 @@ apps/frontend/
 레이어 간 단방향 의존을 원칙으로 한다.
 
 ```
-app → features → shared
+app → widgets → features → shared
 ```
 
-- `shared`에서 `features` import 금지
+- `shared`에서 `features`/`widgets` import 금지
+- `features`에서 `widgets` import 금지
 - `features` 간 직접 import 금지 (공통 로직은 `shared`로 이동)
+- `widgets`는 여러 feature를 조합하는 UI만 담당하고 feature의 상태 소유권을 가져가지 않음
 
 **app (page / layout)**
 
 - 컴포넌트 조합만 담당
 - 비즈니스 로직, 데이터 페칭 없음
 - Server Component 기본
+
+**widgets**
+
+- 여러 feature 컴포넌트를 조합하는 복합 UI 담당
+- 데이터와 이벤트 핸들러는 app 또는 feature 훅에서 주입받음
+- feature 내부 상태나 API/Socket 계약을 직접 소유하지 않음
 
 **features / hooks**
 

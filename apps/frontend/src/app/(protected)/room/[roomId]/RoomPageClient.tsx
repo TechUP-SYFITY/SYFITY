@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
-import type { RoomMember } from '@/shared/types/domain';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useMe } from '@/features/auth/hooks/useAuth';
@@ -12,9 +11,7 @@ import { playbackCommands } from '@/features/player/playbackCommands';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
-import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
 import { usePlayerControls } from '@/features/player/usePlayerControls';
-import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
@@ -22,7 +19,8 @@ import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
 import { useJoinRoom } from '@/features/room/roomHooks';
 import { RoomShell, type RoomMobileTab } from '@/features/room/RoomShell';
 import { useRoomStore } from '@/features/room/roomStore';
-import { useRoomSocket } from '@/features/room/useRoomSocket';
+
+import { useRoomLiveConnections } from './useRoomLiveConnections';
 
 interface RoomPageClientProps {
   roomId: string;
@@ -31,6 +29,7 @@ interface RoomPageClientProps {
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
   const joinRoom = useJoinRoom(roomId);
+  const { data: me } = useMe();
   const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
@@ -45,9 +44,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
 
   const hasJoinedRoom = joinRoom.isSuccess;
 
-  usePlaybackSocket(hasJoinedRoom);
-  usePlaylistSocket(hasJoinedRoom ? roomId : '');
-  useRoomSocket(hasJoinedRoom ? roomId : '');
+  useRoomLiveConnections(roomId, hasJoinedRoom);
 
   useEffect(() => {
     if (!joinRoom.data) {
@@ -59,9 +56,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     setPlaybackState(joinRoom.data.playbackState, 'room-join');
   }, [joinRoom.data, setJoinedRoom, setPlaybackState, setPlaylist]);
 
-  const { data: me } = useMe();
-  const currentUserId = getCurrentUserId();
-  const isHost = isCurrentUserHost(members, currentUserId);
+  const isHost = Boolean(me && me.id === room?.hostId);
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const currentIndex = currentTrack
     ? playlist.findIndex((item) => item.id === currentTrack.id)
@@ -126,17 +121,4 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       room={room}
     />
   );
-}
-
-function getCurrentUserId() {
-  // TODO(#12 후속) auth/me 연동 후 실제 사용자 ID를 주입한다.
-  return null;
-}
-
-function isCurrentUserHost(members: RoomMember[], currentUserId: string | null) {
-  if (!currentUserId) {
-    return false;
-  }
-
-  return members.some((member) => member.userId === currentUserId && member.role === 'host');
 }

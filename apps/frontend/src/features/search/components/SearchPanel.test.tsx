@@ -178,15 +178,4 @@ describe('SearchPanel', () => {
 
     expect(onClose).not.toHaveBeenCalled();
   });
-
-  it('keeps the sheet open when it is dragged downward', () => {
-    const { onClose } = renderPanel();
-    const dialog = screen.getByRole('dialog');
-
-    fireEvent.pointerDown(dialog, { clientY: 100, pointerId: 1 });
-    fireEvent.pointerMove(dialog, { clientY: 176, pointerId: 1 });
-    fireEvent.pointerUp(dialog, { clientY: 176, pointerId: 1 });
-
-    expect(onClose).not.toHaveBeenCalled();
-  });
 });

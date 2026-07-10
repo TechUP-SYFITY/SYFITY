@@ -47,10 +47,9 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
 
   const hasJoinedRoom = joinRoom.isSuccess;
-  const activeRoomId = room?.id ?? roomId;
-  const addSearchResult = useAddPlaylistItem(activeRoomId);
+  const addSearchResult = useAddPlaylistItem(roomId);
 
-  useRoomLiveConnections(activeRoomId, hasJoinedRoom);
+  useRoomLiveConnections(roomId, hasJoinedRoom);
 
   useEffect(() => {
     if (!joinRoom.data) {
@@ -77,7 +76,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     isPlaying: playbackState?.isPlaying ?? false,
     nextItemId: nextItem?.id,
     previousItemId: previousItem?.id,
-    roomId: activeRoomId,
+    roomId,
   });
 
   if (joinRoom.isPending) {
@@ -132,11 +131,11 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         playbackState={playbackState}
         playlist={playlist}
         renderPlayerPanel={() => (
-          <PlayerPanel roomId={activeRoomId} isHost={isHost} playlist={playlist} />
+          <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />
         )}
         renderPlaylistPanel={() => (
           <PlaylistPanel
-            roomId={activeRoomId}
+            roomId={roomId}
             isHost={isHost}
             isReady={hasJoinedRoom}
             onOpenSearch={handleOpenSearch}

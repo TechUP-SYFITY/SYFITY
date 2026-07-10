@@ -73,6 +73,26 @@ describe('RoomPageClient', () => {
     expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
   });
 
+  it('이전 Room 상태가 남아 있어도 URL의 roomId로 연결한다', async () => {
+    useRoomStore.setState({
+      room: {
+        ...roomFixture.room,
+        id: 'stale-room-id',
+      },
+    });
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(useRoomLiveConnections).not.toHaveBeenCalledWith('stale-room-id', false);
+    expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+  });
+
   it('현재 사용자가 host가 아니면 host 전용 제어 안내를 표시한다', async () => {
     server.use(
       http.get('*/api/v1/me', () =>

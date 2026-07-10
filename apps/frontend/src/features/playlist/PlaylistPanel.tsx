@@ -101,6 +101,11 @@ export function PlaylistPanel({
     setIsAddFormOpen(true);
   };
 
+  const handleRetry = () => {
+    resetMutationErrors();
+    void refetch();
+  };
+
   useEffect(() => {
     if (!shouldUseParentPlaylist && data?.playlist) {
       setPlaylist(data.playlist);
@@ -265,7 +270,7 @@ export function PlaylistPanel({
         {isPlaylistError ? (
           <PlaylistErrorState
             errorMessage={getPlaylistErrorMessage(playlistError)}
-            onRetry={() => void refetch()}
+            onRetry={handleRetry}
           />
         ) : null}
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (

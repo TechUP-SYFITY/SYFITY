@@ -46,8 +46,8 @@ export const roomHandlers = [
       success: true,
       data: {
         createdAt: new Date().toISOString(),
-        id: 'mock-created-room',
-        inviteCode: 'MOCK01',
+        id: roomFixture.room.id,
+        inviteCode: roomFixture.room.inviteCode,
         name: body.name,
         status: 'active',
       },

@@ -223,6 +223,7 @@ describe('RoomService', () => {
       hostId: 'user-1',
       inviteCode: expect.stringMatching(/^[0-9A-F]{6}$/),
     });
+    expect(roomRepo.upsertRecentRoom).toHaveBeenCalledWith('user-1', 'room-1');
   });
 
   it('1회 중복 후 2회차 초대 코드로 Room을 생성한다', async () => {

@@ -7,7 +7,6 @@ import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useMe } from '@/features/auth/hooks/useAuth';
-import { playbackCommands } from '@/features/player/playbackCommands';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
@@ -82,10 +81,6 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     return <RoomErrorState error={joinRoom.error} roomId={roomId} />;
   }
 
-  const handlePlayItem = (playlistItemId: string) => {
-    void playbackCommands.changeTrack(roomId, playlistItemId);
-  };
-
   return (
     <RoomShell
       headerActions={<UserMenu />}
@@ -111,12 +106,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       playlist={playlist}
       renderPlayerPanel={() => <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />}
       renderPlaylistPanel={() => (
-        <PlaylistPanel
-          roomId={roomId}
-          isHost={isHost}
-          isReady={hasJoinedRoom}
-          onPlayItem={handlePlayItem}
-        />
+        <PlaylistPanel roomId={roomId} isHost={isHost} isReady={hasJoinedRoom} />
       )}
       room={room}
     />

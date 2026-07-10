@@ -48,6 +48,7 @@ interface YouTubePlayerProps {
   onBufferingRecovered: () => void;
   onEnded: () => void;
   onError: (errorCode: number) => void;
+  onPlaybackStateChange: (isPlaying: boolean, currentTime: number) => void;
 }
 
 export function YouTubePlayer({
@@ -55,11 +56,16 @@ export function YouTubePlayer({
   onBufferingRecovered,
   onEnded,
   onError,
+  onPlaybackStateChange,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YT.Player | null>(null);
   const isPlayerReadyRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
+  const onBufferingRecoveredRef = useRef(onBufferingRecovered);
+  const onEndedRef = useRef(onEnded);
+  const onErrorRef = useRef(onError);
+  const onPlaybackStateChangeRef = useRef(onPlaybackStateChange);
   const playbackStateRef = useRef(playbackState);
   const previousPlayerStateRef = useRef<number | null>(null);
   const setLocalPlaybackPosition = usePlayerStore((state) => state.setLocalPlaybackPosition);
@@ -71,6 +77,13 @@ export function YouTubePlayer({
   }, [playbackState]);
 
   useEffect(() => {
+    onBufferingRecoveredRef.current = onBufferingRecovered;
+    onEndedRef.current = onEnded;
+    onErrorRef.current = onError;
+    onPlaybackStateChangeRef.current = onPlaybackStateChange;
+  }, [onBufferingRecovered, onEnded, onError, onPlaybackStateChange]);
+
+  useEffect(() => {
     let isMounted = true;
 
     void loadYouTubeApi().then(() => {
@@ -80,7 +93,7 @@ export function YouTubePlayer({
 
       playerRef.current = new window.YT.Player(containerRef.current, {
         events: {
-          onError: (event) => onError(Number(event.data)),
+          onError: (event) => onErrorRef.current(Number(event.data)),
           onReady: (event) => {
             isPlayerReadyRef.current = true;
             applyPlayerVolume(event.target, usePlayerVolumeStore.getState());
@@ -89,16 +102,34 @@ export function YouTubePlayer({
           onStateChange: (event) => {
             const previousState = previousPlayerStateRef.current;
             previousPlayerStateRef.current = event.data;
+            const currentPlaybackState = playbackStateRef.current;
+
+            if (
+              currentPlaybackState?.videoId &&
+              (event.data === window.YT.PlayerState.PLAYING ||
+                event.data === window.YT.PlayerState.PAUSED)
+            ) {
+              const isPlaying = event.data === window.YT.PlayerState.PLAYING;
+
+              if (isPlaying !== currentPlaybackState.isPlaying) {
+                const currentTime =
+                  typeof event.target.getCurrentTime === 'function'
+                    ? event.target.getCurrentTime()
+                    : currentPlaybackState.currentTime;
+
+                onPlaybackStateChangeRef.current(isPlaying, currentTime);
+              }
+            }
 
             if (
               previousState === window.YT.PlayerState.BUFFERING &&
               event.data === window.YT.PlayerState.PLAYING
             ) {
-              onBufferingRecovered();
+              onBufferingRecoveredRef.current();
             }
 
             if (event.data === window.YT.PlayerState.ENDED) {
-              onEnded();
+              onEndedRef.current();
             }
           },
         },
@@ -118,8 +149,9 @@ export function YouTubePlayer({
       playerRef.current?.destroy();
       playerRef.current = null;
       loadedVideoIdRef.current = null;
+      previousPlayerStateRef.current = null;
     };
-  }, [onBufferingRecovered, onEnded, onError]);
+  }, []);
 
   useEffect(() => {
     const player = playerRef.current;

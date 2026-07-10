@@ -15,10 +15,12 @@ vi.mock('./YouTubePlayer', () => ({
     onBufferingRecovered,
     onEnded,
     onError,
+    onPlaybackStateChange,
   }: {
     onBufferingRecovered: () => void;
     onEnded: () => void;
     onError: (errorCode: number) => void;
+    onPlaybackStateChange: (isPlaying: boolean, currentTime: number) => void;
   }) => (
     <div>
       <button type="button" onClick={onEnded}>
@@ -29,6 +31,12 @@ vi.mock('./YouTubePlayer', () => ({
       </button>
       <button type="button" onClick={() => onError(150)}>
         mock player error
+      </button>
+      <button type="button" onClick={() => onPlaybackStateChange(false, 42)}>
+        mock local pause
+      </button>
+      <button type="button" onClick={() => onPlaybackStateChange(true, 42)}>
+        mock local play
       </button>
     </div>
   ),
@@ -148,6 +156,38 @@ describe('PlayerPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
+    expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+  });
+
+  it('Host가 IFrame을 일시정지하면 현재 위치로 pause 명령을 보낸다', async () => {
+    seedPlayback(true);
+    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock local pause' }));
+
+    await waitFor(() => {
+      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 42);
+    });
+  });
+
+  it('Host가 IFrame을 재생하면 현재 위치로 play 명령을 보낸다', async () => {
+    seedPlayback(false);
+    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock local play' }));
+
+    await waitFor(() => {
+      expect(playbackCommands.play).toHaveBeenCalledWith(roomId, 42);
+    });
+  });
+
+  it('Member가 IFrame 재생 상태를 바꾸면 서버 동기화를 요청한다', () => {
+    seedPlayback(true);
+    render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock local pause' }));
+
+    expect(playbackCommands.pause).not.toHaveBeenCalled();
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
   });
 

@@ -53,6 +53,27 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
     void playbackCommands.changeTrack(roomId, nextItem.id).catch(() => undefined);
   }
 
+  function handlePlaybackStateChange(isPlaying: boolean, currentTime: number) {
+    if (!playbackState?.videoId) {
+      return;
+    }
+
+    if (!isHost) {
+      try {
+        playbackCommands.requestSync(roomId);
+      } catch {
+        // 다음 서버 tick에서 Member의 로컬 재생 상태를 다시 보정한다.
+      }
+      return;
+    }
+
+    const command = isPlaying
+      ? playbackCommands.play(roomId, currentTime)
+      : playbackCommands.pause(roomId, currentTime);
+
+    void command.catch(() => undefined);
+  }
+
   function handlePlayerError(errorCode: number) {
     if (!isHost || !playbackState?.videoId) {
       return;
@@ -71,6 +92,7 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
           onBufferingRecovered={handleBufferingRecovered}
           onEnded={isHost ? handleNextTrack : () => undefined}
           onError={handlePlayerError}
+          onPlaybackStateChange={handlePlaybackStateChange}
         />
         {shouldShowPoster ? (
           <div className="pointer-events-none absolute inset-0">

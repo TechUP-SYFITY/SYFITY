@@ -181,6 +181,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
 
       const next = updatePlaybackState(ctx.getPlaybackState(), {
         currentTime: 0,
+        isPlaying: true,
         playlistItemId: targetItem.id,
         videoId: targetItem.videoId,
       });

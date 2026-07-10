@@ -97,9 +97,8 @@ describe('fakeSocketClient', () => {
     });
   });
 
-  it('changes to the requested track at 0 seconds while preserving playback', () => {
+  it('changes to the requested track and starts playback at 0 seconds', () => {
     const socket = fakeSocketClient.connect();
-    const playAck = vi.fn<(response: SocketAck) => void>();
     const changeTrackAck = vi.fn<(response: SocketAck) => void>();
     const listener = vi.fn<(payload: PlaybackState) => void>();
     const availableItems = roomFixture.playlist.filter((item) => item.status === 'available');
@@ -110,7 +109,6 @@ describe('fakeSocketClient', () => {
       throw new Error('Expected a second available playlist item.');
     }
 
-    socket.emit('playback:play', { currentTime: 10, roomId: roomFixture.room.id }, playAck);
     socket.on('playback:change-track', listener);
     socket.emit(
       'playback:change-track',

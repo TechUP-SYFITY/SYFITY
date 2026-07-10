@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '@/shared/types/api';
 
-import { apiClient } from './apiClient';
+import { apiClient, getBaseUrl } from './apiClient';
 
 const res = (status: number, body: unknown) =>
   ({
@@ -70,5 +70,29 @@ describe('apiClient request', () => {
     expect(refreshCalls).toHaveLength(1);
     // refresh 후에도 401이면 세션 복구 불가 → 재인증 리다이렉트
     expect(window.location.href).toBe('/login?reauth=1');
+  });
+});
+
+describe('getBaseUrl', () => {
+  const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  afterEach(() => {
+    if (originalApiUrl === undefined) {
+      delete process.env.NEXT_PUBLIC_API_URL;
+    } else {
+      process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
+    }
+  });
+
+  it('falls back to default API URL when env is an empty string', () => {
+    process.env.NEXT_PUBLIC_API_URL = '';
+
+    expect(getBaseUrl()).toBe('http://localhost:4000/api/v1');
+  });
+
+  it('removes a trailing slash from configured API URL', () => {
+    process.env.NEXT_PUBLIC_API_URL = 'https://api.example.com/api/v1/';
+
+    expect(getBaseUrl()).toBe('https://api.example.com/api/v1');
   });
 });

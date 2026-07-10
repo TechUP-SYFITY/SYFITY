@@ -4,11 +4,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { roomApi } from './roomApi';
-import type { CreateRoomRequest, JoinRoomRequest, UpdateRoomRequest } from './roomTypes';
+import type { CreateRoomRequest, UpdateRoomRequest } from './roomTypes';
 
 export const roomQueryKeys = {
   all: ['rooms'] as const,
   detail: (roomId: string) => [...roomQueryKeys.all, 'detail', roomId] as const,
+  join: (roomId: string) => [...roomQueryKeys.all, 'join', roomId] as const,
   recent: () => [...roomQueryKeys.all, 'recent'] as const,
 };
 
@@ -34,9 +35,15 @@ export const useCreateRoom = () => {
   });
 };
 
-export const useJoinRoom = () =>
-  useMutation({
-    mutationFn: (body: JoinRoomRequest) => roomApi.joinRoom(body),
+export const useJoinRoom = (roomId: string) =>
+  useQuery({
+    enabled: roomId.length > 0,
+    queryFn: () => roomApi.joinRoom({ roomId }),
+    queryKey: roomQueryKeys.join(roomId),
+    retry: false,
+    // room join is a mount-time POST, but useQuery handles Strict Mode remounts
+    // without the observer loss that useEffect + useMutation can trigger.
+    staleTime: Infinity,
   });
 
 export const useUpdateRoom = (roomId: string) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { Send } from 'lucide-react';
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 
 import { Button } from '@/shared/components/ui';
@@ -22,7 +22,7 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
   const visibleError = localError ?? errorMessage;
   const maxLengthError = `메시지는 ${CHAT_MAX_MESSAGE_LENGTH}자를 초과할 수 없어요.`;
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const textarea = textareaRef.current;
 
     if (!textarea) {

@@ -52,7 +52,7 @@ interface RoomShellProps {
 export function RoomShell({
   activeMobileTab,
   chats,
-  currentUserName = '',
+  currentUserName = '게스트',
   headerActions,
   isHost,
   miniPlayerCommandError,

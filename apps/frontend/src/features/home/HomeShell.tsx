@@ -1,5 +1,3 @@
-'use client';
-
 import type { RoomSummary } from '@/shared/types/domain';
 
 import { GreetingHeader } from './components/GreetingHeader';

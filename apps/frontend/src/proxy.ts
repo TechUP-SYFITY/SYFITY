@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { isDevAuthBypassEnabled } from '@/shared/lib/env';
+
 export function proxy(request: NextRequest) {
   const hasToken = request.cookies.has('access_token');
   const { pathname, search, searchParams } = request.nextUrl;
@@ -19,6 +21,10 @@ export function proxy(request: NextRequest) {
   }
 
   // 토큰이 아예 없을 때만 보호 페이지를 막는다(원래 경로를 returnUrl로 보존).
+  if (!hasToken && pathname.startsWith('/room') && isDevAuthBypassEnabled()) {
+    return undefined;
+  }
+
   if (!hasToken && (pathname === '/home' || pathname.startsWith('/room'))) {
     const url = new URL('/login', request.url);
     url.searchParams.set('returnUrl', pathname + search);

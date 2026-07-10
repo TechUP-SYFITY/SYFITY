@@ -1,9 +1,11 @@
+// Next proxy의 인증 리다이렉트와 개발용 mock auth 우회 조건을 검증한다.
 import { NextRequest } from 'next/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { proxy } from './proxy';
 
-// exp(초) 기준으로 서명 없이 payload만 있는 더미 JWT를 만든다(proxy는 서명 검증 안 함).
+const ORIGINAL_ENV = { ...process.env };
+
 const makeToken = (expSeconds: number) => {
   const payload = Buffer.from(JSON.stringify({ exp: expSeconds })).toString('base64url');
   return `header.${payload}.sig`;
@@ -18,34 +20,59 @@ const future = Math.floor(Date.now() / 1000) + 3600;
 const past = Math.floor(Date.now() / 1000) - 3600;
 
 describe('proxy', () => {
-  it('유효 토큰으로 /login 접근 시 /home으로 바운스', () => {
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  it('redirects authenticated /login access to /home', () => {
     const res = proxy(req('/login', makeToken(future)));
+
     expect(res?.headers.get('location')).toContain('/home');
   });
 
-  it('layout이 넘긴 ?reauth=1은 /home으로 바운스하지 않고 쿠키를 지운 뒤 /login 렌더(무한 루프 방지)', () => {
+  it('clears an invalid session marker without bouncing back to /home', () => {
     const res = proxy(req('/login?reauth=1', makeToken(future)));
+
     expect(res?.headers.get('location')).toContain('/login');
     expect(res?.headers.get('location')).not.toContain('/home');
-    expect(res?.cookies.get('access_token')?.value).toBe(''); // delete → 빈 값
+    expect(res?.cookies.get('access_token')?.value).toBe('');
   });
 
-  it('만료 토큰은 로그아웃/삭제 없이 통과시켜 클라 refresh에 맡긴다', () => {
-    // 백엔드 의도(자동로그인): 만료돼도 쿠키를 지우지 않고, 클라 apiClient가 refresh로 재발급한다.
+  it('allows protected routes with an expired token so the client can refresh', () => {
     const res = proxy(req('/home', makeToken(past)));
+
     expect(res).toBeUndefined();
   });
 
-  it('토큰이 있으면 만료 여부와 무관하게 진입 페이지에서 /home으로 바운스', () => {
-    // 존재 기반: 만료돼도 로그인 유저로 보고 /home으로 보낸 뒤 클라 refresh가 복구한다.
+  it('redirects authenticated root and login routes to /home', () => {
     expect(proxy(req('/login', makeToken(past)))?.headers.get('location')).toContain('/home');
     expect(proxy(req('/', makeToken(past)))?.headers.get('location')).toContain('/home');
   });
 
-  it('비로그인 /home 접근은 returnUrl 붙여 /login', () => {
+  it('redirects unauthenticated /home access to /login with returnUrl', () => {
     const res = proxy(req('/home'));
     const location = res?.headers.get('location');
+
     expect(location).toContain('/login');
     expect(location).toContain('returnUrl=%2Fhome');
+  });
+
+  it('allows unauthenticated room access only in development mock auth bypass mode', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.NEXT_PUBLIC_API_MOCKING = 'enabled';
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = 'enabled';
+
+    expect(proxy(req('/room/preview-room'))).toBeUndefined();
+  });
+
+  it('keeps unauthenticated room access blocked when dev auth bypass is disabled', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.NEXT_PUBLIC_API_MOCKING = 'enabled';
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = 'disabled';
+
+    const res = proxy(req('/room/preview-room'));
+
+    expect(res?.headers.get('location')).toContain('/login');
+    expect(res?.headers.get('location')).toContain('returnUrl=%2Froom%2Fpreview-room');
   });
 });

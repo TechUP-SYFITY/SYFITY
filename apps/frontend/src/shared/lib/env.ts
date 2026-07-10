@@ -28,12 +28,14 @@ const apiMockingSchema = z
 const envSchema = z.object({
   NEXT_PUBLIC_API_MOCKING: apiMockingSchema,
   NEXT_PUBLIC_API_URL: apiUrlSchema,
+  NEXT_PUBLIC_DEV_AUTH_BYPASS: apiMockingSchema,
   NEXT_PUBLIC_SOCKET_URL: socketUrlSchema,
 });
 
 const parsed = envSchema.safeParse({
   NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING,
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  NEXT_PUBLIC_DEV_AUTH_BYPASS: process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS,
   NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL,
 });
 
@@ -48,3 +50,8 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const isMockingEnabled = () => env.NEXT_PUBLIC_API_MOCKING === 'enabled';
+
+export const isDevAuthBypassEnabled = () =>
+  process.env.NODE_ENV === 'development' &&
+  process.env.NEXT_PUBLIC_API_MOCKING === 'enabled' &&
+  process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'enabled';

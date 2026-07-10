@@ -3,8 +3,13 @@ import { redirect } from 'next/navigation';
 import type { PropsWithChildren } from 'react';
 
 import { getBaseUrl, REAUTH_PATH } from '@/shared/lib/api/apiClient';
+import { isDevAuthBypassEnabled } from '@/shared/lib/env';
 
 export default async function ProtectedLayout({ children }: PropsWithChildren) {
+  if (isDevAuthBypassEnabled()) {
+    return <>{children}</>;
+  }
+
   const cookieHeader = (await cookies()).toString();
 
   const response = await fetch(`${getBaseUrl()}/me`, {

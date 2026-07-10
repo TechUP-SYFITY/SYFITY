@@ -67,7 +67,7 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
       return;
     }
 

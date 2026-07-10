@@ -64,6 +64,18 @@ describe('ChatInputForm', () => {
     expect(input).toHaveValue('');
   });
 
+  it('Enter로 메시지를 전송한다', () => {
+    const onSubmit = vi.fn();
+    render(<ChatInputForm onSubmit={onSubmit} />);
+    const input = screen.getByLabelText('채팅 메시지 입력');
+
+    fireEvent.change(input, { target: { value: '엔터 전송' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onSubmit).toHaveBeenCalledWith('엔터 전송');
+    expect(input).toHaveValue('');
+  });
+
   it('줄바꿈이 포함된 메시지를 입력할 수 있다', () => {
     const onSubmit = vi.fn();
     render(<ChatInputForm onSubmit={onSubmit} />);
@@ -73,6 +85,18 @@ describe('ChatInputForm', () => {
 
     expect(input.tagName).toBe('TEXTAREA');
     expect(input).toHaveValue('첫 줄\n둘째 줄');
+  });
+
+  it('Shift+Enter는 전송하지 않고 줄바꿈 입력을 허용한다', () => {
+    const onSubmit = vi.fn();
+    render(<ChatInputForm onSubmit={onSubmit} />);
+    const input = screen.getByLabelText('채팅 메시지 입력');
+
+    fireEvent.change(input, { target: { value: '첫 줄\n' } });
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(input).toHaveValue('첫 줄\n');
   });
 
   it('서버 전송 에러를 인라인으로 표시한다', () => {

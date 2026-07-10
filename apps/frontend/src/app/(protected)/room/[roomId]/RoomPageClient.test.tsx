@@ -36,7 +36,7 @@ describe('RoomPageClient', () => {
     render(
       <StrictMode>
         <Wrapper>
-          <RoomPageClient roomId="preview-room" />
+          <RoomPageClient roomId="unknown-room" />
         </Wrapper>
       </StrictMode>,
     );

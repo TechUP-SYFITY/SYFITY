@@ -13,13 +13,14 @@ import type {
   RoomMember,
 } from '@/shared/types/domain';
 
-import { MiniPlayer, type MiniPlayerPendingCommand } from './components/MiniPlayer';
-import type { RoomMobileTab } from './components/MobileTabs';
+import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/room/components/MiniPlayer';
+import type { RoomMobileTab } from '@/features/room/components/MobileTabs';
+import { RoomStatusBar } from '@/features/room/components/RoomStatusBar';
+
 import { RoomDesktopLayout } from './components/RoomDesktopLayout';
 import { RoomMobileLayout } from './components/RoomMobileLayout';
-import { RoomStatusBar } from './components/RoomStatusBar';
 
-export type { RoomMobileTab } from './components/MobileTabs';
+export type { RoomMobileTab } from '@/features/room/components/MobileTabs';
 
 interface RoomShellProps {
   activeMobileTab: RoomMobileTab;

@@ -40,6 +40,7 @@ const details: YouTubeVideoDetail[] = [
     channelTitle: 'Channel A',
     thumbnailUrl: 'https://example.com/a.jpg',
     duration: 10,
+    embeddable: true,
   },
   {
     videoId: 'video-b',
@@ -47,6 +48,7 @@ const details: YouTubeVideoDetail[] = [
     channelTitle: 'Channel B',
     thumbnailUrl: 'https://example.com/b.jpg',
     duration: 20,
+    embeddable: true,
   },
   {
     videoId: 'video-c',
@@ -54,8 +56,19 @@ const details: YouTubeVideoDetail[] = [
     channelTitle: 'Channel C',
     thumbnailUrl: 'https://example.com/c.jpg',
     duration: 30,
+    embeddable: true,
   },
 ];
+
+const searchResults: SearchResult[] = details.map(
+  ({ videoId, title, channelTitle, thumbnailUrl, duration }) => ({
+    videoId,
+    title,
+    channelTitle,
+    thumbnailUrl,
+    duration,
+  }),
+);
 
 function makeYouTubeClient(overrides: Partial<IYouTubeClient> = {}): IYouTubeClient {
   return {
@@ -93,10 +106,14 @@ describe('SearchService', () => {
     const cache = makeCache();
     const service = new SearchService(youtubeClient, cache);
 
-    await expect(service.search('BTS')).resolves.toEqual(details);
+    await expect(service.search('BTS')).resolves.toEqual(searchResults);
     expect(youtubeClient.search).toHaveBeenCalledWith('BTS', 10);
     expect(youtubeClient.getVideoDetails).toHaveBeenCalledWith(['video-a', 'video-b', 'video-c']);
-    expect(cache.set).toHaveBeenCalledWith(CacheKeys.ytSearch('BTS'), details, CacheTTL.YT_SEARCH);
+    expect(cache.set).toHaveBeenCalledWith(
+      CacheKeys.ytSearch('BTS'),
+      searchResults,
+      CacheTTL.YT_SEARCH,
+    );
   });
 
   it('빈 문자열 query는 SEARCH_QUERY_REQUIRED를 반환한다', async () => {
@@ -123,7 +140,7 @@ describe('SearchService', () => {
     });
     const service = new SearchService(youtubeClient, makeCache());
 
-    await expect(service.search('BTS')).resolves.toEqual(details.slice(0, 2));
+    await expect(service.search('BTS')).resolves.toEqual(searchResults.slice(0, 2));
   });
 
   it('YouTube API 오류는 그대로 전파한다', async () => {
@@ -142,7 +159,11 @@ describe('SearchService', () => {
     });
     const service = new SearchService(youtubeClient, makeCache());
 
-    await expect(service.search('BTS')).resolves.toEqual([details[0], details[1], details[2]]);
+    await expect(service.search('BTS')).resolves.toEqual([
+      searchResults[0],
+      searchResults[1],
+      searchResults[2],
+    ]);
   });
 
   it('query trim을 적용해 캐시 키와 YouTube 검색어를 만든다', async () => {

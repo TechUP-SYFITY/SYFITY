@@ -6,7 +6,8 @@ export class NodeCacheStore implements ICache {
   private readonly cache: NodeCache;
 
   constructor(defaultTtl = 300) {
-    this.cache = new NodeCache({ stdTTL: defaultTtl });
+    // Timer refs must be returned as-is for clearTimeout; callers should not mutate cached values.
+    this.cache = new NodeCache({ stdTTL: defaultTtl, useClones: false });
   }
 
   get<T>(key: string): T | undefined {

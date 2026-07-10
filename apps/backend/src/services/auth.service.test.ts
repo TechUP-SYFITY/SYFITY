@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IAuthRepository, UserRecord } from '../types/auth';
+import { hashToken } from '../utils/tokenHash';
 
 const ACCESS_SECRET = 'test-access-secret';
 const REFRESH_SECRET = 'test-refresh-secret';
@@ -130,7 +131,7 @@ describe('AuthService', () => {
       email: 'alice@example.com',
     });
     expect(jwt.verify(result.refreshToken, REFRESH_SECRET)).toMatchObject({ id: 'user-id' });
-    expect(repo.saveRefreshToken).toHaveBeenCalledWith('user-id', result.refreshToken);
+    expect(repo.saveRefreshToken).toHaveBeenCalledWith('user-id', hashToken(result.refreshToken));
   });
 
   it('id_token이 없으면 AUTH_GOOGLE_TOKEN_MISSING을 반환한다', async () => {
@@ -207,13 +208,13 @@ describe('AuthService', () => {
 
     const result = await service.refresh(refreshToken);
 
-    expect(repo.findUserByRefreshToken).toHaveBeenCalledWith('user-id', refreshToken);
+    expect(repo.findUserByRefreshToken).toHaveBeenCalledWith('user-id', hashToken(refreshToken));
     expect(jwt.verify(result.accessToken, ACCESS_SECRET)).toMatchObject({
       id: 'user-id',
       email: 'alice@example.com',
     });
     expect(jwt.verify(result.refreshToken, REFRESH_SECRET)).toMatchObject({ id: 'user-id' });
-    expect(repo.saveRefreshToken).toHaveBeenCalledWith('user-id', result.refreshToken);
+    expect(repo.saveRefreshToken).toHaveBeenCalledWith('user-id', hashToken(result.refreshToken));
   });
 
   it('만료된 refreshToken이면 AUTH_REFRESH_EXPIRED를 반환한다', async () => {

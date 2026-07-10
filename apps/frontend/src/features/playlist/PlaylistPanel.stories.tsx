@@ -51,7 +51,10 @@ const playlistItems: PlaylistItem[] = [
 const meta = {
   title: 'Features/Playlist/PlaylistPanel',
   component: PlaylistPanel,
-  parameters: { layout: 'centered' },
+  parameters: {
+    layout: 'centered',
+    msw: { handlers: [] },
+  },
   args: {
     roomId,
     isHost: true,
@@ -106,7 +109,7 @@ function withPlaylistStoryFrame() {
 
     return (
       <QueryClientProvider client={createQueryClient()}>
-        <div className="h-[640px] w-[320px] overflow-hidden border border-white/[0.07] bg-background">
+        <div className="h-96 w-80 overflow-hidden border border-border bg-background">
           <Story />
         </div>
       </QueryClientProvider>
@@ -192,7 +195,7 @@ export const AddFailureInteraction: Story = {
     const canvas = await openAddForm(canvasElement);
 
     await userEvent.type(canvas.getByPlaceholderText('YouTube URL'), 'https://youtu.be/fail');
-    await userEvent.click(getButtonAt(canvas.getAllByRole('button'), 1));
+    await userEvent.keyboard('{Enter}');
 
     await expect(canvas.findByText('add failed')).resolves.toBeInTheDocument();
   },

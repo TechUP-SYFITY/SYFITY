@@ -5,14 +5,15 @@ export const CacheKeys = {
    */
   hostTimer: (roomId: string) => `host-timer:${roomId}`,
 
+  /**
+   * 일반 참여자(Host 포함) disconnect 유예 타이머. TTL 없음(수동 정리).
+   * 값: NodeJS.Timeout 참조 - 인메모리 전용 (NodeJS.Timeout 직렬화 불가).
+   */
+  memberOfflineTimer: (roomId: string, userId: string) =>
+    `member-offline-timer:${roomId}:${userId}`,
+
   /** YouTube 검색 결과. TTL: 300초 (5분) */
   ytSearch: (query: string) => `yt-search:${query}`,
-
-  /**
-   * Room 참여자 온라인 상태. TTL 없음.
-   * 값: Record<userId, 'online' | 'offline'>. Socket 이벤트로 갱신, 방 종료 시 del.
-   */
-  presence: (roomId: string) => `presence:${roomId}`,
 
   /**
    * PlaybackState 캐시. TTL 없음.

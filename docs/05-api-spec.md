@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
-| 버전      | v1.3                                                                                            |
-| 상태      | Room 입장 API와 참여자 접근 검증 반영                                                           |
+| 버전      | v1.6                                                                                            |
+| 상태      | 채팅 응답 profileImage 필드 반영                                                                |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
 
@@ -39,9 +39,13 @@ JWT 기반 인증. Access Token은 httpOnly 쿠키로 전달된다.
 {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
 }
 ```
+
+프로덕션에서는 Vercel Preview와 Render API가 cross-site 관계가 될 수 있으므로 `SameSite=None`을 사용한다. `secure: true`와 CORS origin 화이트리스트를 함께 적용한다.
+
+> CSRF 잔여 리스크: 바디가 없는 `POST /auth/logout`, `POST /auth/refresh`는 cross-site form 트리거 가능성이 남지만, 피해 범위가 세션 로그아웃/토큰 회전에 제한되므로 MVP 배포를 막는 하드닝 항목으로 보지 않는다. 바디 없는 상태 변경 엔드포인트를 추가하거나 CORS 정책을 완화할 때 재검토한다.
 
 **인증이 필요 없는 엔드포인트**
 
@@ -382,6 +386,7 @@ Access Token 갱신. Refresh Token Rotation 적용으로 새 Refresh Token도 �
         id: string,
         userId: string | null,
         nickname: string | null,
+        profileImage: string | null,
         type: ChatMessageType,
         message: string,
         createdAt: string
@@ -481,11 +486,11 @@ Host가 Socket `room:leave` 이벤트를 전송하는 경우에도 서버 내부
 
 **에러**
 
-| 코드                  | HTTP | 설명             |
-| --------------------- | ---- | ---------------- |
-| `ROOM_NOT_FOUND`      | 404  | Room 없음        |
-| `AUTH_FORBIDDEN`      | 403  | Host가 아님      |
-| `ROOM_ALREADY_CLOSED` | 400  | 이미 closed 상태 |
+| 코드                 | HTTP | 설명                                                            |
+| -------------------- | ---- | --------------------------------------------------------------- |
+| `ROOM_NOT_FOUND`     | 404  | Room 없음                                                       |
+| `ROOM_ACCESS_DENIED` | 403  | Room 참여 이력이 없거나 이미 나감(이미 종료된 Room 재요청 포함) |
+| `AUTH_FORBIDDEN`     | 403  | Room 참여자이지만 Host가 아님                                   |
 
 ---
 
@@ -636,11 +641,12 @@ MVP에서 중복 추가를 허용한다.
 
 **에러**
 
-| 코드                      | HTTP | 설명           |
-| ------------------------- | ---- | -------------- |
-| `ROOM_NOT_FOUND`          | 404  | Room 없음      |
-| `AUTH_FORBIDDEN`          | 403  | Host가 아님    |
-| `PLAYLIST_ITEM_NOT_FOUND` | 404  | 항목 ID 불일치 |
+| 코드                      | HTTP | 설명                      |
+| ------------------------- | ---- | ------------------------- |
+| `ROOM_NOT_FOUND`          | 404  | Room 없음                 |
+| `AUTH_FORBIDDEN`          | 403  | Host가 아님               |
+| `PLAYLIST_ITEM_NOT_FOUND` | 404  | 항목 ID 불일치            |
+| `VALIDATION_ERROR`        | 400  | 요청에 중복된 position 값 |
 
 ---
 
@@ -671,6 +677,7 @@ MVP에서 중복 추가를 허용한다.
         id: string,
         userId: string | null,
         nickname: string | null,
+        profileImage: string | null,
         type: ChatMessageType,
         message: string,
         createdAt: string
@@ -683,10 +690,11 @@ MVP에서 중복 추가를 허용한다.
 
 **에러**
 
-| 코드                 | HTTP | 설명               |
-| -------------------- | ---- | ------------------ |
-| `ROOM_NOT_FOUND`     | 404  | Room 없음          |
-| `ROOM_ACCESS_DENIED` | 403  | Room 참여자가 아님 |
+| 코드                 | HTTP | 설명                            |
+| -------------------- | ---- | ------------------------------- |
+| `ROOM_NOT_FOUND`     | 404  | Room 없음                       |
+| `ROOM_ACCESS_DENIED` | 403  | Room 참여자가 아님              |
+| `VALIDATION_ERROR`   | 400  | cursorTime이 유효하지 않은 형식 |
 
 ---
 
@@ -725,5 +733,6 @@ YouTube 영상 검색. 서버에서 YouTube Data API `search.list`를 호출한�
 
 | 코드                            | HTTP | 설명                       |
 | ------------------------------- | ---- | -------------------------- |
+| `SEARCH_QUERY_REQUIRED`         | 400  | 검색어(q)가 비어있음       |
 | `SERVER_YOUTUBE_API_ERROR`      | 502  | YouTube API 호출 실패      |
 | `SERVER_YOUTUBE_QUOTA_EXCEEDED` | 429  | YouTube API 일일 쿼터 초과 |

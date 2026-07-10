@@ -39,14 +39,12 @@ function MemberGroup({
 
   return (
     <div>
-      <p className="mb-3 text-[10px] font-bold tracking-[0.05em] text-white/25 uppercase">
-        {title}
-      </p>
+      <p className="mb-3 text-xs font-bold tracking-wide text-white/25 uppercase">{title}</p>
       <div className="space-y-1.5">
         {members.map((member) => (
           <div
             className={`flex items-center gap-3 rounded-2xl px-2 py-1.5 ${
-              member.role === 'host' && !isMuted ? 'bg-white/[0.025]' : ''
+              member.role === 'host' && !isMuted ? 'bg-muted/20' : ''
             }`}
             key={member.userId}
           >
@@ -59,7 +57,7 @@ function MemberGroup({
               >
                 {member.nickname}
                 {member.role === 'host' ? (
-                  <RoomIcon name="crown" className="ml-1 inline-block h-2.5 w-2.5 text-[#f4d772]" />
+                  <RoomIcon name="crown" className="ml-1 inline-block h-2.5 w-2.5 text-warning" />
                 ) : null}
               </p>
               <p className="text-xs text-white/35">{isMuted ? '오프라인' : '온라인'}</p>

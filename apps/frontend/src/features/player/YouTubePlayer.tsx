@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 
 import { getPlaybackCorrection } from './playerSync';
 import type { PlayerPlaybackState } from './playerTypes';
+import { usePlayerVolumeStore } from './playerVolumeStore';
 
 declare global {
   interface Window {
@@ -58,6 +59,8 @@ export function YouTubePlayer({
   const playerRef = useRef<YT.Player | null>(null);
   const loadedVideoIdRef = useRef<string | null>(null);
   const previousPlayerStateRef = useRef<number | null>(null);
+  const isMuted = usePlayerVolumeStore((state) => state.isMuted);
+  const volume = usePlayerVolumeStore((state) => state.volume);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,6 +73,9 @@ export function YouTubePlayer({
       playerRef.current = new window.YT.Player(containerRef.current, {
         events: {
           onError: (event) => onError(Number(event.data)),
+          onReady: (event) => {
+            applyPlayerVolume(event.target, usePlayerVolumeStore.getState());
+          },
           onStateChange: (event) => {
             const previousState = previousPlayerStateRef.current;
             previousPlayerStateRef.current = event.data;
@@ -103,6 +109,16 @@ export function YouTubePlayer({
       loadedVideoIdRef.current = null;
     };
   }, [onBufferingRecovered, onEnded, onError]);
+
+  useEffect(() => {
+    const player = playerRef.current;
+
+    if (!player) {
+      return;
+    }
+
+    applyPlayerVolume(player, { isMuted, volume });
+  }, [isMuted, volume]);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -149,4 +165,18 @@ export function YouTubePlayer({
       <div className="h-full w-full" ref={containerRef} />
     </div>
   );
+}
+
+function applyPlayerVolume(
+  player: YT.Player,
+  volumeState: Pick<ReturnType<typeof usePlayerVolumeStore.getState>, 'isMuted' | 'volume'>,
+) {
+  player.setVolume(volumeState.volume);
+
+  if (volumeState.isMuted || volumeState.volume === 0) {
+    player.mute();
+    return;
+  }
+
+  player.unMute();
 }

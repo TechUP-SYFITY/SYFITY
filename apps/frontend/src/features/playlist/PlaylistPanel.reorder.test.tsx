@@ -1,0 +1,100 @@
+// PlaylistPanel의 재생목록 순서 변경 동작을 검증한다.
+import '@testing-library/jest-dom/vitest';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { PlaylistItem } from '@/shared/types/domain';
+
+import { playlistApi } from './playlistApi';
+import { PlaylistPanel } from './PlaylistPanel';
+import { usePlaylistStore } from './playlistStore';
+
+vi.mock('./playlistApi', () => ({
+  playlistApi: {
+    addPlaylistItem: vi.fn(),
+    deletePlaylistItem: vi.fn(),
+    getPlaylist: vi.fn(),
+    reorderPlaylist: vi.fn(),
+  },
+}));
+
+const roomId = 'room-1';
+
+const firstItem: PlaylistItem = {
+  addedBy: 'user-1',
+  channelTitle: 'Channel One',
+  duration: 180,
+  id: 'playlist-item-1',
+  position: 1,
+  status: 'available',
+  thumbnailUrl: 'https://example.com/one.jpg',
+  title: 'Song One',
+  videoId: 'video-1',
+};
+
+const secondItem: PlaylistItem = {
+  addedBy: 'user-2',
+  channelTitle: 'Channel Two',
+  duration: 200,
+  id: 'playlist-item-2',
+  position: 2,
+  status: 'available',
+  thumbnailUrl: 'https://example.com/two.jpg',
+  title: 'Song Two',
+  videoId: 'video-2',
+};
+
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false },
+    },
+  });
+}
+
+describe('PlaylistPanel reorder', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    usePlaylistStore.getState().clearPlaylist();
+  });
+
+  afterEach(() => {
+    cleanup();
+    usePlaylistStore.getState().clearPlaylist();
+  });
+
+  it('updates the store when a parent playlist item is moved down.', async () => {
+    usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
+    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
+
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <PlaylistPanel
+          playlistItems={[firstItem, secondItem]}
+          roomId={roomId}
+          isHost
+          isReady
+          onPlayItem={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId(`playlist-move-down-${firstItem.id}`));
+
+    await waitFor(() => {
+      expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
+        items: [
+          { id: secondItem.id, position: 1 },
+          { id: firstItem.id, position: 2 },
+        ],
+      });
+    });
+    expect(usePlaylistStore.getState().playlist.map((item) => item.id)).toEqual([
+      secondItem.id,
+      firstItem.id,
+    ]);
+  });
+});

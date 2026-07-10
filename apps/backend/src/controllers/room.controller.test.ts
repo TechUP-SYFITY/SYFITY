@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { RoomController } from './room.controller';
 import type { ChatRecord } from '../types/chat';
 import type { PlaylistItemRecord } from '../types/playlist';
-import type { JoinRoomResult, RoomDetailRecord, RoomMemberRecord, RoomRecord } from '../types/room';
+import type {
+  JoinRoomResult,
+  RoomDetailRecord,
+  RoomMemberRecord,
+  RoomRecord,
+  RoomUpdateRecord,
+} from '../types/room';
 import type { RecentRoomRecord } from '../types/user';
 
 const createdRoom: RoomRecord = {
@@ -33,6 +39,12 @@ const roomDetail: RoomDetailRecord = {
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
 };
 
+const updatedRoom: RoomUpdateRecord = {
+  id: 'room-1',
+  name: 'Evening Jazz',
+  updatedAt: new Date('2026-07-01T12:30:00.000Z'),
+};
+
 const playlistItem: PlaylistItemRecord = {
   id: 'playlist-item-1',
   videoId: 'video-1',
@@ -59,6 +71,7 @@ const chat: ChatRecord = {
   id: 'message-1',
   userId: 'user-1',
   nickname: 'Alice',
+  profileImage: 'https://example.com/alice.png',
   type: 'user',
   message: 'hello',
   createdAt: new Date('2026-07-01T11:59:00.000Z'),
@@ -95,6 +108,8 @@ function makeRoomService() {
     createRoom: vi.fn().mockResolvedValue(createdRoom),
     joinRoom: vi.fn().mockResolvedValue(joinRoomResult),
     getRoomInfo: vi.fn().mockResolvedValue(roomDetail),
+    updateRoom: vi.fn().mockResolvedValue(updatedRoom),
+    closeRoomAndBroadcast: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -213,6 +228,7 @@ describe('RoomController', () => {
             id: 'message-1',
             userId: 'user-1',
             nickname: 'Alice',
+            profileImage: 'https://example.com/alice.png',
             type: 'user',
             message: 'hello',
             createdAt: '2026-07-01T11:59:00.000Z',
@@ -262,5 +278,57 @@ describe('RoomController', () => {
     const controller = new RoomController(userService, roomService);
 
     await expect(controller.getRoom('room-1', makeRequest())).rejects.toThrow(error);
+  });
+
+  it('PATCH /rooms/:roomId 응답을 반환한다', async () => {
+    const userService = makeUserService();
+    const roomService = makeRoomService();
+    const controller = new RoomController(userService, roomService);
+
+    await expect(
+      controller.updateRoom('room-1', makeRequest(), { name: 'Evening Jazz' }),
+    ).resolves.toEqual({
+      success: true,
+      data: {
+        id: 'room-1',
+        name: 'Evening Jazz',
+        updatedAt: '2026-07-01T12:30:00.000Z',
+      },
+    });
+    expect(roomService.updateRoom).toHaveBeenCalledWith('room-1', 'user-id', 'Evening Jazz');
+  });
+
+  it('PATCH /rooms/:roomId service 에러를 그대로 전파한다', async () => {
+    const error = new Error('update failed');
+    const userService = makeUserService();
+    const roomService = makeRoomService();
+    roomService.updateRoom.mockRejectedValue(error);
+    const controller = new RoomController(userService, roomService);
+
+    await expect(
+      controller.updateRoom('room-1', makeRequest(), { name: 'Evening Jazz' }),
+    ).rejects.toThrow(error);
+  });
+
+  it('POST /rooms/:roomId/close 응답을 반환한다', async () => {
+    const userService = makeUserService();
+    const roomService = makeRoomService();
+    const controller = new RoomController(userService, roomService);
+
+    await expect(controller.closeRoom('room-1', makeRequest())).resolves.toEqual({
+      success: true,
+      data: { message: 'room closed' },
+    });
+    expect(roomService.closeRoomAndBroadcast).toHaveBeenCalledWith('room-1', 'user-id');
+  });
+
+  it('POST /rooms/:roomId/close service 에러를 그대로 전파한다', async () => {
+    const error = new Error('close failed');
+    const userService = makeUserService();
+    const roomService = makeRoomService();
+    roomService.closeRoomAndBroadcast.mockRejectedValue(error);
+    const controller = new RoomController(userService, roomService);
+
+    await expect(controller.closeRoom('room-1', makeRequest())).rejects.toThrow(error);
   });
 });

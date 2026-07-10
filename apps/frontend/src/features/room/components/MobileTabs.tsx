@@ -23,7 +23,7 @@ export function MobileTabs({
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => onChange(value as RoomMobileTab)}>
-      <TabsList className="grid h-12 grid-cols-3 border-t border-white/[0.07] bg-[#09090b]">
+      <TabsList className="grid h-12 grid-cols-3 border-t border-border bg-background">
         {tabs.map((tab) => (
           <TabsTrigger className="h-12 text-sm" key={tab.id} value={tab.id}>
             <RoomIcon name={tab.icon} className="h-3.5 w-3.5" />

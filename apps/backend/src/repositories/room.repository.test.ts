@@ -5,7 +5,7 @@ import {
   type RoomRepositoryPrisma,
   type RoomTransactionPrisma,
 } from './room.repository';
-import type { RoomDetailRecord, RoomRecord } from '../types/room';
+import type { RoomDetailRecord, RoomRecord, RoomUpdateRecord } from '../types/room';
 
 const createdRoom: RoomRecord = {
   id: 'room-1',
@@ -24,6 +24,12 @@ const roomDetail: RoomDetailRecord = {
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
 };
 
+const updatedRoom: RoomUpdateRecord = {
+  id: 'room-1',
+  name: 'Evening Jazz',
+  updatedAt: new Date('2026-07-01T12:30:00.000Z'),
+};
+
 type RoomMembershipResult = {
   role: 'host' | 'member' | 'guest';
   status: 'online' | 'offline' | 'left';
@@ -35,16 +41,6 @@ type RoomMemberRow = {
   role: 'host' | 'member' | 'guest';
   status: 'online' | 'offline' | 'left';
   user: { nickname: string; profileImage: string | null };
-};
-
-type PlaybackStateRow = {
-  videoId: string | null;
-  playlistItemId: string | null;
-  baseCurrentTime: number;
-  isPlaying: boolean;
-  serverStartedAt: Date | null;
-  serverPausedAt: Date | null;
-  updatedAt: Date;
 };
 
 function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionPrisma {
@@ -69,18 +65,25 @@ function makePrisma(
     membershipResult?: RoomMembershipResult | null;
     memberInfoResult?: RoomMemberRow | null;
     membersResult?: RoomMemberRow[];
-    playbackStateResult?: PlaybackStateRow | null;
+    roomUpdateResult?: RoomUpdateRecord;
+    roomUpdateError?: Error;
     tx?: RoomTransactionPrisma;
   } = {},
 ): { prisma: RoomRepositoryPrisma; tx: RoomTransactionPrisma } {
   const findUniqueResult = 'findUniqueResult' in overrides ? overrides.findUniqueResult : null;
   const tx = overrides.tx ?? makeTransactionPrisma();
+  const roomUpdate = vi.fn();
+  if (overrides.roomUpdateError) {
+    roomUpdate.mockRejectedValue(overrides.roomUpdateError);
+  } else {
+    roomUpdate.mockResolvedValue(overrides.roomUpdateResult ?? {});
+  }
 
   return {
     prisma: {
       room: {
         findUnique: vi.fn().mockResolvedValue(findUniqueResult),
-        update: vi.fn().mockResolvedValue({}),
+        update: roomUpdate,
       },
       roomMember: {
         findUnique: vi
@@ -92,17 +95,10 @@ function makePrisma(
           ),
         findMany: vi.fn().mockResolvedValue(overrides.membersResult ?? []),
         upsert: vi.fn().mockResolvedValue({}),
-        update: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       recentRoom: {
         upsert: vi.fn().mockResolvedValue({}),
-      },
-      playbackState: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue(
-            'playbackStateResult' in overrides ? overrides.playbackStateResult : null,
-          ),
       },
       $transaction: vi.fn((fn: (tx: RoomTransactionPrisma) => Promise<unknown>) =>
         fn(tx),
@@ -284,6 +280,27 @@ describe('RoomRepository', () => {
     });
   });
 
+  it('Room 이름을 수정하고 갱신된 정보를 반환한다', async () => {
+    const { prisma } = makePrisma({ roomUpdateResult: updatedRoom });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.updateRoomName('room-1', 'Evening Jazz')).resolves.toEqual(updatedRoom);
+
+    expect(prisma.room.update).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      data: { name: 'Evening Jazz' },
+      select: { id: true, name: true, updatedAt: true },
+    });
+  });
+
+  it('Room 이름 수정 중 Prisma 오류를 그대로 전파한다', async () => {
+    const error = new Error('update failed');
+    const { prisma } = makePrisma({ roomUpdateError: error });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.updateRoomName('room-1', 'Evening Jazz')).rejects.toThrow(error);
+  });
+
   it('Room 멤버십을 조회한다', async () => {
     const membership = { role: 'member' as const, status: 'offline' as const };
     const { prisma } = makePrisma({ membershipResult: membership });
@@ -378,50 +395,16 @@ describe('RoomRepository', () => {
     });
   });
 
-  it('PlaybackState를 조회한다', async () => {
-    const playbackState = {
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      baseCurrentTime: 30,
-      isPlaying: true,
-      serverStartedAt: new Date('2026-07-01T12:00:00.000Z'),
-      serverPausedAt: null,
-      updatedAt: new Date('2026-07-01T12:00:01.000Z'),
-    };
-    const { prisma } = makePrisma({ playbackStateResult: playbackState });
-    const repo = new RoomRepository(prisma);
-
-    await expect(repo.findPlaybackState('room-1')).resolves.toEqual(playbackState);
-
-    expect(prisma.playbackState.findUnique).toHaveBeenCalledWith({
-      where: { roomId: 'room-1' },
-      select: {
-        videoId: true,
-        playlistItemId: true,
-        baseCurrentTime: true,
-        isPlaying: true,
-        serverStartedAt: true,
-        serverPausedAt: true,
-        updatedAt: true,
-      },
-    });
-  });
-
-  it('PlaybackState가 없으면 null을 반환한다', async () => {
-    const { prisma } = makePrisma({ playbackStateResult: null });
-    const repo = new RoomRepository(prisma);
-
-    await expect(repo.findPlaybackState('room-1')).resolves.toBeNull();
-  });
-
   it('멤버 상태를 online으로 갱신할 때 leftAt은 변경하지 않는다', async () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.updateMemberStatus('room-1', 'user-1', 'online')).resolves.toBeUndefined();
+    await expect(repo.updateMemberStatus('room-1', 'user-1', 'online', ['offline'])).resolves.toBe(
+      true,
+    );
 
-    expect(prisma.roomMember.update).toHaveBeenCalledWith({
-      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', userId: 'user-1', status: { in: ['offline'] } },
       data: {
         status: 'online',
         lastSeenAt: expect.any(Date),
@@ -433,10 +416,12 @@ describe('RoomRepository', () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.updateMemberStatus('room-1', 'user-1', 'offline')).resolves.toBeUndefined();
+    await expect(repo.updateMemberStatus('room-1', 'user-1', 'offline', ['online'])).resolves.toBe(
+      true,
+    );
 
-    expect(prisma.roomMember.update).toHaveBeenCalledWith({
-      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', userId: 'user-1', status: { in: ['online'] } },
       data: {
         status: 'offline',
         lastSeenAt: expect.any(Date),
@@ -448,16 +433,28 @@ describe('RoomRepository', () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.updateMemberStatus('room-1', 'user-1', 'left')).resolves.toBeUndefined();
+    await expect(
+      repo.updateMemberStatus('room-1', 'user-1', 'left', ['online', 'offline']),
+    ).resolves.toBe(true);
 
-    expect(prisma.roomMember.update).toHaveBeenCalledWith({
-      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', userId: 'user-1', status: { in: ['online', 'offline'] } },
       data: {
         status: 'left',
         leftAt: expect.any(Date),
         lastSeenAt: expect.any(Date),
       },
     });
+  });
+
+  it('허용된 이전 상태가 아니면 전환되지 않고 false를 반환한다', async () => {
+    const { prisma } = makePrisma();
+    prisma.roomMember.updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.updateMemberStatus('room-1', 'user-1', 'offline', ['online'])).resolves.toBe(
+      false,
+    );
   });
 
   it('left 상태도 포함해 단일 멤버 정보를 조회한다', async () => {

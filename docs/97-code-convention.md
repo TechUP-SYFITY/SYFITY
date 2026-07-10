@@ -2,13 +2,13 @@
 
 ## 1. 문서 정보
 
-| 항목      | 내용                                    |
-| --------- | --------------------------------------- |
-| 문서명    | Syfity Code Convention                  |
-| 버전      | v1.0                                    |
-| 상태      | 초안                                    |
-| 작성 목적 | Syfity 프로젝트 Git 및 코드 컨벤션 정의 |
-| 적용 범위 | FE (Next.js), BE (Express.js) 공통 적용 |
+| 항목      | 내용                                             |
+| --------- | ------------------------------------------------ |
+| 문서명    | Syfity Code Convention                           |
+| 버전      | v1.1                                             |
+| 상태      | API 레이어 파일명 관행을 실제 구현 기준으로 보정 |
+| 작성 목적 | Syfity 프로젝트 Git 및 코드 컨벤션 정의          |
+| 적용 범위 | FE (Next.js), BE (Express.js) 공통 적용          |
 
 ---
 
@@ -138,13 +138,14 @@ feat/fix/chore → dev → main
 
 #### 파일 / 폴더
 
-| 대상                | 규칙                      | 예시                                                   |
-| ------------------- | ------------------------- | ------------------------------------------------------ |
-| 라우트 폴더         | kebab-case                | `user-profile/`                                        |
-| 컴포넌트 파일       | PascalCase                | `UserCard.tsx`                                         |
-| API 레이어 파일     | camelCase + 레이어 suffix | `roomRouter.ts`, `roomController.ts`, `roomService.ts` |
-| 그 외 파일          | camelCase                 | `useAuth.ts`, `apiClient.ts`                           |
-| Next.js 컨벤션 파일 | Next.js 기본              | `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`   |
+| 대상                | 규칙                        | 예시                                                          |
+| ------------------- | --------------------------- | ------------------------------------------------------------- |
+| 라우트 폴더         | kebab-case                  | `user-profile/`                                               |
+| 컴포넌트 파일       | PascalCase                  | `UserCard.tsx`                                                |
+| API 레이어 파일     | dot-case + 레이어 suffix    | `room.controller.ts`, `room.service.ts`, `room.repository.ts` |
+| Socket 핸들러 파일  | dot-case + `handler` suffix | `room.handler.ts`, `playback.handler.ts`, `tick.handler.ts`   |
+| 그 외 파일          | camelCase                   | `useAuth.ts`, `apiClient.ts`                                  |
+| Next.js 컨벤션 파일 | Next.js 기본                | `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`          |
 
 ---
 

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ERROR_CODES } from '@syfity/shared';
 
-import { assertActiveRoomMember } from './roomAccess';
+import { assertActiveRoomMember, assertRoomHost } from './roomAccess';
 import type { IRoomRepository, RoomDetailRecord, RoomMembershipRecord } from '../types/room';
 
 const room: RoomDetailRecord = {
@@ -63,6 +63,44 @@ describe('assertActiveRoomMember', () => {
     const roomRepo = makeRoomRepo({ membership: { role: 'member', status } });
 
     await expect(assertActiveRoomMember(roomRepo, 'room-1', 'user-1')).resolves.toEqual(room);
+    expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
+    expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
+  });
+});
+
+describe('assertRoomHost', () => {
+  it('Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {
+    const roomRepo = makeRoomRepo({ room: null });
+
+    await expect(assertRoomHost(roomRepo, 'room-1', 'user-1')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_NOT_FOUND,
+    });
+    expect(roomRepo.findMembership).not.toHaveBeenCalled();
+  });
+
+  it('참여 기록이 없으면 ROOM_ACCESS_DENIED를 던진다', async () => {
+    const roomRepo = makeRoomRepo({ membership: null });
+
+    await expect(assertRoomHost(roomRepo, 'room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_ACCESS_DENIED,
+    });
+  });
+
+  it('Host가 아니면 AUTH_FORBIDDEN을 던진다', async () => {
+    const roomRepo = makeRoomRepo({ membership: { role: 'member', status: 'online' } });
+
+    await expect(assertRoomHost(roomRepo, 'room-1', 'user-2')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+    });
+  });
+
+  it('Host이면 Room을 반환한다', async () => {
+    const roomRepo = makeRoomRepo({ membership: { role: 'host', status: 'online' } });
+
+    await expect(assertRoomHost(roomRepo, 'room-1', 'user-1')).resolves.toEqual(room);
     expect(roomRepo.findRoomById).toHaveBeenCalledWith('room-1');
     expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
   });

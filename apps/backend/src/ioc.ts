@@ -8,6 +8,7 @@ import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
+import { PlaybackRepository } from './repositories/playback.repository';
 import { PlaylistRepository } from './repositories/playlist.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
@@ -15,7 +16,9 @@ import { UserRepository } from './repositories/user.repository';
 import { AuthService } from './services/auth.service';
 import { ChatService } from './services/chat.service';
 import { HealthService } from './services/health.service';
+import { PlaybackService } from './services/playback.service';
 import { PlaylistService } from './services/playlist.service';
+import { PresenceService } from './services/presence.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
 import { UserService } from './services/user.service';
@@ -52,13 +55,24 @@ const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
 const playlistRepository = new PlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
+const playbackRepository = new PlaybackRepository(prisma);
+const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
+export const playbackService = new PlaybackService(
+  playbackRepository,
+  roomRepository,
+  playlistRepository,
+  cache,
+  playlistYoutubeClient,
+);
+export const presenceService = new PresenceService(roomRepository, cache);
+export const chatService = new ChatService(chatRepository, roomRepository);
 export const roomService = new RoomService(
   roomRepository,
   cache,
   playlistRepository,
   chatRepository,
+  playbackService,
 );
-const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
 let playlistService: PlaylistService | null = null;
 
 function getPlaylistService(): PlaylistService {
@@ -67,6 +81,7 @@ function getPlaylistService(): PlaylistService {
     roomRepository,
     playlistYoutubeClient,
     getIo(),
+    playbackService,
   );
 
   return playlistService;
@@ -74,7 +89,7 @@ function getPlaylistService(): PlaylistService {
 
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
-register(ChatController, () => new ChatController(new ChatService(chatRepository, roomRepository)));
+register(ChatController, () => new ChatController(chatService));
 register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);
   return new SearchController(new SearchService(youtubeClient, cache));

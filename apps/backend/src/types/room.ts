@@ -1,4 +1,5 @@
 import type { ChatRecord } from './chat';
+import type { PlaybackStateResult } from './playback';
 import type { PlaylistItemRecord } from './playlist';
 
 export type RoomRecord = {
@@ -16,6 +17,12 @@ export type RoomDetailRecord = {
   status: 'active' | 'inactive' | 'closed';
   inviteCode: string;
   createdAt: Date;
+};
+
+export type RoomUpdateRecord = {
+  id: string;
+  name: string;
+  updatedAt: Date;
 };
 
 export type CreateRoomData = {
@@ -41,24 +48,6 @@ export type RoomMemberRecord = {
   status: RoomMemberStatus;
 };
 
-export type PlaybackStateRecord = {
-  videoId: string | null;
-  playlistItemId: string | null;
-  baseCurrentTime: number;
-  isPlaying: boolean;
-  serverStartedAt: Date | null;
-  serverPausedAt: Date | null;
-  updatedAt: Date;
-};
-
-export type PlaybackStateResult = {
-  videoId: string | null;
-  playlistItemId: string | null;
-  currentTime: number;
-  isPlaying: boolean;
-  updatedAt: string;
-};
-
 export type JoinRoomResult = {
   room: RoomDetailRecord;
   playbackState: PlaybackStateResult;
@@ -67,7 +56,8 @@ export type JoinRoomResult = {
   recentChats: ChatRecord[];
 };
 
-export type LeaveRoomResult = { type: 'closed' } | { type: 'left'; member: RoomMemberRecord };
+export type LeaveRoomResult =
+  { type: 'closed' } | { type: 'left'; member: RoomMemberRecord } | { type: 'noop' };
 
 export interface IRoomRepository {
   existsInviteCode(inviteCode: string): Promise<boolean>;
@@ -80,8 +70,13 @@ export interface IRoomRepository {
   upsertMembership(roomId: string, userId: string): Promise<void>;
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
   upsertRecentRoom(userId: string, roomId: string): Promise<void>;
-  findPlaybackState(roomId: string): Promise<PlaybackStateRecord | null>;
-  updateMemberStatus(roomId: string, userId: string, status: RoomMemberStatus): Promise<void>;
+  updateMemberStatus(
+    roomId: string,
+    userId: string,
+    status: RoomMemberStatus,
+    fromStatuses: RoomMemberStatus[],
+  ): Promise<boolean>;
   findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
   closeRoom(roomId: string): Promise<void>;
+  updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord>;
 }

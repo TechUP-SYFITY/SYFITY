@@ -1,145 +1,47 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 
-import type { JoinedRoomData } from '@/shared/types/domain';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen } from '@testing-library/react';
+import { StrictMode, type ReactNode } from 'react';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
+import { usePlayerStore } from '@/features/player/playerStore';
+import { usePlaylistStore } from '@/features/playlist/playlistStore';
+import { useRoomStore } from '@/features/room/roomStore';
 
 import { RoomPageClient } from './RoomPageClient';
 
-const mocks = vi.hoisted(() => ({
-  addPlaylistItemMutate: vi.fn(),
-  joinRoomMutate: vi.fn(),
-  searchPanelProps: [] as Array<{
-    isOpen: boolean;
-    onAddResult?: (result: YoutubeSearchResult) => void;
-  }>,
-}));
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
 
-vi.mock('@/features/player/PlayerPanel', () => ({
-  PlayerPanel: ({ roomId }: { roomId: string }) => <div data-testid="player-panel">{roomId}</div>,
-}));
-
-vi.mock('@/features/player/usePlaybackSocket', () => ({
-  usePlaybackSocket: vi.fn(),
-}));
-
-vi.mock('@/features/playlist/playlistHooks', () => ({
-  useAddPlaylistItem: () => ({
-    mutate: mocks.addPlaylistItemMutate,
-  }),
-  usePlaylistSocket: vi.fn(),
-}));
-
-vi.mock('@/features/playlist/PlaylistPanel', () => ({
-  PlaylistPanel: ({ onOpenSearch }: { onOpenSearch: () => void }) => (
-    <button type="button" onClick={onOpenSearch}>
-      open search
-    </button>
-  ),
-}));
-
-vi.mock('@/features/room/roomHooks', () => ({
-  useJoinRoom: () => ({
-    isError: false,
-    mutate: mocks.joinRoomMutate,
-  }),
-}));
-
-vi.mock('@/features/room/RoomShell', () => ({
-  RoomShell: ({
-    renderPlayerPanel,
-    renderPlaylistPanel,
-  }: {
-    renderPlayerPanel: () => React.ReactNode;
-    renderPlaylistPanel: () => React.ReactNode;
-  }) => (
-    <div>
-      {renderPlayerPanel()}
-      {renderPlaylistPanel()}
-    </div>
-  ),
-}));
-
-vi.mock('@/features/room/useRoomSocket', () => ({
-  useRoomSocket: vi.fn(),
-}));
-
-vi.mock('@/features/search/components/SearchPanel', () => ({
-  SearchPanel: (props: {
-    isOpen: boolean;
-    onAddResult?: (result: YoutubeSearchResult) => void;
-  }) => {
-    mocks.searchPanelProps.push(props);
-    return props.isOpen ? <div data-testid="search-panel" /> : null;
-  },
-}));
-
-const searchResult: YoutubeSearchResult = {
-  channelTitle: 'Lofi Channel',
-  duration: 180,
-  thumbnailUrl: 'https://example.com/thumb.jpg',
-  title: 'Lofi Track',
-  videoId: 'video-1',
-};
-
-const joinedRoomData: JoinedRoomData = {
-  members: [],
-  playbackState: {
-    currentTime: 0,
-    isPlaying: false,
-    playlistItemId: null,
-    updatedAt: '2026-07-06T00:00:00.000Z',
-    videoId: null,
-  },
-  playlist: [],
-  recentChats: [],
-  room: {
-    hostId: 'user-1',
-    id: 'room-uuid',
-    inviteCode: '3D49D1',
-    name: 'Codex Test Room',
-    status: 'active',
-  },
-};
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
+}
 
 describe('RoomPageClient', () => {
-  beforeEach(() => {
-    mocks.addPlaylistItemMutate.mockReset();
-    mocks.joinRoomMutate.mockReset();
-    mocks.searchPanelProps.length = 0;
-  });
-
   afterEach(() => {
-    cleanup();
+    useRoomStore.getState().clearRoom();
+    usePlaylistStore.getState().clearPlaylist();
+    usePlayerStore.getState().clearPlayback();
   });
 
-  it('joins the room route segment as an invite code', async () => {
-    render(<RoomPageClient roomId="3D49D1" />);
+  it('Strict Mode에서도 join 실패 시 로딩에 머무르지 않고 에러 상태를 렌더링한다', async () => {
+    const Wrapper = createWrapper();
 
-    await waitFor(() => expect(mocks.joinRoomMutate).toHaveBeenCalled());
+    render(
+      <StrictMode>
+        <Wrapper>
+          <RoomPageClient roomId="preview-room" />
+        </Wrapper>
+      </StrictMode>,
+    );
 
-    expect(mocks.joinRoomMutate.mock.calls[0]?.[0]).toEqual({ inviteCode: '3D49D1' });
-  });
-
-  it('adds a selected search result to the playlist', async () => {
-    mocks.joinRoomMutate.mockImplementation((_body, options) => {
-      options.onSuccess(joinedRoomData);
-    });
-
-    render(<RoomPageClient roomId="3D49D1" />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'open search' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('search-panel')).toBeTruthy();
-    });
-
-    const latestSearchPanelProps = mocks.searchPanelProps.at(-1);
-    expect(latestSearchPanelProps?.onAddResult).toEqual(expect.any(Function));
-
-    latestSearchPanelProps?.onAddResult?.(searchResult);
-
-    expect(mocks.addPlaylistItemMutate).toHaveBeenCalledWith({ videoId: 'video-1' });
+    expect(await screen.findByText('Room에 입장하지 못했어요')).toBeInTheDocument();
+    expect(screen.getByText('존재하지 않거나 입장할 수 없는 Room입니다.')).toBeInTheDocument();
   });
 });

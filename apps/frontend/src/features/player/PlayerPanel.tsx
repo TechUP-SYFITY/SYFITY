@@ -1,9 +1,9 @@
 'use client';
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
-import { Play } from 'lucide-react';
-import { useCallback } from 'react';
+import { AlertTriangle, Play } from 'lucide-react';
 
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
@@ -19,44 +19,55 @@ interface PlayerPanelProps {
 export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playbackError = usePlayerStore((state) => state.playbackError);
-  const currentTrack =
-    playlist.find((item) => item.id === playbackState?.playlistItemId) ?? playlist[0];
+  const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const posterUrl = currentTrack ? getThumbnailUrl(currentTrack) : null;
   const shouldShowPoster = Boolean(posterUrl) && !playbackState?.isPlaying;
+  const currentIndex = currentTrack
+    ? playlist.findIndex((item) => item.id === currentTrack.id)
+    : -1;
+  const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
 
-  const handleSyncRequest = useCallback(() => {
-    playbackCommands.requestSync(roomId);
-  }, [roomId]);
-
-  const handleNextTrack = useCallback(() => {
-    const currentIndex = playlist.findIndex((item) => item.id === playbackState?.playlistItemId);
-    const nextItem = playlist[currentIndex + 1];
-
-    if (nextItem) {
-      void playbackCommands.changeTrack(roomId, nextItem.id);
+  function handleBufferingRecovered() {
+    if (!playbackState?.videoId) {
       return;
     }
 
-    void playbackCommands.pause(roomId, 0);
-  }, [playbackState?.playlistItemId, playlist, roomId]);
+    try {
+      playbackCommands.requestSync(roomId);
+    } catch {
+      // 자동 동기화 요청은 다음 서버 tick에서 다시 보정된다.
+    }
+  }
 
-  const handlePlayerError = useCallback(
-    (errorCode: number) => {
-      if (!isHost || !playbackState?.videoId) {
-        return;
-      }
+  function handleNextTrack() {
+    if (!isHost) {
+      return;
+    }
 
-      void playbackCommands.reportError(roomId, playbackState.videoId, errorCode);
-    },
-    [isHost, playbackState, roomId],
-  );
+    if (!nextItem) {
+      void playbackCommands.pause(roomId, 0).catch(() => undefined);
+      return;
+    }
+
+    void playbackCommands.changeTrack(roomId, nextItem.id).catch(() => undefined);
+  }
+
+  function handlePlayerError(errorCode: number) {
+    if (!isHost || !playbackState?.videoId) {
+      return;
+    }
+
+    void playbackCommands
+      .reportError(roomId, playbackState.videoId, errorCode)
+      .catch(() => undefined);
+  }
 
   return (
-    <section className="mx-auto flex w-full max-w-[760px] flex-col gap-4 lg:mx-0 lg:max-w-none">
-      <div className="relative overflow-hidden rounded-2xl bg-[#0a0a0c] shadow-[0_0_48px_rgba(114,244,164,0.06),0_0_0_1px_rgba(255,255,255,0.06)]">
+    <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 xl:mx-0">
+      <div className="relative overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border">
         <YouTubePlayer
           playbackState={playbackState}
-          onBufferingRecovered={handleSyncRequest}
+          onBufferingRecovered={handleBufferingRecovered}
           onEnded={isHost ? handleNextTrack : () => undefined}
           onError={handlePlayerError}
         />
@@ -65,44 +76,46 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
             <div
               className="h-full w-full bg-cover bg-center opacity-80"
               style={{
-                backgroundImage: `linear-gradient(90deg, rgba(12,16,25,0.45), rgba(255,255,255,0.08) 48%, rgba(145,35,35,0.4)), radial-gradient(circle at 26% 68%, rgba(104,180,220,0.55), transparent 32%), radial-gradient(circle at 70% 62%, rgba(238,74,67,0.62), transparent 30%), radial-gradient(circle at 52% 36%, rgba(230,238,224,0.8), transparent 38%), url(${posterUrl})`,
+                backgroundImage: `url(${posterUrl})`,
               }}
             />
-            <div className="absolute inset-0 bg-black/10" />
-            <div className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white">
+            <div className="absolute inset-0 bg-linear-to-r from-background/50 via-foreground/5 to-accent/20" />
+            <div className="absolute inset-0 bg-background/10" />
+            <div className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-background/60 text-foreground">
               <Play className="h-6 w-6 translate-x-0.5" aria-hidden />
             </div>
           </div>
         ) : null}
-        <div className="pointer-events-none absolute top-4 left-4 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-[#72f4a4]">
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#72f4a4]" />
+        <div className="pointer-events-none absolute top-4 left-4 rounded-full bg-background/70 px-3 py-1 text-xs font-bold text-primary">
+          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
           LIVE SYNC
         </div>
-        <span className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-black/70 px-2 py-1 text-xs font-bold text-white">
+        <span className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-background/80 px-2 py-1 text-xs font-bold text-foreground">
           {currentTrack ? formatDuration(currentTrack.duration) : '0:00'}
         </span>
       </div>
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="truncate text-lg font-bold tracking-[-0.02em] text-white">
+          <h2 className="truncate text-lg font-bold text-foreground">
             {currentTrack?.title ?? '재생 대기'}
           </h2>
-          <p className="mt-1 truncate text-sm text-white/48">
+          <p className="mt-1 truncate text-sm text-muted-foreground">
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>
         {!isHost ? (
-          <span className="hidden rounded-full border border-[#885cf6]/30 bg-[#885cf6]/10 px-3 py-1.5 text-xs font-semibold text-[#a78bfa] lg:block">
+          <span className="hidden rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent-400 xl:block">
             호스트 제어
           </span>
         ) : null}
       </div>
 
-      <div className="min-h-5 text-sm text-white/45">
+      <div className="min-h-5 space-y-1 text-sm text-muted-foreground">
         {playbackError ? (
-          <p className="text-rose-400">
-            재생 오류 {playbackError.videoId} / {playbackError.errorCode}
+          <p className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" aria-hidden />
+            재생할 수 없는 영상이에요. 오류 코드 {playbackError.errorCode}
           </p>
         ) : null}
       </div>

@@ -1,0 +1,55 @@
+import { describe, expect, it } from 'vitest';
+
+import { ERROR_CODES } from '@syfity/shared';
+
+import { assertFiniteNumber, assertNonEmptyString, assertRoomId } from './socketValidators';
+
+describe('socketValidators', () => {
+  it('assertRoomId는 비어 있지 않은 문자열만 통과시킨다', () => {
+    expect(() => assertRoomId('room-1')).not.toThrow();
+    expect(() => assertRoomId(undefined)).toThrow(
+      expect.objectContaining({
+        code: ERROR_CODES.VALIDATION_ERROR,
+      }),
+    );
+    expect(() => assertRoomId('')).toThrow(
+      expect.objectContaining({
+        code: ERROR_CODES.VALIDATION_ERROR,
+      }),
+    );
+  });
+
+  it('assertFiniteNumber는 0 이상의 유한한 숫자만 통과시킨다', () => {
+    expect(() => assertFiniteNumber(30, 'currentTime')).not.toThrow();
+    expect(() => assertFiniteNumber('30', 'currentTime')).toThrow(
+      expect.objectContaining({
+        code: ERROR_CODES.VALIDATION_ERROR,
+      }),
+    );
+    expect(() => assertFiniteNumber(-1, 'currentTime')).toThrow(
+      expect.objectContaining({
+        code: ERROR_CODES.VALIDATION_ERROR,
+      }),
+    );
+    expect(() => assertFiniteNumber(Number.NaN, 'currentTime')).toThrow(
+      expect.objectContaining({
+        code: ERROR_CODES.VALIDATION_ERROR,
+      }),
+    );
+    expect(() => assertFiniteNumber(Number.POSITIVE_INFINITY, 'currentTime')).toThrow(
+      expect.objectContaining({ code: ERROR_CODES.VALIDATION_ERROR }),
+    );
+  });
+
+  it('assertNonEmptyString은 비어 있지 않은 문자열만 통과시킨다', () => {
+    expect(() => assertNonEmptyString('playlist-item-1', 'playlistItemId')).not.toThrow();
+    expect(() => assertNonEmptyString('', 'playlistItemId')).toThrow(
+      expect.objectContaining({
+        code: ERROR_CODES.VALIDATION_ERROR,
+      }),
+    );
+    expect(() => assertNonEmptyString(undefined, 'playlistItemId')).toThrow(
+      expect.objectContaining({ code: ERROR_CODES.VALIDATION_ERROR }),
+    );
+  });
+});

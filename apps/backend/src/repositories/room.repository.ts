@@ -2,12 +2,12 @@ import type { PrismaClient } from '../generated/prisma/client';
 import type {
   CreateRoomData,
   IRoomRepository,
-  PlaybackStateRecord,
   RoomDetailRecord,
   RoomMemberRecord,
   RoomMemberStatus,
   RoomMembershipRecord,
   RoomRecord,
+  RoomUpdateRecord,
 } from '../types/room';
 
 export type RoomTransactionPrisma = {
@@ -18,9 +18,8 @@ export type RoomTransactionPrisma = {
 
 export type RoomRepositoryPrisma = {
   room: Pick<PrismaClient['room'], 'findUnique' | 'update'>;
-  roomMember: Pick<PrismaClient['roomMember'], 'findUnique' | 'findMany' | 'upsert' | 'update'>;
+  roomMember: Pick<PrismaClient['roomMember'], 'findUnique' | 'findMany' | 'upsert' | 'updateMany'>;
   recentRoom: Pick<PrismaClient['recentRoom'], 'upsert'>;
-  playbackState: Pick<PrismaClient['playbackState'], 'findUnique'>;
   $transaction: <T>(fn: (tx: RoomTransactionPrisma) => Promise<T>) => Promise<T>;
 };
 
@@ -135,6 +134,14 @@ export class RoomRepository implements IRoomRepository {
     });
   }
 
+  async updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord> {
+    return this.prisma.room.update({
+      where: { id: roomId },
+      data: { name },
+      select: { id: true, name: true, updatedAt: true },
+    });
+  }
+
   async findMembership(roomId: string, userId: string): Promise<RoomMembershipRecord | null> {
     return this.prisma.roomMember.findUnique({
       where: { roomId_userId: { roomId, userId } },
@@ -195,36 +202,24 @@ export class RoomRepository implements IRoomRepository {
     });
   }
 
-  async findPlaybackState(roomId: string): Promise<PlaybackStateRecord | null> {
-    return this.prisma.playbackState.findUnique({
-      where: { roomId },
-      select: {
-        videoId: true,
-        playlistItemId: true,
-        baseCurrentTime: true,
-        isPlaying: true,
-        serverStartedAt: true,
-        serverPausedAt: true,
-        updatedAt: true,
-      },
-    });
-  }
-
   async updateMemberStatus(
     roomId: string,
     userId: string,
     status: RoomMemberStatus,
-  ): Promise<void> {
+    fromStatuses: RoomMemberStatus[],
+  ): Promise<boolean> {
     const now = new Date();
 
-    await this.prisma.roomMember.update({
-      where: { roomId_userId: { roomId, userId } },
+    const result = await this.prisma.roomMember.updateMany({
+      where: { roomId, userId, status: { in: fromStatuses } },
       data: {
         status,
         lastSeenAt: now,
         ...(status === 'left' ? { leftAt: now } : {}),
       },
     });
+
+    return result.count > 0;
   }
 
   async findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null> {

@@ -121,6 +121,63 @@ describe('YouTubeClient', () => {
         channelTitle: 'Channel',
         thumbnailUrl: 'https://example.com/medium.jpg',
         duration: expectedSeconds,
+        embeddable: true,
+      },
+    ]);
+
+    const url = new URL(fetchFn.mock.calls[0][0] as string);
+    expect(url.searchParams.get('part')).toBe('snippet,contentDetails,status');
+  });
+
+  it('영상 상세 응답의 embeddable 상태를 매핑한다', async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        items: [
+          {
+            id: 'video-1',
+            snippet: { title: 'video', channelTitle: 'Channel' },
+            contentDetails: { duration: 'PT3M' },
+            status: { embeddable: false },
+          },
+        ],
+      }),
+    );
+    const client = new YouTubeClient('api-key', fetchFn);
+
+    await expect(client.getVideoDetails(['video-1'])).resolves.toEqual([
+      {
+        videoId: 'video-1',
+        title: 'video',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        embeddable: false,
+      },
+    ]);
+  });
+
+  it('영상 상세 응답에 status가 없으면 embeddable 기본값 true를 사용한다', async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        items: [
+          {
+            id: 'video-1',
+            snippet: { title: 'video', channelTitle: 'Channel' },
+            contentDetails: { duration: 'PT3M' },
+          },
+        ],
+      }),
+    );
+    const client = new YouTubeClient('api-key', fetchFn);
+
+    await expect(client.getVideoDetails(['video-1'])).resolves.toEqual([
+      {
+        videoId: 'video-1',
+        title: 'video',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        embeddable: true,
       },
     ]);
   });

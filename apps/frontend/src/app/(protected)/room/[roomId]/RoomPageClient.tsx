@@ -1,135 +1,125 @@
 'use client';
 
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { RoomMember } from '@/shared/types/domain';
 
 import { playbackCommands } from '@/features/player/playbackCommands';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
+import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
 import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
-import type { PlaylistApi } from '@/features/playlist/playlistApi';
-import { useAddPlaylistItem, usePlaylistSocket } from '@/features/playlist/playlistHooks';
+import { usePlayerControls } from '@/features/player/usePlayerControls';
+import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
+import { RoomErrorState } from '@/features/room/components/RoomErrorState';
+import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
 import { useJoinRoom } from '@/features/room/roomHooks';
-import {
-  ROOM_PREVIEW_CHATS,
-  ROOM_PREVIEW_MEMBERS,
-  ROOM_PREVIEW_PLAYLIST,
-  ROOM_PREVIEW_ROOM,
-} from '@/features/room/roomPreviewData';
 import { RoomShell, type RoomMobileTab } from '@/features/room/RoomShell';
 import { useRoomStore } from '@/features/room/roomStore';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
-import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
-import { SearchPanel } from '@/features/search/components/SearchPanel';
 
 interface RoomPageClientProps {
   roomId: string;
 }
 
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
-  const hasRequestedJoin = useRef(false);
-  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
-  const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
-  const joinRoom = useJoinRoom();
+  const joinRoom = useJoinRoom(roomId);
   const members = useRoomStore((state) => state.members);
-  const roomFromStore = useRoomStore((state) => state.room);
+  const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const playbackState = usePlayerStore((state) => state.playbackState);
+  const miniPlayerIsMuted = usePlayerVolumeStore((state) => state.isMuted);
+  const setMiniPlayerVolume = usePlayerVolumeStore((state) => state.setVolume);
+  const toggleMiniPlayerMute = usePlayerVolumeStore((state) => state.toggleMuted);
+  const miniPlayerVolume = usePlayerVolumeStore((state) => state.volume);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
-  const shouldShowPreviewData = process.env.NODE_ENV === 'development' && joinRoom.isError;
-  const activeRoomId = roomFromStore?.id ?? roomId;
-  const playlistApiClient = shouldShowPreviewData ? roomPreviewPlaylistApi : undefined;
-  const addPlaylistItem = useAddPlaylistItem(activeRoomId, playlistApiClient);
+
+  const hasJoinedRoom = joinRoom.isSuccess;
 
   usePlaybackSocket(hasJoinedRoom);
-  usePlaylistSocket(hasJoinedRoom ? activeRoomId : '');
-  useRoomSocket(hasJoinedRoom ? activeRoomId : '');
+  usePlaylistSocket(hasJoinedRoom ? roomId : '');
+  useRoomSocket(hasJoinedRoom ? roomId : '');
 
   useEffect(() => {
-    if (hasRequestedJoin.current) {
+    if (!joinRoom.data) {
       return;
     }
 
-    hasRequestedJoin.current = true;
-    joinRoom.mutate(
-      { inviteCode: roomId },
-      {
-        onError: () => {
-          setHasJoinedRoom(false);
-        },
-        onSuccess: (data) => {
-          setJoinedRoom(data);
-          setPlaylist(data.playlist);
-          setPlaybackState(data.playbackState, 'room-join');
-          setHasJoinedRoom(true);
-        },
-      },
-    );
-  }, [joinRoom, roomId, setJoinedRoom, setPlaybackState, setPlaylist]);
+    setJoinedRoom(joinRoom.data);
+    setPlaylist(joinRoom.data.playlist);
+    setPlaybackState(joinRoom.data.playbackState, 'room-join');
+  }, [joinRoom.data, setJoinedRoom, setPlaybackState, setPlaylist]);
 
-  const visibleRoom = shouldShowPreviewData ? ROOM_PREVIEW_ROOM : roomFromStore;
-  const visibleMembers = shouldShowPreviewData ? ROOM_PREVIEW_MEMBERS : members;
-  const visiblePlaylist = shouldShowPreviewData ? ROOM_PREVIEW_PLAYLIST : playlist;
-  const visibleChats = shouldShowPreviewData ? ROOM_PREVIEW_CHATS : [];
   const currentUserId = getCurrentUserId();
-  const isHost = shouldShowPreviewData ? true : isCurrentUserHost(visibleMembers, currentUserId);
+  const isHost = isCurrentUserHost(members, currentUserId);
+  const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
+  const currentIndex = currentTrack
+    ? playlist.findIndex((item) => item.id === currentTrack.id)
+    : -1;
+  const previousItem = currentIndex > 0 ? playlist[currentIndex - 1] : undefined;
+  const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
+  const miniPlayerHasPlayableTrack = Boolean(currentTrack && playbackState?.videoId);
+  const miniPlayerControls = usePlayerControls({
+    currentTime: playbackState?.currentTime ?? 0,
+    hasPlayableTrack: miniPlayerHasPlayableTrack,
+    isHost,
+    isPlaying: playbackState?.isPlaying ?? false,
+    nextItemId: nextItem?.id,
+    previousItemId: previousItem?.id,
+    roomId,
+  });
+
+  if (joinRoom.isPending) {
+    return <RoomLoadingState />;
+  }
+
+  if (joinRoom.isError) {
+    return <RoomErrorState error={joinRoom.error} roomId={roomId} />;
+  }
 
   const handlePlayItem = (playlistItemId: string) => {
-    if (shouldShowPreviewData) {
-      return;
-    }
-
-    void playbackCommands.changeTrack(activeRoomId, playlistItemId);
-  };
-
-  const handleAddSearchResult = (result: YoutubeSearchResult) => {
-    if (!hasJoinedRoom && !shouldShowPreviewData) {
-      return;
-    }
-
-    addPlaylistItem.mutate({ videoId: result.videoId });
+    void playbackCommands.changeTrack(roomId, playlistItemId);
   };
 
   return (
-    <>
-      <RoomShell
-        activeMobileTab={activeMobileTab}
-        chats={visibleChats}
-        isHost={isHost}
-        members={visibleMembers}
-        onMobileTabChange={setActiveMobileTab}
-        playbackState={playbackState}
-        playlist={visiblePlaylist}
-        renderPlayerPanel={() => (
-          <PlayerPanel roomId={activeRoomId} isHost={isHost} playlist={visiblePlaylist} />
-        )}
-        renderPlaylistPanel={() => (
-          <PlaylistPanel
-            playlistItems={shouldShowPreviewData ? visiblePlaylist : undefined}
-            roomId={activeRoomId}
-            isHost={isHost}
-            isReady={hasJoinedRoom || shouldShowPreviewData}
-            onOpenSearch={() => setIsSearchPanelOpen(true)}
-            onPlayItem={handlePlayItem}
-            playlistApiClient={shouldShowPreviewData ? roomPreviewPlaylistApi : undefined}
-          />
-        )}
-        room={visibleRoom}
-      />
-      <SearchPanel
-        isOpen={isSearchPanelOpen}
-        roomName={visibleRoom?.name ?? 'Room'}
-        onAddResult={handleAddSearchResult}
-        onClose={() => setIsSearchPanelOpen(false)}
-      />
-    </>
+    <RoomShell
+      activeMobileTab={activeMobileTab}
+      chats={[]}
+      isHost={isHost}
+      miniPlayerCommandError={miniPlayerControls.commandError}
+      miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
+      miniPlayerIsMuted={miniPlayerIsMuted}
+      miniPlayerNextDisabled={!nextItem}
+      miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
+      miniPlayerPreviousDisabled={!previousItem}
+      miniPlayerVolume={miniPlayerVolume}
+      members={members}
+      onMuteToggle={toggleMiniPlayerMute}
+      onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
+      onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
+      onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
+      onMiniPlayerVolumeChange={setMiniPlayerVolume}
+      onMobileTabChange={setActiveMobileTab}
+      playbackState={playbackState}
+      playlist={playlist}
+      renderPlayerPanel={() => <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />}
+      renderPlaylistPanel={() => (
+        <PlaylistPanel
+          roomId={roomId}
+          isHost={isHost}
+          isReady={hasJoinedRoom}
+          onPlayItem={handlePlayItem}
+        />
+      )}
+      room={room}
+    />
   );
 }
 
@@ -145,20 +135,3 @@ function isCurrentUserHost(members: RoomMember[], currentUserId: string | null) 
 
   return members.some((member) => member.userId === currentUserId && member.role === 'host');
 }
-
-const roomPreviewPlaylistApi: PlaylistApi = {
-  addPlaylistItem: async (_roomId, body) => ({
-    addedBy: ROOM_PREVIEW_ROOM.hostId,
-    channelTitle: 'Preview',
-    duration: 180,
-    id: `preview-${body.videoId ?? body.youtubeUrl ?? 'track'}`,
-    position: ROOM_PREVIEW_PLAYLIST.length + 1,
-    status: 'available',
-    thumbnailUrl: '',
-    title: body.youtubeUrl ?? body.videoId ?? 'Preview Track',
-    videoId: body.videoId ?? 'preview-video',
-  }),
-  deletePlaylistItem: async () => ({ message: 'preview playlist item deleted' }),
-  getPlaylist: async () => ({ playlist: ROOM_PREVIEW_PLAYLIST }),
-  reorderPlaylist: async () => ({ message: 'preview playlist reordered' }),
-};

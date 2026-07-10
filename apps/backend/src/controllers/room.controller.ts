@@ -1,20 +1,37 @@
 import type { Request as ExRequest } from 'express';
-import { Body, Get, Path, Post, Request, Route, Security, SuccessResponse, Tags } from 'tsoa';
+import {
+  Body,
+  Get,
+  Patch,
+  Path,
+  Post,
+  Request,
+  Route,
+  Security,
+  SuccessResponse,
+  Tags,
+} from 'tsoa';
 
 import type {
+  CloseRoomResponse,
   CreateRoomRequest,
   CreateRoomResponse,
   GetRoomResponse,
   JoinRoomRequest,
   JoinRoomResponse,
   RecentRoomsResponse,
+  UpdateRoomRequest,
+  UpdateRoomResponse,
 } from '@syfity/shared';
 
 import type { RoomService } from '../services/room.service';
 import type { UserService } from '../services/user.service';
 
 type RoomControllerService = Pick<UserService, 'getRecentRooms'>;
-type RoomControllerRoomService = Pick<RoomService, 'createRoom' | 'joinRoom' | 'getRoomInfo'>;
+type RoomControllerRoomService = Pick<
+  RoomService,
+  'createRoom' | 'joinRoom' | 'getRoomInfo' | 'updateRoom' | 'closeRoomAndBroadcast'
+>;
 
 @Route('rooms')
 @Tags('Room')
@@ -103,6 +120,7 @@ export class RoomController {
           id: chat.id,
           userId: chat.userId,
           nickname: chat.nickname,
+          profileImage: chat.profileImage,
           type: chat.type,
           message: chat.message,
           createdAt: chat.createdAt.toISOString(),
@@ -129,5 +147,36 @@ export class RoomController {
         createdAt: room.createdAt.toISOString(),
       },
     };
+  }
+
+  @Patch('{roomId}')
+  @Security('jwt')
+  @SuccessResponse(200, 'OK')
+  async updateRoom(
+    @Path() roomId: string,
+    @Request() req: ExRequest,
+    @Body() body: UpdateRoomRequest,
+  ): Promise<UpdateRoomResponse> {
+    const userId = req.user!.id;
+    const room = await this.roomService.updateRoom(roomId, userId, body.name);
+
+    return {
+      success: true,
+      data: {
+        id: room.id,
+        name: room.name,
+        updatedAt: room.updatedAt.toISOString(),
+      },
+    };
+  }
+
+  @Post('{roomId}/close')
+  @Security('jwt')
+  @SuccessResponse(200, 'OK')
+  async closeRoom(@Path() roomId: string, @Request() req: ExRequest): Promise<CloseRoomResponse> {
+    const userId = req.user!.id;
+    await this.roomService.closeRoomAndBroadcast(roomId, userId);
+
+    return { success: true, data: { message: 'room closed' } };
   }
 }

@@ -82,11 +82,13 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 60 * 60 * 1000,
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'refresh-token', {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/v1/auth/refresh',
     });
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, { Location: '/room/abc' });
@@ -109,7 +111,7 @@ describe('AuthController', () => {
     });
   });
 
-  it('production 환경에서는 secure strict 쿠키를 설정한다', async () => {
+  it('production 환경에서는 secure none 쿠키를 설정한다', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const { AuthController } = await import('./auth.controller');
     const authService = makeAuthService();
@@ -123,14 +125,18 @@ describe('AuthController', () => {
     expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'access-token', {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
+      maxAge: 60 * 60 * 1000,
     });
   });
 
-  it('콜백 실패 시 clientUrl 에러 쿼리로 리다이렉트한다', async () => {
+  it('콜백 실패 시 clientUrl 에러 쿼리로 리다이렉트하고 에러를 로깅한다', async () => {
+    const { logger } = await import('../lib/logger');
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const { AuthController } = await import('./auth.controller');
     const authService = makeAuthService();
-    authService.handleCallback.mockRejectedValue(new Error('invalid callback'));
+    const error = new Error('invalid callback');
+    authService.handleCallback.mockRejectedValue(error);
     const controller = new AuthController(authService);
     const req = makeRequest();
     const redirectMock = vi.fn();
@@ -139,8 +145,10 @@ describe('AuthController', () => {
     await controller.googleCallback(req, redirect, 'invalid-code');
 
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
-      Location: 'http://localhost:3000?error=auth_failed',
+      Location: 'http://localhost:3000/login?error=auth_failed',
     });
+    expect(loggerError).toHaveBeenCalledWith({ err: error }, '[auth:google/callback] 처리 실패');
+    loggerError.mockRestore();
   });
 
   it('콜백 code가 없으면 Google 처리 없이 clientUrl 에러 쿼리로 리다이렉트한다', async () => {
@@ -155,7 +163,7 @@ describe('AuthController', () => {
 
     expect(authService.handleCallback).not.toHaveBeenCalled();
     expect(redirectMock).toHaveBeenCalledWith(302, undefined, {
-      Location: 'http://localhost:3000?error=auth_failed',
+      Location: 'http://localhost:3000/login?error=auth_failed',
     });
   });
 
@@ -217,11 +225,13 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 60 * 60 * 1000,
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/v1/auth/refresh',
     });
   });
@@ -238,12 +248,14 @@ describe('AuthController', () => {
     expect(req.res!.cookie).toHaveBeenCalledWith('access_token', 'new-access-token', {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
+      maxAge: 60 * 60 * 1000,
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/v1/auth/refresh',
     });
   });

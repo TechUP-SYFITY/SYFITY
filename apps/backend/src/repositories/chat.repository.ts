@@ -1,8 +1,14 @@
 import type { PrismaClient } from '../generated/prisma/client';
-import type { ChatCursor, ChatRecord, IChatRepository } from '../types/chat';
+import type {
+  ChatCursor,
+  ChatMessageRecord,
+  ChatRecord,
+  CreateChatMessageInput,
+  IChatRepository,
+} from '../types/chat';
 
 export type ChatRepositoryPrisma = {
-  chatMessage: Pick<PrismaClient['chatMessage'], 'findMany'>;
+  chatMessage: Pick<PrismaClient['chatMessage'], 'findMany' | 'create'>;
 };
 
 export class ChatRepository implements IChatRepository {
@@ -23,7 +29,7 @@ export class ChatRepository implements IChatRepository {
         message: true,
         createdAt: true,
         user: {
-          select: { nickname: true },
+          select: { nickname: true, profileImage: true },
         },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -34,6 +40,7 @@ export class ChatRepository implements IChatRepository {
       id: row.id,
       userId: row.userId,
       nickname: row.user?.nickname ?? null,
+      profileImage: row.user?.profileImage ?? null,
       type: row.type,
       message: row.message,
       createdAt: row.createdAt,
@@ -50,7 +57,7 @@ export class ChatRepository implements IChatRepository {
         message: true,
         createdAt: true,
         user: {
-          select: { nickname: true },
+          select: { nickname: true, profileImage: true },
         },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -61,9 +68,41 @@ export class ChatRepository implements IChatRepository {
       id: row.id,
       userId: row.userId,
       nickname: row.user?.nickname ?? null,
+      profileImage: row.user?.profileImage ?? null,
       type: row.type,
       message: row.message,
       createdAt: row.createdAt,
     }));
+  }
+
+  async createMessage(data: CreateChatMessageInput): Promise<ChatMessageRecord> {
+    const row = await this.prisma.chatMessage.create({
+      data: {
+        roomId: data.roomId,
+        userId: data.userId,
+        type: data.type,
+        message: data.message,
+      },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        message: true,
+        createdAt: true,
+        user: {
+          select: { nickname: true, profileImage: true },
+        },
+      },
+    });
+
+    return {
+      id: row.id,
+      userId: row.userId,
+      nickname: row.user?.nickname ?? null,
+      profileImage: row.user?.profileImage ?? null,
+      type: row.type,
+      message: row.message,
+      createdAt: row.createdAt,
+    };
   }
 }

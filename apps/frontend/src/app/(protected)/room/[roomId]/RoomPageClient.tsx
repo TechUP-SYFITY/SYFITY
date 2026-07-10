@@ -123,8 +123,8 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       <RoomShell
         headerActions={<UserMenu />}
         activeMobileTab={activeMobileTab}
-        chats={[]}
         currentUserName={me?.nickname}
+        currentUserProfileImage={me?.profileImage}
         isHost={isHost}
         miniPlayerCommandError={miniPlayerControls.commandError}
         miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
@@ -162,6 +162,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
           />
         )}
         room={room}
+        roomId={roomId}
       />
       <SearchPanel
         addErrorMessage={

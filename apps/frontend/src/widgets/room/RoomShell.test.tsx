@@ -36,7 +36,6 @@ describe('RoomShell', () => {
     render(
       <RoomShell
         activeMobileTab="playlist"
-        chats={[]}
         isHost
         members={[]}
         miniPlayerCommandError={null}
@@ -58,6 +57,7 @@ describe('RoomShell', () => {
         renderPlayerPanel={renderPlayerPanel}
         renderPlaylistPanel={() => null}
         room={null}
+        roomId="room-1"
       />,
     );
 

@@ -5,11 +5,11 @@ import type { ReactNode } from 'react';
 
 import type { ChatMessage, RoomMember } from '@/shared/types/domain';
 
-import { ChatPanel } from './ChatPanel';
-import { HostConnectionNotice } from './HostConnectionNotice';
-import { MemberList } from './MemberList';
-import { MobileTabs } from './MobileTabs';
-import type { RoomMobileTab } from './MobileTabs';
+import { ChatPanel } from '@/features/chat/components/ChatPanel';
+import { MemberList } from '@/features/presence/components/MemberList';
+import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
+import { MobileTabs } from '@/features/room/components/MobileTabs';
+import type { RoomMobileTab } from '@/features/room/components/MobileTabs';
 
 export function RoomMobileLayout({
   activeMobileTab,

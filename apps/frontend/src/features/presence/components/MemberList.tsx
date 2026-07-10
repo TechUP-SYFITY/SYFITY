@@ -1,10 +1,11 @@
 'use client';
 
 // Room 멤버 목록을 온라인과 오프라인 그룹으로 나누어 표시한다.
+import { Crown } from 'lucide-react';
+
 import type { RoomMember } from '@/shared/types/domain';
 
-import { RoomIcon } from './RoomIcon';
-import { RoomMemberAvatar } from './RoomMemberAvatar';
+import { MemberAvatar } from './MemberAvatar';
 
 export function MemberList({
   compact = false,
@@ -48,7 +49,7 @@ function MemberGroup({
             }`}
             key={member.userId}
           >
-            <RoomMemberAvatar label={member.nickname} muted={isMuted} />
+            <MemberAvatar label={member.nickname} muted={isMuted} />
             <div className="min-w-0">
               <p
                 className={`truncate text-sm font-semibold ${
@@ -57,7 +58,10 @@ function MemberGroup({
               >
                 {member.nickname}
                 {member.role === 'host' ? (
-                  <RoomIcon name="crown" className="ml-1 inline-block h-2.5 w-2.5 text-warning" />
+                  <Crown
+                    className="ml-1 inline-block h-2.5 w-2.5 shrink-0 text-warning"
+                    aria-hidden
+                  />
                 ) : null}
               </p>
               <p className="text-xs text-white/35">{isMuted ? '오프라인' : '온라인'}</p>

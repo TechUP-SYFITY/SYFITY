@@ -56,7 +56,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     setPlaybackState(joinRoom.data.playbackState, 'room-join');
   }, [joinRoom.data, setJoinedRoom, setPlaybackState, setPlaylist]);
 
-  const isHost = Boolean(me && me.id === room?.hostId);
+  const isHost = me !== undefined && room !== null && me.id === room.hostId;
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const currentIndex = currentTrack
     ? playlist.findIndex((item) => item.id === currentTrack.id)

@@ -33,19 +33,22 @@ describe('fakeSocketClient', () => {
     });
   });
 
-  it('acks playback play and emits updated playback state', () => {
+  it('selects the first available item when playback starts without a selected video', () => {
     const socket = fakeSocketClient.connect();
     const ack = vi.fn<(response: SocketAck) => void>();
     const listener = vi.fn<(payload: PlaybackState) => void>();
+    const firstAvailable = roomFixture.playlist.find((item) => item.status === 'available');
 
-    socket.on('playback:play', listener);
+    socket.on('playback:change-track', listener);
     socket.emit('playback:play', { currentTime: 10, roomId: roomFixture.room.id }, ack);
 
     expect(ack).toHaveBeenCalledWith({ success: true });
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        currentTime: 10,
+        currentTime: 0,
         isPlaying: true,
+        playlistItemId: firstAvailable?.id,
+        videoId: firstAvailable?.videoId,
       }),
     );
   });

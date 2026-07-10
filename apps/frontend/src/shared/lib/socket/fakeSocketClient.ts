@@ -96,7 +96,36 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
     case 'playback:play': {
       const payload = args[0] as PlaybackCurrentTimePayload;
       const ack = readAck(args[1]);
-      const next = updatePlaybackState(ctx.getPlaybackState(), {
+      const current = ctx.getPlaybackState();
+
+      if (current.videoId === null) {
+        const firstAvailable = roomFixture.playlist.find((item) => item.status === 'available');
+
+        if (!firstAvailable) {
+          ack?.({
+            success: false,
+            error: {
+              code: 'PLAYLIST_ITEM_NOT_FOUND',
+              message: 'Playable item not found',
+            },
+          });
+          return;
+        }
+
+        const next = updatePlaybackState(current, {
+          currentTime: 0,
+          isPlaying: true,
+          playlistItemId: firstAvailable.id,
+          videoId: firstAvailable.videoId,
+        });
+
+        ctx.setPlaybackState(next);
+        ack?.({ success: true });
+        ctx.emitLocal('playback:change-track', next);
+        return;
+      }
+
+      const next = updatePlaybackState(current, {
         currentTime: payload.currentTime,
         isPlaying: true,
       });

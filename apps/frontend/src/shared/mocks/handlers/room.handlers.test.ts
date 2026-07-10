@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { JoinRoomResponse } from '@syfity/shared';
+import type { CreateRoomResponse, JoinRoomResponse } from '@syfity/shared';
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { ApiResponse } from '@/shared/types/api';
@@ -16,7 +16,32 @@ const joinRoom = async (body: unknown) => {
   return { data, status: response.status };
 };
 
+const createRoom = async (body: unknown) => {
+  const response = await fetch('http://localhost:4000/api/v1/rooms', {
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+  });
+  const data = (await response.json()) as ApiResponse<CreateRoomResponse['data']>;
+
+  return { data, status: response.status };
+};
+
 describe('room MSW handlers', () => {
+  it('creates the fixture room so follow-up room entry can resolve', async () => {
+    const { data, status } = await createRoom({ name: '테스트 방' });
+
+    expect(status).toBe(200);
+    expect(data).toEqual({
+      success: true,
+      data: expect.objectContaining({
+        id: roomFixture.room.id,
+        inviteCode: roomFixture.room.inviteCode,
+        name: '테스트 방',
+      }),
+    });
+  });
+
   it('joins the fixture room by inviteCode', async () => {
     const { data, status } = await joinRoom({ inviteCode: roomFixture.room.inviteCode });
 

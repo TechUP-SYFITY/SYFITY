@@ -66,41 +66,71 @@ describe('PlaylistPanel reorder', () => {
     usePlaylistStore.getState().clearPlaylist();
   });
 
-  it('updates the store when a parent playlist item is moved down.', async () => {
-    usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
-    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
+  it.each(['touch', 'mouse'] as const)(
+    'updates the store when a playlist item is moved down with a %s handle.',
+    async (pointerType) => {
+      usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
+      vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
 
-    render(
-      <QueryClientProvider client={createQueryClient()}>
-        <PlaylistPanel
-          playlistItems={[firstItem, secondItem]}
-          roomId={roomId}
-          isHost
-          isReady
-          onPlayItem={vi.fn()}
-        />
-      </QueryClientProvider>,
-    );
+      render(
+        <QueryClientProvider client={createQueryClient()}>
+          <PlaylistPanel
+            playlistItems={[firstItem, secondItem]}
+            roomId={roomId}
+            isHost
+            isReady
+            onPlayItem={vi.fn()}
+          />
+        </QueryClientProvider>,
+      );
 
-    fireEvent.dragStart(screen.getByTestId(`playlist-drag-handle-${firstItem.id}`), {
-      dataTransfer: { effectAllowed: 'move' },
-    });
-    fireEvent.dragOver(screen.getByTestId(`playlist-row-${secondItem.id}`), {
-      dataTransfer: { dropEffect: 'move' },
-    });
-    fireEvent.drop(screen.getByTestId(`playlist-row-${secondItem.id}`));
-
-    await waitFor(() => {
-      expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
-        items: [
-          { id: secondItem.id, position: 1 },
-          { id: firstItem.id, position: 2 },
-        ],
+      const firstRow = screen.getByTestId(`playlist-row-${firstItem.id}`);
+      const secondRow = screen.getByTestId(`playlist-row-${secondItem.id}`);
+      const firstHandle = screen.getByTestId(`playlist-drag-handle-${firstItem.id}`);
+      const originalElementFromPoint = document.elementFromPoint;
+      const elementFromPointMock = vi.fn(() => secondRow);
+      Object.defineProperty(document, 'elementFromPoint', {
+        configurable: true,
+        value: elementFromPointMock,
       });
-    });
-    expect(usePlaylistStore.getState().playlist.map((item) => item.id)).toEqual([
-      secondItem.id,
-      firstItem.id,
-    ]);
-  });
+
+      fireEvent.focus(firstRow);
+      fireEvent.pointerDown(firstHandle, {
+        clientX: 24,
+        clientY: 24,
+        pointerId: 1,
+        pointerType,
+      });
+      fireEvent.pointerMove(firstHandle, {
+        clientX: 24,
+        clientY: 88,
+        pointerId: 1,
+        pointerType,
+      });
+      fireEvent.pointerUp(firstHandle, {
+        clientX: 24,
+        clientY: 88,
+        pointerId: 1,
+        pointerType,
+      });
+
+      await waitFor(() => {
+        expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
+          items: [
+            { id: secondItem.id, position: 1 },
+            { id: firstItem.id, position: 2 },
+          ],
+        });
+      });
+      expect(usePlaylistStore.getState().playlist.map((item) => item.id)).toEqual([
+        secondItem.id,
+        firstItem.id,
+      ]);
+
+      Object.defineProperty(document, 'elementFromPoint', {
+        configurable: true,
+        value: originalElementFromPoint,
+      });
+    },
+  );
 });

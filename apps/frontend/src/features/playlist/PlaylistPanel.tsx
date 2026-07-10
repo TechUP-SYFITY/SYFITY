@@ -2,7 +2,7 @@
 
 // Playlist 데이터 훅과 패널 UI 조합을 담당한다.
 import { Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/shared/components/ui';
 import { ApiClientError } from '@/shared/types/api';
@@ -41,6 +41,7 @@ export function PlaylistPanel({
   playlistApiClient,
 }: PlaylistPanelProps) {
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const draggingItemIdRef = useRef<string | null>(null);
   const [focusedActionItemId, setFocusedActionItemId] = useState<string | null>(null);
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -68,6 +69,11 @@ export function PlaylistPanel({
     addPlaylistItem.reset();
     deletePlaylistItem.reset();
     reorderPlaylist.reset();
+  };
+
+  const setActiveDraggingItemId = (itemId: string | null) => {
+    draggingItemIdRef.current = itemId;
+    setDraggingItemId(itemId);
   };
 
   const preventMouseFocus = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -121,26 +127,19 @@ export function PlaylistPanel({
     );
   };
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!isReady || !isHost || !draggingItemId) {
-      return;
-    }
-
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  };
-
   const handleDrop = (targetItemId: string) => {
-    if (!isReady || !isHost || !draggingItemId || draggingItemId === targetItemId) {
-      setDraggingItemId(null);
+    const currentDraggingItemId = draggingItemIdRef.current;
+
+    if (!isReady || !isHost || !currentDraggingItemId || currentDraggingItemId === targetItemId) {
+      setActiveDraggingItemId(null);
       return;
     }
 
-    const currentIndex = visiblePlaylist.findIndex((item) => item.id === draggingItemId);
+    const currentIndex = visiblePlaylist.findIndex((item) => item.id === currentDraggingItemId);
     const nextIndex = visiblePlaylist.findIndex((item) => item.id === targetItemId);
 
     if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePlaylist.length) {
-      setDraggingItemId(null);
+      setActiveDraggingItemId(null);
       return;
     }
 
@@ -148,19 +147,61 @@ export function PlaylistPanel({
     const [targetItem] = nextPlaylist.splice(currentIndex, 1);
 
     if (!targetItem) {
-      setDraggingItemId(null);
+      setActiveDraggingItemId(null);
       return;
     }
 
     nextPlaylist.splice(nextIndex, 0, targetItem);
     resetMutationErrors();
-    setDraggingItemId(null);
+    setActiveDraggingItemId(null);
     reorderPlaylist.mutate({
       items: nextPlaylist.map((item, index) => ({
         id: item.id,
         position: index + 1,
       })),
     });
+  };
+
+  const handleDragHandlePointerDown = (
+    itemId: string,
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (!isReady || !isHost) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setActiveDraggingItemId(itemId);
+  };
+
+  const handleDragHandlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!draggingItemIdRef.current) {
+      return;
+    }
+
+    event.preventDefault();
+  };
+
+  const handleDragHandlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!draggingItemIdRef.current) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    const targetRow = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-playlist-item-id]');
+    const targetItemId = targetRow?.dataset.playlistItemId;
+
+    if (!targetItemId) {
+      setActiveDraggingItemId(null);
+      return;
+    }
+
+    handleDrop(targetItemId);
   };
 
   const handleDelete = (itemId: string) => {
@@ -217,10 +258,10 @@ export function PlaylistPanel({
               item={item}
               onBlurWithin={(event) => handleRowBlur(event, item.id)}
               onDelete={handleDelete}
-              onDragEnd={() => setDraggingItemId(null)}
-              onDragOver={handleDragOver}
-              onDragStart={setDraggingItemId}
-              onDrop={handleDrop}
+              onDragHandlePointerCancel={() => setActiveDraggingItemId(null)}
+              onDragHandlePointerDown={handleDragHandlePointerDown}
+              onDragHandlePointerMove={handleDragHandlePointerMove}
+              onDragHandlePointerUp={handleDragHandlePointerUp}
               onFocusWithin={() => setFocusedActionItemId(item.id)}
               onPreventMouseFocus={preventMouseFocus}
             />

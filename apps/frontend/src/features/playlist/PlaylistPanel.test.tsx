@@ -147,13 +147,14 @@ describe('PlaylistPanel', () => {
     expect(screen.queryByTestId(`playlist-move-up-${availableItem.id}`)).not.toBeInTheDocument();
     expect(screen.queryByTestId(`playlist-move-down-${availableItem.id}`)).not.toBeInTheDocument();
     expect(screen.getByTestId(`playlist-drag-handle-${availableItem.id}`)).toHaveClass(
-      'hidden',
-      'xl:inline-flex',
+      'cursor-grab',
+      'bg-transparent',
     );
 
     fireEvent.focus(screen.getByTestId(`playlist-row-${availableItem.id}`));
 
     expect(actions).toHaveClass('flex', 'opacity-100');
+    expect(screen.getByRole('button', { name: 'Song One 순서 변경' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Song One 삭제' })).toHaveClass(
       'bg-destructive/10',
       'xl:bg-transparent',

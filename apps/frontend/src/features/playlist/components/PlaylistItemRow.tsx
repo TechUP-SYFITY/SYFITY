@@ -17,10 +17,10 @@ interface PlaylistItemRowProps {
   item: PlaylistItem;
   onBlurWithin: (event: React.FocusEvent<HTMLDivElement>) => void;
   onDelete: (itemId: string) => void;
-  onDragEnd: () => void;
-  onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
-  onDragStart: (itemId: string) => void;
-  onDrop: (itemId: string) => void;
+  onDragHandlePointerCancel: () => void;
+  onDragHandlePointerDown: (itemId: string, event: React.PointerEvent<HTMLButtonElement>) => void;
+  onDragHandlePointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onDragHandlePointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onFocusWithin: () => void;
   onPreventMouseFocus: (event: React.PointerEvent<HTMLButtonElement>) => void;
 }
@@ -35,10 +35,10 @@ export function PlaylistItemRow({
   item,
   onBlurWithin,
   onDelete,
-  onDragEnd,
-  onDragOver,
-  onDragStart,
-  onDrop,
+  onDragHandlePointerCancel,
+  onDragHandlePointerDown,
+  onDragHandlePointerMove,
+  onDragHandlePointerUp,
   onFocusWithin,
   onPreventMouseFocus,
 }: PlaylistItemRowProps) {
@@ -50,6 +50,7 @@ export function PlaylistItemRow({
   return (
     <div
       data-testid={`playlist-row-${item.id}`}
+      data-playlist-item-id={item.id}
       className={cn(
         'group min-w-0 overflow-hidden border-b border-border px-4 py-3 transition',
         isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20',
@@ -57,8 +58,6 @@ export function PlaylistItemRow({
       )}
       onBlurCapture={onBlurWithin}
       onClick={onFocusWithin}
-      onDragOver={onDragOver}
-      onDrop={() => onDrop(item.id)}
       onFocusCapture={onFocusWithin}
       tabIndex={isHost ? 0 : undefined}
     >
@@ -93,20 +92,21 @@ export function PlaylistItemRow({
             variant="ghost"
             size="icon"
             className={cn(
-              'hidden h-8 w-8 cursor-grab rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted active:cursor-grabbing xl:inline-flex',
+              'h-10 w-10 cursor-grab touch-none rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted active:cursor-grabbing xl:h-8 xl:w-8',
               !isReady && 'cursor-not-allowed',
             )}
             disabled={!isReady}
-            draggable={isReady}
+            draggable={false}
             type="button"
             data-testid={`playlist-drag-handle-${item.id}`}
             aria-label={`${item.title} 순서 변경`}
-            onDragEnd={onDragEnd}
-            onDragStart={(event) => {
-              event.dataTransfer.effectAllowed = 'move';
-              onDragStart(item.id);
+            onPointerCancel={onDragHandlePointerCancel}
+            onPointerDown={(event) => {
+              onPreventMouseFocus(event);
+              onDragHandlePointerDown(item.id, event);
             }}
-            onPointerDown={onPreventMouseFocus}
+            onPointerMove={onDragHandlePointerMove}
+            onPointerUp={onDragHandlePointerUp}
           >
             <GripVertical className="h-4 w-4" aria-hidden />
           </Button>

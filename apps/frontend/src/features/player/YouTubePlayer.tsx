@@ -15,6 +15,7 @@ declare global {
 }
 
 let youtubeApiPromise: Promise<void> | null = null;
+const LOCAL_PLAYBACK_POLL_INTERVAL_MS = 250;
 
 const loadYouTubeApi = () => {
   if (typeof window === 'undefined') {
@@ -191,7 +192,7 @@ export function YouTubePlayer({
     };
 
     syncLocalPosition();
-    const intervalId = window.setInterval(syncLocalPosition, 1_000);
+    const intervalId = window.setInterval(syncLocalPosition, LOCAL_PLAYBACK_POLL_INTERVAL_MS);
 
     return () => {
       window.clearInterval(intervalId);

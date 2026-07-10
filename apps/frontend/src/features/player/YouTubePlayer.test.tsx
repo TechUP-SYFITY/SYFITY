@@ -82,6 +82,7 @@ describe('YouTubePlayer', () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     usePlayerStore.getState().clearPlayback();
   });
@@ -174,6 +175,42 @@ describe('YouTubePlayer', () => {
       },
       { timeout: 1_500 },
     );
+  });
+
+  it('재생 중인 현재 시간을 1초보다 짧은 간격으로 다시 반영한다', async () => {
+    vi.useFakeTimers();
+    mockCurrentTime = 10;
+
+    render(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(usePlayerStore.getState().localPlaybackPosition?.currentTime).toBe(10);
+    mockCurrentTime = 11;
+
+    act(() => {
+      vi.advanceTimersByTime(249);
+    });
+    expect(usePlayerStore.getState().localPlaybackPosition?.currentTime).toBe(10);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(usePlayerStore.getState().localPlaybackPosition?.currentTime).toBe(11);
   });
 
   it('일시정지 상태에서는 로컬 재생 위치를 주기적으로 갱신하지 않는다', async () => {

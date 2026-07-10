@@ -20,7 +20,7 @@ import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
 import { TrackArtwork } from './TrackArtwork';
 
-export type MiniPlayerPendingCommand = 'play' | 'pause' | 'previous' | 'next' | null;
+export type MiniPlayerPendingCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek' | null;
 
 interface MiniPlayerProps {
   commandError: string | null;
@@ -33,6 +33,7 @@ interface MiniPlayerProps {
   onNextTrack: () => void;
   onPlayPause: () => void;
   onPreviousTrack: () => void;
+  onSeek: (seekTime: number) => void;
   onVolumeChange: (volume: number) => void;
   pendingCommand: MiniPlayerPendingCommand;
   playbackState: PlaybackState | null;
@@ -51,6 +52,7 @@ export function MiniPlayer({
   onNextTrack,
   onPlayPause,
   onPreviousTrack,
+  onSeek,
   onVolumeChange,
   pendingCommand,
   playbackState,
@@ -66,6 +68,7 @@ export function MiniPlayer({
   const playPauseDisabled = controlDisabled;
   const previousControlDisabled = controlDisabled || previousDisabled;
   const nextControlDisabled = controlDisabled || nextDisabled;
+  const seekDisabled = controlDisabled || duration <= 0;
   const isVolumeMuted = isMuted || volume === 0;
   const visibleVolume = isVolumeMuted ? 0 : volume;
 
@@ -150,12 +153,12 @@ export function MiniPlayer({
         <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-muted-foreground xl:flex">
           <span>{formatDuration(currentTime)}</span>
           <div
-            className="relative h-1 min-w-0 flex-1 rounded-full bg-muted"
-            role="progressbar"
-            aria-label="재생 진행률"
-            aria-valuemin={0}
-            aria-valuemax={duration}
-            aria-valuenow={currentTime}
+            className="relative h-1 min-w-0 flex-1 rounded-full bg-muted focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background"
+            role={isHost ? undefined : 'progressbar'}
+            aria-label={isHost ? undefined : '재생 진행률'}
+            aria-valuemin={isHost ? undefined : 0}
+            aria-valuemax={isHost ? undefined : duration}
+            aria-valuenow={isHost ? undefined : currentTime}
           >
             <div
               className="relative h-full rounded-full bg-primary"
@@ -168,6 +171,19 @@ export function MiniPlayer({
                 />
               ) : null}
             </div>
+            {isHost ? (
+              <input
+                className="absolute top-1/2 left-0 h-5 w-full -translate-y-1/2 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                type="range"
+                min={0}
+                max={duration}
+                step={1}
+                aria-label="재생 위치 조절"
+                disabled={seekDisabled}
+                value={currentTime}
+                onChange={(event) => onSeek(Number(event.currentTarget.value))}
+              />
+            ) : null}
           </div>
           <span>{formatDuration(duration)}</span>
         </div>

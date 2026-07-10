@@ -38,6 +38,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
+  const localPlaybackPosition = usePlayerStore((state) => state.localPlaybackPosition);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const playbackState = usePlayerStore((state) => state.playbackState);
   const miniPlayerIsMuted = usePlayerVolumeStore((state) => state.isMuted);
@@ -69,9 +70,14 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     : -1;
   const previousItem = currentIndex > 0 ? playlist[currentIndex - 1] : undefined;
   const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
-  const miniPlayerHasPlayableTrack = Boolean(currentTrack && playbackState?.videoId);
+  const currentTime =
+    localPlaybackPosition && localPlaybackPosition.videoId === playbackState?.videoId
+      ? localPlaybackPosition.currentTime
+      : (playbackState?.currentTime ?? 0);
+  const miniPlayerPlaybackState = playbackState ? { ...playbackState, currentTime } : null;
+  const miniPlayerHasPlayableTrack = Boolean(currentTrack);
   const miniPlayerControls = usePlayerControls({
-    currentTime: playbackState?.currentTime ?? 0,
+    currentTime,
     hasPlayableTrack: miniPlayerHasPlayableTrack,
     isHost,
     isPlaying: playbackState?.isPlaying ?? false,
@@ -136,9 +142,10 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
         onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
         onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
+        onMiniPlayerSeek={miniPlayerControls.handleSeek}
         onMiniPlayerVolumeChange={setMiniPlayerVolume}
         onMobileTabChange={setActiveMobileTab}
-        playbackState={playbackState}
+        playbackState={miniPlayerPlaybackState}
         playlist={playlist}
         renderPlayerPanel={() => (
           <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />

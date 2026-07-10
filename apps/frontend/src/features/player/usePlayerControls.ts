@@ -1,9 +1,11 @@
 // Player 재생 제어 상태와 Socket 명령 실행을 관리한다.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { playbackCommands } from './playbackCommands';
 
-export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next';
+export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek';
+
+const SEEK_DEBOUNCE_MS = 200;
 
 interface UsePlayerControlsParams {
   roomId: string;
@@ -24,11 +26,21 @@ export function usePlayerControls({
   nextItemId,
   previousItemId,
 }: UsePlayerControlsParams) {
+  const seekTimeoutRef = useRef<number | null>(null);
   const [pendingCommand, setPendingCommand] = useState<PlayerCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const controlDisabled = !isHost || !hasPlayableTrack || Boolean(pendingCommand);
   const syncDisabled = !hasPlayableTrack;
+
+  useEffect(
+    () => () => {
+      if (seekTimeoutRef.current !== null) {
+        window.clearTimeout(seekTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   function handleSyncRequest() {
     if (!hasPlayableTrack) {
@@ -62,6 +74,10 @@ export function usePlayerControls({
   }
 
   function handlePlayPause() {
+    if (!hasPlayableTrack) {
+      return;
+    }
+
     if (isPlaying) {
       void runHostCommand('pause', () => playbackCommands.pause(roomId, currentTime));
       return;
@@ -79,6 +95,10 @@ export function usePlayerControls({
   }
 
   function handleNextTrack() {
+    if (!hasPlayableTrack) {
+      return;
+    }
+
     if (!nextItemId) {
       void runHostCommand('next', () => playbackCommands.pause(roomId, 0));
       return;
@@ -87,12 +107,34 @@ export function usePlayerControls({
     void runHostCommand('next', () => playbackCommands.changeTrack(roomId, nextItemId));
   }
 
+  function handleSeek(seekTime: number) {
+    if (
+      !isHost ||
+      pendingCommand ||
+      !hasPlayableTrack ||
+      !Number.isFinite(seekTime) ||
+      seekTime < 0
+    ) {
+      return;
+    }
+
+    if (seekTimeoutRef.current !== null) {
+      window.clearTimeout(seekTimeoutRef.current);
+    }
+
+    seekTimeoutRef.current = window.setTimeout(() => {
+      seekTimeoutRef.current = null;
+      void runHostCommand('seek', () => playbackCommands.seek(roomId, seekTime));
+    }, SEEK_DEBOUNCE_MS);
+  }
+
   return {
     commandError,
     controlDisabled,
     handleNextTrack,
     handlePlayPause,
     handlePreviousTrack,
+    handleSeek,
     handleSyncRequest,
     pendingCommand,
     syncDisabled,

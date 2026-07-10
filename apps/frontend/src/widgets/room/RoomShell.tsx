@@ -41,6 +41,7 @@ interface RoomShellProps {
   onMiniPlayerNextTrack: () => void;
   onMiniPlayerPlayPause: () => void;
   onMiniPlayerPreviousTrack: () => void;
+  onMiniPlayerSeek: (seekTime: number) => void;
   onMiniPlayerVolumeChange: (volume: number) => void;
   onMobileTabChange: (tab: RoomMobileTab) => void;
   playbackState: PlaybackState | null;
@@ -69,6 +70,7 @@ export function RoomShell({
   onMiniPlayerNextTrack,
   onMiniPlayerPlayPause,
   onMiniPlayerPreviousTrack,
+  onMiniPlayerSeek,
   onMiniPlayerVolumeChange,
   onMobileTabChange,
   playbackState,
@@ -117,6 +119,7 @@ export function RoomShell({
           onNextTrack={onMiniPlayerNextTrack}
           onPlayPause={onMiniPlayerPlayPause}
           onPreviousTrack={onMiniPlayerPreviousTrack}
+          onSeek={onMiniPlayerSeek}
           onVolumeChange={onMiniPlayerVolumeChange}
           pendingCommand={miniPlayerPendingCommand}
           playbackState={playbackState}

@@ -1,3 +1,5 @@
+import '@testing-library/jest-dom/vitest';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -92,6 +94,12 @@ describe('SearchPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yellow 추가' }));
 
     expect(onAddResult).toHaveBeenCalledWith(results[0]);
+  });
+
+  it('renders a playlist add error inside the search panel', () => {
+    renderPanel({ addErrorMessage: '재생할 수 없는 영상이에요.' });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('재생할 수 없는 영상이에요.');
   });
 
   it('renders a loading state while searching', () => {

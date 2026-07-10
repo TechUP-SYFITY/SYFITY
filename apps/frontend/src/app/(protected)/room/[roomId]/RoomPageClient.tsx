@@ -12,7 +12,8 @@ import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
 import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
 import { usePlayerControls } from '@/features/player/usePlayerControls';
-import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
+import { getPlaylistErrorMessage } from '@/features/playlist/playlistErrorMessage';
+import { useAddPlaylistItem, usePlaylistSocket } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
@@ -21,6 +22,8 @@ import { useJoinRoom } from '@/features/room/roomHooks';
 import { RoomShell, type RoomMobileTab } from '@/features/room/RoomShell';
 import { useRoomStore } from '@/features/room/roomStore';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
+import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
+import { SearchPanel } from '@/features/search/components/SearchPanel';
 
 interface RoomPageClientProps {
   roomId: string;
@@ -28,6 +31,7 @@ interface RoomPageClientProps {
 
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
+  const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const joinRoom = useJoinRoom(roomId);
   const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
@@ -42,10 +46,12 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
 
   const hasJoinedRoom = joinRoom.isSuccess;
+  const activeRoomId = room?.id ?? roomId;
+  const addSearchResult = useAddPlaylistItem(activeRoomId);
 
   usePlaybackSocket(hasJoinedRoom);
-  usePlaylistSocket(hasJoinedRoom ? roomId : '');
-  useRoomSocket(hasJoinedRoom ? roomId : '');
+  usePlaylistSocket(hasJoinedRoom ? activeRoomId : '');
+  useRoomSocket(hasJoinedRoom ? activeRoomId : '');
 
   useEffect(() => {
     if (!joinRoom.data) {
@@ -73,7 +79,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     isPlaying: playbackState?.isPlaying ?? false,
     nextItemId: nextItem?.id,
     previousItemId: previousItem?.id,
-    roomId,
+    roomId: activeRoomId,
   });
 
   if (joinRoom.isPending) {
@@ -85,41 +91,74 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   }
 
   const handlePlayItem = (playlistItemId: string) => {
-    void playbackCommands.changeTrack(roomId, playlistItemId);
+    void playbackCommands.changeTrack(activeRoomId, playlistItemId);
+  };
+
+  const handleOpenSearch = () => {
+    addSearchResult.reset();
+    setIsSearchPanelOpen(true);
+  };
+
+  const handleCloseSearch = () => {
+    addSearchResult.reset();
+    setIsSearchPanelOpen(false);
+  };
+
+  const handleAddSearchResult = (result: YoutubeSearchResult) => {
+    if (!hasJoinedRoom) {
+      return;
+    }
+
+    addSearchResult.reset();
+    addSearchResult.mutate({ videoId: result.videoId });
   };
 
   return (
-    <RoomShell
-      activeMobileTab={activeMobileTab}
-      chats={[]}
-      isHost={isHost}
-      miniPlayerCommandError={miniPlayerControls.commandError}
-      miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
-      miniPlayerIsMuted={miniPlayerIsMuted}
-      miniPlayerNextDisabled={!nextItem}
-      miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
-      miniPlayerPreviousDisabled={!previousItem}
-      miniPlayerVolume={miniPlayerVolume}
-      members={members}
-      onMuteToggle={toggleMiniPlayerMute}
-      onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
-      onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
-      onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
-      onMiniPlayerVolumeChange={setMiniPlayerVolume}
-      onMobileTabChange={setActiveMobileTab}
-      playbackState={playbackState}
-      playlist={playlist}
-      renderPlayerPanel={() => <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />}
-      renderPlaylistPanel={() => (
-        <PlaylistPanel
-          roomId={roomId}
-          isHost={isHost}
-          isReady={hasJoinedRoom}
-          onPlayItem={handlePlayItem}
-        />
-      )}
-      room={room}
-    />
+    <>
+      <RoomShell
+        activeMobileTab={activeMobileTab}
+        chats={[]}
+        isHost={isHost}
+        miniPlayerCommandError={miniPlayerControls.commandError}
+        miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
+        miniPlayerIsMuted={miniPlayerIsMuted}
+        miniPlayerNextDisabled={!nextItem}
+        miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
+        miniPlayerPreviousDisabled={!previousItem}
+        miniPlayerVolume={miniPlayerVolume}
+        members={members}
+        onMuteToggle={toggleMiniPlayerMute}
+        onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
+        onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
+        onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
+        onMiniPlayerVolumeChange={setMiniPlayerVolume}
+        onMobileTabChange={setActiveMobileTab}
+        playbackState={playbackState}
+        playlist={playlist}
+        renderPlayerPanel={() => (
+          <PlayerPanel roomId={activeRoomId} isHost={isHost} playlist={playlist} />
+        )}
+        renderPlaylistPanel={() => (
+          <PlaylistPanel
+            roomId={activeRoomId}
+            isHost={isHost}
+            isReady={hasJoinedRoom}
+            onOpenSearch={handleOpenSearch}
+            onPlayItem={handlePlayItem}
+          />
+        )}
+        room={room}
+      />
+      <SearchPanel
+        addErrorMessage={
+          addSearchResult.isError ? getPlaylistErrorMessage(addSearchResult.error) : undefined
+        }
+        isOpen={isSearchPanelOpen}
+        roomName={room?.name ?? 'Room'}
+        onAddResult={handleAddSearchResult}
+        onClose={handleCloseSearch}
+      />
+    </>
   );
 }
 

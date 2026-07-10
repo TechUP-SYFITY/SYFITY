@@ -1,6 +1,15 @@
 'use client';
 
-import { ChevronDown, Inbox, LoaderCircle, Music2, Plus, Search, X } from 'lucide-react';
+import {
+  ChevronDown,
+  CircleAlert,
+  Inbox,
+  LoaderCircle,
+  Music2,
+  Plus,
+  Search,
+  X,
+} from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { useState } from 'react';
 
@@ -13,6 +22,7 @@ import { useYoutubeSearchQuery } from '../hooks/useYoutubeSearchQuery';
 const SEARCH_DEBOUNCE_DELAY = 350;
 
 interface SearchPanelProps {
+  addErrorMessage?: string;
   isOpen: boolean;
   roomName: string;
   initialQuery?: string;
@@ -21,6 +31,7 @@ interface SearchPanelProps {
 }
 
 export function SearchPanel({
+  addErrorMessage,
   isOpen,
   roomName,
   initialQuery = '',
@@ -109,6 +120,16 @@ export function SearchPanel({
             ) : null}
           </div>
         </div>
+
+        {addErrorMessage ? (
+          <p
+            className="flex items-center gap-2 border-b border-red-300/15 bg-red-400/10 px-4 py-3 text-xs text-red-200"
+            role="alert"
+          >
+            <CircleAlert className="h-4 w-4 shrink-0" aria-hidden />
+            {addErrorMessage}
+          </p>
+        ) : null}
 
         <div className="min-h-[280px] flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
           {searchQuery.isLoading ? <SearchPanelLoading /> : null}

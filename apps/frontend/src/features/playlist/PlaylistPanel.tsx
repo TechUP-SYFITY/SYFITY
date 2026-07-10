@@ -101,9 +101,12 @@ export function PlaylistPanel({
     setIsAddFormOpen(true);
   };
 
-  const handleRetry = () => {
-    resetMutationErrors();
-    void refetch();
+  const handleRetry = async () => {
+    const result = await refetch();
+
+    if (result.isSuccess) {
+      resetMutationErrors();
+    }
   };
 
   useEffect(() => {

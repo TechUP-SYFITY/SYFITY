@@ -127,4 +127,32 @@ describe('PlaylistPanel reorder', () => {
       });
     },
   );
+
+  it('updates the store when a focused drag handle is moved down with keyboard.', async () => {
+    usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
+    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
+
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <PlaylistPanel playlistItems={[firstItem, secondItem]} roomId={roomId} isHost isReady />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.keyDown(screen.getByTestId(`playlist-drag-handle-${firstItem.id}`), {
+      key: 'ArrowDown',
+    });
+
+    await waitFor(() => {
+      expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
+        items: [
+          { id: secondItem.id, position: 1 },
+          { id: firstItem.id, position: 2 },
+        ],
+      });
+    });
+    expect(usePlaylistStore.getState().playlist.map((item) => item.id)).toEqual([
+      secondItem.id,
+      firstItem.id,
+    ]);
+  });
 });

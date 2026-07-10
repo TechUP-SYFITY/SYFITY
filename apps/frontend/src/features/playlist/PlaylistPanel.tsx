@@ -161,6 +161,35 @@ export function PlaylistPanel({
     });
   };
 
+  const handleKeyboardReorder = (itemId: string, direction: -1 | 1) => {
+    if (!isReady || !isHost) {
+      return;
+    }
+
+    const currentIndex = visiblePlaylist.findIndex((item) => item.id === itemId);
+    const nextIndex = currentIndex + direction;
+
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePlaylist.length) {
+      return;
+    }
+
+    const nextPlaylist = [...visiblePlaylist];
+    const [targetItem] = nextPlaylist.splice(currentIndex, 1);
+
+    if (!targetItem) {
+      return;
+    }
+
+    nextPlaylist.splice(nextIndex, 0, targetItem);
+    resetMutationErrors();
+    reorderPlaylist.mutate({
+      items: nextPlaylist.map((item, index) => ({
+        id: item.id,
+        position: index + 1,
+      })),
+    });
+  };
+
   const handleDragHandlePointerDown = (
     itemId: string,
     event: React.PointerEvent<HTMLButtonElement>,
@@ -258,6 +287,7 @@ export function PlaylistPanel({
               onBlurWithin={(event) => handleRowBlur(event, item.id)}
               onDelete={handleDelete}
               onDragHandlePointerCancel={() => setActiveDraggingItemId(null)}
+              onDragHandleKeyDown={handleKeyboardReorder}
               onDragHandlePointerDown={handleDragHandlePointerDown}
               onDragHandlePointerMove={handleDragHandlePointerMove}
               onDragHandlePointerUp={handleDragHandlePointerUp}

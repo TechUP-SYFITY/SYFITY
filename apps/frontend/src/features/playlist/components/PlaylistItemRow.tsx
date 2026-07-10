@@ -18,6 +18,7 @@ interface PlaylistItemRowProps {
   onBlurWithin: (event: React.FocusEvent<HTMLDivElement>) => void;
   onDelete: (itemId: string) => void;
   onDragHandlePointerCancel: () => void;
+  onDragHandleKeyDown: (itemId: string, direction: -1 | 1) => void;
   onDragHandlePointerDown: (itemId: string, event: React.PointerEvent<HTMLButtonElement>) => void;
   onDragHandlePointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onDragHandlePointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void;
@@ -36,6 +37,7 @@ export function PlaylistItemRow({
   onBlurWithin,
   onDelete,
   onDragHandlePointerCancel,
+  onDragHandleKeyDown,
   onDragHandlePointerDown,
   onDragHandlePointerMove,
   onDragHandlePointerUp,
@@ -100,6 +102,14 @@ export function PlaylistItemRow({
             type="button"
             data-testid={`playlist-drag-handle-${item.id}`}
             aria-label={`${item.title} 순서 변경`}
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+                return;
+              }
+
+              event.preventDefault();
+              onDragHandleKeyDown(item.id, event.key === 'ArrowUp' ? -1 : 1);
+            }}
             onPointerCancel={onDragHandlePointerCancel}
             onPointerDown={(event) => {
               onPreventMouseFocus(event);

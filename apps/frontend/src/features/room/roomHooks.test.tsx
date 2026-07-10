@@ -47,10 +47,7 @@ const joinedRoom = {
     updatedAt: roomFixture.playbackState.updatedAt ?? '2026-07-01T10:12:00.000Z',
   },
   playlist: roomFixture.playlist,
-  recentChats: roomFixture.chats.map((chat) => ({
-    profileImage: null,
-    ...chat,
-  })),
+  recentChats: roomFixture.chats,
   room: roomFixture.room,
 } satisfies JoinRoomResponse;
 

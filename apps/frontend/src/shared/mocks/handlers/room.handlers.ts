@@ -69,10 +69,7 @@ export const roomHandlers = [
           updatedAt: roomFixture.playbackState.updatedAt ?? new Date().toISOString(),
         },
         playlist: roomFixture.playlist,
-        recentChats: roomFixture.chats.map((chat) => ({
-          profileImage: null,
-          ...chat,
-        })),
+        recentChats: roomFixture.chats,
         room: roomFixture.room,
       },
     } satisfies JoinRoomResponse);

@@ -73,6 +73,7 @@ describe('RoomPageClient', () => {
     expect(screen.getAllByText(roomFixture.members[0].nickname).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
     expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
   });
 

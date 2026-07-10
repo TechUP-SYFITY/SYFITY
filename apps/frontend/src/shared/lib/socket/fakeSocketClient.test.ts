@@ -53,6 +53,36 @@ describe('fakeSocketClient', () => {
     );
   });
 
+  it('emits system chat when playback starts', () => {
+    const socket = fakeSocketClient.connect();
+    const listener = vi.fn<(payload: ChatMessage) => void>();
+
+    socket.on('chat:system', listener);
+    socket.emit('playback:play', { currentTime: 10, roomId: roomFixture.room.id }, vi.fn());
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Host가 재생을 시작했습니다.',
+        type: 'system',
+      }),
+    );
+  });
+
+  it('emits system chat when playback pauses', () => {
+    const socket = fakeSocketClient.connect();
+    const listener = vi.fn<(payload: ChatMessage) => void>();
+
+    socket.on('chat:system', listener);
+    socket.emit('playback:pause', { currentTime: 10, roomId: roomFixture.room.id }, vi.fn());
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Host가 일시정지했습니다.',
+        type: 'system',
+      }),
+    );
+  });
+
   it('fails playback change-track when item does not exist', () => {
     const socket = fakeSocketClient.connect();
     const ack = vi.fn<(response: SocketAck) => void>();
@@ -127,14 +157,20 @@ describe('fakeSocketClient', () => {
     );
   });
 
-  it('acks chat send and echoes received message', () => {
+  it('emits chat received before acking chat send', () => {
     const socket = fakeSocketClient.connect();
-    const ack = vi.fn<(response: SocketAck<{ id: string; createdAt: string }>) => void>();
-    const listener = vi.fn<(payload: ChatMessage) => void>();
+    const calls: string[] = [];
+    const ack = vi.fn<(response: SocketAck<{ id: string; createdAt: string }>) => void>(() => {
+      calls.push('ack');
+    });
+    const listener = vi.fn<(payload: ChatMessage) => void>(() => {
+      calls.push('received');
+    });
 
     socket.on('chat:received', listener);
     socket.emit('chat:send', { message: 'hi', roomId: roomFixture.room.id }, ack);
 
+    expect(calls).toEqual(['received', 'ack']);
     expect(ack).toHaveBeenCalledWith({
       success: true,
       data: expect.objectContaining({

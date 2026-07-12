@@ -282,6 +282,7 @@ describe('chatHooks', () => {
       { message: '안녕하세요', roomId },
       expect.any(Function),
     );
+    expect(useChatStore.getState().outgoingScrollRequestId).toBe(1);
     expect(useChatStore.getState().messages).toEqual([
       expect.objectContaining({
         id: expect.stringMatching(/^temp-/) as string,
@@ -568,7 +569,7 @@ describe('chatHooks', () => {
     });
   });
 
-  it('useChatScroll은 위로 스크롤한 상태라도 내가 보낸 optimistic 메시지는 맨 아래로 이동한다', async () => {
+  it('useChatScroll은 위로 스크롤한 상태라도 직접 전송 요청이 있으면 맨 아래로 이동한다', async () => {
     let latestResult: UseChatScrollResult | null = null;
     renderChatScrollHarness((result) => {
       latestResult = result;
@@ -588,11 +589,12 @@ describe('chatHooks', () => {
 
     stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 900, scrollTop: 100 });
     act(() => {
-      useChatStore.getState().addOptimisticMessage({
+      useChatStore.getState().addReceivedMessage({
         ...olderMessage,
         createdAt: '2026-07-01T10:13:00.000Z',
-        id: 'temp-chat-new',
+        id: 'chat-new',
       });
+      useChatStore.getState().requestOutgoingScroll();
     });
 
     await waitFor(() => {

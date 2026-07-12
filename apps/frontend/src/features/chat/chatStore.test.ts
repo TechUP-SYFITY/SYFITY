@@ -139,8 +139,18 @@ describe('chatStore', () => {
     expect(useChatStore.getState().messages).toEqual([secondMessage]);
   });
 
+  it('requestOutgoingScroll은 전송 스크롤 요청 id를 증가시킨다', () => {
+    expect(useChatStore.getState().outgoingScrollRequestId).toBe(0);
+
+    useChatStore.getState().requestOutgoingScroll();
+    useChatStore.getState().requestOutgoingScroll();
+
+    expect(useChatStore.getState().outgoingScrollRequestId).toBe(2);
+  });
+
   it('setSendError와 clearMessages는 전송 오류 상태를 갱신한다', () => {
     useChatStore.getState().setMessages([firstMessage]);
+    useChatStore.getState().requestOutgoingScroll();
     useChatStore.getState().setSendError('메시지 전송 실패');
 
     expect(useChatStore.getState().sendError).toBe('메시지 전송 실패');
@@ -148,6 +158,7 @@ describe('chatStore', () => {
     useChatStore.getState().clearMessages();
 
     expect(useChatStore.getState().messages).toEqual([]);
+    expect(useChatStore.getState().outgoingScrollRequestId).toBe(0);
     expect(useChatStore.getState().sendError).toBeNull();
   });
 });

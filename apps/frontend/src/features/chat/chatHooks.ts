@@ -27,8 +27,6 @@ const EMPTY_CURSOR: ChatHistoryCursor = {
   cursorTime: '',
 };
 
-const isOptimisticChatMessage = (message: ChatMessage) => message.id.startsWith('temp-');
-
 export const chatQueryKeys = {
   all: ['chats'] as const,
   history: (roomId: string) => [...chatQueryKeys.all, roomId, 'history'] as const,
@@ -62,6 +60,7 @@ export const useSendChatMessage = (
   const addOptimisticMessage = useChatStore((state) => state.addOptimisticMessage);
   const reconcileOptimisticMessage = useChatStore((state) => state.reconcileOptimisticMessage);
   const removeMessage = useChatStore((state) => state.removeMessage);
+  const requestOutgoingScroll = useChatStore((state) => state.requestOutgoingScroll);
   const setSendError = useChatStore((state) => state.setSendError);
 
   const sendMessage = useCallback(
@@ -84,6 +83,7 @@ export const useSendChatMessage = (
       };
 
       addOptimisticMessage(optimisticMessage);
+      requestOutgoingScroll();
       setSendError(null);
 
       socketClient.connect().emit('chat:send', { message: trimmed, roomId }, (ack) => {
@@ -102,6 +102,7 @@ export const useSendChatMessage = (
       currentUserProfileImage,
       reconcileOptimisticMessage,
       removeMessage,
+      requestOutgoingScroll,
       roomId,
       setSendError,
     ],
@@ -123,6 +124,7 @@ export interface UseChatScrollResult {
 
 export function useChatScroll(roomId: string): UseChatScrollResult {
   const messages = useChatStore((state) => state.messages);
+  const outgoingScrollRequestId = useChatStore((state) => state.outgoingScrollRequestId);
   const prependMessages = useChatStore((state) => state.prependMessages);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -130,6 +132,8 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   const pendingAnchorRef = useRef<ScrollAnchor | null>(null);
   const isAtBottomRef = useRef(true);
   const hasScrolledToInitialBottomRef = useRef(false);
+  const handledOutgoingScrollRequestRef = useRef(outgoingScrollRequestId);
+  const latestOutgoingScrollRequestIdRef = useRef(outgoingScrollRequestId);
   const previousMessagesRef = useRef<ChatMessage[]>(messages);
   const [isScrollToBottomButtonVisible, setIsScrollToBottomButtonVisible] = useState(false);
   const oldestMessage = messages[0];
@@ -159,9 +163,14 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   const { data, fetchNextPage, hasNextPage, isError, isFetchingNextPage } = historyQuery;
 
   useEffect(() => {
+    latestOutgoingScrollRequestIdRef.current = outgoingScrollRequestId;
+  }, [outgoingScrollRequestId]);
+
+  useEffect(() => {
     syncedPageCountRef.current = 0;
     pendingAnchorRef.current = null;
     hasScrolledToInitialBottomRef.current = false;
+    handledOutgoingScrollRequestRef.current = latestOutgoingScrollRequestIdRef.current;
   }, [roomId]);
 
   useEffect(() => {
@@ -257,8 +266,16 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     }
 
     const previousMessages = previousMessagesRef.current;
+    const hasPendingOutgoingScroll =
+      outgoingScrollRequestId !== handledOutgoingScrollRequestRef.current;
 
-    if (pendingAnchorRef.current) {
+    if (hasPendingOutgoingScroll) {
+      pendingAnchorRef.current = null;
+      scrollToBottom(container);
+      isAtBottomRef.current = true;
+      handledOutgoingScrollRequestRef.current = outgoingScrollRequestId;
+      setIsScrollToBottomButtonVisible(false);
+    } else if (pendingAnchorRef.current) {
       restoreScrollTopAfterPrepend(container, pendingAnchorRef.current);
       pendingAnchorRef.current = null;
     } else if (!hasScrolledToInitialBottomRef.current && messages.length > 0) {
@@ -270,10 +287,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       messages.length > previousMessages.length &&
       messages[0]?.id === previousMessages[0]?.id
     ) {
-      const appendedMessages = messages.slice(previousMessages.length);
-      const hasOptimisticMessage = appendedMessages.some(isOptimisticChatMessage);
-
-      if (isAtBottomRef.current || hasOptimisticMessage) {
+      if (isAtBottomRef.current) {
         scrollToBottom(container);
         isAtBottomRef.current = true;
         setIsScrollToBottomButtonVisible(false);
@@ -283,7 +297,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     }
 
     previousMessagesRef.current = messages;
-  }, [messages]);
+  }, [messages, outgoingScrollRequestId]);
 
   const scrollToBottomNow = useCallback(() => {
     const container = scrollContainerRef.current;

@@ -51,8 +51,10 @@ vi.mock('./chatApi', () => ({
 }));
 
 const roomId = 'room-1';
+type TestChatMessage = Omit<ChatMessage, 'profileImage'> & { profileImage: string | null };
+type TestChatHistoryPage = { chats: TestChatMessage[]; hasMore: boolean };
 
-const receivedMessage: ChatMessage = {
+const receivedMessage: TestChatMessage = {
   createdAt: '2026-07-01T10:12:00.000Z',
   id: 'chat-1',
   message: '안녕하세요.',
@@ -62,7 +64,7 @@ const receivedMessage: ChatMessage = {
   userId: 'user-1',
 };
 
-const olderMessage: ChatMessage = {
+const olderMessage: TestChatMessage = {
   createdAt: '2026-07-01T10:10:00.000Z',
   id: 'chat-older',
   message: '이전 메시지',
@@ -72,7 +74,7 @@ const olderMessage: ChatMessage = {
   userId: 'user-0',
 };
 
-const oldestMessage: ChatMessage = {
+const oldestMessage: TestChatMessage = {
   createdAt: '2026-07-01T10:09:00.000Z',
   id: 'chat-oldest',
   message: '가장 이전 메시지',
@@ -82,7 +84,7 @@ const oldestMessage: ChatMessage = {
   userId: 'user-3',
 };
 
-const ancientMessage: ChatMessage = {
+const ancientMessage: TestChatMessage = {
   createdAt: '2026-07-01T10:08:00.000Z',
   id: 'chat-ancient',
   message: '더 오래된 메시지',
@@ -527,8 +529,7 @@ describe('chatHooks', () => {
   });
 
   it('useChatScroll은 sentinel 교차 시 다음 페이지를 로드하고 prepend 후 스크롤 앵커를 복원한다', async () => {
-    let resolveNextPage: (page: { chats: ChatMessage[]; hasMore: boolean }) => void = () =>
-      undefined;
+    let resolveNextPage: (page: TestChatHistoryPage) => void = () => undefined;
     vi.mocked(chatApi.getChatHistory)
       .mockResolvedValueOnce({
         chats: [olderMessage, oldestMessage],

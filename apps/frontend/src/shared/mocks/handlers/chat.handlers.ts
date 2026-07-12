@@ -51,7 +51,7 @@ export const chatHandlers = [
     const cursorTime = url.searchParams.get('cursorTime');
     const cursorId = url.searchParams.get('cursorId');
 
-    if (!isValidIsoDate(cursorTime) || !cursorId) {
+    if (!cursorTime || !isValidIsoDate(cursorTime) || !cursorId) {
       return createErrorResponse('VALIDATION_ERROR', 'Invalid chat history cursor', 400);
     }
 

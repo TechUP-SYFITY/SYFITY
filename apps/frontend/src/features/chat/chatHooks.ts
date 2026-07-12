@@ -268,6 +268,10 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     const previousMessages = previousMessagesRef.current;
     const hasPendingOutgoingScroll =
       outgoingScrollRequestId !== handledOutgoingScrollRequestRef.current;
+    const isPrepend =
+      pendingAnchorRef.current !== null && messages[0]?.id !== previousMessages[0]?.id;
+    const isTailAppend =
+      messages.length > previousMessages.length && messages[0]?.id === previousMessages[0]?.id;
 
     if (hasPendingOutgoingScroll) {
       pendingAnchorRef.current = null;
@@ -275,7 +279,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       isAtBottomRef.current = true;
       handledOutgoingScrollRequestRef.current = outgoingScrollRequestId;
       setIsScrollToBottomButtonVisible(false);
-    } else if (pendingAnchorRef.current) {
+    } else if (isPrepend && pendingAnchorRef.current) {
       restoreScrollTopAfterPrepend(container, pendingAnchorRef.current);
       pendingAnchorRef.current = null;
     } else if (!hasScrolledToInitialBottomRef.current && messages.length > 0) {
@@ -283,10 +287,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       isAtBottomRef.current = true;
       hasScrolledToInitialBottomRef.current = true;
       setIsScrollToBottomButtonVisible(false);
-    } else if (
-      messages.length > previousMessages.length &&
-      messages[0]?.id === previousMessages[0]?.id
-    ) {
+    } else if (isTailAppend) {
       if (isAtBottomRef.current) {
         scrollToBottom(container);
         isAtBottomRef.current = true;

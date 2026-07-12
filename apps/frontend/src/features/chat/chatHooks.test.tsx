@@ -677,4 +677,56 @@ describe('chatHooks', () => {
       expect(container.scrollTop).toBe(400);
     });
   });
+
+  it('useChatScroll은 히스토리 로딩 중 tail append가 먼저 와도 실제 prepend 시 앵커를 복원한다', async () => {
+    let resolveHistoryPage: (page: TestChatHistoryPage) => void = () => undefined;
+    vi.mocked(chatApi.getChatHistory).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveHistoryPage = resolve;
+        }),
+    );
+    let latestResult: UseChatScrollResult | null = null;
+    renderChatScrollHarness((result) => {
+      latestResult = result;
+    });
+    const container = screen.getByTestId('chat-scroll-container');
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 500, scrollTop: 0 });
+    act(() => {
+      useChatStore.getState().setMessages([receivedMessage]);
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(500));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 500, scrollTop: 100 });
+    fireEvent.scroll(container);
+
+    await waitFor(() => expect(latestResult?.isScrollToBottomButtonVisible).toBe(true));
+    await waitFor(() => expect(intersectionObserverInstances).toHaveLength(1));
+
+    act(() => {
+      intersectionObserverInstances[0]?.trigger(true);
+    });
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 650, scrollTop: 100 });
+    act(() => {
+      useChatStore.getState().addReceivedMessage({
+        ...olderMessage,
+        createdAt: '2026-07-01T10:13:00.000Z',
+        id: 'chat-new',
+      });
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(100));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 950, scrollTop: 100 });
+    await act(async () => {
+      resolveHistoryPage({ chats: [olderMessage], hasMore: false });
+    });
+
+    await waitFor(() => {
+      expect(chatApi.getChatHistory).toHaveBeenCalledTimes(1);
+      expect(container.scrollTop).toBe(550);
+    });
+  });
 });

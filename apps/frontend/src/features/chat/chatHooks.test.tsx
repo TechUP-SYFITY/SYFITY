@@ -127,8 +127,14 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
-function ChatScrollHarness({ onResult }: { onResult: (result: UseChatScrollResult) => void }) {
-  const result = useChatScroll(roomId);
+function ChatScrollHarness({
+  onResult,
+  roomId: harnessRoomId = roomId,
+}: {
+  onResult: (result: UseChatScrollResult) => void;
+  roomId?: string;
+}) {
+  const result = useChatScroll(harnessRoomId);
   const { scrollContainerRef, topSentinelRef } = result;
   onResult(result);
 
@@ -514,6 +520,40 @@ describe('chatHooks', () => {
     } else {
       Reflect.deleteProperty(HTMLElement.prototype, 'scrollTop');
     }
+  });
+
+  it('useChatScroll은 roomId 변경 시 이전 방 스크롤 상태를 초기화한다', async () => {
+    let latestResult: UseChatScrollResult | null = null;
+    const { rerender } = render(
+      <ChatScrollHarness onResult={(result) => (latestResult = result)} />,
+      {
+        wrapper: createWrapper(createQueryClient()),
+      },
+    );
+    const container = screen.getByTestId('chat-scroll-container');
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 700, scrollTop: 0 });
+
+    act(() => {
+      useChatStore.getState().setMessages([receivedMessage]);
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(700));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 700, scrollTop: 100 });
+    fireEvent.scroll(container);
+
+    await waitFor(() => expect(latestResult?.isScrollToBottomButtonVisible).toBe(true));
+
+    rerender(<ChatScrollHarness onResult={(result) => (latestResult = result)} roomId="room-2" />);
+
+    await waitFor(() => expect(latestResult?.isScrollToBottomButtonVisible).toBe(false));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 900, scrollTop: 100 });
+    act(() => {
+      useChatStore.getState().setMessages([{ ...receivedMessage, id: 'room-2-chat-1' }]);
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(900));
   });
 
   it('useChatScroll은 맨 아래에서 tail append가 발생하면 자동으로 맨 아래로 이동한다', async () => {

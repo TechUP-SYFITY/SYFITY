@@ -135,9 +135,19 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   const handledOutgoingScrollRequestRef = useRef(outgoingScrollRequestId);
   const latestOutgoingScrollRequestIdRef = useRef(outgoingScrollRequestId);
   const previousMessagesRef = useRef<ChatMessage[]>(messages);
-  const [isScrollToBottomButtonVisible, setIsScrollToBottomButtonVisible] = useState(false);
+  const latestMessagesRef = useRef<ChatMessage[]>(messages);
+  const currentRoomIdRef = useRef(roomId);
+  const [scrollToBottomButtonState, setScrollToBottomButtonState] = useState({
+    isVisible: false,
+    roomId,
+  });
   const oldestMessage = messages[0];
   const hasInitialMessages = messages.length > 0;
+  const isScrollToBottomButtonVisible =
+    scrollToBottomButtonState.roomId === roomId && scrollToBottomButtonState.isVisible;
+  const setIsScrollToBottomButtonVisible = useCallback((isVisible: boolean) => {
+    setScrollToBottomButtonState({ isVisible, roomId: currentRoomIdRef.current });
+  }, []);
 
   const historyQuery = useInfiniteQuery({
     enabled: false,
@@ -162,13 +172,23 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   });
   const { data, fetchNextPage, hasNextPage, isError, isFetchingNextPage } = historyQuery;
 
+  useLayoutEffect(() => {
+    currentRoomIdRef.current = roomId;
+  }, [roomId]);
+
   useEffect(() => {
     latestOutgoingScrollRequestIdRef.current = outgoingScrollRequestId;
   }, [outgoingScrollRequestId]);
 
   useEffect(() => {
+    latestMessagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
     syncedPageCountRef.current = 0;
     pendingAnchorRef.current = null;
+    previousMessagesRef.current = latestMessagesRef.current;
+    isAtBottomRef.current = true;
     hasScrolledToInitialBottomRef.current = false;
     handledOutgoingScrollRequestRef.current = latestOutgoingScrollRequestIdRef.current;
   }, [roomId]);
@@ -255,7 +275,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     return () => {
       container.removeEventListener('scroll', updateBottomState);
     };
-  }, []);
+  }, [setIsScrollToBottomButtonVisible]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -298,7 +318,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     }
 
     previousMessagesRef.current = messages;
-  }, [messages, outgoingScrollRequestId]);
+  }, [messages, outgoingScrollRequestId, setIsScrollToBottomButtonVisible]);
 
   const scrollToBottomNow = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -310,7 +330,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     scrollToBottom(container);
     isAtBottomRef.current = true;
     setIsScrollToBottomButtonVisible(false);
-  }, []);
+  }, [setIsScrollToBottomButtonVisible]);
 
   return {
     hasNextPage,

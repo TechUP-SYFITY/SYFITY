@@ -825,4 +825,54 @@ describe('chatHooks', () => {
       expect(container.scrollTop).toBe(950);
     });
   });
+
+  it('useChatScroll은 히스토리 로딩 중 맨 아래 이동 버튼을 누르면 실제 prepend 후에도 맨 아래를 유지한다', async () => {
+    let resolveHistoryPage: (page: TestChatHistoryPage) => void = () => undefined;
+    vi.mocked(chatApi.getChatHistory).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveHistoryPage = resolve;
+        }),
+    );
+    let latestResult: UseChatScrollResult | null = null;
+    renderChatScrollHarness((result) => {
+      latestResult = result;
+    });
+    const container = screen.getByTestId('chat-scroll-container');
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 500, scrollTop: 0 });
+    act(() => {
+      useChatStore.getState().setMessages([receivedMessage]);
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(500));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 500, scrollTop: 100 });
+    fireEvent.scroll(container);
+
+    await waitFor(() => expect(latestResult?.isScrollToBottomButtonVisible).toBe(true));
+    await waitFor(() => expect(intersectionObserverInstances).toHaveLength(1));
+
+    act(() => {
+      intersectionObserverInstances[0]?.trigger(true);
+    });
+
+    act(() => {
+      latestResult?.scrollToBottomNow();
+    });
+
+    await waitFor(() => {
+      expect(container.scrollTop).toBe(500);
+      expect(latestResult?.isScrollToBottomButtonVisible).toBe(false);
+    });
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 800, scrollTop: 500 });
+    await act(async () => {
+      resolveHistoryPage({ chats: [olderMessage], hasMore: false });
+    });
+
+    await waitFor(() => {
+      expect(chatApi.getChatHistory).toHaveBeenCalledTimes(1);
+      expect(container.scrollTop).toBe(800);
+    });
+  });
 });

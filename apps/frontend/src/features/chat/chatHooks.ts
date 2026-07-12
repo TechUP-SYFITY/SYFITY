@@ -344,6 +344,9 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       return;
     }
 
+    if (pendingAnchorRef.current) {
+      shouldKeepBottomAfterPendingPrependRef.current = true;
+    }
     scrollToBottom(container);
     isAtBottomRef.current = true;
     setIsScrollToBottomButtonVisible(false);

@@ -1,17 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { createRef, type ReactNode } from 'react';
 import { expect, within } from 'storybook/test';
 
 import type { ChatMessage } from '@/shared/types/domain';
 
+import type { UseChatScrollResult } from '../chatHooks';
 import { useChatStore } from '../chatStore';
-import { ChatHistoryStatus } from './ChatHistoryStatus';
-import { ChatInputForm } from './ChatInputForm';
-import { ChatMessageItem } from './ChatMessageItem';
 import { ChatPanel } from './ChatPanel';
-import { ChatSystemMessage } from './ChatSystemMessage';
-import { ScrollToBottomButton } from './ScrollToBottomButton';
 
 const roomId = 'story-room';
 
@@ -55,7 +51,6 @@ function createQueryClient() {
 }
 
 type StoryRender = () => ReactNode;
-type VisualHistoryState = 'error' | 'idle' | 'loading';
 
 function withChatStoryFrame() {
   return function ChatStoryFrameDecorator(Story: StoryRender) {
@@ -71,44 +66,20 @@ function withChatStoryFrame() {
   };
 }
 
-function ChatPanelVisualState({
-  historyState = 'idle',
-  messages: storyMessages = messages,
-  showScrollToBottomButton = false,
-}: {
-  historyState?: VisualHistoryState;
-  messages?: ChatMessage[];
-  showScrollToBottomButton?: boolean;
-}) {
-  return (
-    <aside className="flex h-full min-h-0 flex-1 flex-col bg-background">
-      <div className="hidden h-12 shrink-0 items-center border-b border-border px-4 xl:flex">
-        <h2 className="text-xs font-semibold text-muted-foreground">채팅</h2>
-      </div>
-      <div className="relative min-h-0 flex-1">
-        <div className="h-full min-h-0 scrollbar-none overflow-y-auto px-6 py-5">
-          <div className="flex min-h-full flex-col justify-end gap-4">
-            <ChatHistoryStatus
-              isLoading={historyState === 'loading'}
-              isError={historyState === 'error'}
-              onRetry={() => undefined}
-            />
-            {storyMessages.map((chat) =>
-              chat.type === 'system' ? (
-                <ChatSystemMessage key={chat.id} chat={chat} />
-              ) : (
-                <ChatMessageItem key={chat.id} chat={chat} />
-              ),
-            )}
-          </div>
-        </div>
-        <ScrollToBottomButton isVisible={showScrollToBottomButton} onClick={() => undefined} />
-      </div>
-      <div className="flex shrink-0 items-start gap-3 border-t border-border px-5 py-3 xl:gap-2 xl:p-4">
-        <ChatInputForm onSubmit={() => undefined} />
-      </div>
-    </aside>
-  );
+function createStoryChatScrollResult(
+  override: Partial<UseChatScrollResult> = {},
+): UseChatScrollResult {
+  return {
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isHistoryError: false,
+    isScrollToBottomButtonVisible: false,
+    retryLoadOlderMessages: () => undefined,
+    scrollContainerRef: createRef<HTMLDivElement>(),
+    scrollToBottomNow: () => undefined,
+    topSentinelRef: createRef<HTMLDivElement>(),
+    ...override,
+  };
 }
 
 const meta = {
@@ -158,7 +129,12 @@ export const SystemOnly: Story = {
 };
 
 export const LoadingOlderMessages: Story = {
-  render: (args) => <ChatPanelVisualState messages={args.messages} historyState="loading" />,
+  render: (args) => (
+    <ChatPanel
+      {...args}
+      chatScrollResult={createStoryChatScrollResult({ isFetchingNextPage: true })}
+    />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -167,7 +143,9 @@ export const LoadingOlderMessages: Story = {
 };
 
 export const HistoryLoadError: Story = {
-  render: (args) => <ChatPanelVisualState messages={args.messages} historyState="error" />,
+  render: (args) => (
+    <ChatPanel {...args} chatScrollResult={createStoryChatScrollResult({ isHistoryError: true })} />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -179,7 +157,12 @@ export const HistoryLoadError: Story = {
 };
 
 export const ScrollToBottomVisible: Story = {
-  render: (args) => <ChatPanelVisualState messages={args.messages} showScrollToBottomButton />,
+  render: (args) => (
+    <ChatPanel
+      {...args}
+      chatScrollResult={createStoryChatScrollResult({ isScrollToBottomButtonVisible: true })}
+    />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

@@ -5,7 +5,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { useChatScroll, useSendChatMessage } from '../chatHooks';
+import { useChatScroll, useSendChatMessage, type UseChatScrollResult } from '../chatHooks';
 import { useChatStore } from '../chatStore';
 import { ChatHistoryStatus } from './ChatHistoryStatus';
 import { ChatInputForm } from './ChatInputForm';
@@ -14,6 +14,7 @@ import { ChatSystemMessage } from './ChatSystemMessage';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
 
 interface ChatPanelProps {
+  chatScrollResult?: UseChatScrollResult;
   currentUserName?: string;
   currentUserProfileImage?: string | null;
   messages?: ChatMessage[];
@@ -21,6 +22,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({
+  chatScrollResult,
   currentUserName,
   currentUserProfileImage,
   messages,
@@ -29,6 +31,7 @@ export function ChatPanel({
   const storeMessages = useChatStore((state) => state.messages);
   const sendError = useChatStore((state) => state.sendError);
   const { sendMessage } = useSendChatMessage(roomId, currentUserName, currentUserProfileImage);
+  const hookChatScrollResult = useChatScroll(roomId);
   const {
     isFetchingNextPage,
     isHistoryError,
@@ -37,7 +40,7 @@ export function ChatPanel({
     scrollContainerRef,
     scrollToBottomNow,
     topSentinelRef,
-  } = useChatScroll(roomId);
+  } = chatScrollResult ?? hookChatScrollResult;
   const visibleMessages = messages ?? storeMessages;
 
   return (

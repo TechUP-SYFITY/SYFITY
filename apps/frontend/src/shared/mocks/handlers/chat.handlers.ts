@@ -9,6 +9,7 @@ import { chatHistoryFixture, roomFixture } from '../fixtures/roomFixture';
 const API = '*/api/v1';
 const DEFAULT_LIMIT = 50;
 const CHAT_HISTORY_MOCK_DELAY_MS = 800;
+const CHAT_HISTORY_TEST_DELAY_MS = 0;
 
 const createErrorResponse = (code: string, message: string, status: number) =>
   HttpResponse.json({ success: false, error: { code, message } } satisfies ApiFailureResponse, {
@@ -42,6 +43,9 @@ const isBeforeCursor = (
   cursorId: string,
 ) => chat.createdAt < cursorTime || (chat.createdAt === cursorTime && chat.id < cursorId);
 
+const getChatHistoryMockDelayMs = () =>
+  process.env.NODE_ENV === 'test' ? CHAT_HISTORY_TEST_DELAY_MS : CHAT_HISTORY_MOCK_DELAY_MS;
+
 export const chatHandlers = [
   http.get(`${API}/rooms/:roomId/chats`, async ({ params, request }) => {
     if (params.roomId !== roomFixture.room.id) {
@@ -63,7 +67,7 @@ export const chatHandlers = [
     );
     const chats = filteredHistory.slice(0, limit);
 
-    await delay(CHAT_HISTORY_MOCK_DELAY_MS);
+    await delay(getChatHistoryMockDelayMs());
 
     return HttpResponse.json({
       success: true,

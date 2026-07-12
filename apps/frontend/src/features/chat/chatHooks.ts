@@ -22,6 +22,8 @@ import { useChatStore } from './chatStore';
 
 type ChatHistoryPage = GetChatsResponse['data'];
 type ChatHistoryQueryKey = ReturnType<typeof chatQueryKeys.history>;
+type ChatMessageChange = 'none' | 'prepend' | 'tail-append';
+type PendingPrependScrollMode = 'keep-bottom' | 'restore-anchor';
 
 const EMPTY_CURSOR: ChatHistoryCursor = {
   cursorId: '',
@@ -32,6 +34,22 @@ export const chatQueryKeys = {
   all: ['chats'] as const,
   history: (roomId: string) => [...chatQueryKeys.all, roomId, 'history'] as const,
 };
+
+function getChatMessageChange(
+  previousMessages: ChatMessage[],
+  messages: ChatMessage[],
+  hasPendingPrependAnchor: boolean,
+): ChatMessageChange {
+  if (hasPendingPrependAnchor && messages[0]?.id !== previousMessages[0]?.id) {
+    return 'prepend';
+  }
+
+  if (messages.length > previousMessages.length && messages[0]?.id === previousMessages[0]?.id) {
+    return 'tail-append';
+  }
+
+  return 'none';
+}
 
 export const useChatSocket = (roomId: string) => {
   const addReceivedMessage = useChatStore((state) => state.addReceivedMessage);
@@ -131,7 +149,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const syncedPageCountRef = useRef(0);
   const pendingAnchorRef = useRef<ScrollAnchor | null>(null);
-  const shouldKeepBottomAfterPendingPrependRef = useRef(false);
+  const pendingPrependScrollModeRef = useRef<PendingPrependScrollMode>('restore-anchor');
   const isAtBottomRef = useRef(true);
   const hasScrolledToInitialBottomRef = useRef(false);
   const handledOutgoingScrollRequestRef = useRef(outgoingScrollRequestId);
@@ -149,6 +167,11 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     scrollToBottomButtonState.roomId === roomId && scrollToBottomButtonState.isVisible;
   const setIsScrollToBottomButtonVisible = useCallback((isVisible: boolean) => {
     setScrollToBottomButtonState({ isVisible, roomId: currentRoomIdRef.current });
+  }, []);
+  const keepBottomAfterPendingPrepend = useCallback(() => {
+    if (pendingAnchorRef.current) {
+      pendingPrependScrollModeRef.current = 'keep-bottom';
+    }
   }, []);
 
   const historyQuery = useInfiniteQuery<
@@ -195,7 +218,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   useEffect(() => {
     syncedPageCountRef.current = 0;
     pendingAnchorRef.current = null;
-    shouldKeepBottomAfterPendingPrependRef.current = false;
+    pendingPrependScrollModeRef.current = 'restore-anchor';
     previousMessagesRef.current = latestMessagesRef.current;
     isAtBottomRef.current = true;
     hasScrolledToInitialBottomRef.current = false;
@@ -220,7 +243,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     const container = scrollContainerRef.current;
 
     if (container) {
-      shouldKeepBottomAfterPendingPrependRef.current = false;
+      pendingPrependScrollModeRef.current = 'restore-anchor';
       pendingAnchorRef.current = captureScrollAnchor(container);
     }
 
@@ -298,44 +321,47 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     const previousMessages = previousMessagesRef.current;
     const hasPendingOutgoingScroll =
       outgoingScrollRequestId !== handledOutgoingScrollRequestRef.current;
-    const isPrepend =
-      pendingAnchorRef.current !== null && messages[0]?.id !== previousMessages[0]?.id;
-    const isTailAppend =
-      messages.length > previousMessages.length && messages[0]?.id === previousMessages[0]?.id;
+    const pendingAnchor = pendingAnchorRef.current;
+    const messageChange = getChatMessageChange(previousMessages, messages, pendingAnchor !== null);
+    const scrollToBottomAndHideButton = () => {
+      scrollToBottom(container);
+      isAtBottomRef.current = true;
+      setIsScrollToBottomButtonVisible(false);
+    };
+    const clearPendingPrepend = () => {
+      pendingAnchorRef.current = null;
+      pendingPrependScrollModeRef.current = 'restore-anchor';
+    };
 
     if (hasPendingOutgoingScroll) {
-      if (pendingAnchorRef.current) {
-        shouldKeepBottomAfterPendingPrependRef.current = true;
-      }
-      scrollToBottom(container);
-      isAtBottomRef.current = true;
+      keepBottomAfterPendingPrepend();
+      scrollToBottomAndHideButton();
       handledOutgoingScrollRequestRef.current = outgoingScrollRequestId;
-      setIsScrollToBottomButtonVisible(false);
-    } else if (isPrepend && pendingAnchorRef.current) {
-      if (shouldKeepBottomAfterPendingPrependRef.current) {
-        scrollToBottom(container);
+    } else if (messageChange === 'prepend' && pendingAnchor) {
+      if (pendingPrependScrollModeRef.current === 'keep-bottom') {
+        scrollToBottomAndHideButton();
       } else {
-        restoreScrollTopAfterPrepend(container, pendingAnchorRef.current);
+        restoreScrollTopAfterPrepend(container, pendingAnchor);
       }
-      pendingAnchorRef.current = null;
-      shouldKeepBottomAfterPendingPrependRef.current = false;
+      clearPendingPrepend();
     } else if (!hasScrolledToInitialBottomRef.current && messages.length > 0) {
-      scrollToBottom(container);
-      isAtBottomRef.current = true;
+      scrollToBottomAndHideButton();
       hasScrolledToInitialBottomRef.current = true;
-      setIsScrollToBottomButtonVisible(false);
-    } else if (isTailAppend) {
+    } else if (messageChange === 'tail-append') {
       if (isAtBottomRef.current) {
-        scrollToBottom(container);
-        isAtBottomRef.current = true;
-        setIsScrollToBottomButtonVisible(false);
+        scrollToBottomAndHideButton();
       } else if (!isNearBottom(container)) {
         setIsScrollToBottomButtonVisible(true);
       }
     }
 
     previousMessagesRef.current = messages;
-  }, [messages, outgoingScrollRequestId, setIsScrollToBottomButtonVisible]);
+  }, [
+    keepBottomAfterPendingPrepend,
+    messages,
+    outgoingScrollRequestId,
+    setIsScrollToBottomButtonVisible,
+  ]);
 
   const scrollToBottomNow = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -344,13 +370,11 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       return;
     }
 
-    if (pendingAnchorRef.current) {
-      shouldKeepBottomAfterPendingPrependRef.current = true;
-    }
+    keepBottomAfterPendingPrepend();
     scrollToBottom(container);
     isAtBottomRef.current = true;
     setIsScrollToBottomButtonVisible(false);
-  }, [setIsScrollToBottomButtonVisible]);
+  }, [keepBottomAfterPendingPrepend, setIsScrollToBottomButtonVisible]);
 
   return {
     hasNextPage,

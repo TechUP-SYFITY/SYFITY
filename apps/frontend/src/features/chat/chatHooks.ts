@@ -1,7 +1,7 @@
 'use client';
 
 // 채팅 Socket 이벤트와 optimistic 전송 흐름을 store에 연결한다.
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 import type { GetChatsResponse } from '@syfity/shared';
@@ -21,6 +21,7 @@ import {
 import { useChatStore } from './chatStore';
 
 type ChatHistoryPage = GetChatsResponse['data'];
+type ChatHistoryQueryKey = ReturnType<typeof chatQueryKeys.history>;
 
 const EMPTY_CURSOR: ChatHistoryCursor = {
   cursorId: '',
@@ -149,7 +150,13 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     setScrollToBottomButtonState({ isVisible, roomId: currentRoomIdRef.current });
   }, []);
 
-  const historyQuery = useInfiniteQuery({
+  const historyQuery = useInfiniteQuery<
+    ChatHistoryPage,
+    Error,
+    InfiniteData<ChatHistoryPage, ChatHistoryCursor>,
+    ChatHistoryQueryKey,
+    ChatHistoryCursor
+  >({
     enabled: false,
     getNextPageParam: (lastPage: ChatHistoryPage) => {
       if (!lastPage.hasMore || lastPage.chats.length === 0) {
@@ -165,7 +172,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       : EMPTY_CURSOR,
     queryFn: ({ pageParam }) =>
       chatApi.getChatHistory(roomId, {
-        ...(pageParam as ChatHistoryCursor),
+        ...pageParam,
         limit: CHAT_HISTORY_PAGE_SIZE,
       }),
     queryKey: chatQueryKeys.history(roomId),

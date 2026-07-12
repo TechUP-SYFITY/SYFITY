@@ -127,13 +127,14 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   const syncedPageCountRef = useRef(0);
   const pendingAnchorRef = useRef<ScrollAnchor | null>(null);
   const isAtBottomRef = useRef(true);
+  const hasScrolledToInitialBottomRef = useRef(false);
   const previousMessagesRef = useRef<ChatMessage[]>(messages);
   const [isScrollToBottomButtonVisible, setIsScrollToBottomButtonVisible] = useState(false);
   const oldestMessage = messages[0];
   const hasInitialMessages = messages.length > 0;
 
   const historyQuery = useInfiniteQuery({
-    enabled: Boolean(roomId) && hasInitialMessages,
+    enabled: false,
     getNextPageParam: (lastPage: ChatHistoryPage) => {
       if (!lastPage.hasMore || lastPage.chats.length === 0) {
         return undefined;
@@ -158,6 +159,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   useEffect(() => {
     syncedPageCountRef.current = 0;
     pendingAnchorRef.current = null;
+    hasScrolledToInitialBottomRef.current = false;
   }, [roomId]);
 
   useEffect(() => {
@@ -187,12 +189,13 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   useEffect(() => {
     const container = scrollContainerRef.current;
     const sentinel = topSentinelRef.current;
+    const canFetchFirstHistoryPage = Boolean(roomId) && hasInitialMessages && !data?.pages.length;
 
     if (
       !container ||
       !sentinel ||
       typeof IntersectionObserver === 'undefined' ||
-      !hasNextPage ||
+      (!canFetchFirstHistoryPage && !hasNextPage) ||
       isFetchingNextPage ||
       isError
     ) {
@@ -212,7 +215,15 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     return () => {
       observer.disconnect();
     };
-  }, [hasNextPage, isError, isFetchingNextPage, loadNextPageWithAnchor]);
+  }, [
+    data?.pages.length,
+    hasInitialMessages,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    loadNextPageWithAnchor,
+    roomId,
+  ]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -248,9 +259,10 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     if (pendingAnchorRef.current) {
       restoreScrollTopAfterPrepend(container, pendingAnchorRef.current);
       pendingAnchorRef.current = null;
-    } else if (previousMessages.length === 0 && messages.length > 0) {
+    } else if (!hasScrolledToInitialBottomRef.current && messages.length > 0) {
       scrollToBottom(container);
       isAtBottomRef.current = true;
+      hasScrolledToInitialBottomRef.current = true;
       setIsScrollToBottomButtonVisible(false);
     } else if (
       messages.length > previousMessages.length &&

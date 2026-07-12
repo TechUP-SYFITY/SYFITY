@@ -342,9 +342,9 @@ describe('chatHooks', () => {
     await waitFor(() => expect(chatApi.getChatHistory).not.toHaveBeenCalled());
   });
 
-  it('useChatScroll은 disabled에서 enabled로 바뀔 때 현재 가장 오래된 메시지를 첫 커서로 사용한다', async () => {
+  it('useChatScroll은 메시지가 채워져도 히스토리를 자동 요청하지 않는다', async () => {
     const queryClient = createQueryClient();
-    renderHook(() => useChatScroll(roomId), {
+    const { result } = renderHook(() => useChatScroll(roomId), {
       wrapper: createWrapper(queryClient),
     });
 
@@ -354,13 +354,31 @@ describe('chatHooks', () => {
       useChatStore.getState().setMessages([receivedMessage]);
     });
 
-    await waitFor(() => {
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false));
+    expect(chatApi.getChatHistory).not.toHaveBeenCalled();
+  });
+
+  it('useChatScroll은 수동 히스토리 요청 시 현재 가장 오래된 메시지를 첫 커서로 사용한다', async () => {
+    const queryClient = createQueryClient();
+    const { result } = renderHook(() => useChatScroll(roomId), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    act(() => {
+      useChatStore.getState().setMessages([receivedMessage]);
+    });
+
+    act(() => {
+      result.current.retryLoadOlderMessages();
+    });
+
+    await waitFor(() =>
       expect(chatApi.getChatHistory).toHaveBeenCalledWith(roomId, {
         cursorId: receivedMessage.id,
         cursorTime: receivedMessage.createdAt,
         limit: 50,
-      });
-    });
+      }),
+    );
   });
 
   it('useChatScroll은 DESC 응답을 reverse한 뒤 store 앞에 붙인다', async () => {
@@ -370,12 +388,15 @@ describe('chatHooks', () => {
     });
     const queryClient = createQueryClient();
 
-    renderHook(() => useChatScroll(roomId), {
+    const { result } = renderHook(() => useChatScroll(roomId), {
       wrapper: createWrapper(queryClient),
     });
 
     act(() => {
       useChatStore.getState().setMessages([receivedMessage]);
+    });
+    act(() => {
+      result.current.retryLoadOlderMessages();
     });
 
     await waitFor(() => {
@@ -404,6 +425,9 @@ describe('chatHooks', () => {
 
     act(() => {
       useChatStore.getState().setMessages([receivedMessage]);
+    });
+    act(() => {
+      result.current.retryLoadOlderMessages();
     });
 
     await waitFor(() => expect(result.current.hasNextPage).toBe(true));
@@ -439,6 +463,58 @@ describe('chatHooks', () => {
     });
   });
 
+  it('useChatScroll은 메시지가 이미 있는 상태로 마운트되어도 맨 아래로 스크롤한다', async () => {
+    const originalClientHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'clientHeight',
+    );
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'scrollHeight',
+    );
+    const originalScrollTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTop');
+    let scrollTop = 0;
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get: () => 200,
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get: () => 700,
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTop,
+      set: (value) => {
+        scrollTop = value;
+      },
+    });
+
+    useChatStore.getState().setMessages([receivedMessage]);
+    renderChatScrollHarness(() => undefined);
+
+    await waitFor(() => {
+      expect(scrollTop).toBe(700);
+    });
+    expect(chatApi.getChatHistory).not.toHaveBeenCalled();
+
+    if (originalClientHeight) {
+      Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight');
+    }
+    if (originalScrollHeight) {
+      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeight);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');
+    }
+    if (originalScrollTop) {
+      Object.defineProperty(HTMLElement.prototype, 'scrollTop', originalScrollTop);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, 'scrollTop');
+    }
+  });
+
   it('useChatScroll은 맨 아래에서 tail append가 발생하면 자동으로 맨 아래로 이동한다', async () => {
     useChatStore.getState().setMessages([receivedMessage]);
     renderChatScrollHarness(() => undefined);
@@ -460,12 +536,18 @@ describe('chatHooks', () => {
   });
 
   it('useChatScroll은 위로 스크롤한 상태의 tail append에서 위치를 유지하고 버튼을 노출한다', async () => {
-    useChatStore.getState().setMessages([receivedMessage]);
     let latestResult: UseChatScrollResult | null = null;
     renderChatScrollHarness((result) => {
       latestResult = result;
     });
     const container = screen.getByTestId('chat-scroll-container');
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 700, scrollTop: 0 });
+    act(() => {
+      useChatStore.getState().setMessages([receivedMessage]);
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(700));
+
     stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 700, scrollTop: 100 });
     fireEvent.scroll(container);
 
@@ -518,8 +600,12 @@ describe('chatHooks', () => {
       latestResult = result;
     });
 
+    act(() => {
+      latestResult?.retryLoadOlderMessages();
+    });
+
     await waitFor(() => expect(latestResult?.isHistoryError).toBe(true));
-    expect(intersectionObserverInstances).toHaveLength(0);
+    expect(intersectionObserverInstances[0]?.disconnect).toHaveBeenCalled();
 
     act(() => {
       latestResult?.retryLoadOlderMessages();
@@ -529,18 +615,13 @@ describe('chatHooks', () => {
   });
 
   it('useChatScroll은 sentinel 교차 시 다음 페이지를 로드하고 prepend 후 스크롤 앵커를 복원한다', async () => {
-    let resolveNextPage: (page: TestChatHistoryPage) => void = () => undefined;
-    vi.mocked(chatApi.getChatHistory)
-      .mockResolvedValueOnce({
-        chats: [olderMessage, oldestMessage],
-        hasMore: true,
-      })
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveNextPage = resolve;
-          }),
-      );
+    let resolveHistoryPage: (page: TestChatHistoryPage) => void = () => undefined;
+    vi.mocked(chatApi.getChatHistory).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveHistoryPage = resolve;
+        }),
+    );
     useChatStore.getState().setMessages([receivedMessage]);
     renderChatScrollHarness(() => undefined);
     const container = screen.getByTestId('chat-scroll-container');
@@ -553,11 +634,11 @@ describe('chatHooks', () => {
     });
     stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 800, scrollTop: 100 });
     await act(async () => {
-      resolveNextPage({ chats: [ancientMessage], hasMore: false });
+      resolveHistoryPage({ chats: [olderMessage], hasMore: false });
     });
 
     await waitFor(() => {
-      expect(chatApi.getChatHistory).toHaveBeenCalledTimes(2);
+      expect(chatApi.getChatHistory).toHaveBeenCalledTimes(1);
       expect(container.scrollTop).toBe(400);
     });
   });

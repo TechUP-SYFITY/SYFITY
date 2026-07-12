@@ -1,13 +1,36 @@
 'use client';
 
 // 채팅 Socket 이벤트와 optimistic 전송 흐름을 store에 연결한다.
-import { useCallback, useEffect } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+
+import type { GetChatsResponse } from '@syfity/shared';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { CHAT_MAX_MESSAGE_LENGTH } from './chatConstants';
+import { chatApi, type ChatHistoryCursor } from './chatApi';
+import { CHAT_HISTORY_PAGE_SIZE, CHAT_MAX_MESSAGE_LENGTH } from './chatConstants';
+import {
+  captureScrollAnchor,
+  isNearBottom,
+  restoreScrollTopAfterPrepend,
+  scrollToBottom,
+  type ScrollAnchor,
+} from './chatScrollUtils';
 import { useChatStore } from './chatStore';
+
+type ChatHistoryPage = GetChatsResponse['data'];
+
+const EMPTY_CURSOR: ChatHistoryCursor = {
+  cursorId: '',
+  cursorTime: '',
+};
+
+export const chatQueryKeys = {
+  all: ['chats'] as const,
+  history: (roomId: string) => [...chatQueryKeys.all, roomId, 'history'] as const,
+};
 
 export const useChatSocket = (roomId: string) => {
   const addReceivedMessage = useChatStore((state) => state.addReceivedMessage);
@@ -84,3 +107,186 @@ export const useSendChatMessage = (
 
   return { sendMessage };
 };
+
+export interface UseChatScrollResult {
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  topSentinelRef: RefObject<HTMLDivElement | null>;
+  isFetchingNextPage: boolean;
+  isHistoryError: boolean;
+  hasNextPage: boolean;
+  retryLoadOlderMessages: () => void;
+  isScrollToBottomButtonVisible: boolean;
+  scrollToBottomNow: () => void;
+}
+
+export function useChatScroll(roomId: string): UseChatScrollResult {
+  const messages = useChatStore((state) => state.messages);
+  const prependMessages = useChatStore((state) => state.prependMessages);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  const syncedPageCountRef = useRef(0);
+  const pendingAnchorRef = useRef<ScrollAnchor | null>(null);
+  const isAtBottomRef = useRef(true);
+  const previousMessagesRef = useRef<ChatMessage[]>(messages);
+  const [isScrollToBottomButtonVisible, setIsScrollToBottomButtonVisible] = useState(false);
+  const oldestMessage = messages[0];
+  const hasInitialMessages = messages.length > 0;
+
+  const historyQuery = useInfiniteQuery({
+    enabled: Boolean(roomId) && hasInitialMessages,
+    getNextPageParam: (lastPage: ChatHistoryPage) => {
+      if (!lastPage.hasMore || lastPage.chats.length === 0) {
+        return undefined;
+      }
+
+      const oldest = lastPage.chats[lastPage.chats.length - 1];
+
+      return oldest ? { cursorId: oldest.id, cursorTime: oldest.createdAt } : undefined;
+    },
+    initialPageParam: oldestMessage
+      ? { cursorId: oldestMessage.id, cursorTime: oldestMessage.createdAt }
+      : EMPTY_CURSOR,
+    queryFn: ({ pageParam }) =>
+      chatApi.getChatHistory(roomId, {
+        ...(pageParam as ChatHistoryCursor),
+        limit: CHAT_HISTORY_PAGE_SIZE,
+      }),
+    queryKey: chatQueryKeys.history(roomId),
+  });
+  const { data, fetchNextPage, hasNextPage, isError, isFetchingNextPage } = historyQuery;
+
+  useEffect(() => {
+    syncedPageCountRef.current = 0;
+    pendingAnchorRef.current = null;
+  }, [roomId]);
+
+  useEffect(() => {
+    const pages = data?.pages;
+
+    if (!pages || pages.length <= syncedPageCountRef.current) {
+      return;
+    }
+
+    const newPages = pages.slice(syncedPageCountRef.current);
+    newPages.forEach((page) => {
+      prependMessages([...page.chats].reverse());
+    });
+    syncedPageCountRef.current = pages.length;
+  }, [data?.pages, prependMessages]);
+
+  const loadNextPageWithAnchor = useCallback(() => {
+    const container = scrollContainerRef.current;
+
+    if (container) {
+      pendingAnchorRef.current = captureScrollAnchor(container);
+    }
+
+    void fetchNextPage();
+  }, [fetchNextPage]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const sentinel = topSentinelRef.current;
+
+    if (
+      !container ||
+      !sentinel ||
+      typeof IntersectionObserver === 'undefined' ||
+      !hasNextPage ||
+      isFetchingNextPage ||
+      isError
+    ) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadNextPageWithAnchor();
+        }
+      },
+      { root: container, threshold: 0 },
+    );
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isError, isFetchingNextPage, loadNextPageWithAnchor]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+
+    if (!container) {
+      return undefined;
+    }
+
+    const updateBottomState = () => {
+      const nearBottom = isNearBottom(container);
+      isAtBottomRef.current = nearBottom;
+      setIsScrollToBottomButtonVisible(!nearBottom);
+    };
+
+    container.addEventListener('scroll', updateBottomState, { passive: true });
+    updateBottomState();
+
+    return () => {
+      container.removeEventListener('scroll', updateBottomState);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+
+    if (!container) {
+      previousMessagesRef.current = messages;
+      return;
+    }
+
+    const previousMessages = previousMessagesRef.current;
+
+    if (pendingAnchorRef.current) {
+      restoreScrollTopAfterPrepend(container, pendingAnchorRef.current);
+      pendingAnchorRef.current = null;
+    } else if (previousMessages.length === 0 && messages.length > 0) {
+      scrollToBottom(container);
+      isAtBottomRef.current = true;
+      setIsScrollToBottomButtonVisible(false);
+    } else if (
+      messages.length > previousMessages.length &&
+      messages[0]?.id === previousMessages[0]?.id
+    ) {
+      if (isAtBottomRef.current) {
+        scrollToBottom(container);
+        setIsScrollToBottomButtonVisible(false);
+      } else if (!isNearBottom(container)) {
+        setIsScrollToBottomButtonVisible(true);
+      }
+    }
+
+    previousMessagesRef.current = messages;
+  }, [messages]);
+
+  const scrollToBottomNow = useCallback(() => {
+    const container = scrollContainerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    scrollToBottom(container);
+    isAtBottomRef.current = true;
+    setIsScrollToBottomButtonVisible(false);
+  }, []);
+
+  return {
+    hasNextPage,
+    isFetchingNextPage,
+    isHistoryError: isError,
+    isScrollToBottomButtonVisible,
+    retryLoadOlderMessages: loadNextPageWithAnchor,
+    scrollContainerRef,
+    scrollToBottomNow,
+    topSentinelRef,
+  };
+}

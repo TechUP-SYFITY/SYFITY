@@ -131,6 +131,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const syncedPageCountRef = useRef(0);
   const pendingAnchorRef = useRef<ScrollAnchor | null>(null);
+  const shouldKeepBottomAfterPendingPrependRef = useRef(false);
   const isAtBottomRef = useRef(true);
   const hasScrolledToInitialBottomRef = useRef(false);
   const handledOutgoingScrollRequestRef = useRef(outgoingScrollRequestId);
@@ -194,6 +195,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
   useEffect(() => {
     syncedPageCountRef.current = 0;
     pendingAnchorRef.current = null;
+    shouldKeepBottomAfterPendingPrependRef.current = false;
     previousMessagesRef.current = latestMessagesRef.current;
     isAtBottomRef.current = true;
     hasScrolledToInitialBottomRef.current = false;
@@ -218,6 +220,7 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
     const container = scrollContainerRef.current;
 
     if (container) {
+      shouldKeepBottomAfterPendingPrependRef.current = false;
       pendingAnchorRef.current = captureScrollAnchor(container);
     }
 
@@ -301,14 +304,21 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       messages.length > previousMessages.length && messages[0]?.id === previousMessages[0]?.id;
 
     if (hasPendingOutgoingScroll) {
-      pendingAnchorRef.current = null;
+      if (pendingAnchorRef.current) {
+        shouldKeepBottomAfterPendingPrependRef.current = true;
+      }
       scrollToBottom(container);
       isAtBottomRef.current = true;
       handledOutgoingScrollRequestRef.current = outgoingScrollRequestId;
       setIsScrollToBottomButtonVisible(false);
     } else if (isPrepend && pendingAnchorRef.current) {
-      restoreScrollTopAfterPrepend(container, pendingAnchorRef.current);
+      if (shouldKeepBottomAfterPendingPrependRef.current) {
+        scrollToBottom(container);
+      } else {
+        restoreScrollTopAfterPrepend(container, pendingAnchorRef.current);
+      }
       pendingAnchorRef.current = null;
+      shouldKeepBottomAfterPendingPrependRef.current = false;
     } else if (!hasScrolledToInitialBottomRef.current && messages.length > 0) {
       scrollToBottom(container);
       isAtBottomRef.current = true;

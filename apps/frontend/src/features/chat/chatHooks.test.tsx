@@ -769,4 +769,60 @@ describe('chatHooks', () => {
       expect(container.scrollTop).toBe(550);
     });
   });
+
+  it('useChatScroll은 히스토리 로딩 중 직접 전송이 먼저 오면 실제 prepend 후에도 맨 아래를 유지한다', async () => {
+    let resolveHistoryPage: (page: TestChatHistoryPage) => void = () => undefined;
+    vi.mocked(chatApi.getChatHistory).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveHistoryPage = resolve;
+        }),
+    );
+    let latestResult: UseChatScrollResult | null = null;
+    renderChatScrollHarness((result) => {
+      latestResult = result;
+    });
+    const container = screen.getByTestId('chat-scroll-container');
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 500, scrollTop: 0 });
+    act(() => {
+      useChatStore.getState().setMessages([receivedMessage]);
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(500));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 500, scrollTop: 100 });
+    fireEvent.scroll(container);
+
+    await waitFor(() => expect(latestResult?.isScrollToBottomButtonVisible).toBe(true));
+    await waitFor(() => expect(intersectionObserverInstances).toHaveLength(1));
+
+    act(() => {
+      intersectionObserverInstances[0]?.trigger(true);
+    });
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 650, scrollTop: 100 });
+    act(() => {
+      useChatStore.getState().addOptimisticMessage({
+        ...olderMessage,
+        createdAt: '2026-07-01T10:13:00.000Z',
+        id: 'temp-chat-new',
+      });
+      useChatStore.getState().requestOutgoingScroll();
+    });
+
+    await waitFor(() => {
+      expect(container.scrollTop).toBe(650);
+      expect(latestResult?.isScrollToBottomButtonVisible).toBe(false);
+    });
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 950, scrollTop: 650 });
+    await act(async () => {
+      resolveHistoryPage({ chats: [olderMessage], hasMore: false });
+    });
+
+    await waitFor(() => {
+      expect(chatApi.getChatHistory).toHaveBeenCalledTimes(1);
+      expect(container.scrollTop).toBe(950);
+    });
+  });
 });

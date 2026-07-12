@@ -6,7 +6,12 @@ import { expect, within } from 'storybook/test';
 import type { ChatMessage } from '@/shared/types/domain';
 
 import { useChatStore } from '../chatStore';
+import { ChatHistoryStatus } from './ChatHistoryStatus';
+import { ChatInputForm } from './ChatInputForm';
+import { ChatMessageItem } from './ChatMessageItem';
 import { ChatPanel } from './ChatPanel';
+import { ChatSystemMessage } from './ChatSystemMessage';
+import { ScrollToBottomButton } from './ScrollToBottomButton';
 
 const roomId = 'story-room';
 
@@ -50,6 +55,7 @@ function createQueryClient() {
 }
 
 type StoryRender = () => ReactNode;
+type VisualHistoryState = 'error' | 'idle' | 'loading';
 
 function withChatStoryFrame() {
   return function ChatStoryFrameDecorator(Story: StoryRender) {
@@ -63,6 +69,46 @@ function withChatStoryFrame() {
       </QueryClientProvider>
     );
   };
+}
+
+function ChatPanelVisualState({
+  historyState = 'idle',
+  messages: storyMessages = messages,
+  showScrollToBottomButton = false,
+}: {
+  historyState?: VisualHistoryState;
+  messages?: ChatMessage[];
+  showScrollToBottomButton?: boolean;
+}) {
+  return (
+    <aside className="flex h-full min-h-0 flex-1 flex-col bg-background">
+      <div className="hidden h-12 shrink-0 items-center border-b border-border px-4 xl:flex">
+        <h2 className="text-xs font-semibold text-muted-foreground">채팅</h2>
+      </div>
+      <div className="relative min-h-0 flex-1">
+        <div className="h-full min-h-0 scrollbar-none overflow-y-auto px-6 py-5">
+          <div className="flex min-h-full flex-col justify-end gap-4">
+            <ChatHistoryStatus
+              isLoading={historyState === 'loading'}
+              isError={historyState === 'error'}
+              onRetry={() => undefined}
+            />
+            {storyMessages.map((chat) =>
+              chat.type === 'system' ? (
+                <ChatSystemMessage key={chat.id} chat={chat} />
+              ) : (
+                <ChatMessageItem key={chat.id} chat={chat} />
+              ),
+            )}
+          </div>
+        </div>
+        <ScrollToBottomButton isVisible={showScrollToBottomButton} onClick={() => undefined} />
+      </div>
+      <div className="flex shrink-0 items-start gap-3 border-t border-border px-5 py-3 xl:gap-2 xl:p-4">
+        <ChatInputForm onSubmit={() => undefined} />
+      </div>
+    </aside>
+  );
 }
 
 const meta = {
@@ -108,5 +154,37 @@ export const Empty: Story = {
 export const SystemOnly: Story = {
   args: {
     messages: [systemMessage],
+  },
+};
+
+export const LoadingOlderMessages: Story = {
+  render: (args) => <ChatPanelVisualState messages={args.messages} historyState="loading" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.findByText('이전 메시지를 불러오는 중...')).resolves.toBeInTheDocument();
+  },
+};
+
+export const HistoryLoadError: Story = {
+  render: (args) => <ChatPanelVisualState messages={args.messages} historyState="error" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.findByText('이전 메시지를 불러오지 못했어요.'),
+    ).resolves.toBeInTheDocument();
+    await expect(canvas.findByRole('button', { name: /다시 시도/ })).resolves.toBeInTheDocument();
+  },
+};
+
+export const ScrollToBottomVisible: Story = {
+  render: (args) => <ChatPanelVisualState messages={args.messages} showScrollToBottomButton />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.findByRole('button', { name: '맨 아래로 이동' }),
+    ).resolves.toBeInTheDocument();
   },
 };

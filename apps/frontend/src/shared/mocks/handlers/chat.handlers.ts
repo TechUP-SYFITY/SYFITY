@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 
 import type { GetChatsResponse } from '@syfity/shared';
 
@@ -8,6 +8,7 @@ import { chatHistoryFixture, roomFixture } from '../fixtures/roomFixture';
 
 const API = '*/api/v1';
 const DEFAULT_LIMIT = 50;
+const CHAT_HISTORY_MOCK_DELAY_MS = 800;
 
 const createErrorResponse = (code: string, message: string, status: number) =>
   HttpResponse.json({ success: false, error: { code, message } } satisfies ApiFailureResponse, {
@@ -42,7 +43,7 @@ const isBeforeCursor = (
 ) => chat.createdAt < cursorTime || (chat.createdAt === cursorTime && chat.id < cursorId);
 
 export const chatHandlers = [
-  http.get(`${API}/rooms/:roomId/chats`, ({ params, request }) => {
+  http.get(`${API}/rooms/:roomId/chats`, async ({ params, request }) => {
     if (params.roomId !== roomFixture.room.id) {
       return createErrorResponse('ROOM_NOT_FOUND', 'Room not found', 404);
     }
@@ -61,6 +62,8 @@ export const chatHandlers = [
       isBeforeCursor(chat, cursorTime, cursorId),
     );
     const chats = filteredHistory.slice(0, limit);
+
+    await delay(CHAT_HISTORY_MOCK_DELAY_MS);
 
     return HttpResponse.json({
       success: true,

@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { expect, within } from 'storybook/test';
 
 import type { ChatMessage } from '@/shared/types/domain';
 
+import { useChatStore } from '../chatStore';
 import { ChatPanel } from './ChatPanel';
 
 const roomId = 'story-room';
@@ -38,11 +41,36 @@ const messages: ChatMessage[] = [
 ];
 const systemMessage = messages[1] as ChatMessage;
 
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+}
+
+type StoryRender = () => ReactNode;
+
+function withChatStoryFrame() {
+  return function ChatStoryFrameDecorator(Story: StoryRender) {
+    useChatStore.getState().clearMessages();
+
+    return (
+      <QueryClientProvider client={createQueryClient()}>
+        <div className="h-96 w-80 overflow-hidden border border-border bg-background">
+          <Story />
+        </div>
+      </QueryClientProvider>
+    );
+  };
+}
+
 const meta = {
   title: 'Features/Chat/ChatPanel',
   component: ChatPanel,
   parameters: {
     layout: 'centered',
+    msw: { handlers: [] },
   },
   args: {
     currentUserName: '민지',
@@ -50,13 +78,7 @@ const meta = {
     messages,
     roomId,
   },
-  decorators: [
-    (Story) => (
-      <div className="h-96 w-80 overflow-hidden border border-border bg-background">
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: [withChatStoryFrame()],
 } satisfies Meta<typeof ChatPanel>;
 
 export default meta;

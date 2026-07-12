@@ -5,11 +5,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { useSendChatMessage } from '../chatHooks';
+import { useChatScroll, useSendChatMessage } from '../chatHooks';
 import { useChatStore } from '../chatStore';
+import { ChatHistoryStatus } from './ChatHistoryStatus';
 import { ChatInputForm } from './ChatInputForm';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSystemMessage } from './ChatSystemMessage';
+import { ScrollToBottomButton } from './ScrollToBottomButton';
 
 interface ChatPanelProps {
   currentUserName?: string;
@@ -27,6 +29,15 @@ export function ChatPanel({
   const storeMessages = useChatStore((state) => state.messages);
   const sendError = useChatStore((state) => state.sendError);
   const { sendMessage } = useSendChatMessage(roomId, currentUserName, currentUserProfileImage);
+  const {
+    isFetchingNextPage,
+    isHistoryError,
+    isScrollToBottomButtonVisible,
+    retryLoadOlderMessages,
+    scrollContainerRef,
+    scrollToBottomNow,
+    topSentinelRef,
+  } = useChatScroll(roomId);
   const visibleMessages = messages ?? storeMessages;
 
   return (
@@ -34,14 +45,29 @@ export function ChatPanel({
       <div className="hidden h-12 shrink-0 items-center border-b border-border px-4 xl:flex">
         <h2 className="text-xs font-semibold text-muted-foreground">채팅</h2>
       </div>
-      <div className="min-h-0 flex-1 scrollbar-none space-y-4 overflow-y-auto px-6 py-5">
-        {visibleMessages.map((chat) =>
-          chat.type === 'system' ? (
-            <ChatSystemMessage key={chat.id} chat={chat} />
-          ) : (
-            <ChatMessageItem key={chat.id} chat={chat} />
-          ),
-        )}
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollContainerRef}
+          className="h-full min-h-0 scrollbar-none space-y-4 overflow-y-auto px-6 py-5"
+        >
+          <div ref={topSentinelRef} className="h-px" aria-hidden />
+          <ChatHistoryStatus
+            isLoading={isFetchingNextPage}
+            isError={isHistoryError}
+            onRetry={retryLoadOlderMessages}
+          />
+          {visibleMessages.map((chat) =>
+            chat.type === 'system' ? (
+              <ChatSystemMessage key={chat.id} chat={chat} />
+            ) : (
+              <ChatMessageItem key={chat.id} chat={chat} />
+            ),
+          )}
+        </div>
+        <ScrollToBottomButton
+          isVisible={isScrollToBottomButtonVisible}
+          onClick={scrollToBottomNow}
+        />
       </div>
       <div className="flex shrink-0 items-start gap-3 border-t border-border px-5 py-3 xl:gap-2 xl:p-4">
         <Avatar size="sm" className="mt-2 size-6 text-xs xl:hidden">

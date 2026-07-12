@@ -27,6 +27,8 @@ const EMPTY_CURSOR: ChatHistoryCursor = {
   cursorTime: '',
 };
 
+const isOptimisticChatMessage = (message: ChatMessage) => message.id.startsWith('temp-');
+
 export const chatQueryKeys = {
   all: ['chats'] as const,
   history: (roomId: string) => [...chatQueryKeys.all, roomId, 'history'] as const,
@@ -268,8 +270,12 @@ export function useChatScroll(roomId: string): UseChatScrollResult {
       messages.length > previousMessages.length &&
       messages[0]?.id === previousMessages[0]?.id
     ) {
-      if (isAtBottomRef.current) {
+      const appendedMessages = messages.slice(previousMessages.length);
+      const hasOptimisticMessage = appendedMessages.some(isOptimisticChatMessage);
+
+      if (isAtBottomRef.current || hasOptimisticMessage) {
         scrollToBottom(container);
+        isAtBottomRef.current = true;
         setIsScrollToBottomButtonVisible(false);
       } else if (!isNearBottom(container)) {
         setIsScrollToBottomButtonVisible(true);

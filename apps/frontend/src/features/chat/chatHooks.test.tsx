@@ -568,6 +568,39 @@ describe('chatHooks', () => {
     });
   });
 
+  it('useChatScroll은 위로 스크롤한 상태라도 내가 보낸 optimistic 메시지는 맨 아래로 이동한다', async () => {
+    let latestResult: UseChatScrollResult | null = null;
+    renderChatScrollHarness((result) => {
+      latestResult = result;
+    });
+    const container = screen.getByTestId('chat-scroll-container');
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 700, scrollTop: 0 });
+    act(() => {
+      useChatStore.getState().setMessages([receivedMessage]);
+    });
+
+    await waitFor(() => expect(container.scrollTop).toBe(700));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 700, scrollTop: 100 });
+    fireEvent.scroll(container);
+
+    await waitFor(() => expect(latestResult?.isScrollToBottomButtonVisible).toBe(true));
+
+    stubScrollMetrics(container, { clientHeight: 200, scrollHeight: 900, scrollTop: 100 });
+    act(() => {
+      useChatStore.getState().addOptimisticMessage({
+        ...olderMessage,
+        createdAt: '2026-07-01T10:13:00.000Z',
+        id: 'temp-chat-new',
+      });
+    });
+
+    await waitFor(() => {
+      expect(container.scrollTop).toBe(900);
+      expect(latestResult?.isScrollToBottomButtonVisible).toBe(false);
+    });
+  });
+
   it('useChatScroll은 버튼 클릭 함수로 맨 아래 이동 후 버튼을 숨긴다', async () => {
     useChatStore.getState().setMessages([receivedMessage]);
     let latestResult: UseChatScrollResult | null = null;

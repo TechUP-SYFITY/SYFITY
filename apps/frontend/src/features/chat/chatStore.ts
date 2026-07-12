@@ -12,6 +12,7 @@ interface ChatStoreState {
   addOptimisticMessage: (message: ChatMessage) => void;
   addReceivedMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
+  prependMessages: (olderMessages: ChatMessage[]) => void;
   reconcileOptimisticMessage: (tempId: string, data: ChatSendAckData) => void;
   removeMessage: (id: string) => void;
   setMessages: (messages: ChatMessage[]) => void;
@@ -37,6 +38,17 @@ export const useChatStore = create<ChatStoreState>((set) => ({
     }),
   clearMessages: () => set({ messages: [], sendError: null }),
   messages: [],
+  prependMessages: (olderMessages) =>
+    set((state) => {
+      const existingIds = new Set(state.messages.map((message) => message.id));
+      const dedupedMessages = olderMessages.filter((message) => !existingIds.has(message.id));
+
+      if (dedupedMessages.length === 0) {
+        return state;
+      }
+
+      return { messages: [...dedupedMessages, ...state.messages] };
+    }),
   reconcileOptimisticMessage: (tempId, data) =>
     set((state) => {
       const hasReceivedMessage = state.messages.some((message) => message.id === data.id);

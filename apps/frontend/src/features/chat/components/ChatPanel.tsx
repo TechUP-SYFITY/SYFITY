@@ -48,21 +48,26 @@ export function ChatPanel({
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollContainerRef}
-          className="h-full min-h-0 scrollbar-none space-y-4 overflow-y-auto px-6 py-5"
+          className="h-full min-h-0 scrollbar-none overflow-y-auto px-6 py-5"
         >
-          <div ref={topSentinelRef} className="h-px" aria-hidden />
-          <ChatHistoryStatus
-            isLoading={isFetchingNextPage}
-            isError={isHistoryError}
-            onRetry={retryLoadOlderMessages}
-          />
-          {visibleMessages.map((chat) =>
-            chat.type === 'system' ? (
-              <ChatSystemMessage key={chat.id} chat={chat} />
-            ) : (
-              <ChatMessageItem key={chat.id} chat={chat} />
-            ),
-          )}
+          <div
+            data-testid="chat-message-stack"
+            className="flex min-h-full flex-col justify-end gap-4"
+          >
+            <div ref={topSentinelRef} className="h-px shrink-0" aria-hidden />
+            <ChatHistoryStatus
+              isLoading={isFetchingNextPage}
+              isError={isHistoryError}
+              onRetry={retryLoadOlderMessages}
+            />
+            {visibleMessages.map((chat) =>
+              chat.type === 'system' ? (
+                <ChatSystemMessage key={chat.id} chat={chat} />
+              ) : (
+                <ChatMessageItem key={chat.id} chat={chat} />
+              ),
+            )}
+          </div>
         </div>
         <ScrollToBottomButton
           isVisible={isScrollToBottomButtonVisible}

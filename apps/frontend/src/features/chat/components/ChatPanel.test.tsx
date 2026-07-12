@@ -63,6 +63,12 @@ describe('ChatPanel', () => {
     expect(screen.getByLabelText('채팅 메시지 입력')).toBeInTheDocument();
   });
 
+  it('메시지가 적을 때 목록을 채팅창 아래쪽에 정렬한다', () => {
+    render(<ChatPanel roomId="room-1" />);
+
+    expect(screen.getByTestId('chat-message-stack')).toHaveClass('min-h-full', 'justify-end');
+  });
+
   it('이전 메시지 로딩 상태를 표시한다', () => {
     vi.mocked(useChatScroll).mockReturnValue(createChatScrollResult({ isFetchingNextPage: true }));
 

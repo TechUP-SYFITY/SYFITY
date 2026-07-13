@@ -22,6 +22,15 @@ describe('PlaybackSyncToast', () => {
     usePlayerStore.getState().clearPlayback();
   });
 
+  it('idle 상태에서는 동기화 토스트를 표시하지 않는다', () => {
+    renderPlaybackSyncToast();
+
+    expect(
+      screen.queryByText('광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('현재 재생 위치로 동기화됐어요.')).not.toBeInTheDocument();
+  });
+
   it('자동 동기화 요청 중 Figma 안내 문구를 표시한다', () => {
     usePlayerStore.getState().beginPlaybackSync();
 

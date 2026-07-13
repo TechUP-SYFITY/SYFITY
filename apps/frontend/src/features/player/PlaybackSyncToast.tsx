@@ -16,27 +16,39 @@ export function PlaybackSyncToast() {
   const syncStatus = usePlayerStore((state) => state.playbackSyncStatus);
   const clearPlaybackSync = usePlayerStore((state) => state.clearPlaybackSync);
   const { dismissToast, pushToast } = useToast();
-  const message =
-    syncStatus === 'synced'
-      ? '현재 재생 위치로 동기화됐어요.'
-      : '광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다';
 
   useEffect(() => {
-    if (syncStatus === 'idle') {
-      dismissToast(PLAYBACK_SYNC_TOAST_ID);
-      return;
+    let title: string;
+    let duration: number;
+
+    switch (syncStatus) {
+      case 'idle':
+        dismissToast(PLAYBACK_SYNC_TOAST_ID);
+        return;
+      case 'pending':
+        title = '광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다';
+        duration = PENDING_DURATION_MS;
+        break;
+      case 'synced':
+        title = '현재 재생 위치로 동기화됐어요.';
+        duration = SYNCED_DURATION_MS;
+        break;
+      default: {
+        const exhaustiveStatus: never = syncStatus;
+        return exhaustiveStatus;
+      }
     }
 
     pushToast({
       id: PLAYBACK_SYNC_TOAST_ID,
-      title: message,
+      title,
       icon: <RefreshCw aria-hidden />,
-      duration: syncStatus === 'pending' ? PENDING_DURATION_MS : SYNCED_DURATION_MS,
+      duration,
       closeLabel: '동기화 알림 닫기',
       onDismiss: clearPlaybackSync,
       variant: 'success',
     });
-  }, [clearPlaybackSync, dismissToast, message, pushToast, syncStatus]);
+  }, [clearPlaybackSync, dismissToast, pushToast, syncStatus]);
 
   useEffect(
     () => () => {

@@ -13,12 +13,16 @@ import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
 import { usePlayerControls } from '@/features/player/usePlayerControls';
+import { getPlaylistErrorMessage } from '@/features/playlist/playlistErrorMessage';
+import { useAddPlaylistItem } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
 import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
 import { useJoinRoom } from '@/features/room/roomHooks';
 import { useRoomStore } from '@/features/room/roomStore';
+import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
+import { SearchPanel } from '@/features/search/components/SearchPanel';
 
 import { useRoomLiveConnections } from './useRoomLiveConnections';
 
@@ -28,6 +32,7 @@ interface RoomPageClientProps {
 
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
+  const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const joinRoom = useJoinRoom(roomId);
   const { data: me } = useMe();
   const members = useRoomStore((state) => state.members);
@@ -43,6 +48,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
 
   const hasJoinedRoom = joinRoom.isSuccess;
+  const addSearchResult = useAddPlaylistItem(roomId);
 
   useRoomLiveConnections(roomId, hasJoinedRoom);
 
@@ -82,34 +88,82 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     return <RoomErrorState error={joinRoom.error} roomId={roomId} />;
   }
 
+  const handleOpenSearch = () => {
+    addSearchResult.reset();
+    setIsSearchPanelOpen(true);
+  };
+
+  const handleCloseSearch = () => {
+    addSearchResult.reset();
+    setIsSearchPanelOpen(false);
+  };
+
+  const handleAddSearchResult = (result: YoutubeSearchResult) => {
+    if (!hasJoinedRoom) {
+      return;
+    }
+
+    addSearchResult.reset();
+    addSearchResult.mutate({ videoId: result.videoId });
+  };
+
+  const handleAddYoutubeUrl = (youtubeUrl: string) => {
+    if (!hasJoinedRoom) {
+      return;
+    }
+
+    addSearchResult.reset();
+    addSearchResult.mutate({ youtubeUrl });
+  };
+
   return (
-    <RoomShell
-      headerActions={<UserMenu />}
-      activeMobileTab={activeMobileTab}
-      chats={[]}
-      currentUserName={me?.nickname}
-      isHost={isHost}
-      miniPlayerCommandError={miniPlayerControls.commandError}
-      miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
-      miniPlayerIsMuted={miniPlayerIsMuted}
-      miniPlayerNextDisabled={!nextItem}
-      miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
-      miniPlayerPreviousDisabled={!previousItem}
-      miniPlayerVolume={miniPlayerVolume}
-      members={members}
-      onMuteToggle={toggleMiniPlayerMute}
-      onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
-      onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
-      onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
-      onMiniPlayerVolumeChange={setMiniPlayerVolume}
-      onMobileTabChange={setActiveMobileTab}
-      playbackState={playbackState}
-      playlist={playlist}
-      renderPlayerPanel={() => <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />}
-      renderPlaylistPanel={() => (
-        <PlaylistPanel roomId={roomId} isHost={isHost} isReady={hasJoinedRoom} />
-      )}
-      room={room}
-    />
+    <>
+      <RoomShell
+        headerActions={<UserMenu />}
+        activeMobileTab={activeMobileTab}
+        chats={[]}
+        currentUserName={me?.nickname}
+        isHost={isHost}
+        miniPlayerCommandError={miniPlayerControls.commandError}
+        miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
+        miniPlayerIsMuted={miniPlayerIsMuted}
+        miniPlayerNextDisabled={!nextItem}
+        miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
+        miniPlayerPreviousDisabled={!previousItem}
+        miniPlayerVolume={miniPlayerVolume}
+        members={members}
+        onMuteToggle={toggleMiniPlayerMute}
+        onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
+        onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
+        onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
+        onMiniPlayerVolumeChange={setMiniPlayerVolume}
+        onMobileTabChange={setActiveMobileTab}
+        playbackState={playbackState}
+        playlist={playlist}
+        renderPlayerPanel={() => (
+          <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />
+        )}
+        renderPlaylistPanel={() => (
+          <PlaylistPanel
+            roomId={roomId}
+            isHost={isHost}
+            isReady={hasJoinedRoom}
+            onOpenSearch={handleOpenSearch}
+          />
+        )}
+        room={room}
+      />
+      <SearchPanel
+        addErrorMessage={
+          addSearchResult.isError ? getPlaylistErrorMessage(addSearchResult.error) : undefined
+        }
+        isAddPending={addSearchResult.isPending}
+        isOpen={isSearchPanelOpen}
+        roomName={room?.name ?? 'Room'}
+        onAddResult={handleAddSearchResult}
+        onAddUrl={handleAddYoutubeUrl}
+        onClose={handleCloseSearch}
+      />
+    </>
   );
 }

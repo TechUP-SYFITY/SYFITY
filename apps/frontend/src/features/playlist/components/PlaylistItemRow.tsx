@@ -2,6 +2,7 @@
 import { CircleAlert, GripVertical, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui';
+import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
 import type { PlaylistItem } from '@/shared/types/domain';
 
@@ -151,10 +152,4 @@ function getTitleColorClass(isCurrent: boolean, isUnavailable: boolean) {
 
 function getMetaColorClass(isUnavailable: boolean) {
   return isUnavailable ? 'text-muted-foreground/60' : 'text-muted-foreground';
-}
-
-function formatDuration(duration: number) {
-  const minutes = Math.floor(duration / 60);
-  const seconds = String(duration % 60).padStart(2, '0');
-  return `${minutes}:${seconds}`;
 }

@@ -84,7 +84,13 @@ describe('PlaylistPanel reorder', () => {
 
       render(
         <QueryClientProvider client={createQueryClient()}>
-          <PlaylistPanel playlistItems={[firstItem, secondItem]} roomId={roomId} isHost isReady />
+          <PlaylistPanel
+            playlistItems={[firstItem, secondItem]}
+            roomId={roomId}
+            isHost
+            isReady
+            onOpenSearch={vi.fn()}
+          />
         </QueryClientProvider>,
       );
 
@@ -137,7 +143,13 @@ describe('PlaylistPanel reorder', () => {
 
     render(
       <QueryClientProvider client={createQueryClient()}>
-        <PlaylistPanel playlistItems={[firstItem, secondItem]} roomId={roomId} isHost isReady />
+        <PlaylistPanel
+          playlistItems={[firstItem, secondItem]}
+          roomId={roomId}
+          isHost
+          isReady
+          onOpenSearch={vi.fn()}
+        />
       </QueryClientProvider>,
     );
 

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -73,6 +73,26 @@ describe('RoomPageClient', () => {
     expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
   });
 
+  it('이전 Room 상태가 남아 있어도 URL의 roomId로 연결한다', async () => {
+    useRoomStore.setState({
+      room: {
+        ...roomFixture.room,
+        id: 'stale-room-id',
+      },
+    });
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(useRoomLiveConnections).not.toHaveBeenCalledWith('stale-room-id', false);
+    expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+  });
+
   it('현재 사용자가 host가 아니면 host 전용 제어 안내를 표시한다', async () => {
     server.use(
       http.get('*/api/v1/me', () =>
@@ -100,5 +120,86 @@ describe('RoomPageClient', () => {
       screen.getByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...'),
     ).toBeInTheDocument();
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+  });
+
+  it('검색 결과 곡 추가 실패를 SearchPanel 안에 표시한다', async () => {
+    let requestedRoomId: string | undefined;
+
+    server.use(
+      http.post('*/api/v1/rooms/:roomId/playlist', ({ params }) => {
+        requestedRoomId = String(params.roomId);
+
+        return HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'PLAYLIST_VIDEO_UNAVAILABLE',
+              message: 'Video unavailable',
+            },
+          },
+          { status: 400 },
+        );
+      }),
+    );
+
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    expect(openSearchButton).toBeDefined();
+    fireEvent.click(openSearchButton as HTMLButtonElement);
+
+    expect(await screen.findByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색'), {
+      target: { value: 'Night Changes' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('재생할 수 없는 영상이에요.');
+    expect(requestedRoomId).toBe(roomFixture.room.id);
+  });
+
+  it('곡 추가 패널의 링크 탭에서 YouTube URL을 추가한다', async () => {
+    let requestedBody: unknown;
+
+    server.use(
+      http.post('*/api/v1/rooms/:roomId/playlist', async ({ request }) => {
+        requestedBody = await request.json();
+
+        return HttpResponse.json({
+          success: true,
+          data: roomFixture.playlist[0],
+        });
+      }),
+    );
+
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(openSearchButton as HTMLButtonElement);
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: '링크' }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.change(screen.getByPlaceholderText('YouTube URL'), {
+      target: { value: 'https://youtu.be/yellow' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '링크 추가' }));
+
+    await waitFor(() => {
+      expect(requestedBody).toEqual({ youtubeUrl: 'https://youtu.be/yellow' });
+    });
   });
 });

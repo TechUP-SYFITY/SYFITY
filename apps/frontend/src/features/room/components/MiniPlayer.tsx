@@ -14,10 +14,10 @@ import {
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 
+import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
-import { formatDuration } from './roomFormatters';
 import { TrackArtwork } from './TrackArtwork';
 
 export type MiniPlayerPendingCommand = 'play' | 'pause' | 'previous' | 'next' | null;

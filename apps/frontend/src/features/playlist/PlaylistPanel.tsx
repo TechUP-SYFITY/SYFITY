@@ -5,10 +5,8 @@ import { Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/shared/components/ui';
-import { ApiClientError } from '@/shared/types/api';
 import type { PlaylistItem } from '@/shared/types/domain';
 
-import { PlaylistAddForm } from './components/PlaylistAddForm';
 import { PlaylistEmptyState } from './components/PlaylistEmptyState';
 import { PlaylistErrorState } from './components/PlaylistErrorState';
 import { PlaylistItemRow } from './components/PlaylistItemRow';
@@ -16,12 +14,8 @@ import { PlaylistLoadingState } from './components/PlaylistLoadingState';
 import { PlaylistMutationError } from './components/PlaylistMutationError';
 import { PlaylistPanelHeader } from './components/PlaylistPanelHeader';
 import type { PlaylistApi } from './playlistApi';
-import {
-  useAddPlaylistItem,
-  useDeletePlaylistItem,
-  usePlaylist,
-  useReorderPlaylist,
-} from './playlistHooks';
+import { getPlaylistErrorMessage } from './playlistErrorMessage';
+import { useDeletePlaylistItem, usePlaylist, useReorderPlaylist } from './playlistHooks';
 import { usePlaylistStore } from './playlistStore';
 
 interface PlaylistPanelProps {
@@ -29,6 +23,7 @@ interface PlaylistPanelProps {
   roomId: string;
   isHost: boolean;
   isReady: boolean;
+  onOpenSearch: () => void;
   playlistApiClient?: PlaylistApi;
 }
 
@@ -37,13 +32,12 @@ export function PlaylistPanel({
   roomId,
   isHost,
   isReady,
+  onOpenSearch,
   playlistApiClient,
 }: PlaylistPanelProps) {
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const draggingItemIdRef = useRef<string | null>(null);
   const [focusedActionItemId, setFocusedActionItemId] = useState<string | null>(null);
-  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-  const [youtubeUrl, setYoutubeUrl] = useState('');
   const shouldUseParentPlaylist = Boolean(playlistItems);
   const {
     data,
@@ -53,7 +47,6 @@ export function PlaylistPanel({
     isLoading,
     refetch,
   } = usePlaylist(roomId, isReady && !shouldUseParentPlaylist, playlistApiClient);
-  const addPlaylistItem = useAddPlaylistItem(roomId, playlistApiClient);
   const deletePlaylistItem = useDeletePlaylistItem(roomId, playlistApiClient);
   const reorderPlaylist = useReorderPlaylist(roomId, playlistApiClient);
   const playlist = usePlaylistStore((state) => state.playlist);
@@ -61,11 +54,10 @@ export function PlaylistPanel({
   const visiblePlaylist = playlistItems ?? playlist;
   const isInitialLoading = isLoading && visiblePlaylist.length === 0;
   const isBackgroundFetching = isFetching && !isLoading && visiblePlaylist.length > 0;
-  const mutationError = addPlaylistItem.error ?? deletePlaylistItem.error ?? reorderPlaylist.error;
+  const mutationError = deletePlaylistItem.error ?? reorderPlaylist.error;
   const mutationErrorMessage = mutationError ? getPlaylistErrorMessage(mutationError) : undefined;
 
   const resetMutationErrors = () => {
-    addPlaylistItem.reset();
     deletePlaylistItem.reset();
     reorderPlaylist.reset();
   };
@@ -91,14 +83,9 @@ export function PlaylistPanel({
     setFocusedActionItemId((currentItemId) => (currentItemId === itemId ? null : currentItemId));
   };
 
-  const handleToggleAddForm = () => {
+  const handleOpenSearch = () => {
     resetMutationErrors();
-    setIsAddFormOpen((value) => !value);
-  };
-
-  const handleOpenAddForm = () => {
-    resetMutationErrors();
-    setIsAddFormOpen(true);
+    onOpenSearch();
   };
 
   const handleRetry = async () => {
@@ -114,25 +101,6 @@ export function PlaylistPanel({
       setPlaylist(data.playlist);
     }
   }, [data?.playlist, setPlaylist, shouldUseParentPlaylist]);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const trimmedUrl = youtubeUrl.trim();
-    if (!isReady || !trimmedUrl || addPlaylistItem.isPending) {
-      return;
-    }
-
-    resetMutationErrors();
-    addPlaylistItem.mutate(
-      { youtubeUrl: trimmedUrl },
-      {
-        onSuccess: () => {
-          setYoutubeUrl('');
-        },
-      },
-    );
-  };
 
   const handleDrop = (targetItemId: string) => {
     const currentDraggingItemId = draggingItemIdRef.current;
@@ -250,23 +218,10 @@ export function PlaylistPanel({
       <PlaylistPanelHeader
         isBackgroundFetching={isBackgroundFetching}
         itemCount={visiblePlaylist.length}
-        onAddClick={handleToggleAddForm}
+        onAddClick={handleOpenSearch}
       />
 
-      {isAddFormOpen ? (
-        <PlaylistAddForm
-          errorMessage={addPlaylistItem.isError ? mutationErrorMessage : undefined}
-          isPending={addPlaylistItem.isPending}
-          isReady={isReady}
-          onSubmit={handleSubmit}
-          onYoutubeUrlChange={setYoutubeUrl}
-          youtubeUrl={youtubeUrl}
-        />
-      ) : null}
-
-      {mutationErrorMessage && !addPlaylistItem.isError ? (
-        <PlaylistMutationError message={mutationErrorMessage} />
-      ) : null}
+      {mutationErrorMessage ? <PlaylistMutationError message={mutationErrorMessage} /> : null}
 
       <div className="min-w-0 flex-1 overflow-y-auto">
         {isInitialLoading ? <PlaylistLoadingState /> : null}
@@ -277,7 +232,7 @@ export function PlaylistPanel({
           />
         ) : null}
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
-          <PlaylistEmptyState isReady={isReady} onAddClick={handleOpenAddForm} />
+          <PlaylistEmptyState isReady={isReady} onAddClick={handleOpenSearch} />
         ) : null}
         {visiblePlaylist.map((item, index) => {
           const isCurrent = index === 0;
@@ -309,42 +264,10 @@ export function PlaylistPanel({
       <Button
         className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-lg xl:hidden"
         type="button"
-        onClick={handleToggleAddForm}
+        onClick={handleOpenSearch}
       >
         <Plus className="h-4 w-4" aria-hidden />곡 추가
       </Button>
     </aside>
   );
-}
-
-function getPlaylistErrorMessage(error: unknown) {
-  if (error instanceof ApiClientError) {
-    if (error.code === 'PLAYLIST_INVALID_URL') {
-      return '유효한 YouTube 링크를 입력해주세요.';
-    }
-
-    if (error.code === 'PLAYLIST_VIDEO_UNAVAILABLE') {
-      return '재생할 수 없는 영상이에요.';
-    }
-
-    if (error.code === 'AUTH_FORBIDDEN') {
-      return '이 작업을 할 권한이 없어요.';
-    }
-
-    if (error.code === 'PLAYLIST_ITEM_NOT_FOUND') {
-      return '이미 삭제됐거나 찾을 수 없는 곡이에요.';
-    }
-
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    if (error.message === 'Failed to fetch') {
-      return '서버에 연결하지 못했어요. 백엔드 실행 상태를 확인해주세요.';
-    }
-
-    return error.message;
-  }
-
-  return '잠시 후 다시 시도해주세요.';
 }

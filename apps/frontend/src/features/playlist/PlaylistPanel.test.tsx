@@ -63,7 +63,13 @@ function renderPlaylistPanel(options?: {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <PlaylistPanel playlistItems={options?.playlistItems} roomId={roomId} isHost isReady />
+      <PlaylistPanel
+        playlistItems={options?.playlistItems}
+        roomId={roomId}
+        isHost
+        isReady
+        onOpenSearch={vi.fn()}
+      />
     </QueryClientProvider>,
   );
 }

@@ -7,7 +7,7 @@ import type { SyfityListenEvents } from '@/shared/lib/socket/types';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
 import type { PlaybackState } from '@/shared/types/domain';
-import type { ServerToClientEvents } from '@/shared/types/socket';
+import type { RoomHostConnectionState, ServerToClientEvents } from '@/shared/types/socket';
 
 import { useRoomStore } from './roomStore';
 import { useRoomSocket } from './useRoomSocket';
@@ -16,7 +16,10 @@ type EventName = keyof SyfityListenEvents;
 type EventHandler = (...args: never[]) => void;
 
 const handlers = new Map<EventName, EventHandler>();
-let roomJoinResponse: SocketAck<{ playbackState: PlaybackState }>;
+let roomJoinResponse: SocketAck<{
+  hostConnection: RoomHostConnectionState;
+  playbackState: PlaybackState;
+}>;
 const socket = {
   disconnect: vi.fn(),
   emit: vi.fn((event: string, _payload: unknown, ack?: (response: unknown) => void) => {
@@ -60,7 +63,10 @@ describe('useRoomSocket', () => {
     vi.mocked(socketClient.connect).mockReturnValue(socket as never);
     roomJoinResponse = {
       success: true,
-      data: { playbackState: roomFixture.playbackState },
+      data: {
+        hostConnection: { status: 'connected' },
+        playbackState: roomFixture.playbackState,
+      },
     };
     useRoomStore.getState().clearRoom();
   });
@@ -104,6 +110,26 @@ describe('useRoomSocket', () => {
 
     expect(useRoomStore.getState().hostConnection).toEqual({ status: 'connected' });
     expect(useRoomStore.getState().roomSocketError).toBeNull();
+  });
+
+  it('Room join ack가 Host 연결 끊김 상태이면 놓친 disconnect 상태를 복구한다', () => {
+    roomJoinResponse = {
+      success: true,
+      data: {
+        hostConnection: {
+          status: 'disconnected',
+          waitUntil: '2026-07-13T08:01:00.000Z',
+        },
+        playbackState: roomFixture.playbackState,
+      },
+    };
+
+    renderHook(() => useRoomSocket('room-a'));
+
+    expect(useRoomStore.getState().hostConnection).toEqual({
+      status: 'disconnected',
+      waitUntil: '2026-07-13T08:01:00.000Z',
+    });
   });
 
   it('Socket 재접속 후 Room join에 실패하면 Host 연결 끊김 상태를 유지한다', () => {

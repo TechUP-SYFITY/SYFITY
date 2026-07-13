@@ -33,6 +33,8 @@ export type CreateRoomData = {
 
 export type RoomRole = 'host' | 'member' | 'guest';
 export type RoomMemberStatus = 'online' | 'offline' | 'left';
+export type HostConnectionState =
+  { status: 'connected' } | { status: 'disconnected'; waitUntil: string };
 
 export type RoomMembershipRecord = {
   role: RoomRole;

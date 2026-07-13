@@ -164,10 +164,15 @@ describe('PresenceService', () => {
 
   it('Host close 타이머를 1분 후 실행하고 cache에 저장한다', () => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-01T12:00:00.000Z'));
     const { service, cacheMocks } = makeFixture();
     const onExpire = vi.fn();
 
-    service.scheduleHostCloseTimer('room-1', onExpire);
+    expect(service.scheduleHostCloseTimer('room-1', onExpire)).toBe('2026-07-01T12:01:00.000Z');
+    expect(service.getHostConnectionState('room-1')).toEqual({
+      status: 'disconnected',
+      waitUntil: '2026-07-01T12:01:00.000Z',
+    });
     vi.advanceTimersByTime(59_999);
     expect(onExpire).not.toHaveBeenCalled();
 
@@ -200,6 +205,7 @@ describe('PresenceService', () => {
     service.scheduleHostCloseTimer('room-1', vi.fn());
 
     expect(service.cancelHostCloseTimer('room-1')).toBe(true);
+    expect(service.getHostConnectionState('room-1')).toEqual({ status: 'connected' });
     expect(clearTimeoutSpy).toHaveBeenCalled();
     expect(cacheMocks.del).toHaveBeenCalledWith(CacheKeys.hostTimer('room-1'));
   });
@@ -208,6 +214,7 @@ describe('PresenceService', () => {
     const { service, cacheMocks } = makeFixture();
 
     expect(service.cancelHostCloseTimer('room-1')).toBe(false);
+    expect(service.getHostConnectionState('room-1')).toEqual({ status: 'connected' });
     expect(cacheMocks.del).not.toHaveBeenCalled();
   });
 

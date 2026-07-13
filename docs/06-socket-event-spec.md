@@ -171,6 +171,12 @@ REST `POST /rooms/join` 완료 후 Socket Room에 참여한다. 재연결 시에
 {
   success: true,
   data: {
+    hostConnection:
+      | { status: 'connected' }
+      | {
+          status: 'disconnected',
+          waitUntil: string  // Host 재접속 유예 만료 시각 (ISO 8601)
+        },
     playbackState: {
       currentTime: number,
       isPlaying: boolean,
@@ -180,6 +186,10 @@ REST `POST /rooms/join` 완료 후 Socket Room에 참여한다. 재연결 시에
   }
 }
 ```
+
+재연결한 클라이언트가 `room:host-disconnected` 또는 `room:host-reconnected` 이벤트를
+놓쳤을 수 있으므로, 클라이언트는 join 성공 시 `hostConnection` 값으로 현재 Host 연결
+상태를 다시 동기화한다.
 
 **ack 에러**
 

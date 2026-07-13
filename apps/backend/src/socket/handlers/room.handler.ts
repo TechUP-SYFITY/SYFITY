@@ -27,7 +27,7 @@ type RoomHandlerService = Pick<
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 type RoomHandlerPresenceService = Pick<
   PresenceService,
-  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer'
+  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer' | 'getHostConnectionState'
 >;
 
 type RoomHandlerDeps = {
@@ -59,6 +59,7 @@ export function registerRoomHandlers(
         presenceService.cancelMemberOfflineTimer(roomId, userId);
         const hostReconnected =
           member.role === 'host' && presenceService.cancelHostCloseTimer(roomId);
+        const hostConnection = presenceService.getHostConnectionState(roomId);
         const playbackState = await playbackService.getPlaybackStateForSocket(roomId, userId);
 
         socket.join(`room:${roomId}`);
@@ -86,7 +87,7 @@ export function registerRoomHandlers(
           }
         }
 
-        ack({ success: true, data: { playbackState } });
+        ack({ success: true, data: { hostConnection, playbackState } });
       } catch (err) {
         logger.error(
           { err, roomId: payload?.roomId, userId: socket.data.userId },

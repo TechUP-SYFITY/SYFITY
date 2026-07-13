@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/shared/components/ui';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
@@ -81,13 +82,15 @@ const onPlaybackStateChange = vi.fn();
 
 function renderPlayerPanel(isHost = true, playlistItems = playlist) {
   return render(
-    <PlayerPanel
-      roomId={roomId}
-      isHost={isHost}
-      onEnded={onEnded}
-      onPlaybackStateChange={onPlaybackStateChange}
-      playlist={playlistItems}
-    />,
+    <ToastProvider>
+      <PlayerPanel
+        roomId={roomId}
+        isHost={isHost}
+        onEnded={onEnded}
+        onPlaybackStateChange={onPlaybackStateChange}
+        playlist={playlistItems}
+      />
+    </ToastProvider>,
   );
 }
 
@@ -142,6 +145,10 @@ describe('PlayerPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('pending');
+    expect(
+      screen.getByText('광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다'),
+    ).toBeInTheDocument();
   });
 
   it('IFrame 일시정지 이벤트를 공통 Player 제어 handler로 전달한다', () => {
@@ -172,6 +179,10 @@ describe('PlayerPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
+    expect(
+      screen.queryByText('광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다'),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Song One' })).toBeInTheDocument();
   });
 

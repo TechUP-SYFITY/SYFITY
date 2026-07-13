@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { useState } from 'react';
+import { Check, CircleAlert, Info as InfoIcon } from 'lucide-react';
 
 import { Button } from './Button';
-import { Toast, ToastClose, ToastIcon, ToastProvider, ToastTitle, ToastViewport } from './Toast';
+import { Toast, ToastProvider, useToast } from './Toast';
 
 const meta = {
   title: 'Components/Toast',
@@ -13,29 +13,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
-      <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function XIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
-    </svg>
-  );
-}
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function Demo({
   variant,
   message,
@@ -45,46 +22,48 @@ function Demo({
   message: string;
   icon: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const { pushToast } = useToast();
+
   return (
-    <ToastProvider swipeDirection="down">
-      <Button
-        variant="ghost"
-        onClick={() => {
-          setOpen(false);
-          requestAnimationFrame(() => setOpen(true));
-        }}
-      >
-        토스트 보기
-      </Button>
-      <Toast variant={variant} open={open} onOpenChange={setOpen} duration={4000}>
-        <ToastIcon>{icon}</ToastIcon>
-        <ToastTitle>{message}</ToastTitle>
-        <ToastClose aria-label="닫기">
-          <XIcon />
-        </ToastClose>
-      </Toast>
-      <ToastViewport />
-    </ToastProvider>
+    <Button
+      variant="ghost"
+      onClick={() => {
+        pushToast({ title: message, variant, icon, duration: 4000 });
+      }}
+    >
+      토스트 보기
+    </Button>
   );
+}
+
+function ToastStory({ children }: { children: React.ReactNode }) {
+  return <ToastProvider>{children}</ToastProvider>;
 }
 
 export const Success: Story = {
   render: () => (
-    <Demo variant="success" message="플레이리스트에 추가했어요 🎵" icon={<CheckIcon />} />
+    <ToastStory>
+      <Demo variant="success" message="플레이리스트에 추가했어요 🎵" icon={<Check aria-hidden />} />
+    </ToastStory>
   ),
 };
 
 export const Error: Story = {
   render: () => (
-    <Demo
-      variant="error"
-      message="유효하지 않은 링크예요. YouTube 링크를 붙여넣어 주세요."
-      icon={<AlertIcon />}
-    />
+    <ToastStory>
+      <Demo
+        variant="error"
+        message="유효하지 않은 링크예요. YouTube 링크를 붙여넣어 주세요."
+        icon={<CircleAlert aria-hidden />}
+      />
+    </ToastStory>
   ),
 };
 
 export const Info: Story = {
-  render: () => <Demo variant="info" message="호스트가 재생을 시작했어요" icon={<AlertIcon />} />,
+  render: () => (
+    <ToastStory>
+      <Demo variant="info" message="호스트가 재생을 시작했어요" icon={<InfoIcon aria-hidden />} />
+    </ToastStory>
+  ),
 };

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { playbackCommands } from './playbackCommands';
+import { usePlayerStore } from './playerStore';
 
 export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek';
 
@@ -30,9 +31,9 @@ export function usePlayerControls({
   const pendingCommandRef = useRef<PlayerCommand | null>(null);
   const [pendingCommand, setPendingCommand] = useState<PlayerCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const beginPlaybackSync = usePlayerStore((state) => state.beginPlaybackSync);
+  const clearPlaybackSync = usePlayerStore((state) => state.clearPlaybackSync);
   const controlDisabled = !isHost || !hasPlayableTrack || Boolean(pendingCommand);
-  const syncDisabled = !hasPlayableTrack;
 
   useEffect(
     () => () => {
@@ -42,20 +43,6 @@ export function usePlayerControls({
     },
     [],
   );
-
-  function handleSyncRequest() {
-    if (!hasPlayableTrack) {
-      return;
-    }
-
-    try {
-      playbackCommands.requestSync(roomId);
-      setSyncFeedback('동기화 요청을 보냈어요.');
-      setCommandError(null);
-    } catch (error) {
-      setCommandError(getPlayerCommandErrorMessage(error));
-    }
-  }
 
   async function runHostCommand(command: PlayerCommand, action: () => Promise<unknown>) {
     if (!isHost || pendingCommandRef.current) {
@@ -121,9 +108,11 @@ export function usePlayerControls({
     }
 
     if (!isHost) {
+      beginPlaybackSync();
       try {
         playbackCommands.requestSync(roomId);
       } catch {
+        clearPlaybackSync();
         // 다음 서버 tick에서 Member의 로컬 재생 상태를 다시 보정한다.
       }
       return;
@@ -164,10 +153,7 @@ export function usePlayerControls({
     handlePlayPause,
     handlePreviousTrack,
     handleSeek,
-    handleSyncRequest,
     pendingCommand,
-    syncDisabled,
-    syncStatus: syncFeedback,
   };
 }
 

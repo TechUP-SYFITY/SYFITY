@@ -1,30 +1,11 @@
-'use client';
+import { JoinRoomClient } from './JoinRoomClient';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
-
-import { JoinRoomDialog } from '@/features/room/components/JoinRoomDialog';
-
-function RoomJoinContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialCode = searchParams.get('code') ?? undefined;
-  const [open, setOpen] = useState(true);
-
-  const handleOpenChange = (next: boolean) => {
-    setOpen(next);
-    if (!next) {
-      router.push('/home');
-    }
-  };
-
-  return <JoinRoomDialog open={open} onOpenChange={handleOpenChange} initialCode={initialCode} />;
+interface RoomJoinPageProps {
+  searchParams: Promise<{ code?: string }>;
 }
 
-export default function RoomJoinPage() {
-  return (
-    <Suspense fallback={null}>
-      <RoomJoinContent />
-    </Suspense>
-  );
+export default async function RoomJoinPage({ searchParams }: RoomJoinPageProps) {
+  const { code } = await searchParams;
+
+  return <JoinRoomClient initialCode={code} />;
 }

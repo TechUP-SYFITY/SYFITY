@@ -44,11 +44,32 @@ export function JoinRoomDialog({
   initialCode,
   roomApiClient,
 }: JoinRoomDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="relative max-w-105">
+        <JoinRoomForm
+          onOpenChange={onOpenChange}
+          initialCode={initialCode}
+          roomApiClient={roomApiClient}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function JoinRoomForm({
+  onOpenChange,
+  initialCode,
+  roomApiClient,
+}: Omit<JoinRoomDialogProps, 'open'>) {
   const router = useRouter();
-  const [code, setCode] = useState('');
-  const [isPrefilled, setIsPrefilled] = useState(false);
+  const [code, setCode] = useState(() => sanitizeInviteCode(initialCode ?? ''));
+  const [isPrefilled, setIsPrefilled] = useState(
+    () => sanitizeInviteCode(initialCode ?? '').length > 0,
+  );
   const [hasInvalidChar, setHasInvalidChar] = useState(false);
   const joinRoom = useJoinRoomMutation(roomApiClient);
+  const { mutate: mutateJoin } = joinRoom;
   const autoValidatedRef = useRef(false);
 
   const submitJoin = useCallback(
@@ -58,7 +79,7 @@ export function JoinRoomDialog({
         return;
       }
 
-      joinRoom.mutate(
+      mutateJoin(
         { inviteCode: target },
         {
           onSuccess: (data) => {
@@ -68,33 +89,19 @@ export function JoinRoomDialog({
         },
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [onOpenChange, router],
+    [mutateJoin, onOpenChange, router],
   );
 
   useEffect(() => {
-    if (open) {
-      if (initialCode) {
-        const prefilled = sanitizeInviteCode(initialCode);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setCode(prefilled);
-        setIsPrefilled(true);
-
-        if (!autoValidatedRef.current && prefilled.length > 0) {
-          autoValidatedRef.current = true;
-          submitJoin(prefilled);
-        }
-      }
+    if (autoValidatedRef.current) {
       return;
     }
-
-    setCode('');
-    setIsPrefilled(false);
-    setHasInvalidChar(false);
-    autoValidatedRef.current = false;
-    joinRoom.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialCode]);
+    const prefilled = sanitizeInviteCode(initialCode ?? '');
+    if (prefilled.length > 0) {
+      autoValidatedRef.current = true;
+      submitJoin(prefilled);
+    }
+  }, [initialCode, submitJoin]);
 
   const trimmedCode = code.trim();
   const errorCode = joinRoom.error instanceof ApiClientError ? joinRoom.error.code : undefined;
@@ -139,127 +146,125 @@ export function JoinRoomDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="relative max-w-105">
-        {!isLoading && <DialogCloseButton className="absolute top-4 right-4" />}
+    <>
+      {!isLoading && <DialogCloseButton className="absolute top-4 right-4" />}
 
-        <form onSubmit={handleSubmit}>
-          <DialogBody className="items-center gap-5 pt-6 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <DialogIconBadge className="size-12 rounded-2xl">
-                <Headphones className="size-5.5" />
-              </DialogIconBadge>
+      <form onSubmit={handleSubmit}>
+        <DialogBody className="items-center gap-5 pt-6 text-center">
+          <div className="flex flex-col items-center gap-3">
+            <DialogIconBadge className="size-12 rounded-2xl">
+              <Headphones className="size-5.5" />
+            </DialogIconBadge>
+            <div className="flex flex-col items-center gap-1">
+              <DialogTitle className="text-lg">초대 코드로 입장</DialogTitle>
+              <p className="max-w-65 text-sm text-white/48">
+                초대 코드를 입력하거나
+                <br />
+                받은 초대 링크를 붙여넣으세요
+              </p>
+            </div>
+          </div>
+
+          <div className="h-px w-full bg-white/7" />
+
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                <Loader2 className="size-5.5 animate-spin" />
+              </div>
               <div className="flex flex-col items-center gap-1">
-                <DialogTitle className="text-lg">초대 코드로 입장</DialogTitle>
-                <p className="max-w-65 text-sm text-white/48">
-                  초대 코드를 입력하거나
-                  <br />
-                  받은 초대 링크를 붙여넣으세요
-                </p>
+                <p className="text-base font-bold text-white">방에 입장하는 중...</p>
+                <p className="text-sm text-white/48">잠시만 기다려주세요</p>
               </div>
             </div>
+          ) : (
+            <div className="flex w-full flex-col gap-1.5 text-left">
+              <label htmlFor="join-room-code" className="text-xs font-semibold text-white/55">
+                초대 코드
+              </label>
+              <Input
+                id="join-room-code"
+                value={code}
+                onChange={handleCodeChange}
+                placeholder="예: 3F9A2C"
+                maxLength={6}
+                showCount
+                autoFocus={!isPrefilled}
+                disabled={isBlocked}
+                error={inputErrorMessage}
+                className={
+                  'text-center tracking-wide' +
+                  (isPrefilled ? ' font-mono tracking-[0.2em] text-primary' : '')
+                }
+                size="lg"
+              />
+            </div>
+          )}
 
-            <div className="h-px w-full bg-white/7" />
-
-            {isLoading ? (
-              <div className="flex flex-col items-center gap-3 py-2">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-                  <Loader2 className="size-5.5 animate-spin" />
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <p className="text-base font-bold text-white">방에 입장하는 중...</p>
-                  <p className="text-sm text-white/48">잠시만 기다려주세요</p>
-                </div>
+          {roomIssue === 'closed' && (
+            <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-accent/25 bg-accent/10 px-5 py-4 text-center">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-accent/20 text-accent">
+                <Lock className="size-5" />
               </div>
+              <p className="text-sm font-bold text-white">이미 종료된 방이에요</p>
+              <p className="text-xs text-white/55">
+                호스트가 방을 닫았어요. 다른 방을 찾아보거나 새 방을 만들어보세요.
+              </p>
+            </div>
+          )}
+
+          {roomIssue === 'inactive' && (
+            <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-5 py-4 text-center">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-warning/20 text-warning">
+                <TimerOff className="size-5" />
+              </div>
+              <p className="text-sm font-bold text-white">입장할 수 없는 방이에요</p>
+              <p className="text-xs text-white/55">
+                오랫동안 활동이 없어 자동으로 비활성화 처리된 방이에요.
+              </p>
+            </div>
+          )}
+        </DialogBody>
+
+        {!isLoading && (
+          <DialogFooter>
+            {isBlocked ? (
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={handleGoHome}
+              >
+                <Home className="size-4" />
+                홈으로 돌아가기
+              </Button>
             ) : (
-              <div className="flex w-full flex-col gap-1.5 text-left">
-                <label htmlFor="join-room-code" className="text-xs font-semibold text-white/55">
-                  초대 코드
-                </label>
-                <Input
-                  id="join-room-code"
-                  value={code}
-                  onChange={handleCodeChange}
-                  placeholder="예: 3F9A2C"
-                  maxLength={6}
-                  showCount
-                  autoFocus={!isPrefilled}
-                  disabled={isBlocked}
-                  error={inputErrorMessage}
-                  className={
-                    'text-center tracking-wide' +
-                    (isPrefilled ? ' font-mono tracking-[0.2em] text-primary' : '')
-                  }
-                  size="lg"
-                />
-              </div>
-            )}
-
-            {roomIssue === 'closed' && (
-              <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-accent/25 bg-accent/10 px-5 py-4 text-center">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-accent/20 text-accent">
-                  <Lock className="size-5" />
-                </div>
-                <p className="text-sm font-bold text-white">이미 종료된 방이에요</p>
-                <p className="text-xs text-white/55">
-                  호스트가 방을 닫았어요. 다른 방을 찾아보거나 새 방을 만들어보세요.
-                </p>
-              </div>
-            )}
-
-            {roomIssue === 'inactive' && (
-              <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-5 py-4 text-center">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-warning/20 text-warning">
-                  <TimerOff className="size-5" />
-                </div>
-                <p className="text-sm font-bold text-white">입장할 수 없는 방이에요</p>
-                <p className="text-xs text-white/55">
-                  오랫동안 활동이 없어 자동으로 비활성화 처리된 방이에요.
-                </p>
-              </div>
-            )}
-          </DialogBody>
-
-          {!isLoading && (
-            <DialogFooter>
-              {isBlocked ? (
+              <>
                 <Button
                   type="button"
+                  variant="ghost"
+                  size="lg"
+                  className="w-full sm:flex-1"
+                  onClick={() => onOpenChange(false)}
+                >
+                  취소
+                </Button>
+                <Button
+                  type="submit"
                   variant="primary"
                   size="lg"
-                  className="w-full"
-                  onClick={handleGoHome}
+                  className="w-full sm:flex-1"
+                  disabled={trimmedCode.length === 0}
                 >
-                  <Home className="size-4" />
-                  홈으로 돌아가기
+                  <LogIn className="size-4" />
+                  {roomIssue === 'invalid' ? '다시 시도' : '입장하기'}
                 </Button>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="lg"
-                    className="w-full sm:flex-1"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    className="w-full sm:flex-1"
-                    disabled={trimmedCode.length === 0}
-                  >
-                    <LogIn className="size-4" />
-                    {roomIssue === 'invalid' ? '다시 시도' : '입장하기'}
-                  </Button>
-                </>
-              )}
-            </DialogFooter>
-          )}
-        </form>
-      </DialogContent>
-    </Dialog>
+              </>
+            )}
+          </DialogFooter>
+        )}
+      </form>
+    </>
   );
 }

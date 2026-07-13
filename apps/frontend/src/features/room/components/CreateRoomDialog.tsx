@@ -1,7 +1,7 @@
 'use client';
 
 import { AudioLines } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Button } from '@/shared/components/ui/Button';
 import {
@@ -16,8 +16,8 @@ import {
 } from '@/shared/components/ui/Dialog';
 import { Input } from '@/shared/components/ui/Input';
 
-import { useCreateRoom } from '@/features/room/roomHooks';
-import type { CreateRoomResponse } from '@/features/room/roomTypes';
+import { useCreateRoom } from '../roomHooks';
+import type { CreateRoomResponse } from '../roomTypes';
 
 interface CreateRoomDialogProps {
   open: boolean;
@@ -28,17 +28,18 @@ interface CreateRoomDialogProps {
 const MAX_NAME_LENGTH = 30;
 
 export function CreateRoomDialog({ open, onOpenChange, onCreated }: CreateRoomDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-105">
+        <CreateRoomForm onOpenChange={onOpenChange} onCreated={onCreated} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateRoomForm({ onOpenChange, onCreated }: Omit<CreateRoomDialogProps, 'open'>) {
   const [name, setName] = useState('');
   const createRoom = useCreateRoom();
-
-  useEffect(() => {
-    if (!open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setName('');
-      createRoom.reset();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const trimmedName = name.trim();
   const errorMessage = createRoom.isError ? '방 생성에 실패했어요. 다시 시도해 주세요.' : undefined;
@@ -62,62 +63,60 @@ export function CreateRoomDialog({ open, onOpenChange, onCreated }: CreateRoomDi
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-105">
-        <DialogHeader>
-          <div className="flex items-center gap-2.5">
-            <DialogIconBadge>
-              <AudioLines className="inline-block shrink-0" aria-hidden />
-            </DialogIconBadge>
-            <DialogTitle>방 만들기</DialogTitle>
-          </div>
-          <DialogCloseButton />
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <div className="flex items-center gap-2.5">
+          <DialogIconBadge>
+            <AudioLines className="inline-block shrink-0" aria-hidden />
+          </DialogIconBadge>
+          <DialogTitle>방 만들기</DialogTitle>
+        </div>
+        <DialogCloseButton />
+      </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <DialogBody>
-            <label
-              htmlFor="create-room-name"
-              className="flex items-center gap-1 text-xs font-semibold text-white/65"
-            >
-              방 이름 <span className="text-primary">*</span>
-            </label>
-            <Input
-              id="create-room-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Chill Night"
-              maxLength={MAX_NAME_LENGTH}
-              autoFocus
-              error={errorMessage}
-              showCount
-            />
-          </DialogBody>
+      <form onSubmit={handleSubmit}>
+        <DialogBody>
+          <label
+            htmlFor="create-room-name"
+            className="flex items-center gap-1 text-xs font-semibold text-white/65"
+          >
+            방 이름 <span className="text-primary">*</span>
+          </label>
+          <Input
+            id="create-room-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Chill Night"
+            maxLength={MAX_NAME_LENGTH}
+            autoFocus
+            error={errorMessage}
+            showCount
+          />
+        </DialogBody>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              size="lg"
-              className="w-full sm:flex-1"
-              onClick={() => onOpenChange(false)}
-            >
-              취소
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full sm:flex-1"
-              isLoading={createRoom.isPending}
-              disabled={trimmedName.length === 0}
-            >
-              <AudioLines className="inline-block shrink-0" aria-hidden />
-              만들기
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="w-full sm:flex-1"
+            onClick={() => onOpenChange(false)}
+          >
+            취소
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full sm:flex-1"
+            isLoading={createRoom.isPending}
+            disabled={trimmedName.length === 0}
+          >
+            <AudioLines className="inline-block shrink-0" aria-hidden />
+            만들기
+          </Button>
+        </DialogFooter>
+      </form>
+    </>
   );
 }

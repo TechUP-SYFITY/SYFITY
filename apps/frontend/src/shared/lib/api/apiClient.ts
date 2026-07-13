@@ -61,7 +61,6 @@ const request = async <T>(
 ): Promise<T> => {
   const response = await fetch(`${getBaseUrl()}${url}`, {
     ...options,
-    cache: 'no-store',
     credentials: 'include',
     headers: createHeaders(options.headers, options.body !== undefined),
   });

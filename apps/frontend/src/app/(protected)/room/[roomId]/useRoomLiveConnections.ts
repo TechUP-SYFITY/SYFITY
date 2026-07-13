@@ -4,8 +4,8 @@
 import { useChatSocket } from '@/features/chat/hooks/chatHooks';
 import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
 import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
-import { usePresenceSocket } from '@/features/presence/presenceHooks';
-import { usePresenceStore } from '@/features/presence/presenceStore';
+import { usePresenceSocket } from '@/features/presence/hooks/usePresenceSocket';
+import { usePresenceStore } from '@/features/presence/store/presenceStore';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
 
 export function useRoomLiveConnections(

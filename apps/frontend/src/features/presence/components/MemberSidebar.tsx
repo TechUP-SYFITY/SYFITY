@@ -3,8 +3,9 @@
 // PC Room 레이아웃의 멤버 사이드바를 표시한다.
 import { Badge } from '@/shared/components/ui';
 
-import { type PresenceMember, usePresenceStore } from '../presenceStore';
 import { MemberList } from './MemberList';
+import { usePresenceStore } from '../store/presenceStore';
+import type { PresenceMember } from '../types/presence';
 
 interface MemberSidebarProps {
   members?: PresenceMember[];

@@ -5,8 +5,8 @@ import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { SyfitySocket } from '@/shared/lib/socket/types';
 import type { RoomMember } from '@/shared/types/domain';
 
-import { usePresenceSocket } from './presenceHooks';
-import { usePresenceStore } from './presenceStore';
+import { usePresenceSocket } from './usePresenceSocket';
+import { usePresenceStore } from '../store/presenceStore';
 
 vi.mock('@/shared/lib/socket/socketClient', () => ({
   socketClient: {

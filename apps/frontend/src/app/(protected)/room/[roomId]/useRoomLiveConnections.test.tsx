@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { usePresenceStore } from '@/features/presence/presenceStore';
+import { usePresenceStore } from '@/features/presence/store/presenceStore';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
 
 import { useRoomLiveConnections } from './useRoomLiveConnections';
@@ -9,7 +9,7 @@ import { useRoomLiveConnections } from './useRoomLiveConnections';
 vi.mock('@/features/chat/chatHooks', () => ({ useChatSocket: vi.fn() }));
 vi.mock('@/features/player/usePlaybackSocket', () => ({ usePlaybackSocket: vi.fn() }));
 vi.mock('@/features/playlist/playlistHooks', () => ({ usePlaylistSocket: vi.fn() }));
-vi.mock('@/features/presence/presenceHooks', () => ({ usePresenceSocket: vi.fn() }));
+vi.mock('@/features/presence/hooks/usePresenceSocket', () => ({ usePresenceSocket: vi.fn() }));
 vi.mock('@/features/room/useRoomSocket', () => ({ useRoomSocket: vi.fn() }));
 
 describe('useRoomLiveConnections', () => {

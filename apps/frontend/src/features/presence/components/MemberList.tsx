@@ -3,8 +3,9 @@
 // Room 멤버 목록을 온라인과 오프라인 그룹으로 나누어 표시한다.
 import { Crown } from 'lucide-react';
 
-import { type PresenceMember, usePresenceStore } from '../presenceStore';
 import { MemberAvatar } from './MemberAvatar';
+import { usePresenceStore } from '../store/presenceStore';
+import type { PresenceMember } from '../types/presence';
 
 interface MemberListProps {
   compact?: boolean;

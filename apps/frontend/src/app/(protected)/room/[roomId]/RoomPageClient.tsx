@@ -20,7 +20,7 @@ import { useAddPlaylistItem } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import type { AddPlaylistItemRequest } from '@/features/playlist/playlistTypes';
-import { usePresenceStore } from '@/features/presence/presenceStore';
+import { usePresenceStore } from '@/features/presence/store/presenceStore';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
 import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';

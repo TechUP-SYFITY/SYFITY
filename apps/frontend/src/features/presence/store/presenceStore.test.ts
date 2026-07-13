@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { PresenceMember } from './presenceStore';
 import { usePresenceStore } from './presenceStore';
+import type { PresenceMember } from '../types/presence';
 
 const host: PresenceMember = {
   nickname: '민지',

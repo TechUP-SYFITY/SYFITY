@@ -3,9 +3,7 @@
 // presence:update 소켓 이벤트로 갱신되는 참여자 목록을 보관한다.
 import { create } from 'zustand';
 
-import type { RoomMember } from '@/shared/types/domain';
-
-export type PresenceMember = Omit<RoomMember, 'id'>;
+import type { PresenceMember } from '../types/presence';
 
 interface PresenceStoreState {
   applyPresenceUpdate: (update: PresenceMember) => void;

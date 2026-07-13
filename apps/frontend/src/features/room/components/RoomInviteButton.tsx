@@ -5,12 +5,18 @@ import { Share2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui';
 
-export function RoomInviteButton({ onClick }: { onClick?: () => void }) {
+interface RoomInviteButtonProps {
+  disabled?: boolean;
+  onClick?: () => void;
+}
+
+export function RoomInviteButton({ disabled, onClick }: RoomInviteButtonProps) {
   return (
     <Button
       variant="primary-soft"
       size="sm"
       className="h-9 w-9 rounded-full px-0 md:h-8 md:w-auto md:px-4"
+      disabled={disabled}
       type="button"
       onClick={onClick}
     >

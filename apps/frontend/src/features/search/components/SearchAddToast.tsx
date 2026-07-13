@@ -1,16 +1,10 @@
 'use client';
 
 import { Check, CircleAlert, X } from 'lucide-react';
+import { Toast as ToastPrimitive } from 'radix-ui';
 import { useState } from 'react';
 
-import {
-  Toast,
-  ToastClose,
-  ToastIcon,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from '@/shared/components/ui';
+import { Toast, ToastClose, ToastIcon, ToastTitle, ToastViewport } from '@/shared/components/ui';
 
 export interface SearchAddToastFeedback {
   id: number;
@@ -28,7 +22,11 @@ export function SearchAddToast({ feedback, onClose }: SearchAddToastProps) {
 
   const toast =
     feedback && announcerContainer ? (
-      <ToastProvider announcerContainer={announcerContainer} label="알림" swipeDirection="down">
+      <ToastPrimitive.Provider
+        announcerContainer={announcerContainer}
+        label="알림"
+        swipeDirection="down"
+      >
         <Toast
           key={feedback.id}
           duration={4000}
@@ -51,7 +49,7 @@ export function SearchAddToast({ feedback, onClose }: SearchAddToastProps) {
           label="알림 ({hotkey})"
           className="pb-[max(1rem,env(safe-area-inset-bottom))] lg:right-0 lg:left-auto lg:max-w-sm lg:translate-x-0 lg:p-6"
         />
-      </ToastProvider>
+      </ToastPrimitive.Provider>
     ) : null;
 
   return (

@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { roomApi, type RoomApi } from './roomApi';
-import type { CreateRoomRequest, JoinRoomRequest, UpdateRoomRequest } from './roomTypes';
+import type { CreateRoomRequest, UpdateRoomRequest } from './roomTypes';
 
 export const roomQueryKeys = {
   all: ['rooms'] as const,
@@ -49,12 +49,6 @@ export const useJoinRoom = (roomId: string) =>
     // room join is a mount-time POST, but useQuery handles Strict Mode remounts
     // without the observer loss that useEffect + useMutation can trigger.
     staleTime: Infinity,
-  });
-
-// 초대 코드로 수동 입장하는 다이얼로그용 mutation 훅
-export const useJoinRoomMutation = (api: RoomApi = roomApi) =>
-  useMutation({
-    mutationFn: (body: JoinRoomRequest) => api.joinRoom(body),
   });
 
 export const useJoinRoomByCode = (inviteCode: string, api: RoomApi = roomApi) =>

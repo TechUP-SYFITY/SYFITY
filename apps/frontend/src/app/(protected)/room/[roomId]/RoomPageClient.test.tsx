@@ -23,6 +23,12 @@ vi.mock('./useRoomLiveConnections', () => ({
   useRoomLiveConnections: vi.fn(),
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -39,6 +45,7 @@ describe('RoomPageClient', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     useRoomStore.getState().clearRoom();
     usePlaylistStore.getState().clearPlaylist();
     usePlayerStore.getState().clearPlayback();
@@ -151,6 +158,43 @@ describe('RoomPageClient', () => {
       screen.getByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...'),
     ).toBeInTheDocument();
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+  });
+
+  it('Room 초대 버튼으로 초대 모달을 열고 실제 초대 코드와 링크를 복사한다', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      'navigator',
+      Object.create(window.navigator, {
+        clipboard: { value: { writeText } },
+      }),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '초대' }));
+
+    expect(screen.getByRole('dialog', { name: '친구 초대' })).toBeInTheDocument();
+    expect(screen.getAllByText(roomFixture.room.inviteCode).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: '초대 코드 복사' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenNthCalledWith(1, roomFixture.room.inviteCode);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '초대 링크 복사' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining(`/room/join?code=${roomFixture.room.inviteCode}`),
+      );
+    });
   });
 
   it('검색 결과 곡 추가 실패를 SearchPanel 안에 표시한다', async () => {

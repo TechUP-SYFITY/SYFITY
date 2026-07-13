@@ -161,12 +161,6 @@ describe('SearchPanel', () => {
     expect(onAddUrl).toHaveBeenCalledWith('https://youtu.be/yellow');
   });
 
-  it('renders a playlist add error inside the search panel', () => {
-    renderPanel({ addErrorMessage: '재생할 수 없는 영상이에요.' });
-
-    expect(screen.getByRole('alert')).toHaveTextContent('재생할 수 없는 영상이에요.');
-  });
-
   it('renders a loading state while searching', () => {
     useYoutubeSearchQueryMock.mockReturnValue(
       createSearchQueryResult({

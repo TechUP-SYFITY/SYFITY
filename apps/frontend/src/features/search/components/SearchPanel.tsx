@@ -1,16 +1,6 @@
 'use client';
 
-import {
-  ChevronDown,
-  CircleAlert,
-  Inbox,
-  Link2,
-  LoaderCircle,
-  Music2,
-  Plus,
-  Search,
-  X,
-} from 'lucide-react';
+import { ChevronDown, Inbox, Link2, LoaderCircle, Music2, Plus, Search, X } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useRef, useState } from 'react';
 
@@ -25,7 +15,6 @@ import { useYoutubeSearchQuery } from '../hooks/useYoutubeSearchQuery';
 const SEARCH_DEBOUNCE_DELAY = 350;
 
 interface SearchPanelProps {
-  addErrorMessage?: string;
   isAddPending?: boolean;
   isOpen: boolean;
   roomName: string;
@@ -38,7 +27,6 @@ interface SearchPanelProps {
 type AddMode = 'search' | 'link';
 
 export function SearchPanel({
-  addErrorMessage,
   isAddPending = false,
   isOpen,
   roomName,
@@ -157,16 +145,6 @@ export function SearchPanel({
                 링크
               </TabsTrigger>
             </TabsList>
-
-            {addErrorMessage ? (
-              <p
-                className="flex items-center gap-2 border-b border-red-300/15 bg-red-400/10 px-4 py-3 text-xs text-red-200"
-                role="alert"
-              >
-                <CircleAlert className="h-4 w-4 shrink-0" aria-hidden />
-                {addErrorMessage}
-              </p>
-            ) : null}
 
             <TabsContent value="search" className="flex min-h-0 flex-1 flex-col">
               <div className="border-b border-white/[0.07] px-4 py-4">

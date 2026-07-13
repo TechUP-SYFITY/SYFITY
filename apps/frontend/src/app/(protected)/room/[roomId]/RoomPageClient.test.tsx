@@ -126,7 +126,36 @@ describe('RoomPageClient', () => {
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
   });
 
-  it('검색 결과 곡 추가 실패를 SearchPanel 안에 표시한다', async () => {
+  it('검색 결과 곡 추가 성공 Toast를 표시하고 SearchPanel을 유지한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(openSearchButton as HTMLButtonElement);
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색'), {
+      target: { value: 'Night Changes' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
+
+    const successMessages = await screen.findAllByText('플레이리스트에 추가했어요 🎵');
+    const visibleMessage = successMessages.find((message) =>
+      message.closest('[data-state="open"][role="status"]'),
+    );
+    const successToast = visibleMessage?.closest('[role="status"]');
+
+    expect(successToast).toHaveTextContent('플레이리스트에 추가했어요 🎵');
+    expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+  });
+
+  it('검색 결과 곡 추가 실패 Toast를 표시하고 SearchPanel을 유지한다', async () => {
     let requestedRoomId: string | undefined;
 
     server.use(
@@ -165,7 +194,14 @@ describe('RoomPageClient', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('재생할 수 없는 영상이에요.');
+    const errorMessages = await screen.findAllByText('재생할 수 없는 영상이에요.');
+    const errorToast = errorMessages
+      .find((message) => message.closest('[data-state="open"][role="alert"]'))
+      ?.closest('[role="alert"]');
+
+    expect(errorToast).toHaveTextContent('재생할 수 없는 영상이에요.');
+    expect(errorToast?.querySelector('button[aria-label="닫기"]')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
     expect(requestedRoomId).toBe(roomFixture.room.id);
   });
 
@@ -205,5 +241,15 @@ describe('RoomPageClient', () => {
     await waitFor(() => {
       expect(requestedBody).toEqual({ youtubeUrl: 'https://youtu.be/yellow' });
     });
+
+    const successMessages = await screen.findAllByText('플레이리스트에 추가했어요 🎵');
+    const visibleMessage = successMessages.find((message) =>
+      message.closest('[data-state="open"][role="status"]'),
+    );
+
+    expect(visibleMessage?.closest('[role="status"]')).toHaveTextContent(
+      '플레이리스트에 추가했어요 🎵',
+    );
+    expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
   });
 });

@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { JoinRoomResponse, UserProfileResponse } from '@syfity/shared';
 
+import { ToastProvider } from '@/shared/components/ui';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
@@ -37,7 +38,11 @@ function createWrapper() {
   });
 
   return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>{children}</ToastProvider>
+      </QueryClientProvider>
+    );
   };
 }
 

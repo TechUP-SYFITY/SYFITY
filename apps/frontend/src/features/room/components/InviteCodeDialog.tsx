@@ -14,10 +14,10 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/Dialog';
 
-import type { CreateRoomResponse } from '../roomTypes';
+import type { RoomInviteInfo } from '../roomTypes';
 
 interface InviteCodeDialogProps {
-  room: Pick<CreateRoomResponse, 'id' | 'inviteCode' | 'name'> | null;
+  room: RoomInviteInfo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   showEnterButton?: boolean;

@@ -13,6 +13,11 @@ import type {
 
 export type CreateRoomRequest = SharedCreateRoomRequest;
 export type CreateRoomResponse = SharedCreateRoomResponse['data'];
+export interface RoomInviteInfo {
+  id: string;
+  inviteCode: string;
+  name: string;
+}
 export type JoinRoomRequest = SharedJoinRoomRequest;
 export type JoinRoomResponse = SharedJoinRoomResponse['data'];
 export type RecentRoomsResponse = SharedRecentRoomsResponse['data'];

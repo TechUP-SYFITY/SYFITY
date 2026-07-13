@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistItem } from '@/shared/types/domain';
@@ -63,13 +63,7 @@ function renderPlaylistPanel(options?: {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <PlaylistPanel
-        playlistItems={options?.playlistItems}
-        roomId={roomId}
-        isHost
-        isReady
-        onPlayItem={vi.fn()}
-      />
+      <PlaylistPanel playlistItems={options?.playlistItems} roomId={roomId} isHost isReady />
     </QueryClientProvider>,
   );
 }
@@ -124,6 +118,8 @@ describe('PlaylistPanel', () => {
 
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.getByText('Song Two')).toBeInTheDocument();
+    expect(getMetaText('Channel One·3:00')).toHaveClass('text-muted-foreground');
+    expect(getMetaText('Channel Two·3:20')).toHaveClass('text-muted-foreground/60');
     expect(screen.getByLabelText('Song Two 썸네일')).toHaveClass('opacity-45');
   });
 
@@ -136,4 +132,84 @@ describe('PlaylistPanel', () => {
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.queryByText('Playlist 불러오는 중')).not.toBeInTheDocument();
   });
+
+  it('재조회 성공 시 이전 mutation 오류를 초기화한다', async () => {
+    vi.mocked(playlistApi.getPlaylist)
+      .mockResolvedValueOnce({ playlist: [availableItem] })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce({ playlist: [availableItem] });
+    vi.mocked(playlistApi.deletePlaylistItem).mockRejectedValue(new Error('delete failed'));
+
+    renderPlaylistPanel();
+
+    await screen.findByText('Song One');
+    fireEvent.click(screen.getByRole('button', { name: 'Song One 삭제' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('delete failed')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('delete failed')).not.toBeInTheDocument();
+      expect(screen.queryByText('재생목록을 불러오지 못했어요')).not.toBeInTheDocument();
+      expect(screen.getByText('Song One')).toBeInTheDocument();
+    });
+  });
+
+  it('재조회가 다시 실패하면 이전 mutation 오류를 유지한다', async () => {
+    vi.mocked(playlistApi.getPlaylist)
+      .mockResolvedValueOnce({ playlist: [availableItem] })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockRejectedValueOnce(new Error('Retry failed'));
+    vi.mocked(playlistApi.deletePlaylistItem).mockRejectedValue(new Error('delete failed'));
+
+    renderPlaylistPanel();
+
+    await screen.findByText('Song One');
+    fireEvent.click(screen.getByRole('button', { name: 'Song One 삭제' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('delete failed')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(playlistApi.getPlaylist).toHaveBeenCalledTimes(3);
+      expect(screen.getByText('delete failed')).toBeInTheDocument();
+      expect(screen.getByText('재생목록을 불러오지 못했어요')).toBeInTheDocument();
+    });
+  });
+
+  it('matches playlist row actions to the Figma desktop and mobile affordances.', () => {
+    renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
+
+    const actions = screen.getByTestId(`playlist-actions-${availableItem.id}`);
+    expect(actions).toHaveClass('hidden', 'xl:flex', 'xl:opacity-0', 'xl:group-hover:opacity-100');
+    expect(screen.queryByTestId(`playlist-play-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`playlist-move-up-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`playlist-move-down-${availableItem.id}`)).not.toBeInTheDocument();
+    expect(screen.getByTestId(`playlist-drag-handle-${availableItem.id}`)).toHaveClass(
+      'cursor-grab',
+      'bg-transparent',
+    );
+
+    fireEvent.focus(screen.getByTestId(`playlist-row-${availableItem.id}`));
+
+    expect(actions).toHaveClass('flex', 'opacity-100');
+    expect(screen.getByRole('button', { name: 'Song One 순서 변경' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Song One 삭제' })).toHaveClass(
+      'bg-destructive/10',
+      'xl:bg-transparent',
+      'xl:text-destructive/70',
+    );
+  });
 });
+
+function getMetaText(text: string) {
+  return screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === text);
+}

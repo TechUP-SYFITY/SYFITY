@@ -1,9 +1,9 @@
 'use client';
 
 // Room 상단의 초대 액션 버튼을 표시한다.
-import { Button } from '@/shared/components/ui';
+import { Share2 } from 'lucide-react';
 
-import { RoomIcon } from './RoomIcon';
+import { Button } from '@/shared/components/ui';
 
 export function RoomInviteButton({ onClick }: { onClick?: () => void }) {
   return (
@@ -14,7 +14,7 @@ export function RoomInviteButton({ onClick }: { onClick?: () => void }) {
       type="button"
       onClick={onClick}
     >
-      <RoomIcon name="share" className="h-3.5 w-3.5" />
+      <Share2 className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="hidden md:inline">초대</span>
     </Button>
   );

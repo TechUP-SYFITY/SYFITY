@@ -5,16 +5,3 @@ export function formatDuration(duration: number) {
 
   return `${minutes}:${seconds}`;
 }
-
-export function formatChatTime(createdAt: string) {
-  const date = new Date(createdAt);
-
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return date.toLocaleTimeString('ko-KR', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}

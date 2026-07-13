@@ -5,8 +5,8 @@ import type { ReactNode } from 'react';
 
 import type { ChatMessage, RoomMember } from '@/shared/types/domain';
 
-import { ChatPanel } from './ChatPanel';
-import { MemberSidebar } from './MemberSidebar';
+import { ChatPanel } from '@/features/chat/components/ChatPanel';
+import { MemberSidebar } from '@/features/presence/components/MemberSidebar';
 
 export function RoomDesktopLayout({
   chats,

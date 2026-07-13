@@ -27,6 +27,7 @@ export function usePlayerControls({
   previousItemId,
 }: UsePlayerControlsParams) {
   const seekTimeoutRef = useRef<number | null>(null);
+  const pendingCommandRef = useRef<PlayerCommand | null>(null);
   const [pendingCommand, setPendingCommand] = useState<PlayerCommand | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
@@ -57,10 +58,16 @@ export function usePlayerControls({
   }
 
   async function runHostCommand(command: PlayerCommand, action: () => Promise<unknown>) {
-    if (!isHost || pendingCommand) {
+    if (!isHost || pendingCommandRef.current) {
       return;
     }
 
+    if (command !== 'seek' && seekTimeoutRef.current !== null) {
+      window.clearTimeout(seekTimeoutRef.current);
+      seekTimeoutRef.current = null;
+    }
+
+    pendingCommandRef.current = command;
     setPendingCommand(command);
     setCommandError(null);
 
@@ -69,6 +76,7 @@ export function usePlayerControls({
     } catch (error) {
       setCommandError(getPlayerCommandErrorMessage(error));
     } finally {
+      pendingCommandRef.current = null;
       setPendingCommand(null);
     }
   }
@@ -130,7 +138,7 @@ export function usePlayerControls({
   function handleSeek(seekTime: number) {
     if (
       !isHost ||
-      pendingCommand ||
+      pendingCommandRef.current ||
       !hasPlayableTrack ||
       !Number.isFinite(seekTime) ||
       seekTime < 0

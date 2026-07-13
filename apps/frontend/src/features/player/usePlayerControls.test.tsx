@@ -1,6 +1,6 @@
 // Player 제어 훅이 MiniPlayer에서 사용하는 이전 곡 명령까지 실행하는지 검증한다.
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { playbackCommands } from './playbackCommands';
 import { usePlayerControls } from './usePlayerControls';
@@ -24,6 +24,10 @@ describe('usePlayerControls', () => {
     vi.mocked(playbackCommands.pause).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.play).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.seek).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('Host가 이전 곡을 요청하면 previousItemId로 곡 변경 명령을 보낸다', async () => {
@@ -305,6 +309,36 @@ describe('usePlayerControls', () => {
 
     act(() => {
       nextCommand.resolve();
+    });
+  });
+
+  it('seek 디바운스 중 다른 명령이 시작되면 예약된 seek를 취소한다', async () => {
+    vi.useFakeTimers();
+    const nextCommand = createDeferred<void>();
+    vi.mocked(playbackCommands.changeTrack).mockReturnValue(nextCommand.promise);
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        nextItemId: 'playlist-item-2',
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSeek(90);
+      result.current.handleNextTrack();
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+    expect(playbackCommands.seek).not.toHaveBeenCalled();
+
+    await act(async () => {
+      nextCommand.resolve();
+      await nextCommand.promise;
     });
   });
 });

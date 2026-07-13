@@ -138,6 +138,59 @@ describe('PlaylistPanel', () => {
     expect(screen.getByText('Song One')).toBeInTheDocument();
     expect(screen.queryByText('Playlist 불러오는 중')).not.toBeInTheDocument();
   });
+
+  it('재조회 성공 시 이전 mutation 오류를 초기화한다', async () => {
+    vi.mocked(playlistApi.getPlaylist)
+      .mockResolvedValueOnce({ playlist: [availableItem] })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce({ playlist: [availableItem] });
+    vi.mocked(playlistApi.deletePlaylistItem).mockRejectedValue(new Error('delete failed'));
+
+    renderPlaylistPanel();
+
+    await screen.findByText('Song One');
+    fireEvent.click(screen.getByRole('button', { name: 'Song One 삭제' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('delete failed')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('delete failed')).not.toBeInTheDocument();
+      expect(screen.queryByText('재생목록을 불러오지 못했어요')).not.toBeInTheDocument();
+      expect(screen.getByText('Song One')).toBeInTheDocument();
+    });
+  });
+
+  it('재조회가 다시 실패하면 이전 mutation 오류를 유지한다', async () => {
+    vi.mocked(playlistApi.getPlaylist)
+      .mockResolvedValueOnce({ playlist: [availableItem] })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockRejectedValueOnce(new Error('Retry failed'));
+    vi.mocked(playlistApi.deletePlaylistItem).mockRejectedValue(new Error('delete failed'));
+
+    renderPlaylistPanel();
+
+    await screen.findByText('Song One');
+    fireEvent.click(screen.getByRole('button', { name: 'Song One 삭제' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('delete failed')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(playlistApi.getPlaylist).toHaveBeenCalledTimes(3);
+      expect(screen.getByText('delete failed')).toBeInTheDocument();
+      expect(screen.getByText('재생목록을 불러오지 못했어요')).toBeInTheDocument();
+    });
+  });
+
   it('matches playlist row actions to the Figma desktop and mobile affordances.', () => {
     renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
 

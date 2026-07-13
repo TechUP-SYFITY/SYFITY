@@ -1,12 +1,12 @@
 'use client';
 
 // Room 채팅 패널의 메시지 목록과 입력 영역 뼈대를 표시한다.
-import { Button, Input } from '@/shared/components/ui';
+import { Send } from 'lucide-react';
+
+import { Avatar, AvatarFallback, Button, Input } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { formatChatTime } from './roomFormatters';
-import { RoomIcon } from './RoomIcon';
-import { RoomMemberAvatar } from './RoomMemberAvatar';
+import { formatChatTime } from './chatFormatters';
 
 interface BaseChatPanelProps {
   chats: ChatMessage[];
@@ -45,7 +45,9 @@ export function ChatPanel(props: ChatPanelProps) {
         </p>
         {chats.map((chat) => (
           <div className="flex items-start gap-3 py-0.5" key={chat.id}>
-            <RoomMemberAvatar label={chat.nickname ?? 'S'} size="sm" />
+            <Avatar size="sm" className="size-6 text-xs">
+              <AvatarFallback>{(chat.nickname ?? 'S').slice(0, 1)}</AvatarFallback>
+            </Avatar>
             <div className="min-w-0">
               <p className="text-xs font-bold text-foreground">
                 {chat.nickname}
@@ -65,7 +67,11 @@ export function ChatPanel(props: ChatPanelProps) {
             : 'flex shrink-0 items-center gap-2 border-t border-border p-4'
         }
       >
-        {props.compact ? <RoomMemberAvatar label={props.currentUserName} size="sm" /> : null}
+        {props.compact ? (
+          <Avatar size="sm" className="size-6 text-xs">
+            <AvatarFallback>{props.currentUserName.slice(0, 1)}</AvatarFallback>
+          </Avatar>
+        ) : null}
         <div className="flex h-11 min-w-0 flex-1 items-center rounded-2xl border border-border bg-input px-3">
           <div className="min-w-0 flex-1">
             <Input
@@ -83,7 +89,7 @@ export function ChatPanel(props: ChatPanelProps) {
             disabled
             aria-label="메시지 보내기"
           >
-            <RoomIcon name="send" className="h-3.5 w-3.5" />
+            <Send className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
           </Button>
         </div>
       </div>

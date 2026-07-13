@@ -117,16 +117,6 @@ function withPlaylistStoryFrame() {
   };
 }
 
-function getButtonAt(buttons: HTMLElement[], index: number) {
-  const button = buttons[index];
-
-  if (!button) {
-    throw new Error(`Storybook button index ${index} was not found.`);
-  }
-
-  return button;
-}
-
 export const ApiSuccess: Story = {
   decorators: [withPlaylistStoryFrame()],
 };
@@ -185,9 +175,9 @@ export const DeleteFailureInteraction: Story = {
   decorators: [withPlaylistStoryFrame()],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const nightChangesButtons = await canvas.findAllByRole('button', { name: /Night Changes/ });
+    await userEvent.click(await canvas.findByTestId('playlist-row-story-night-changes'));
 
-    await userEvent.click(getButtonAt(nightChangesButtons, nightChangesButtons.length - 1));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Night Changes 삭제' }));
 
     await expect(canvas.findByText('delete failed')).resolves.toBeInTheDocument();
   },

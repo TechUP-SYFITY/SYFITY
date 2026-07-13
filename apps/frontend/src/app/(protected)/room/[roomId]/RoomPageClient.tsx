@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 
+import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
+
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useMe } from '@/features/auth/hooks/useAuth';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
@@ -18,7 +20,6 @@ import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
 import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
 import { useJoinRoom } from '@/features/room/roomHooks';
-import { RoomShell, type RoomMobileTab } from '@/features/room/RoomShell';
 import { useRoomStore } from '@/features/room/roomStore';
 import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
 import { SearchPanel } from '@/features/search/components/SearchPanel';

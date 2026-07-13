@@ -10,12 +10,14 @@ type SimulatedMember = Omit<RoomMember, 'id'>;
 type PresenceAction = '입장' | '퇴장';
 
 function createSimulatedMember(): SimulatedMember {
+  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36)}`;
+
   return {
     nickname: `깜짝 게스트 ${Math.floor(Math.random() * 1000)}`,
     profileImage: null,
     role: 'member',
     status: 'online',
-    userId: `dev-simulated-${Date.now()}`,
+    userId: `dev-simulated-${id}`,
   };
 }
 
@@ -33,7 +35,7 @@ function createSystemMessage(member: SimulatedMember, action: PresenceAction): C
 
 export function PresenceMockPanel() {
   const [lastAction, setLastAction] = useState<string | null>(null);
-  const [simulatedMember, setSimulatedMember] = useState<SimulatedMember | null>(null);
+  const [simulatedMembers, setSimulatedMembers] = useState<SimulatedMember[]>([]);
 
   if (!isMockingEnabled()) {
     return null;
@@ -49,10 +51,9 @@ export function PresenceMockPanel() {
 
           simulateServerEvent('presence:update', member);
           simulateServerEvent('chat:system', createSystemMessage(member, '입장'));
-          setSimulatedMember(member);
+          setSimulatedMembers((members) => [...members, member]);
           setLastAction(`${member.nickname}님이 입장했습니다.`);
         }}
-        disabled={simulatedMember !== null}
         type="button"
       >
         가상 멤버 입장 시뮬레이션
@@ -60,6 +61,8 @@ export function PresenceMockPanel() {
       <button
         className="rounded-lg bg-accent/15 px-2 py-1 text-accent"
         onClick={() => {
+          const simulatedMember = simulatedMembers.at(-1);
+
           if (!simulatedMember) {
             return;
           }
@@ -67,9 +70,9 @@ export function PresenceMockPanel() {
           simulateServerEvent('presence:update', { ...simulatedMember, status: 'left' });
           simulateServerEvent('chat:system', createSystemMessage(simulatedMember, '퇴장'));
           setLastAction(`${simulatedMember.nickname}님이 퇴장했습니다.`);
-          setSimulatedMember(null);
+          setSimulatedMembers((members) => members.slice(0, -1));
         }}
-        disabled={simulatedMember === null}
+        disabled={simulatedMembers.length === 0}
         type="button"
       >
         가상 멤버 퇴장 시뮬레이션

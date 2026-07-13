@@ -37,15 +37,20 @@ describe('PresenceMockPanel', () => {
         type: 'system',
       }),
     );
-    expect(screen.getByRole('button', { name: '가상 멤버 입장 시뮬레이션' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '가상 멤버 입장 시뮬레이션' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '가상 멤버 퇴장 시뮬레이션' })).toBeEnabled();
   });
 
-  it('입장시킨 동일한 가상 게스트만 퇴장 이벤트로 처리한다', () => {
+  it('여러 가상 게스트를 입장시키고 최근 입장 순서부터 한 명씩 퇴장시킨다', () => {
     render(<PresenceMockPanel />);
 
     fireEvent.click(screen.getByRole('button', { name: '가상 멤버 입장 시뮬레이션' }));
-    const joinedMember = vi.mocked(simulateServerEvent).mock.calls[0]?.[1] as {
+    const firstJoinedMember = vi.mocked(simulateServerEvent).mock.calls[0]?.[1] as {
+      nickname: string;
+      userId: string;
+    };
+    fireEvent.click(screen.getByRole('button', { name: '가상 멤버 입장 시뮬레이션' }));
+    const secondJoinedMember = vi.mocked(simulateServerEvent).mock.calls[2]?.[1] as {
       nickname: string;
       userId: string;
     };
@@ -53,23 +58,36 @@ describe('PresenceMockPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '가상 멤버 퇴장 시뮬레이션' }));
 
     expect(simulateServerEvent).toHaveBeenNthCalledWith(
-      3,
+      5,
       'presence:update',
       expect.objectContaining({
-        nickname: joinedMember.nickname,
+        nickname: secondJoinedMember.nickname,
         status: 'left',
-        userId: joinedMember.userId,
+        userId: secondJoinedMember.userId,
       }),
     );
     expect(simulateServerEvent).toHaveBeenNthCalledWith(
-      4,
+      6,
       'chat:system',
       expect.objectContaining({
-        message: `${joinedMember.nickname}님이 퇴장했습니다.`,
+        message: `${secondJoinedMember.nickname}님이 퇴장했습니다.`,
         type: 'system',
       }),
     );
     expect(screen.getByRole('button', { name: '가상 멤버 입장 시뮬레이션' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '가상 멤버 퇴장 시뮬레이션' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '가상 멤버 퇴장 시뮬레이션' }));
+
+    expect(simulateServerEvent).toHaveBeenNthCalledWith(
+      7,
+      'presence:update',
+      expect.objectContaining({
+        nickname: firstJoinedMember.nickname,
+        status: 'left',
+        userId: firstJoinedMember.userId,
+      }),
+    );
     expect(screen.getByRole('button', { name: '가상 멤버 퇴장 시뮬레이션' })).toBeDisabled();
   });
 });

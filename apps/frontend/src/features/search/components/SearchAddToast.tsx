@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, CircleAlert, X } from 'lucide-react';
+import { useState } from 'react';
 
 import {
   Toast,
@@ -23,31 +24,40 @@ interface SearchAddToastProps {
 }
 
 export function SearchAddToast({ feedback, onClose }: SearchAddToastProps) {
-  if (!feedback) {
-    return null;
-  }
+  const [announcerContainer, setAnnouncerContainer] = useState<HTMLDivElement | null>(null);
 
-  const isError = feedback.variant === 'error';
+  const toast =
+    feedback && announcerContainer ? (
+      <ToastProvider announcerContainer={announcerContainer} label="알림" swipeDirection="down">
+        <Toast
+          key={feedback.id}
+          duration={4000}
+          open
+          type={feedback.variant === 'error' ? 'foreground' : 'background'}
+          variant={feedback.variant}
+          onOpenChange={(open) => {
+            if (!open) onClose();
+          }}
+        >
+          <ToastIcon>
+            {feedback.variant === 'error' ? <CircleAlert aria-hidden /> : <Check aria-hidden />}
+          </ToastIcon>
+          <ToastTitle>{feedback.message}</ToastTitle>
+          <ToastClose aria-label="닫기">
+            <X aria-hidden />
+          </ToastClose>
+        </Toast>
+        <ToastViewport
+          label="알림 ({hotkey})"
+          className="pb-[max(1rem,env(safe-area-inset-bottom))] lg:right-0 lg:left-auto lg:max-w-sm lg:translate-x-0 lg:p-6"
+        />
+      </ToastProvider>
+    ) : null;
 
   return (
-    <ToastProvider swipeDirection="down">
-      <Toast
-        key={feedback.id}
-        duration={4000}
-        open
-        role={isError ? 'alert' : 'status'}
-        variant={feedback.variant}
-        onOpenChange={(open) => {
-          if (!open) onClose();
-        }}
-      >
-        <ToastIcon>{isError ? <CircleAlert aria-hidden /> : <Check aria-hidden />}</ToastIcon>
-        <ToastTitle>{feedback.message}</ToastTitle>
-        <ToastClose aria-label="닫기">
-          <X aria-hidden />
-        </ToastClose>
-      </Toast>
-      <ToastViewport className="pb-[max(1rem,env(safe-area-inset-bottom))] lg:pb-6" />
-    </ToastProvider>
+    <>
+      <div ref={setAnnouncerContainer} data-search-add-toast-announcer />
+      {toast}
+    </>
   );
 }

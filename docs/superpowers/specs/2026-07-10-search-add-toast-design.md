@@ -2,7 +2,7 @@
 
 ## 배경
 
-GitHub 이슈 #52는 Room의 Search 화면에서 검색 결과를 재생목록에 추가한 결과를 성공 또는 실패 Toast로 즉시 알려 주는 작업이다. 구현 브랜치 `feat/search-add-toast-52`는 `feat/room-youtube-search`의 최신 커밋 `c1453487`을 기반으로 하며, PR #50에서 반영한 Search UI, Playlist 추가 연결, 오류 메시지 매핑, 최신 `dev` 변경을 모두 포함한다.
+GitHub 이슈 #52는 Room의 Search 화면에서 검색 결과를 재생목록에 추가한 결과를 성공 또는 실패 Toast로 즉시 알려 주는 작업이다. 구현 브랜치 `feat/search-add-toast-52`는 최신 `dev`를 병합했으며, PR #50에서 반영한 Search UI, Playlist 추가 연결, 오류 메시지 매핑을 포함한다.
 
 Figma 기준 노드는 `77:7407`이다. Toast는 Search UI보다 높은 레이어의 화면 하단 중앙에 표시하며 성공/실패 아이콘, 메시지, 닫기 버튼을 제공한다.
 
@@ -27,7 +27,7 @@ Figma 기준 노드는 `77:7407`이다. Toast는 Search UI보다 높은 레이�
 
 ### RoomPageClient
 
-`RoomPageClient`는 기존처럼 `useAddPlaylistItem(activeRoomId)` mutation을 소유한다. 여기에 현재 Toast 피드백 상태를 추가한다. 피드백은 고유 ID, `success | error` variant, 메시지를 가진다.
+`RoomPageClient`는 기존처럼 `useAddPlaylistItem(roomId)` mutation을 소유한다. 여기에 현재 Toast 피드백 상태를 추가한다. 피드백은 고유 ID, `success | error` variant, 메시지를 가진다.
 
 검색 결과 추가 시 기존 피드백을 초기화한 뒤 mutation을 실행한다. mutation의 `onSuccess`와 `onError` 콜백에서 새 고유 ID를 가진 피드백을 만든다. SearchPanel을 닫을 때 mutation 상태와 Toast 상태를 함께 초기화한다.
 

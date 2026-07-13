@@ -190,7 +190,10 @@ export function SearchPanel({
                       </>
                     ) : null}
                     {shouldShowEmpty ? <SearchPanelEmpty query={trimmedQuery} /> : null}
-                    {!hasSearchQuery && !searchQuery.isLoading && !searchQuery.isError ? (
+                    {!hasSearchQuery &&
+                    !hasResults &&
+                    !searchQuery.isLoading &&
+                    !searchQuery.isError ? (
                       <SearchPanelIdle />
                     ) : null}
                   </>

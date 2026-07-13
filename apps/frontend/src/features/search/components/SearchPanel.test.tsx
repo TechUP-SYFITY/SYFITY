@@ -115,6 +115,17 @@ describe('SearchPanel', () => {
     expect(onAddResult).toHaveBeenCalledWith(results[0]);
   });
 
+  it('does not show the idle state while previous results remain after clearing a query', () => {
+    renderPanel();
+
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
+      target: { value: '' },
+    });
+
+    expect(screen.getByText('검색 결과 1개')).toBeInTheDocument();
+    expect(screen.queryByText('검색어를 입력해 주세요')).not.toBeInTheDocument();
+  });
+
   it('bypasses search and submits a trimmed absolute URL', () => {
     const onAddUrl = vi.fn();
     renderPanel({ initialQuery: '', onAddUrl });

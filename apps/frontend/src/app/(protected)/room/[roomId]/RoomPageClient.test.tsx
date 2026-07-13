@@ -196,6 +196,7 @@ describe('RoomPageClient', () => {
     expect(
       screen.getByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...'),
     ).toBeInTheDocument();
+    expect(screen.queryByText('호스트 제어')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
 
     act(() => {

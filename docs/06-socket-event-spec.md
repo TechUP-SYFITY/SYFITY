@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                 |
 | --------- | ------------------------------------------------------------------------------------ |
 | 문서명    | Syfity Socket Event Spec                                                             |
-| 버전      | v1.4                                                                                 |
-| 상태      | Presence 연결 해제 유예/Host 타임아웃 멀티 디바이스 및 재시작 한계 명시              |
+| 버전      | v1.5                                                                                 |
+| 상태      | `room:join` ack에 참여자 목록을 포함해 재연결 시 roster 재동기화 지원                |
 | 작성 목적 | Syfity MVP Socket.IO 이벤트 명세 정의                                                |
 | 기반 문서 | `01-prd.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `05-api-spec.md` |
 
@@ -182,7 +182,15 @@ REST `POST /rooms/join` 완료 후 Socket Room에 참여한다. 재연결 시에
       isPlaying: boolean,
       videoId: string | null,
       playlistItemId: string | null
-    }
+    },
+    members: Array<{
+      id: string,
+      userId: string,
+      nickname: string,
+      profileImage: string | null,
+      role: 'host' | 'member' | 'guest',
+      status: 'online' | 'offline' | 'left'
+    }>
   }
 }
 ```

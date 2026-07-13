@@ -21,7 +21,7 @@ type RoomLeaveCallback = (payload: RoomLeavePayload | null | undefined) => Promi
 type RoomHandlerCallback = RoomJoinCallback | RoomLeaveCallback;
 type RoomHandlerService = Pick<
   RoomService,
-  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+  'setMemberOnline' | 'getMembers' | 'leaveRoom' | 'createSystemMessage'
 >;
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 type RoomHandlerPresenceService = Pick<
@@ -60,6 +60,7 @@ function makeSystemMessage(message: string): ChatMessageRecord {
 function makeRoomService(overrides: Partial<RoomHandlerService> = {}): RoomHandlerService {
   return {
     setMemberOnline: vi.fn().mockResolvedValue({ member, wasOnline: false }),
+    getMembers: vi.fn().mockResolvedValue([member]),
     leaveRoom: vi.fn().mockResolvedValue({ type: 'left', member: { ...member, status: 'left' } }),
     createSystemMessage: vi
       .fn()
@@ -167,6 +168,7 @@ describe('registerRoomHandlers', () => {
 
     expect(roomService.setMemberOnline).toHaveBeenCalledWith('room-1', 'user-1');
     expect(playbackService.getPlaybackStateForSocket).toHaveBeenCalledWith('room-1', 'user-1');
+    expect(roomService.getMembers).toHaveBeenCalledWith('room-1');
     expect(socket.join).toHaveBeenCalledWith('room:room-1');
     expect(io.to).toHaveBeenCalledWith('room:room-1');
     expect(roomEmit).toHaveBeenCalledWith('presence:update', {
@@ -188,7 +190,7 @@ describe('registerRoomHandlers', () => {
     });
     expect(ack).toHaveBeenCalledWith({
       success: true,
-      data: { hostConnection: { status: 'connected' }, playbackState },
+      data: { hostConnection: { status: 'connected' }, members: [member], playbackState },
     });
   });
 
@@ -207,7 +209,7 @@ describe('registerRoomHandlers', () => {
     expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
     expect(ack).toHaveBeenCalledWith({
       success: true,
-      data: { hostConnection: { status: 'connected' }, playbackState },
+      data: { hostConnection: { status: 'connected' }, members: [member], playbackState },
     });
   });
 
@@ -317,6 +319,7 @@ describe('registerRoomHandlers', () => {
           status: 'disconnected',
           waitUntil: '2026-07-01T12:01:00.000Z',
         },
+        members: [member],
         playbackState,
       },
     });
@@ -336,7 +339,7 @@ describe('registerRoomHandlers', () => {
     expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
     expect(ack).toHaveBeenCalledWith({
       success: true,
-      data: { hostConnection: { status: 'connected' }, playbackState },
+      data: { hostConnection: { status: 'connected' }, members: [member], playbackState },
     });
   });
 

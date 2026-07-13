@@ -22,7 +22,7 @@ import { assertRoomId } from '../socketValidators';
 
 type RoomHandlerService = Pick<
   RoomService,
-  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+  'setMemberOnline' | 'getMembers' | 'leaveRoom' | 'createSystemMessage'
 >;
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 type RoomHandlerPresenceService = Pick<
@@ -60,7 +60,10 @@ export function registerRoomHandlers(
         const hostReconnected =
           member.role === 'host' && presenceService.cancelHostCloseTimer(roomId);
         const hostConnection = presenceService.getHostConnectionState(roomId);
-        const playbackState = await playbackService.getPlaybackStateForSocket(roomId, userId);
+        const [playbackState, members] = await Promise.all([
+          playbackService.getPlaybackStateForSocket(roomId, userId),
+          roomService.getMembers(roomId),
+        ]);
 
         socket.join(`room:${roomId}`);
 
@@ -87,7 +90,7 @@ export function registerRoomHandlers(
           }
         }
 
-        ack({ success: true, data: { hostConnection, playbackState } });
+        ack({ success: true, data: { hostConnection, members, playbackState } });
       } catch (err) {
         logger.error(
           { err, roomId: payload?.roomId, userId: socket.data.userId },

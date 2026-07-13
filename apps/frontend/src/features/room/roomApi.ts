@@ -21,3 +21,5 @@ export const roomApi = {
   updateRoom: (roomId: string, body: UpdateRoomRequest) =>
     apiClient.patch<UpdateRoomResponse>(`/rooms/${roomId}`, body),
 };
+
+export type RoomApi = typeof roomApi;

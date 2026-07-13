@@ -23,7 +23,7 @@ export function RoomStatusBar({
           {onlineMemberCount}명 접속 중
         </p>
       </div>
-      <RoomInviteButton onClick={onInviteClick} />
+      <RoomInviteButton disabled={!room} onClick={onInviteClick} />
     </section>
   );
 }

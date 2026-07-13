@@ -4,34 +4,36 @@ import { useState } from 'react';
 
 import { isMockingEnabled } from '@/shared/lib/env';
 import { simulateServerEvent } from '@/shared/lib/socket/fakeSocketClient';
-import type { RoomMember } from '@/shared/types/domain';
+import type { ChatMessage, RoomMember } from '@/shared/types/domain';
 
-import { roomFixture } from './fixtures/roomFixture';
+type SimulatedMember = Omit<RoomMember, 'id'>;
+type PresenceAction = '입장' | '퇴장';
 
-function simulateMemberJoin() {
-  const simulatedMember: Omit<RoomMember, 'id'> = {
+function createSimulatedMember(): SimulatedMember {
+  return {
     nickname: `깜짝 게스트 ${Math.floor(Math.random() * 1000)}`,
     profileImage: null,
     role: 'member',
     status: 'online',
     userId: `dev-simulated-${Date.now()}`,
   };
-
-  simulateServerEvent('presence:update', simulatedMember);
 }
 
-function simulateMemberLeave() {
-  const target = roomFixture.members.find((member) => member.role !== 'host');
-
-  if (!target) {
-    return;
-  }
-
-  simulateServerEvent('presence:update', { ...target, status: 'left' });
+function createSystemMessage(member: SimulatedMember, action: PresenceAction): ChatMessage {
+  return {
+    createdAt: new Date().toISOString(),
+    id: `mock-presence-${member.userId}-${action}`,
+    message: `${member.nickname}님이 ${action}했습니다.`,
+    nickname: null,
+    profileImage: null,
+    type: 'system',
+    userId: null,
+  };
 }
 
 export function PresenceMockPanel() {
   const [lastAction, setLastAction] = useState<string | null>(null);
+  const [simulatedMember, setSimulatedMember] = useState<SimulatedMember | null>(null);
 
   if (!isMockingEnabled()) {
     return null;
@@ -43,9 +45,14 @@ export function PresenceMockPanel() {
       <button
         className="rounded-lg bg-primary/15 px-2 py-1 text-primary"
         onClick={() => {
-          simulateMemberJoin();
-          setLastAction('가상 멤버가 입장했습니다.');
+          const member = createSimulatedMember();
+
+          simulateServerEvent('presence:update', member);
+          simulateServerEvent('chat:system', createSystemMessage(member, '입장'));
+          setSimulatedMember(member);
+          setLastAction(`${member.nickname}님이 입장했습니다.`);
         }}
+        disabled={simulatedMember !== null}
         type="button"
       >
         가상 멤버 입장 시뮬레이션
@@ -53,9 +60,16 @@ export function PresenceMockPanel() {
       <button
         className="rounded-lg bg-accent/15 px-2 py-1 text-accent"
         onClick={() => {
-          simulateMemberLeave();
-          setLastAction('가상 멤버가 퇴장했습니다.');
+          if (!simulatedMember) {
+            return;
+          }
+
+          simulateServerEvent('presence:update', { ...simulatedMember, status: 'left' });
+          simulateServerEvent('chat:system', createSystemMessage(simulatedMember, '퇴장'));
+          setLastAction(`${simulatedMember.nickname}님이 퇴장했습니다.`);
+          setSimulatedMember(null);
         }}
+        disabled={simulatedMember === null}
         type="button"
       >
         가상 멤버 퇴장 시뮬레이션

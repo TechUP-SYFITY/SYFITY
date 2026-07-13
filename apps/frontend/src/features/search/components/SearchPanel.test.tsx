@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '@/shared/types/api';
@@ -88,6 +88,55 @@ describe('SearchPanel', () => {
     expect(dialog.className).not.toContain('max-h-[620px]');
   });
 
+  it('uses the shared medium width token on desktop', () => {
+    renderPanel();
+
+    const dialog = screen.getByRole('dialog', { name: '곡 추가' });
+
+    expect(dialog.className).toContain('lg:w-md');
+    expect(dialog.className).not.toContain('lg:w-[448px]');
+  });
+
+  it('connects each tab and tabpanel in both accessibility directions', () => {
+    renderPanel();
+
+    const searchTab = screen.getByRole('tab', { name: '검색' });
+    const searchPanel = screen.getByRole('tabpanel');
+
+    expect(searchTab.id).not.toBe('');
+    expect(searchPanel.id).not.toBe('');
+    expect(searchTab).toHaveAttribute('aria-controls', searchPanel.id);
+    expect(searchPanel).toHaveAttribute('aria-labelledby', searchTab.id);
+
+    const linkTab = screen.getByRole('tab', { name: '링크' });
+    fireEvent.mouseDown(linkTab, { button: 0, ctrlKey: false });
+
+    const linkPanel = screen.getByRole('tabpanel');
+
+    expect(linkTab.id).not.toBe('');
+    expect(linkPanel.id).not.toBe('');
+    expect(linkTab).toHaveAttribute('aria-controls', linkPanel.id);
+    expect(linkPanel).toHaveAttribute('aria-labelledby', linkTab.id);
+  });
+
+  it('moves focus and selection between tabs with horizontal arrow keys', async () => {
+    renderPanel();
+
+    const searchTab = screen.getByRole('tab', { name: '검색' });
+    const linkTab = screen.getByRole('tab', { name: '링크' });
+
+    searchTab.focus();
+    fireEvent.keyDown(searchTab, { key: 'ArrowRight' });
+
+    await waitFor(() => expect(linkTab).toHaveFocus());
+    expect(linkTab).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(linkTab, { key: 'ArrowLeft' });
+
+    await waitFor(() => expect(searchTab).toHaveFocus());
+    expect(searchTab).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('calls onAddResult when a result add button is clicked', () => {
     const { onAddResult } = renderPanel();
 
@@ -100,7 +149,10 @@ describe('SearchPanel', () => {
     const onAddUrl = vi.fn();
     renderPanel({ onAddUrl });
 
-    fireEvent.click(screen.getByRole('tab', { name: '링크' }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: '링크' }), {
+      button: 0,
+      ctrlKey: false,
+    });
     fireEvent.change(screen.getByPlaceholderText('YouTube URL'), {
       target: { value: '  https://youtu.be/yellow  ' },
     });

@@ -12,8 +12,9 @@ import {
   X,
 } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui';
 import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
 
@@ -58,19 +59,6 @@ export function SearchPanel({
   const results = searchQuery.data ?? [];
   const trimmedQuery = query.trim();
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    if (addMode === 'search') {
-      searchInputRef.current?.focus();
-      return;
-    }
-
-    linkInputRef.current?.focus();
-  }, [addMode, isOpen]);
-
   if (!isOpen) {
     return null;
   }
@@ -108,7 +96,7 @@ export function SearchPanel({
         <DialogPrimitive.Content
           aria-describedby={undefined}
           aria-label="곡 추가"
-          className="fixed right-0 bottom-0 left-0 z-50 flex h-[80dvh] max-h-[calc(100dvh-1rem)] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 outline-none slide-in-from-bottom-4 lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-[448px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
+          className="fixed right-0 bottom-0 left-0 z-50 flex h-[80dvh] max-h-[calc(100dvh-1rem)] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 outline-none slide-in-from-bottom-4 lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-md lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             if (addMode === 'search') {
@@ -147,55 +135,40 @@ export function SearchPanel({
             </DialogPrimitive.Close>
           </header>
 
-          <div
-            className="grid grid-cols-2 gap-1 border-b border-white/[0.07] bg-white/[0.025] p-1"
-            role="tablist"
-            aria-label="곡 추가 방식"
+          <Tabs
+            className="flex min-h-0 flex-1 flex-col"
+            value={addMode}
+            onValueChange={(value) => setAddMode(value as AddMode)}
           >
-            <button
-              className={cn(
-                'rounded-xl px-3 py-2 text-xs font-bold transition',
-                addMode === 'search'
-                  ? 'bg-white/[0.09] text-[#72f4a4]'
-                  : 'text-white/45 hover:text-white/70',
-              )}
-              type="button"
-              role="tab"
-              aria-controls="search-panel-search"
-              aria-selected={addMode === 'search'}
-              onClick={() => setAddMode('search')}
+            <TabsList
+              className="grid grid-cols-2 gap-1 border-b border-white/[0.07] bg-white/[0.025] p-1"
+              aria-label="곡 추가 방식"
             >
-              검색
-            </button>
-            <button
-              className={cn(
-                'rounded-xl px-3 py-2 text-xs font-bold transition',
-                addMode === 'link'
-                  ? 'bg-white/[0.09] text-[#72f4a4]'
-                  : 'text-white/45 hover:text-white/70',
-              )}
-              type="button"
-              role="tab"
-              aria-controls="search-panel-link"
-              aria-selected={addMode === 'link'}
-              onClick={() => setAddMode('link')}
-            >
-              링크
-            </button>
-          </div>
+              <TabsTrigger
+                className="rounded-xl border-b-0 px-3 py-2 text-xs font-bold text-white/45 transition hover:text-white/70 data-[state=active]:border-transparent data-[state=active]:bg-white/[0.09] data-[state=active]:text-[#72f4a4]"
+                value="search"
+              >
+                검색
+              </TabsTrigger>
+              <TabsTrigger
+                className="rounded-xl border-b-0 px-3 py-2 text-xs font-bold text-white/45 transition hover:text-white/70 data-[state=active]:border-transparent data-[state=active]:bg-white/[0.09] data-[state=active]:text-[#72f4a4]"
+                value="link"
+              >
+                링크
+              </TabsTrigger>
+            </TabsList>
 
-          {addErrorMessage ? (
-            <p
-              className="flex items-center gap-2 border-b border-red-300/15 bg-red-400/10 px-4 py-3 text-xs text-red-200"
-              role="alert"
-            >
-              <CircleAlert className="h-4 w-4 shrink-0" aria-hidden />
-              {addErrorMessage}
-            </p>
-          ) : null}
+            {addErrorMessage ? (
+              <p
+                className="flex items-center gap-2 border-b border-red-300/15 bg-red-400/10 px-4 py-3 text-xs text-red-200"
+                role="alert"
+              >
+                <CircleAlert className="h-4 w-4 shrink-0" aria-hidden />
+                {addErrorMessage}
+              </p>
+            ) : null}
 
-          {addMode === 'search' ? (
-            <div id="search-panel-search" className="flex min-h-0 flex-1 flex-col" role="tabpanel">
+            <TabsContent value="search" className="flex min-h-0 flex-1 flex-col">
               <div className="border-b border-white/[0.07] px-4 py-4">
                 <div className="relative">
                   <Search
@@ -248,49 +221,48 @@ export function SearchPanel({
                   <SearchPanelIdle />
                 ) : null}
               </div>
-            </div>
-          ) : (
-            <form
-              id="search-panel-link"
-              className="flex min-h-[360px] flex-1 flex-col px-5 py-6"
-              role="tabpanel"
-              onSubmit={handleLinkSubmit}
-            >
-              <label className="text-sm font-bold text-white" htmlFor="search-panel-youtube-url">
-                YouTube 링크
-              </label>
-              <p className="mt-1 text-xs leading-5 text-white/45">
-                YouTube 또는 YouTube Music의 공유 링크를 붙여 넣어주세요.
-              </p>
-              <div className="relative mt-5">
-                <Link2
-                  className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
-                  aria-hidden
-                />
-                <input
-                  ref={linkInputRef}
-                  id="search-panel-youtube-url"
-                  className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-4 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="YouTube URL"
-                  value={youtubeUrl}
-                  disabled={isAddPending}
-                  onChange={(event) => setYoutubeUrl(event.target.value)}
-                />
-              </div>
-              <button
-                className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[18px] bg-[#72f4a4] px-4 text-sm font-bold text-black transition hover:bg-[#8af7b5] disabled:cursor-not-allowed disabled:opacity-45"
-                type="submit"
-                disabled={!youtubeUrl.trim() || !onAddUrl || isAddPending}
+            </TabsContent>
+            <TabsContent asChild value="link">
+              <form
+                className="flex min-h-[360px] flex-1 flex-col px-5 py-6"
+                onSubmit={handleLinkSubmit}
               >
-                {isAddPending ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-                ) : (
-                  <Plus className="h-4 w-4" aria-hidden />
-                )}
-                링크 추가
-              </button>
-            </form>
-          )}
+                <label className="text-sm font-bold text-white" htmlFor="search-panel-youtube-url">
+                  YouTube 링크
+                </label>
+                <p className="mt-1 text-xs leading-5 text-white/45">
+                  YouTube 또는 YouTube Music의 공유 링크를 붙여 넣어주세요.
+                </p>
+                <div className="relative mt-5">
+                  <Link2
+                    className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
+                    aria-hidden
+                  />
+                  <input
+                    ref={linkInputRef}
+                    id="search-panel-youtube-url"
+                    className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-4 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="YouTube URL"
+                    value={youtubeUrl}
+                    disabled={isAddPending}
+                    onChange={(event) => setYoutubeUrl(event.target.value)}
+                  />
+                </div>
+                <button
+                  className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[18px] bg-[#72f4a4] px-4 text-sm font-bold text-black transition hover:bg-[#8af7b5] disabled:cursor-not-allowed disabled:opacity-45"
+                  type="submit"
+                  disabled={!youtubeUrl.trim() || !onAddUrl || isAddPending}
+                >
+                  {isAddPending ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Plus className="h-4 w-4" aria-hidden />
+                  )}
+                  링크 추가
+                </button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

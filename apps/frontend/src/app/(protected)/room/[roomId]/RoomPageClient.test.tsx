@@ -189,7 +189,10 @@ describe('RoomPageClient', () => {
 
     const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
     fireEvent.click(openSearchButton as HTMLButtonElement);
-    fireEvent.click(await screen.findByRole('tab', { name: '링크' }));
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: '링크' }), {
+      button: 0,
+      ctrlKey: false,
+    });
     fireEvent.change(screen.getByPlaceholderText('YouTube URL'), {
       target: { value: 'https://youtu.be/yellow' },
     });

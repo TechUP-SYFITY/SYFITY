@@ -4,12 +4,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { roomApi, type RoomApi } from './roomApi';
-import type { CreateRoomRequest, JoinRoomRequest, UpdateRoomRequest } from './roomTypes';
+import type { CreateRoomRequest, UpdateRoomRequest } from './roomTypes';
 
 export const roomQueryKeys = {
   all: ['rooms'] as const,
   detail: (roomId: string) => [...roomQueryKeys.all, 'detail', roomId] as const,
   join: (roomId: string) => [...roomQueryKeys.all, 'join', roomId] as const,
+  joinByCode: (inviteCode: string) => [...roomQueryKeys.all, 'join-by-code', inviteCode] as const,
   recent: () => [...roomQueryKeys.all, 'recent'] as const,
 };
 
@@ -50,10 +51,14 @@ export const useJoinRoom = (roomId: string) =>
     staleTime: Infinity,
   });
 
-// 초대 코드로 수동 입장하는 다이얼로그용 mutation 훅
-export const useJoinRoomMutation = (api: RoomApi = roomApi) =>
-  useMutation({
-    mutationFn: (body: JoinRoomRequest) => api.joinRoom(body),
+export const useJoinRoomByCode = (inviteCode: string, api: RoomApi = roomApi) =>
+  useQuery({
+    enabled: inviteCode.length > 0,
+    queryFn: () => api.joinRoom({ inviteCode }),
+    queryKey: roomQueryKeys.joinByCode(inviteCode),
+    retry: false,
+    gcTime: 0,
+    staleTime: Infinity,
   });
 
 export const useUpdateRoom = (roomId: string) => {

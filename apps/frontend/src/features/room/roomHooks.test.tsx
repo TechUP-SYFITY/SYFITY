@@ -7,7 +7,7 @@ import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { ApiClientError } from '@/shared/types/api';
 
 import { roomApi } from './roomApi';
-import { useJoinRoom } from './roomHooks';
+import { useJoinRoom, useJoinRoomByCode } from './roomHooks';
 import type { JoinRoomResponse, RoomResponse } from './roomTypes';
 
 vi.mock('./roomApi', () => ({
@@ -123,5 +123,51 @@ describe('useJoinRoom', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBe(error);
     expect(roomApi.joinRoom).toHaveBeenCalledWith({ inviteCode: roomFixture.room.inviteCode });
+  });
+});
+
+describe('useJoinRoomByCode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('inviteCode가 있으면 마운트 시 자동으로 POST join을 호출한다', async () => {
+    vi.mocked(roomApi.joinRoom).mockResolvedValue(joinedRoom);
+    const queryClient = createQueryClient();
+
+    const { result } = renderHook(() => useJoinRoomByCode(roomFixture.room.inviteCode), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(roomApi.joinRoom).toHaveBeenCalledWith({ inviteCode: roomFixture.room.inviteCode });
+    expect(result.current.data).toBe(joinedRoom);
+  });
+
+  it('inviteCode가 비어 있으면 join을 호출하지 않는다 (enabled 게이팅)', () => {
+    vi.mocked(roomApi.joinRoom).mockResolvedValue(joinedRoom);
+    const queryClient = createQueryClient();
+
+    const { result } = renderHook(() => useJoinRoomByCode(''), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(roomApi.joinRoom).not.toHaveBeenCalled();
+  });
+
+  it('동일 코드로 refetch하면 join을 다시 호출한다', async () => {
+    vi.mocked(roomApi.joinRoom).mockResolvedValue(joinedRoom);
+    const queryClient = createQueryClient();
+
+    const { result } = renderHook(() => useJoinRoomByCode(roomFixture.room.inviteCode), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(roomApi.joinRoom).toHaveBeenCalledTimes(1);
+
+    await result.current.refetch();
+    expect(roomApi.joinRoom).toHaveBeenCalledTimes(2);
   });
 });

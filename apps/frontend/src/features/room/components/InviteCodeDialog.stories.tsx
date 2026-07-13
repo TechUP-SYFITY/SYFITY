@@ -1,15 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { fn } from 'storybook/test';
 
-import type { CreateRoomResponse } from '../roomTypes';
+import type { RoomInviteInfo } from '../roomTypes';
 import { InviteCodeDialog } from './InviteCodeDialog';
 
-const room: CreateRoomResponse = {
+const room: RoomInviteInfo = {
   id: 'story-room',
   name: 'Chill Night',
   inviteCode: '3F9A2C',
-  status: 'active',
-  createdAt: new Date().toISOString(),
 };
 
 const meta = {

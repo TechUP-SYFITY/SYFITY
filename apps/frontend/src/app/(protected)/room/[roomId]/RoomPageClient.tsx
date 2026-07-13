@@ -20,6 +20,7 @@ import { useAddPlaylistItem } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import type { AddPlaylistItemRequest } from '@/features/playlist/playlistTypes';
+import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
 import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
 import { useJoinRoom } from '@/features/room/roomHooks';
@@ -39,6 +40,7 @@ interface RoomPageClientProps {
 
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const [toastFeedback, setToastFeedback] = useState<SearchAddToastFeedback | null>(null);
   const toastIdRef = useRef(0);
@@ -158,6 +160,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         miniPlayerPreviousDisabled={!previousItem}
         miniPlayerVolume={miniPlayerVolume}
         members={members}
+        onInviteClick={() => setIsInviteOpen(true)}
         onMuteToggle={toggleMiniPlayerMute}
         onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
         onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
@@ -188,6 +191,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         room={room}
         roomId={roomId}
       />
+      <InviteCodeDialog room={room} open={isInviteOpen} onOpenChange={setIsInviteOpen} />
       <SearchPanel
         feedback={
           <SearchAddToast feedback={toastFeedback} onClose={() => setToastFeedback(null)} />

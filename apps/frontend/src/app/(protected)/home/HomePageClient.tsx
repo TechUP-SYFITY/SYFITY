@@ -8,7 +8,7 @@ import { CreateRoomDialog } from '@/features/room/components/CreateRoomDialog';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { JoinRoomDialog } from '@/features/room/components/JoinRoomDialog';
 import { useRecentRooms } from '@/features/room/roomHooks';
-import type { CreateRoomResponse } from '@/features/room/roomTypes';
+import type { CreateRoomResponse, RoomInviteInfo } from '@/features/room/roomTypes';
 
 export function HomePageClient() {
   const { data: user, isLoading: isUserLoading } = useMe();
@@ -17,7 +17,7 @@ export function HomePageClient() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [createdRoom, setCreatedRoom] = useState<CreateRoomResponse | null>(null);
+  const [createdRoom, setCreatedRoom] = useState<RoomInviteInfo | null>(null);
 
   const handleCreateRoom = () => setIsCreateOpen(true);
   const handleJoinRoom = () => setIsJoinOpen(true);

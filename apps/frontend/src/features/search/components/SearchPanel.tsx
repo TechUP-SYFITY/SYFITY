@@ -2,7 +2,7 @@
 
 import { ChevronDown, Inbox, Link2, LoaderCircle, Music2, Plus, Search, X } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui';
 import { formatDuration } from '@/shared/lib/formatDuration';
@@ -15,6 +15,7 @@ import { useYoutubeSearchQuery } from '../hooks/useYoutubeSearchQuery';
 const SEARCH_DEBOUNCE_DELAY = 350;
 
 interface SearchPanelProps {
+  feedback?: ReactNode;
   isAddPending?: boolean;
   isOpen: boolean;
   roomName: string;
@@ -27,6 +28,7 @@ interface SearchPanelProps {
 type AddMode = 'search' | 'link';
 
 export function SearchPanel({
+  feedback,
   isAddPending = false,
   isOpen,
   roomName,
@@ -241,6 +243,7 @@ export function SearchPanel({
               </form>
             </TabsContent>
           </Tabs>
+          {feedback}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

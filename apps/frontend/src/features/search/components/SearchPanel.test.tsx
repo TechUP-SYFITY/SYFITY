@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '@/shared/types/api';
@@ -95,6 +95,14 @@ describe('SearchPanel', () => {
 
     expect(dialog.className).toContain('lg:w-md');
     expect(dialog.className).not.toContain('lg:w-[448px]');
+  });
+
+  it('renders feedback inside the dialog accessibility subtree', () => {
+    renderPanel({ feedback: <p role="status">곡 추가 피드백</p> });
+
+    const dialog = screen.getByRole('dialog', { name: '곡 추가' });
+
+    expect(within(dialog).getByRole('status')).toHaveTextContent('곡 추가 피드백');
   });
 
   it('connects each tab and tabpanel in both accessibility directions', () => {

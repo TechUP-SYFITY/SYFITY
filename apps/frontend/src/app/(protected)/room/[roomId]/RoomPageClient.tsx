@@ -188,6 +188,9 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         roomId={roomId}
       />
       <SearchPanel
+        feedback={
+          <SearchAddToast feedback={toastFeedback} onClose={() => setToastFeedback(null)} />
+        }
         isAddPending={addSearchResult.isPending}
         isOpen={isSearchPanelOpen}
         roomName={room?.name ?? 'Room'}
@@ -195,7 +198,6 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         onAddUrl={handleAddYoutubeUrl}
         onClose={handleCloseSearch}
       />
-      <SearchAddToast feedback={toastFeedback} onClose={() => setToastFeedback(null)} />
     </>
   );
 }

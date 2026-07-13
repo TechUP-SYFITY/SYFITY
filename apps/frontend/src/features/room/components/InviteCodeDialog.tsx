@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy, LogIn, Sparkles } from 'lucide-react';
+import { Check, Copy, Link as LinkIcon, LogIn, Sparkles, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -20,6 +20,7 @@ interface InviteCodeDialogProps {
   room: CreateRoomResponse | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  showEnterButton?: boolean;
 }
 
 function useCopy() {
@@ -38,7 +39,12 @@ function useCopy() {
   return { copied, copy };
 }
 
-export function InviteCodeDialog({ room, open, onOpenChange }: InviteCodeDialogProps) {
+export function InviteCodeDialog({
+  room,
+  open,
+  onOpenChange,
+  showEnterButton = false,
+}: InviteCodeDialogProps) {
   const router = useRouter();
   const codeCopy = useCopy();
   const linkCopy = useCopy();
@@ -63,21 +69,81 @@ export function InviteCodeDialog({ room, open, onOpenChange }: InviteCodeDialogP
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <DialogIconBadge>
-              <Sparkles />
+              <Users />
             </DialogIconBadge>
-            <DialogTitle>방 생성 완료</DialogTitle>
+            <DialogTitle>친구 초대</DialogTitle>
           </div>
           <DialogCloseButton />
         </DialogHeader>
 
-        <div className="flex flex-col gap-5 p-5">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent text-black drop-shadow-[0_0_16px_rgba(114,244,164,0.35)]">
-              <Sparkles className="size-6" aria-hidden />
+        <div className="flex flex-col gap-5 p-5 sm:hidden">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-white/50">초대 코드</span>
+            <div className="flex flex-col gap-2.5 rounded-2xl border border-primary/20 bg-primary/6 p-4">
+              <p className="text-center font-mono text-2xl font-bold tracking-[0.3em] text-primary">
+                {room.inviteCode}
+              </p>
+              <Button
+                type="button"
+                variant="primary-soft"
+                className="w-full rounded-2xl"
+                onClick={() => codeCopy.copy(room.inviteCode)}
+              >
+                {codeCopy.copied ? <Check /> : <Copy />}
+                {codeCopy.copied ? '복사됨' : '복사'}
+              </Button>
             </div>
-            <p className="text-base font-bold text-white">방이 만들어졌어요!</p>
-            <p className="text-sm text-white/50">{room.name}</p>
           </div>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-white/[0.07]" />
+            <span className="text-xs font-semibold text-white/30">또는</span>
+            <span className="h-px flex-1 bg-white/[0.07]" />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-white/50">초대 링크</span>
+            <div className="flex items-center gap-2 overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-3.5 py-3">
+              <LinkIcon className="size-3.5 shrink-0 text-white/40" aria-hidden />
+              <span className="truncate font-mono text-xs text-white/55">{inviteLink}</span>
+            </div>
+            <Button
+              type="button"
+              variant="primary-soft"
+              className="w-full rounded-2xl"
+              onClick={() => linkCopy.copy(inviteLink)}
+            >
+              {linkCopy.copied ? <Check /> : <Copy />}
+              {linkCopy.copied ? '복사됨' : '복사'}
+            </Button>
+          </div>
+
+          <p className="text-center text-xs text-white/35">이 코드나 링크로 친구를 초대하세요.</p>
+
+          {showEnterButton && (
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={handleEnter}
+            >
+              <LogIn />
+              방으로 입장하기
+            </Button>
+          )}
+        </div>
+
+        <div className="hidden flex-col gap-5 p-5 sm:flex">
+          {showEnterButton && (
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent text-black drop-shadow-[0_0_16px_rgba(114,244,164,0.35)]">
+                <Sparkles className="size-6" aria-hidden />
+              </div>
+              <p className="text-base font-bold text-white">방이 만들어졌어요!</p>
+              <p className="text-sm text-white/50">{room.name}</p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-white/55">초대 코드</span>
@@ -116,20 +182,22 @@ export function InviteCodeDialog({ room, open, onOpenChange }: InviteCodeDialogP
               </Button>
             </div>
             <p className="mt-2 text-center text-sm text-white/30">
-              친구에게 공유하고 방으로 입장하세요
+              이 코드나 링크로 친구를 초대하세요.
             </p>
           </div>
 
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            className="w-full"
-            onClick={handleEnter}
-          >
-            <LogIn />
-            방으로 입장하기
-          </Button>
+          {showEnterButton && (
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={handleEnter}
+            >
+              <LogIn />
+              방으로 입장하기
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

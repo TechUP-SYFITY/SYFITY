@@ -46,7 +46,12 @@ export function HomePageClient() {
 
       <JoinRoomDialog open={isJoinOpen} onOpenChange={setIsJoinOpen} />
 
-      <InviteCodeDialog room={createdRoom} open={isInviteOpen} onOpenChange={setIsInviteOpen} />
+      <InviteCodeDialog
+        room={createdRoom}
+        open={isInviteOpen}
+        onOpenChange={setIsInviteOpen}
+        showEnterButton
+      />
     </>
   );
 }

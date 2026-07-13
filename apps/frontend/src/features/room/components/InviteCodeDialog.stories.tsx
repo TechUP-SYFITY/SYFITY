@@ -33,9 +33,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const RoomCreated: Story = {
+  args: { showEnterButton: true },
+};
+
+export const InviteOnly: Story = {
+  args: { showEnterButton: false },
+};
 
 export const Mobile: Story = {
+  args: { showEnterButton: true },
   globals: {
     viewport: { value: 'mobile', isRotated: false },
   },

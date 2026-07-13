@@ -17,7 +17,7 @@ import {
 import type { CreateRoomResponse } from '../roomTypes';
 
 interface InviteCodeDialogProps {
-  room: CreateRoomResponse | null;
+  room: Pick<CreateRoomResponse, 'id' | 'inviteCode' | 'name'> | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   showEnterButton?: boolean;

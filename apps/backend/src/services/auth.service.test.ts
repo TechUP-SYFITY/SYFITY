@@ -103,7 +103,7 @@ describe('AuthService', () => {
     const oauthClient = makeOauthClient();
     const service = new AuthService(repo, oauthClient);
 
-    expect(service.getPostLoginRedirectUrl('/room/abc')).toBe('/room/abc');
+    expect(service.getPostLoginRedirectUrl('/room/abc')).toBe('http://localhost:3000/room/abc');
     expect(service.getPostLoginRedirectUrl('https://example.com')).toBe('http://localhost:3000');
     expect(service.getPostLoginRedirectUrl('//example.com')).toBe('http://localhost:3000');
   });

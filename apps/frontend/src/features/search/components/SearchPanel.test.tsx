@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '@/shared/types/api';
@@ -68,8 +68,8 @@ describe('SearchPanel', () => {
 
     expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeTruthy();
     expect(screen.getByDisplayValue('Coldplay')).toBeTruthy();
-    expect(screen.getByPlaceholderText('YouTube 영상 검색')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '링크' })).toBeTruthy();
+    expect(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기')).toBeTruthy();
+    expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.getByText('검색 결과 1개')).toBeTruthy();
     expect(screen.getByText('Yellow')).toBeTruthy();
     expect(screen.getByText('Coldplay')).toBeTruthy();
@@ -84,6 +84,7 @@ describe('SearchPanel', () => {
     const surface = dialog.querySelector('[data-search-panel-surface]');
 
     expect(dialog).toHaveClass('fixed', 'inset-0', 'pointer-events-none');
+    expect(dialog).toHaveStyle({ pointerEvents: 'none' });
     expect(dialog).not.toHaveClass('overflow-hidden', 'lg:-translate-x-1/2');
     expect(surface).toHaveClass(
       'pointer-events-auto',
@@ -106,46 +107,6 @@ describe('SearchPanel', () => {
     expect(surface).not.toContainElement(feedback);
   });
 
-  it('connects each tab and tabpanel in both accessibility directions', () => {
-    renderPanel();
-
-    const searchTab = screen.getByRole('tab', { name: '검색' });
-    const searchPanel = screen.getByRole('tabpanel');
-
-    expect(searchTab.id).not.toBe('');
-    expect(searchPanel.id).not.toBe('');
-    expect(searchTab).toHaveAttribute('aria-controls', searchPanel.id);
-    expect(searchPanel).toHaveAttribute('aria-labelledby', searchTab.id);
-
-    const linkTab = screen.getByRole('tab', { name: '링크' });
-    fireEvent.mouseDown(linkTab, { button: 0, ctrlKey: false });
-
-    const linkPanel = screen.getByRole('tabpanel');
-
-    expect(linkTab.id).not.toBe('');
-    expect(linkPanel.id).not.toBe('');
-    expect(linkTab).toHaveAttribute('aria-controls', linkPanel.id);
-    expect(linkPanel).toHaveAttribute('aria-labelledby', linkTab.id);
-  });
-
-  it('moves focus and selection between tabs with horizontal arrow keys', async () => {
-    renderPanel();
-
-    const searchTab = screen.getByRole('tab', { name: '검색' });
-    const linkTab = screen.getByRole('tab', { name: '링크' });
-
-    searchTab.focus();
-    fireEvent.keyDown(searchTab, { key: 'ArrowRight' });
-
-    await waitFor(() => expect(linkTab).toHaveFocus());
-    expect(linkTab).toHaveAttribute('aria-selected', 'true');
-
-    fireEvent.keyDown(linkTab, { key: 'ArrowLeft' });
-
-    await waitFor(() => expect(searchTab).toHaveFocus());
-    expect(searchTab).toHaveAttribute('aria-selected', 'true');
-  });
-
   it('calls onAddResult when a result add button is clicked', () => {
     const { onAddResult } = renderPanel();
 
@@ -154,20 +115,47 @@ describe('SearchPanel', () => {
     expect(onAddResult).toHaveBeenCalledWith(results[0]);
   });
 
-  it('링크 탭에서 YouTube URL을 제출한다', () => {
+  it('bypasses search and submits a trimmed absolute URL', () => {
     const onAddUrl = vi.fn();
-    renderPanel({ onAddUrl });
+    renderPanel({ initialQuery: '', onAddUrl });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '링크' }), {
-      button: 0,
-      ctrlKey: false,
-    });
-    fireEvent.change(screen.getByPlaceholderText('YouTube URL'), {
+    const input = screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기');
+    fireEvent.change(input, {
       target: { value: '  https://youtu.be/yellow  ' },
     });
+
+    expect(useYoutubeSearchQueryMock).toHaveBeenLastCalledWith('');
+    expect(screen.queryByText('검색 결과 1개')).not.toBeInTheDocument();
+    expect(screen.getByText('https://youtu.be/yellow')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '링크 추가' }));
 
     expect(onAddUrl).toHaveBeenCalledWith('https://youtu.be/yellow');
+  });
+
+  it('submits a URL form with Enter behavior but ignores text submit', () => {
+    const onAddUrl = vi.fn();
+    renderPanel({ initialQuery: '', onAddUrl });
+
+    const input = screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기');
+    const form = input.closest('form');
+
+    fireEvent.change(input, { target: { value: 'Coldplay' } });
+    fireEvent.submit(form as HTMLFormElement);
+    expect(onAddUrl).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: 'https://youtube.com/watch?v=yellow' } });
+    fireEvent.submit(form as HTMLFormElement);
+    expect(onAddUrl).toHaveBeenCalledWith('https://youtube.com/watch?v=yellow');
+  });
+
+  it('disables the link CTA while a playlist add is pending', () => {
+    renderPanel({
+      initialQuery: 'https://youtu.be/yellow',
+      isAddPending: true,
+      onAddUrl: vi.fn(),
+    });
+
+    expect(screen.getByRole('button', { name: '링크 추가' })).toBeDisabled();
   });
 
   it('renders a loading state while searching', () => {
@@ -239,7 +227,7 @@ describe('SearchPanel', () => {
   it('패널이 열리면 검색 입력창으로 포커스를 이동한다', () => {
     renderPanel();
 
-    expect(screen.getByPlaceholderText('YouTube 영상 검색')).toHaveFocus();
+    expect(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기')).toHaveFocus();
   });
 
   it('calls onClose when the backdrop is clicked', () => {

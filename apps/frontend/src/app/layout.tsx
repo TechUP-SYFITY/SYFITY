@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 
+import { ToastProvider } from '@/shared/components/ui';
 import { pretendard } from '@/shared/lib/fonts';
 import { QueryProvider } from '@/shared/lib/query/QueryProvider';
 import { MockingProvider } from '@/shared/mocks/MockingProvider';
@@ -18,9 +19,11 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <MockingProvider>
-          <QueryProvider>{children}</QueryProvider>
-        </MockingProvider>
+        <ToastProvider viewportClassName="bottom-16 sm:bottom-20">
+          <MockingProvider>
+            <QueryProvider>{children}</QueryProvider>
+          </MockingProvider>
+        </ToastProvider>
       </body>
     </html>
   );

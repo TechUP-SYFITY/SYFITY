@@ -3,6 +3,8 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import type { ReactNode } from 'react';
 import { expect, within } from 'storybook/test';
 
+import { ToastProvider } from '@/shared/components/ui';
+
 import { PlaybackSyncToast } from './PlaybackSyncToast';
 import { usePlayerStore } from './playerStore';
 import type { PlaybackSyncStatus } from './playerTypes';
@@ -18,6 +20,13 @@ const meta = {
   title: 'Features/Player/PlaybackSyncToast',
   component: PlaybackSyncToast,
   parameters: { layout: 'fullscreen' },
+  decorators: [
+    (Story) => (
+      <ToastProvider viewportClassName="bottom-16 sm:bottom-20">
+        <Story />
+      </ToastProvider>
+    ),
+  ],
 } satisfies Meta<typeof PlaybackSyncToast>;
 
 export default meta;

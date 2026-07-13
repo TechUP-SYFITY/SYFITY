@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToastProvider } from '@/shared/components/ui';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
@@ -81,13 +82,15 @@ const onPlaybackStateChange = vi.fn();
 
 function renderPlayerPanel(isHost = true, playlistItems = playlist) {
   return render(
-    <PlayerPanel
-      roomId={roomId}
-      isHost={isHost}
-      onEnded={onEnded}
-      onPlaybackStateChange={onPlaybackStateChange}
-      playlist={playlistItems}
-    />,
+    <ToastProvider>
+      <PlayerPanel
+        roomId={roomId}
+        isHost={isHost}
+        onEnded={onEnded}
+        onPlaybackStateChange={onPlaybackStateChange}
+        playlist={playlistItems}
+      />
+    </ToastProvider>,
   );
 }
 

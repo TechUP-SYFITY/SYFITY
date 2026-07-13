@@ -1,16 +1,11 @@
 'use client';
 
 import { cva, type VariantProps } from 'class-variance-authority';
+import { X } from 'lucide-react';
 import { Toast as ToastPrimitive } from 'radix-ui';
+import { createContext, useContext, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/utils';
-
-export function ToastProvider({
-  swipeDirection = 'down',
-  ...props
-}: React.ComponentProps<typeof ToastPrimitive.Provider>) {
-  return <ToastPrimitive.Provider swipeDirection={swipeDirection} {...props} />;
-}
 
 export function ToastViewport({
   className,
@@ -80,4 +75,89 @@ export function ToastClose({
   );
 }
 
-export type { ToastProps };
+interface ToastOptions {
+  id?: string;
+  title: React.ReactNode;
+  icon?: React.ReactNode;
+  variant?: ToastProps['variant'];
+  duration?: number;
+  closeLabel?: string;
+  onDismiss?: () => void;
+}
+
+interface ToastItem extends ToastOptions {
+  id: string;
+  instance: number;
+}
+
+interface ToastContextValue {
+  pushToast: (options: ToastOptions) => string;
+  dismissToast: (id: string) => void;
+}
+
+interface ToastProviderProps {
+  children: React.ReactNode;
+  viewportClassName?: string;
+}
+
+const ToastContext = createContext<ToastContextValue | null>(null);
+
+export function ToastProvider({ children, viewportClassName }: ToastProviderProps) {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const sequence = useRef(0);
+  const [toastApi] = useState<ToastContextValue>(() => ({
+    pushToast: (options) => {
+      const id = options.id ?? `toast-${sequence.current + 1}`;
+      sequence.current += 1;
+      const nextToast = { ...options, id, instance: sequence.current };
+
+      setToasts((current) => [...current.filter((toast) => toast.id !== id), nextToast]);
+      return id;
+    },
+    dismissToast: (id) => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    },
+  }));
+
+  return (
+    <ToastContext.Provider value={toastApi}>
+      <ToastPrimitive.Provider swipeDirection="down">
+        {children}
+        {toasts.map((toast) => (
+          <Toast
+            key={`${toast.id}-${toast.instance}`}
+            className="mx-auto w-full max-w-sm"
+            duration={toast.duration}
+            open
+            variant={toast.variant}
+            onOpenChange={(open) => {
+              if (!open) {
+                toast.onDismiss?.();
+                toastApi.dismissToast(toast.id);
+              }
+            }}
+          >
+            {toast.icon ? <ToastIcon>{toast.icon}</ToastIcon> : null}
+            <ToastTitle>{toast.title}</ToastTitle>
+            <ToastClose aria-label={toast.closeLabel ?? '알림 닫기'}>
+              <X aria-hidden />
+            </ToastClose>
+          </Toast>
+        ))}
+        <ToastViewport className={viewportClassName} />
+      </ToastPrimitive.Provider>
+    </ToastContext.Provider>
+  );
+}
+
+export function useToast() {
+  const context = useContext(ToastContext);
+
+  if (!context) {
+    throw new Error('useToast must be used within ToastProvider.');
+  }
+
+  return context;
+}
+
+export type { ToastOptions, ToastProps };

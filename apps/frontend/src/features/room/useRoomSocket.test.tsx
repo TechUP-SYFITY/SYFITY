@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { SyfityListenEvents } from '@/shared/lib/socket/types';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
+import type { SocketAck } from '@/shared/types/api';
+import type { PlaybackState } from '@/shared/types/domain';
 import type { ServerToClientEvents } from '@/shared/types/socket';
 
 import { useRoomStore } from './roomStore';
@@ -14,11 +16,12 @@ type EventName = keyof SyfityListenEvents;
 type EventHandler = (...args: never[]) => void;
 
 const handlers = new Map<EventName, EventHandler>();
+let roomJoinResponse: SocketAck<{ playbackState: PlaybackState }>;
 const socket = {
   disconnect: vi.fn(),
   emit: vi.fn((event: string, _payload: unknown, ack?: (response: unknown) => void) => {
     if (event === 'room:join') {
-      ack?.({ success: true, data: { playbackState: roomFixture.playbackState } });
+      ack?.(roomJoinResponse);
     }
   }),
   off: vi.fn((event: EventName, handler?: EventHandler) => {
@@ -55,6 +58,10 @@ describe('useRoomSocket', () => {
     handlers.clear();
     vi.clearAllMocks();
     vi.mocked(socketClient.connect).mockReturnValue(socket as never);
+    roomJoinResponse = {
+      success: true,
+      data: { playbackState: roomFixture.playbackState },
+    };
     useRoomStore.getState().clearRoom();
   });
 
@@ -82,6 +89,44 @@ describe('useRoomSocket', () => {
     });
 
     expect(useRoomStore.getState().hostConnection).toEqual({ status: 'connected' });
+  });
+
+  it('Socket 재접속 후 Room join에 성공하면 놓친 Host 재연결 상태를 보정한다', () => {
+    renderHook(() => useRoomSocket('room-a'));
+
+    act(() => {
+      emitServerEvent('room:host-disconnected', {
+        roomId: 'room-a',
+        waitUntil: '2026-07-13T08:00:00.000Z',
+      });
+      handlers.get('connect')?.();
+    });
+
+    expect(useRoomStore.getState().hostConnection).toEqual({ status: 'connected' });
+    expect(useRoomStore.getState().roomSocketError).toBeNull();
+  });
+
+  it('Socket 재접속 후 Room join에 실패하면 Host 연결 끊김 상태를 유지한다', () => {
+    renderHook(() => useRoomSocket('room-a'));
+
+    roomJoinResponse = {
+      success: false,
+      error: { code: 'ROOM_NOT_FOUND', message: 'Room을 찾을 수 없습니다.' },
+    };
+
+    act(() => {
+      emitServerEvent('room:host-disconnected', {
+        roomId: 'room-a',
+        waitUntil: '2026-07-13T08:00:00.000Z',
+      });
+      handlers.get('connect')?.();
+    });
+
+    expect(useRoomStore.getState().hostConnection).toEqual({
+      status: 'disconnected',
+      waitUntil: '2026-07-13T08:00:00.000Z',
+    });
+    expect(useRoomStore.getState().roomSocketError).toBe('Room을 찾을 수 없습니다.');
   });
 
   it('다른 Room의 Host 연결 상태 이벤트는 무시한다', () => {

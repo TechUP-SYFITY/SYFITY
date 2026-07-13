@@ -46,6 +46,7 @@ export const useRoomSocket = (roomId: string, onRoomClosed?: () => void) => {
     const joinRoom = () => {
       socket.emit('room:join', { roomId }, (response) => {
         if (response.success) {
+          markHostReconnected();
           setRoomSocketError(null);
           return;
         }

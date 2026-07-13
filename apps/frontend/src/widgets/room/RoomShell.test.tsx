@@ -11,11 +11,11 @@ vi.mock('@/shared/components/layout', () => ({
   Header: () => null,
 }));
 
-vi.mock('./components/MiniPlayer', () => ({
+vi.mock('@/features/room/components/MiniPlayer', () => ({
   MiniPlayer: () => null,
 }));
 
-vi.mock('./components/RoomStatusBar', () => ({
+vi.mock('@/features/room/components/RoomStatusBar', () => ({
   RoomStatusBar: () => null,
 }));
 

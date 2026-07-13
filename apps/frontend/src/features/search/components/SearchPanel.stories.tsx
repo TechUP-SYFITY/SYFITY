@@ -2,11 +2,27 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { delay, http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
+
+import type { SearchResponse } from '@syfity/shared';
+
+import { searchHandlers } from '@/shared/mocks/handlers/search.handlers';
+import type { ApiResponse } from '@/shared/types/api';
 
 import { SearchPanel } from './SearchPanel';
 
 const SEARCH_ENDPOINT = '*/api/v1/search';
+const THUMBNAIL_ENDPOINT = 'https://i.ytimg.com/*';
+const THUMBNAIL_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 9"><rect width="16" height="9" fill="#18181b"/></svg>';
+const thumbnailRequestSpy = fn();
+const thumbnailHandler = http.get(THUMBNAIL_ENDPOINT, ({ request }) => {
+  thumbnailRequestSpy(request.url);
+
+  return HttpResponse.text(THUMBNAIL_SVG, {
+    headers: { 'Content-Type': 'image/svg+xml' },
+  });
+});
 
 type StoryRender = () => ReactNode;
 
@@ -34,6 +50,9 @@ const meta = {
   component: SearchPanel,
   parameters: {
     layout: 'fullscreen',
+    msw: {
+      handlers: [...searchHandlers, thumbnailHandler],
+    },
     viewport: {
       options: {
         mobile: { name: 'Mobile', styles: { width: '375px', height: '812px' } },
@@ -60,6 +79,7 @@ export const Default: Story = {
 
     await expect(page.findByRole('dialog', { name: '곡 추가' })).resolves.toBeInTheDocument();
     await expect(page.findByText('Night Changes')).resolves.toBeInTheDocument();
+    await waitFor(() => expect(thumbnailRequestSpy).toHaveBeenCalled());
   },
 };
 
@@ -76,7 +96,10 @@ export const Loading: Story = {
       handlers: [
         http.get(SEARCH_ENDPOINT, async () => {
           await delay('infinite');
-          return HttpResponse.json({ success: true, data: { items: [] } });
+          return HttpResponse.json({
+            success: true,
+            data: { items: [] },
+          } satisfies SearchResponse);
         }),
       ],
     },
@@ -92,7 +115,12 @@ export const Empty: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.get(SEARCH_ENDPOINT, () => HttpResponse.json({ success: true, data: { items: [] } })),
+        http.get(SEARCH_ENDPOINT, () =>
+          HttpResponse.json({
+            success: true,
+            data: { items: [] },
+          } satisfies SearchResponse),
+        ),
       ],
     },
   },
@@ -115,7 +143,7 @@ export const Error: Story = {
                 code: 'SERVER_YOUTUBE_API_ERROR',
                 message: 'YouTube 검색 요청에 실패했어요',
               },
-            },
+            } satisfies ApiResponse<SearchResponse['data']>,
             { status: 502 },
           ),
         ),

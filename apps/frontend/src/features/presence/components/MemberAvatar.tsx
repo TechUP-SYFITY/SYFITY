@@ -1,13 +1,20 @@
 'use client';
 
 // Room 멤버의 이니셜 아바타와 온라인 상태 점을 표시한다.
-import { Avatar, AvatarFallback } from '@/shared/components/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
-export function MemberAvatar({ label, muted = false }: { label: string; muted?: boolean }) {
+interface MemberAvatarProps {
+  label: string;
+  muted?: boolean;
+  profileImage?: string | null;
+}
+
+export function MemberAvatar({ label, muted = false, profileImage }: MemberAvatarProps) {
   return (
     <span className="relative inline-flex shrink-0 overflow-visible">
       <Avatar className={cn(muted && 'opacity-45')}>
+        <AvatarImage alt={label} src={profileImage ?? undefined} />
         <AvatarFallback>{label.slice(0, 1)}</AvatarFallback>
       </Avatar>
       <span

@@ -3,19 +3,19 @@
 // Room 멤버 목록을 온라인과 오프라인 그룹으로 나누어 표시한다.
 import { Crown } from 'lucide-react';
 
-import type { RoomMember } from '@/shared/types/domain';
-
+import { type PresenceMember, usePresenceStore } from '../presenceStore';
 import { MemberAvatar } from './MemberAvatar';
 
-export function MemberList({
-  compact = false,
-  members,
-}: {
+interface MemberListProps {
   compact?: boolean;
-  members: RoomMember[];
-}) {
-  const onlineMembers = members.filter((member) => member.status === 'online');
-  const offlineMembers = members.filter((member) => member.status !== 'online');
+  members?: PresenceMember[];
+}
+
+export function MemberList({ compact = false, members }: MemberListProps) {
+  const storeMembers = usePresenceStore((state) => state.members);
+  const visibleMembers = (members ?? storeMembers).filter((member) => member.status !== 'left');
+  const onlineMembers = visibleMembers.filter((member) => member.status === 'online');
+  const offlineMembers = visibleMembers.filter((member) => member.status !== 'online');
 
   return (
     <div className={compact ? 'space-y-5 p-4' : 'space-y-5 p-5'}>
@@ -31,7 +31,7 @@ function MemberGroup({
   title,
 }: {
   isMuted?: boolean;
-  members: RoomMember[];
+  members: PresenceMember[];
   title: string;
 }) {
   if (members.length === 0) {
@@ -40,7 +40,12 @@ function MemberGroup({
 
   return (
     <div>
-      <p className="mb-3 text-xs font-bold tracking-wide text-white/25 uppercase">{title}</p>
+      <p
+        aria-live="polite"
+        className="mb-3 text-xs font-bold tracking-wide text-white/25 uppercase"
+      >
+        {title}
+      </p>
       <div className="space-y-1.5">
         {members.map((member) => (
           <div
@@ -49,7 +54,11 @@ function MemberGroup({
             }`}
             key={member.userId}
           >
-            <MemberAvatar label={member.nickname} muted={isMuted} />
+            <MemberAvatar
+              label={member.nickname}
+              muted={isMuted}
+              profileImage={member.profileImage}
+            />
             <div className="min-w-0">
               <p
                 className={`truncate text-sm font-semibold ${

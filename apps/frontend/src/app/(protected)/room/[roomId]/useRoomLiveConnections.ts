@@ -4,6 +4,7 @@
 import { useChatSocket } from '@/features/chat/hooks/chatHooks';
 import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
 import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
+import { usePresenceSocket } from '@/features/presence/presenceHooks';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
 
 export function useRoomLiveConnections(
@@ -15,4 +16,5 @@ export function useRoomLiveConnections(
   usePlaylistSocket(enabled ? roomId : '');
   useRoomSocket(enabled ? roomId : '', onRoomClosed);
   useChatSocket(enabled ? roomId : '');
+  usePresenceSocket(enabled ? roomId : '');
 }

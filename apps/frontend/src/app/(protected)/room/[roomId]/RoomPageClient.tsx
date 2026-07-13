@@ -144,7 +144,13 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         playbackState={miniPlayerPlaybackState}
         playlist={playlist}
         renderPlayerPanel={() => (
-          <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />
+          <PlayerPanel
+            roomId={roomId}
+            isHost={isHost}
+            onEnded={miniPlayerControls.handleNextTrack}
+            onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
+            playlist={playlist}
+          />
         )}
         renderPlaylistPanel={() => (
           <PlaylistPanel

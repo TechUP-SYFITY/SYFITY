@@ -44,12 +44,8 @@ vi.mock('./YouTubePlayer', () => ({
 
 vi.mock('./playbackCommands', () => ({
   playbackCommands: {
-    changeTrack: vi.fn(),
-    pause: vi.fn(),
-    play: vi.fn(),
     reportError: vi.fn(),
     requestSync: vi.fn(),
-    seek: vi.fn(),
   },
 }));
 
@@ -80,6 +76,21 @@ const playlist: PlaylistItem[] = [
   },
 ];
 
+const onEnded = vi.fn();
+const onPlaybackStateChange = vi.fn();
+
+function renderPlayerPanel(isHost = true, playlistItems = playlist) {
+  return render(
+    <PlayerPanel
+      roomId={roomId}
+      isHost={isHost}
+      onEnded={onEnded}
+      onPlaybackStateChange={onPlaybackStateChange}
+      playlist={playlistItems}
+    />,
+  );
+}
+
 function seedPlayback(isPlaying = false, playlistItemId = 'playlist-item-1') {
   usePlayerStore.getState().setPlaybackState(
     {
@@ -96,9 +107,6 @@ describe('PlayerPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     usePlayerStore.getState().clearPlayback();
-    vi.mocked(playbackCommands.play).mockResolvedValue(undefined);
-    vi.mocked(playbackCommands.pause).mockResolvedValue(undefined);
-    vi.mocked(playbackCommands.changeTrack).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -108,7 +116,7 @@ describe('PlayerPanel', () => {
 
   it('현재 재생 곡 정보와 Figma 기준 표시 UI를 렌더링한다', () => {
     seedPlayback(false);
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     expect(screen.getByRole('heading', { name: 'Song One' })).toBeInTheDocument();
     expect(screen.getByText('Channel One')).toBeInTheDocument();
@@ -118,93 +126,40 @@ describe('PlayerPanel', () => {
     expect(screen.queryByText('Host 제어 가능')).not.toBeInTheDocument();
   });
 
-  it('Host에서 영상 종료 시 다음 playlistItemId로 곡 변경 명령을 보낸다', async () => {
+  it('영상 종료 이벤트를 공통 Player 제어 handler로 전달한다', () => {
     seedPlayback(false);
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
 
-    await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
-    });
-  });
-
-  it('Host에서 영상 종료 시 unavailable 곡을 건너뛰고 다음 곡을 변경한다', async () => {
-    seedPlayback(false);
-    const playlistWithUnavailable = [
-      playlist[0],
-      { ...playlist[1], status: 'unavailable' as const },
-      { ...playlist[1], id: 'playlist-item-3', position: 3, videoId: 'video-3' },
-    ];
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlistWithUnavailable} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
-
-    await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-3');
-    });
-  });
-
-  it('Member에서 영상 종료 시 곡 변경 명령을 보내지 않는다', () => {
-    seedPlayback(false);
-    render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
-
-    expect(playbackCommands.changeTrack).not.toHaveBeenCalled();
-    expect(playbackCommands.pause).not.toHaveBeenCalled();
-  });
-
-  it('마지막 곡 종료 시 0초 pause 명령으로 재생 상태를 정리한다', async () => {
-    seedPlayback(true, 'playlist-item-2');
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
-
-    await waitFor(() => {
-      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 0);
-    });
+    expect(onEnded).toHaveBeenCalledTimes(1);
   });
 
   it('버퍼링 회복 시 자동 동기화 요청을 보낸다', () => {
     seedPlayback(false);
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
   });
 
-  it('Host가 IFrame을 일시정지하면 현재 위치로 pause 명령을 보낸다', async () => {
+  it('IFrame 일시정지 이벤트를 공통 Player 제어 handler로 전달한다', () => {
     seedPlayback(true);
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'mock local pause' }));
 
-    await waitFor(() => {
-      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 42);
-    });
+    expect(onPlaybackStateChange).toHaveBeenCalledWith(false, 42);
   });
 
-  it('Host가 IFrame을 재생하면 현재 위치로 play 명령을 보낸다', async () => {
+  it('IFrame 재생 이벤트를 공통 Player 제어 handler로 전달한다', () => {
     seedPlayback(false);
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'mock local play' }));
 
-    await waitFor(() => {
-      expect(playbackCommands.play).toHaveBeenCalledWith(roomId, 42);
-    });
-  });
-
-  it('Member가 IFrame 재생 상태를 바꾸면 서버 동기화를 요청한다', () => {
-    seedPlayback(true);
-    render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'mock local pause' }));
-
-    expect(playbackCommands.pause).not.toHaveBeenCalled();
-    expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(onPlaybackStateChange).toHaveBeenCalledWith(true, 42);
   });
 
   it('Socket 미연결 상태의 버퍼링 회복은 표시 UI를 깨뜨리지 않는다', () => {
@@ -212,7 +167,7 @@ describe('PlayerPanel', () => {
     vi.mocked(playbackCommands.requestSync).mockImplementation(() => {
       throw new Error('Socket is not connected.');
     });
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
@@ -224,7 +179,7 @@ describe('PlayerPanel', () => {
     seedPlayback(false);
     usePlayerStore.getState().setPlaybackError('video-1', 150);
 
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     expect(screen.getByText('재생할 수 없는 영상이에요. 오류 코드 150')).toBeInTheDocument();
   });
@@ -232,7 +187,7 @@ describe('PlayerPanel', () => {
   it('Host에서 player error 발생 시 서버에 재생 실패를 보고한다', async () => {
     seedPlayback(false);
     vi.mocked(playbackCommands.reportError).mockResolvedValue(undefined);
-    render(<PlayerPanel roomId={roomId} isHost playlist={playlist} />);
+    renderPlayerPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 
@@ -243,7 +198,7 @@ describe('PlayerPanel', () => {
 
   it('Member에서 player error 발생 시 서버에 재생 실패를 보고하지 않는다', () => {
     seedPlayback(false);
-    render(<PlayerPanel roomId={roomId} isHost={false} playlist={playlist} />);
+    renderPlayerPanel(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 

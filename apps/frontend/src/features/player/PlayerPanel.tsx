@@ -4,7 +4,7 @@
 import { AlertTriangle, Play } from 'lucide-react';
 
 import { formatDuration } from '@/shared/lib/formatDuration';
-import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
@@ -14,16 +14,23 @@ import { YouTubePlayer } from './YouTubePlayer';
 interface PlayerPanelProps {
   roomId: string;
   isHost: boolean;
+  onEnded: () => void;
+  onPlaybackStateChange: (isPlaying: boolean, currentTime: number) => void;
   playlist: PlaylistItem[];
 }
 
-export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
+export function PlayerPanel({
+  roomId,
+  isHost,
+  onEnded,
+  onPlaybackStateChange,
+  playlist,
+}: PlayerPanelProps) {
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playbackError = usePlayerStore((state) => state.playbackError);
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const posterUrl = currentTrack ? getThumbnailUrl(currentTrack) : null;
   const shouldShowPoster = Boolean(posterUrl) && !playbackState?.isPlaying;
-  const { nextItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
 
   function handleBufferingRecovered() {
     if (!playbackState?.videoId) {
@@ -35,40 +42,6 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
     } catch {
       // 자동 동기화 요청은 다음 서버 tick에서 다시 보정된다.
     }
-  }
-
-  function handleNextTrack() {
-    if (!isHost) {
-      return;
-    }
-
-    if (!nextItem) {
-      void playbackCommands.pause(roomId, 0).catch(() => undefined);
-      return;
-    }
-
-    void playbackCommands.changeTrack(roomId, nextItem.id).catch(() => undefined);
-  }
-
-  function handlePlaybackStateChange(isPlaying: boolean, currentTime: number) {
-    if (!playbackState?.videoId) {
-      return;
-    }
-
-    if (!isHost) {
-      try {
-        playbackCommands.requestSync(roomId);
-      } catch {
-        // 다음 서버 tick에서 Member의 로컬 재생 상태를 다시 보정한다.
-      }
-      return;
-    }
-
-    const command = isPlaying
-      ? playbackCommands.play(roomId, currentTime)
-      : playbackCommands.pause(roomId, currentTime);
-
-    void command.catch(() => undefined);
   }
 
   function handlePlayerError(errorCode: number) {
@@ -87,9 +60,9 @@ export function PlayerPanel({ roomId, isHost, playlist }: PlayerPanelProps) {
         <YouTubePlayer
           playbackState={playbackState}
           onBufferingRecovered={handleBufferingRecovered}
-          onEnded={isHost ? handleNextTrack : () => undefined}
+          onEnded={onEnded}
           onError={handlePlayerError}
-          onPlaybackStateChange={handlePlaybackStateChange}
+          onPlaybackStateChange={onPlaybackStateChange}
         />
         {shouldShowPoster ? (
           <div className="pointer-events-none absolute inset-0">

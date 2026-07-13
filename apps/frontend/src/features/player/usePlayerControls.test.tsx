@@ -194,4 +194,126 @@ describe('usePlayerControls', () => {
       expect(playbackCommands.changeTrack).not.toHaveBeenCalled();
     });
   });
+
+  it('Host가 다음 곡을 요청하면 nextItemId로 곡 변경 명령을 보낸다', async () => {
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        nextItemId: 'playlist-item-2',
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleNextTrack();
+    });
+
+    await waitFor(() => {
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+    });
+  });
+
+  it('Host의 마지막 곡이 종료되면 0초 pause 명령을 보낸다', async () => {
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: true,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleNextTrack();
+    });
+
+    await waitFor(() => {
+      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 0);
+    });
+  });
+
+  it('Host의 IFrame 재생 상태 변경을 공통 pending 명령으로 실행한다', async () => {
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: true,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlaybackStateChange(false, 42);
+    });
+
+    await waitFor(() => {
+      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 42);
+    });
+  });
+
+  it('Member의 IFrame 재생 상태 변경은 서버 동기화를 요청한다', () => {
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: false,
+        isPlaying: true,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlaybackStateChange(false, 42);
+    });
+
+    expect(playbackCommands.pause).not.toHaveBeenCalled();
+    expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+  });
+
+  it('다른 명령이 pending이면 IFrame 재생 상태 명령을 보내지 않는다', async () => {
+    const nextCommand = createDeferred<void>();
+    vi.mocked(playbackCommands.changeTrack).mockReturnValue(nextCommand.promise);
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        nextItemId: 'playlist-item-2',
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleNextTrack();
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingCommand).toBe('next');
+    });
+
+    act(() => {
+      result.current.handlePlaybackStateChange(true, 42);
+    });
+
+    expect(playbackCommands.play).not.toHaveBeenCalled();
+
+    act(() => {
+      nextCommand.resolve();
+    });
+  });
 });
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+}

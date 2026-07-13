@@ -107,6 +107,26 @@ export function usePlayerControls({
     void runHostCommand('next', () => playbackCommands.changeTrack(roomId, nextItemId));
   }
 
+  function handlePlaybackStateChange(nextIsPlaying: boolean, nextCurrentTime: number) {
+    if (!hasPlayableTrack || !Number.isFinite(nextCurrentTime) || nextCurrentTime < 0) {
+      return;
+    }
+
+    if (!isHost) {
+      try {
+        playbackCommands.requestSync(roomId);
+      } catch {
+        // 다음 서버 tick에서 Member의 로컬 재생 상태를 다시 보정한다.
+      }
+      return;
+    }
+
+    const command = nextIsPlaying ? 'play' : 'pause';
+    const action = nextIsPlaying ? playbackCommands.play : playbackCommands.pause;
+
+    void runHostCommand(command, () => action(roomId, nextCurrentTime));
+  }
+
   function handleSeek(seekTime: number) {
     if (
       !isHost ||
@@ -132,6 +152,7 @@ export function usePlayerControls({
     commandError,
     controlDisabled,
     handleNextTrack,
+    handlePlaybackStateChange,
     handlePlayPause,
     handlePreviousTrack,
     handleSeek,

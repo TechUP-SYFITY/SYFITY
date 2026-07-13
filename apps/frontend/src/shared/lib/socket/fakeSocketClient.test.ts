@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
-import type { ChatMessage, PlaybackState } from '@/shared/types/domain';
+import type { ChatMessage, PlaybackState, RoomMember } from '@/shared/types/domain';
 import type { RoomHostConnectionState } from '@/shared/types/socket';
 
 import { fakeSocketClient } from './fakeSocketClient';
@@ -22,12 +22,13 @@ describe('fakeSocketClient', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('acks room join with fixture playback state', () => {
+  it('acks room join with fixture playback state and members', () => {
     const socket = fakeSocketClient.connect();
     const ack = vi.fn<
       (
         response: SocketAck<{
           hostConnection: RoomHostConnectionState;
+          members: RoomMember[];
           playbackState: PlaybackState;
         }>,
       ) => void
@@ -39,6 +40,7 @@ describe('fakeSocketClient', () => {
       success: true,
       data: {
         hostConnection: { status: 'connected' },
+        members: roomFixture.members,
         playbackState: roomFixture.playbackState,
       },
     });

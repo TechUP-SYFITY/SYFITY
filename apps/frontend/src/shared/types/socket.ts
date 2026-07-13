@@ -92,6 +92,7 @@ export interface ClientToServerEvents {
     ack: (
       response: SocketAck<{
         hostConnection: RoomHostConnectionState;
+        members: RoomMember[];
         playbackState: PlaybackState;
       }>,
     ) => void,

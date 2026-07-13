@@ -2,7 +2,7 @@
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
-import type { ChatMessage, PlaybackState } from '@/shared/types/domain';
+import type { ChatMessage, PlaybackState, RoomMember } from '@/shared/types/domain';
 import type {
   ChatSendAckData,
   ChatSendPayload,
@@ -87,12 +87,14 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
     case 'room:join': {
       const ack = readAck<{
         hostConnection: { status: 'connected' };
+        members: RoomMember[];
         playbackState: PlaybackState;
       }>(args[1]);
       ack?.({
         success: true,
         data: {
           hostConnection: { status: 'connected' },
+          members: roomFixture.members,
           playbackState: ctx.getPlaybackState(),
         },
       });

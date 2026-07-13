@@ -36,6 +36,7 @@ const createFakeSocket = (): SyfitySocket => {
     listeners.get(event)?.forEach((listener) => listener(...args));
   };
 
+  emitLocalRef = emitLocal;
   queueMicrotask(() => emitLocal('connect'));
 
   return {
@@ -68,15 +69,25 @@ const createFakeSocket = (): SyfitySocket => {
 };
 
 let instance: SyfitySocket | null = null;
+let emitLocalRef: EmitLocal | null = null;
 
 export const fakeSocketClient: SocketClient = {
   connect: () => (instance ??= createFakeSocket()),
   disconnect: () => {
     instance?.disconnect();
     instance = null;
+    emitLocalRef = null;
   },
   get: () => instance,
 };
+
+/** 개발 환경에서 fake socket의 S→C 이벤트를 수동으로 주입한다. */
+export function simulateServerEvent<Ev extends keyof SyfityListenEvents>(
+  event: Ev,
+  ...args: Parameters<SyfityListenEvents[Ev]>
+) {
+  emitLocalRef?.(event, ...args);
+}
 
 function handleClientEvent<Ev extends keyof ClientToServerEvents>(
   event: Ev,

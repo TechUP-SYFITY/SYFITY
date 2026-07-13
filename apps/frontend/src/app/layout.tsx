@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <ToastProvider viewportClassName="bottom-16 sm:bottom-20">
+        <ToastProvider viewportClassName="bottom-16 sm:bottom-20 lg:right-0 lg:left-auto lg:max-w-sm lg:translate-x-0 lg:p-6">
           <MockingProvider>
             <QueryProvider>{children}</QueryProvider>
           </MockingProvider>

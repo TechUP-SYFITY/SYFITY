@@ -84,7 +84,6 @@ describe('SearchPanel', () => {
     const surface = dialog.querySelector('[data-search-panel-surface]');
 
     expect(dialog).toHaveClass('fixed', 'inset-0', 'pointer-events-none');
-    expect(dialog).toHaveStyle({ pointerEvents: 'none' });
     expect(dialog).not.toHaveClass('overflow-hidden', 'lg:-translate-x-1/2');
     expect(surface).toHaveClass(
       'pointer-events-auto',

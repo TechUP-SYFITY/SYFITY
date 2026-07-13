@@ -88,7 +88,6 @@ export function SearchPanel({
           aria-describedby={undefined}
           aria-label="곡 추가"
           className="pointer-events-none fixed inset-0 z-50 outline-none"
-          style={{ pointerEvents: 'none' }}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             searchInputRef.current?.focus();
@@ -228,7 +227,6 @@ function SearchPanelLinkInput({
         className="mt-5 flex h-11 items-center justify-center gap-2 rounded-[18px] bg-[#72f4a4] px-6 text-sm font-bold text-black transition hover:bg-[#8af7b5] disabled:cursor-not-allowed disabled:opacity-45"
         type="submit"
         disabled={!canAdd || isAddPending}
-        aria-label="링크 추가"
       >
         {isAddPending ? (
           <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />

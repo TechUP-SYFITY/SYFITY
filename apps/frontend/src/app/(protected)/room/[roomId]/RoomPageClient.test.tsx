@@ -1,13 +1,14 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { JoinRoomResponse, UserProfileResponse } from '@syfity/shared';
 
+import { ToastProvider } from '@/shared/components/ui';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
@@ -31,7 +32,11 @@ function createWrapper() {
   });
 
   return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+      <ToastProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </ToastProvider>
+    );
   };
 }
 
@@ -177,13 +182,14 @@ describe('RoomPageClient', () => {
     const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
 
     expect(successToast).toHaveTextContent('플레이리스트에 추가했어요 🎵');
-    expect(searchDialog).toContainElement(successToast);
+    expect(searchDialog).not.toContainElement(successToast);
 
-    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
+    fireEvent.click((successToast as HTMLElement).querySelector('button') as HTMLButtonElement);
     await waitFor(() =>
       expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument(),
     );
 
+    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
     const [reopenSearchButton] = await screen.findAllByRole('button', { name: '추가' });
     fireEvent.click(reopenSearchButton as HTMLButtonElement);
     expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
@@ -236,10 +242,8 @@ describe('RoomPageClient', () => {
     const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
 
     expect(errorToast).toHaveTextContent('재생할 수 없는 영상이에요.');
-    expect(
-      within(errorToast as HTMLElement).getByRole('button', { name: '닫기' }),
-    ).toBeInTheDocument();
-    expect(searchDialog).toContainElement(errorToast);
+    expect((errorToast as HTMLElement).querySelector('button')).toBeInTheDocument();
+    expect(searchDialog).not.toContainElement(errorToast);
     expect(requestedRoomId).toBe(roomFixture.room.id);
   });
 

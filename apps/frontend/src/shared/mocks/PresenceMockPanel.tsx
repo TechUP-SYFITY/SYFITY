@@ -33,6 +33,13 @@ function createSystemMessage(member: SimulatedMember, action: PresenceAction): C
   };
 }
 
+function findLatestMember(
+  members: SimulatedMember[],
+  status: SimulatedMember['status'],
+): SimulatedMember | undefined {
+  return members.findLast((member) => member.status === status);
+}
+
 export function PresenceMockPanel() {
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [simulatedMembers, setSimulatedMembers] = useState<SimulatedMember[]>([]);
@@ -76,6 +83,53 @@ export function PresenceMockPanel() {
         type="button"
       >
         가상 멤버 퇴장 시뮬레이션
+      </button>
+      <button
+        className="rounded-lg bg-white/10 px-2 py-1 text-white/70"
+        onClick={() => {
+          const simulatedMember = findLatestMember(simulatedMembers, 'online');
+
+          if (!simulatedMember) {
+            return;
+          }
+
+          const offlineMember = { ...simulatedMember, status: 'offline' as const };
+          simulateServerEvent('presence:update', offlineMember);
+          setLastAction(`${offlineMember.nickname}님의 연결이 끊겼습니다.`);
+          setSimulatedMembers((members) =>
+            members.map((member) =>
+              member.userId === offlineMember.userId ? offlineMember : member,
+            ),
+          );
+        }}
+        disabled={!simulatedMembers.some((member) => member.status === 'online')}
+        type="button"
+      >
+        가상 멤버 연결 끊김 시뮬레이션
+      </button>
+      <button
+        className="rounded-lg bg-primary/10 px-2 py-1 text-primary"
+        onClick={() => {
+          const simulatedMember = findLatestMember(simulatedMembers, 'offline');
+
+          if (!simulatedMember) {
+            return;
+          }
+
+          const reconnectedMember = { ...simulatedMember, status: 'online' as const };
+          simulateServerEvent('presence:update', reconnectedMember);
+          simulateServerEvent('chat:system', createSystemMessage(reconnectedMember, '입장'));
+          setLastAction(`${reconnectedMember.nickname}님이 재접속했습니다.`);
+          setSimulatedMembers((members) =>
+            members.map((member) =>
+              member.userId === reconnectedMember.userId ? reconnectedMember : member,
+            ),
+          );
+        }}
+        disabled={!simulatedMembers.some((member) => member.status === 'offline')}
+        type="button"
+      >
+        가상 멤버 재접속 시뮬레이션
       </button>
       {lastAction ? <p className="text-white/40">{lastAction}</p> : null}
     </div>

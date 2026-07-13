@@ -90,4 +90,47 @@ describe('PresenceMockPanel', () => {
     );
     expect(screen.getByRole('button', { name: '가상 멤버 퇴장 시뮬레이션' })).toBeDisabled();
   });
+
+  it('연결 끊김은 offline만, 재접속은 online과 입장 시스템 메시지를 주입한다', () => {
+    render(<PresenceMockPanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: '가상 멤버 입장 시뮬레이션' }));
+    const joinedMember = vi.mocked(simulateServerEvent).mock.calls[0]?.[1] as {
+      nickname: string;
+      userId: string;
+    };
+
+    fireEvent.click(screen.getByRole('button', { name: '가상 멤버 연결 끊김 시뮬레이션' }));
+
+    expect(simulateServerEvent).toHaveBeenNthCalledWith(
+      3,
+      'presence:update',
+      expect.objectContaining({
+        status: 'offline',
+        userId: joinedMember.userId,
+      }),
+    );
+    expect(simulateServerEvent).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole('button', { name: '가상 멤버 연결 끊김 시뮬레이션' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '가상 멤버 재접속 시뮬레이션' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '가상 멤버 재접속 시뮬레이션' }));
+
+    expect(simulateServerEvent).toHaveBeenNthCalledWith(
+      4,
+      'presence:update',
+      expect.objectContaining({
+        status: 'online',
+        userId: joinedMember.userId,
+      }),
+    );
+    expect(simulateServerEvent).toHaveBeenNthCalledWith(
+      5,
+      'chat:system',
+      expect.objectContaining({
+        message: `${joinedMember.nickname}님이 입장했습니다.`,
+        type: 'system',
+      }),
+    );
+  });
 });

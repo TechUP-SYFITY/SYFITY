@@ -1,98 +1,140 @@
-# Search 곡 추가 Toast 설계
+# Search 통합 입력 및 곡 추가 Toast 설계
 
 ## 배경
 
-GitHub 이슈 #52는 Room의 Search 화면에서 검색 결과를 재생목록에 추가한 결과를 성공 또는 실패 Toast로 즉시 알려 주는 작업이다. 구현 브랜치 `feat/search-add-toast-52`는 최신 `dev`를 병합했으며, PR #50에서 반영한 Search UI, Playlist 추가 연결, 오류 메시지 매핑을 포함한다.
+GitHub 이슈 #52는 Room의 곡 추가 화면에서 Playlist 추가 성공·실패를 기존 Toast UI로 알려 주는 작업이다. 1차 구현 검토 후 다음 사용자 피드백을 최종 요구사항에 반영한다.
 
-Figma 기준 노드는 `77:7407`이다. Toast는 Search UI보다 높은 레이어의 화면 하단 중앙에 표시하며 성공/실패 아이콘, 메시지, 닫기 버튼을 제공한다.
+- 데스크톱 Toast는 곡 추가 다이얼로그 위를 덮지 않고 화면 오른쪽 아래에 표시한다.
+- 모바일 Toast는 현재의 화면 하단 중앙 배치를 유지한다.
+- `검색`과 `링크` 탭을 제거하고 하나의 입력창에서 검색어와 YouTube 링크를 모두 받는다.
+- 일반 텍스트는 기존처럼 자동 검색하고, 링크는 검색 API를 호출하지 않은 채 직접 추가할 수 있게 한다.
+
+Figma Toast의 색상, 아이콘, 메시지, 닫기 버튼 구조와 Storybook의 공용 Toast primitive를 계속 기준으로 사용한다.
 
 ## 목표
 
-- Playlist 추가 성공 시 `플레이리스트에 추가했어요 🎵` 성공 Toast를 표시한다.
-- Playlist 추가 실패 시 `getPlaylistErrorMessage()`가 반환한 사용자용 메시지를 실패 Toast로 표시한다.
-- 기존 공용 Toast primitive를 수정하지 않고 최대한 재사용한다.
-- 데스크톱과 모바일에서 Search UI의 주요 조작을 가리지 않는 하단 중앙 배치를 사용한다.
-- Toast 자동 닫힘, 수동 닫기, 아래 방향 스와이프 닫기를 지원한다.
-- 연속으로 곡을 추가해도 각 결과마다 Toast 표시 시간이 다시 시작된다.
+- Playlist 추가 성공 시 `플레이리스트에 추가했어요 🎵` Toast를 표시한다.
+- 실패 시 `getPlaylistErrorMessage()`가 반환한 사용자용 메시지를 표시한다.
+- 데스크톱에서는 화면 우하단, 모바일에서는 화면 하단 중앙에 Toast를 표시한다.
+- Toast가 다이얼로그의 transform·overflow에 종속되거나 잘리지 않게 한다.
+- 단일 입력창에서 검색어와 절대 URL을 구분한다.
+- 일반 텍스트는 350ms debounce 검색을 유지한다.
+- URL은 검색 요청을 중단하고 `링크 추가` CTA 및 Enter 제출을 제공한다.
+- 공용 Toast, Search API, Playlist API, playlist mutation hook은 변경하지 않는다.
 
 ## 비목표
 
-- YouTube 검색 요청, Playlist 추가 API, mutation hook의 동작을 변경하지 않는다.
-- 전역 Toast context나 새로운 공용 Toast 시스템을 만들지 않는다.
-- 공용 `Toast.tsx`를 교체하거나 스타일 API를 변경하지 않는다.
-- 성공 후 SearchPanel을 닫거나 검색 결과의 추가 버튼 상태를 변경하지 않는다.
-- Search 이외 화면에 Toast를 적용하지 않는다.
+- 새로운 전역 Toast context 또는 Toast queue를 만들지 않는다.
+- 공용 `Toast.tsx`의 API나 스타일을 변경하지 않는다.
+- 프론트에서 YouTube URL의 최종 유효성을 확정하지 않는다. 서버가 기존 `PLAYLIST_INVALID_URL` 경로로 검증한다.
+- Playlist 추가 성공 후 곡 추가 패널을 닫거나 입력값을 자동으로 지우지 않는다.
+- YouTube Music 등 현재 백엔드가 받지 않는 URL 형식을 새로 지원하지 않는다.
 
-## 아키텍처와 컴포넌트
+## 검토한 접근
+
+### 1. 입력값을 클라이언트에서 검색어와 URL로 분기 — 채택
+
+절대 URL로 파싱되는 입력은 검색 훅에 빈 문자열을 전달해 검색을 끄고, 기존 `onAddUrl` 경로로 보낸다. 일반 텍스트는 기존 검색 훅을 그대로 사용한다. API 변경 없이 사용자가 기대하는 단일 입력 UX를 제공할 수 있어 가장 작고 안전하다.
+
+### 2. 검색 API가 검색어와 URL을 모두 처리
+
+서버 API 계약과 에러 처리를 바꿔야 하고 이슈 #52 범위를 벗어난다. Playlist API가 이미 URL 검증을 담당하므로 중복이다.
+
+### 3. 탭을 숨기고 내부 상태만 유지
+
+화면에는 단일 입력처럼 보여도 이중 상태와 분기 UI가 남아 유지보수가 어렵다. 탭 제거 요구에도 정확히 부합하지 않아 채택하지 않는다.
+
+## 컴포넌트 구조
 
 ### RoomPageClient
 
-`RoomPageClient`는 기존처럼 `useAddPlaylistItem(roomId)` mutation을 소유한다. 여기에 현재 Toast 피드백 상태를 추가한다. 피드백은 고유 ID, `success | error` variant, 메시지를 가진다.
+`RoomPageClient`는 계속 `useAddPlaylistItem(roomId)` mutation과 Toast 피드백 상태를 소유한다. 검색 결과 추가는 `{ videoId }`, 링크 추가는 `{ youtubeUrl }`을 동일 helper에 전달한다. 성공·실패 callback, 고유 Toast ID, 패널 닫기 시 reset 동작은 유지한다.
 
-검색 결과 추가 시 기존 피드백을 초기화한 뒤 mutation을 실행한다. mutation의 `onSuccess`와 `onError` 콜백에서 새 고유 ID를 가진 피드백을 만든다. SearchPanel을 닫을 때 mutation 상태와 Toast 상태를 함께 초기화한다.
+### SearchPanel 통합 입력
+
+- `AddMode`, `Tabs`, 별도 `youtubeUrl` 상태를 제거한다.
+- 기존 `query` 하나를 검색어와 URL의 공통 입력값으로 사용한다.
+- placeholder는 `YouTube 영상 검색 또는 링크 붙여넣기`로 변경한다.
+- `http://` 또는 `https://` 절대 URL로 파싱되면 URL 모드로 본다.
+- URL 모드에서는 `useYoutubeSearchQuery('')`가 되어 검색 API를 호출하지 않는다.
+- 결과 영역에는 입력한 URL과 `링크 추가` CTA를 표시한다.
+- URL 모드에서 Enter 또는 CTA 클릭 시 trim한 값을 `onAddUrl`에 전달한다.
+- 일반 텍스트는 기존 debounce, 로딩, 오류, 빈 결과, 검색 결과 목록을 유지한다.
+- URL의 YouTube 지원 여부와 video ID 유효성은 기존 Playlist API가 판정하며, 실패는 Toast로 안내한다.
+
+### SearchPanel 다이얼로그 레이어
+
+`DialogPrimitive.Content`를 화면 전체를 덮는 비변형·overflow-visible 접근성 wrapper로 만든다. 기존 바텀시트/데스크톱 모달의 크기, 배경, transform, animation, `overflow-hidden`은 내부 visual surface로 옮긴다.
+
+wrapper의 자식은 다음 두 형제다.
+
+1. visual surface: 헤더, 통합 입력, 검색 결과 또는 링크 CTA
+2. feedback: `SearchAddToast`
+
+이 구조는 Toast를 Radix Dialog의 접근 가능한 subtree 안에 두면서도, fixed viewport가 visual surface의 transform/overflow에 묶이지 않게 한다.
 
 ### SearchAddToast
 
-Search 기능 폴더에 Search 전용 `SearchAddToast` 컴포넌트를 둔다. 이 컴포넌트는 다음 공용 primitive를 조합한다.
+기존 공용 `ToastProvider`, `Toast`, `ToastViewport`, `ToastIcon`, `ToastTitle`, `ToastClose`만 조합한다.
 
-- `ToastProvider`
-- `Toast`
-- `ToastViewport`
-- `ToastIcon`
-- `ToastTitle`
-- `ToastClose`
-
-컴포넌트 입력은 현재 피드백과 닫기 콜백으로 제한한다. 성공에는 체크 아이콘, 실패에는 경고 아이콘, 공통 닫기 버튼에는 X 아이콘을 사용한다. 피드백 고유 ID를 Toast key로 사용해 동일한 메시지가 연속 발생해도 Radix Toast의 duration이 다시 시작되게 한다.
-
-### SearchPanel
-
-기존 `addErrorMessage` 인라인 오류 영역은 제거한다. Playlist 추가 실패는 `SearchAddToast`의 실패 Toast로 표시해 같은 오류가 중복 노출되지 않게 한다. 검색 API 자체의 오류 상태 UI는 기존대로 유지한다.
+- 모바일: 기존 하단 중앙, safe-area 여백 유지
+- 데스크톱: `left`와 중앙 translate를 해제하고 화면 오른쪽 아래에 24px 간격으로 배치
+- `duration={4000}`, 아래 방향 swipe, 수동 닫기 유지
+- 성공은 `type="background"`, 실패는 `type="foreground"`로 Radix의 단일 live announcement 우선순위를 사용
+- visible Toast root에 별도 `role="status"`/`role="alert"`를 넣지 않아 중복 안내를 방지
+- Provider와 Viewport label은 한국어로 지정
 
 ## 데이터 흐름
 
-1. 사용자가 검색 결과의 `추가` 버튼을 누른다.
-2. `RoomPageClient`가 기존 Toast를 닫고 `addSearchResult.mutate()`를 실행한다.
-3. 요청이 성공하면 성공 피드백을 생성한다.
-4. 요청이 실패하면 `getPlaylistErrorMessage(error)`로 메시지를 만든 뒤 실패 피드백을 생성한다.
-5. `SearchAddToast`가 피드백 variant에 맞는 Toast를 표시한다.
-6. 4초가 지나거나 사용자가 닫기 또는 아래 방향 스와이프를 수행하면 피드백을 초기화한다.
-7. 성공 후에도 SearchPanel은 열린 상태를 유지해 추가 검색과 곡 추가를 계속할 수 있다.
+### 검색어
 
-## 배치와 접근성
+1. 사용자가 일반 텍스트를 입력한다.
+2. 350ms debounce 후 기존 Search API를 호출한다.
+3. 결과의 `추가` 버튼을 누르면 `{ videoId }`로 Playlist mutation을 실행한다.
+4. 성공 또는 실패 Toast를 표시하고 SearchPanel은 열린 상태를 유지한다.
 
-- 공용 `ToastViewport`의 fixed 하단 중앙 배치와 `z-100`을 사용해 `z-50` SearchPanel보다 위에 표시한다.
-- Search 전용 `className`으로 모바일 safe area 하단 여백과 데스크톱 하단 간격만 보완한다.
-- 성공 Toast는 `role="status"`, 실패 Toast는 `role="alert"`를 사용한다.
-- 닫기 버튼에는 `aria-label="닫기"`를 제공한다.
-- 아이콘은 장식 요소로 처리하고 메시지가 상태를 완전히 설명하게 한다.
+### 링크
 
-## 오류 처리
+1. 사용자가 절대 URL을 입력하거나 붙여넣는다.
+2. 검색 훅에는 빈 문자열을 전달해 Search API 요청을 막는다.
+3. `링크 추가` CTA 또는 Enter로 trim한 URL을 `{ youtubeUrl }`로 전달한다.
+4. Playlist API가 URL을 최종 검증한다.
+5. 성공은 고정 성공 메시지, 실패는 기존 오류 매핑 Toast로 표시한다.
 
-- 알려진 API 오류는 기존 `getPlaylistErrorMessage()` 매핑을 그대로 사용한다.
-- 네트워크 오류와 알 수 없는 오류도 기존 기본 메시지 경로를 사용한다.
-- 새 Toast가 발생하면 이전 Toast를 교체한다. 이 범위에서는 Toast queue를 만들지 않는다.
-- SearchPanel을 닫았다가 다시 열면 이전 성공/실패 피드백이 남지 않는다.
+## 오류 및 경쟁 조건
+
+- URL처럼 보이지 않는 문자열은 검색어로 처리한다.
+- 절대 URL이지만 지원하지 않는 링크는 Playlist API의 `PLAYLIST_INVALID_URL`을 통해 안내한다.
+- 추가 요청 중에는 결과 추가 버튼과 링크 CTA를 비활성화한다.
+- 새 추가 요청을 시작할 때 이전 Toast를 교체한다.
+- 패널을 닫으면 mutation observer와 Toast 상태를 reset해 늦게 완료된 요청이 Toast를 되살리지 않게 한다.
+- 패널을 다시 열어도 이전 피드백은 보이지 않는다.
 
 ## 테스트 전략
 
-### SearchAddToast 단위 테스트
+### SearchPanel
 
-- 성공 variant가 성공 메시지, 체크 아이콘, `status` 역할로 표시되는지 확인한다.
-- 실패 variant가 오류 메시지, 경고 아이콘, `alert` 역할로 표시되는지 확인한다.
-- 닫기 버튼으로 Toast가 사라지는지 확인한다.
-- 4초 duration 이후 자동으로 닫히는지 fake timer로 확인한다.
+- 탭이 사라지고 단일 placeholder가 표시된다.
+- 일반 텍스트는 기존 debounce 검색 훅으로 전달된다.
+- 절대 URL은 검색 훅에 빈 문자열을 전달한다.
+- URL 모드에 `링크 추가` CTA가 표시되고 클릭/Enter가 trim한 URL을 전달한다.
+- pending 중 CTA와 결과 추가 버튼이 비활성화된다.
+- 검색 로딩·오류·빈 결과·결과 목록 회귀를 유지한다.
+- Dialog wrapper에는 transform/overflow가 없고 visual surface에만 기존 레이아웃 클래스가 있는지 확인한다.
 
-### RoomPageClient 통합 테스트
+### SearchAddToast
 
-- Playlist 추가 API 성공 후 성공 Toast가 표시되는지 확인한다.
-- Playlist 추가 API 실패 후 매핑된 실패 Toast가 표시되는지 확인한다.
-- 요청 경로에 invite code가 아니라 실제 Room ID가 사용되는 기존 검증을 유지한다.
-- SearchPanel을 닫으면 Toast가 제거되고 다시 열 때 이전 피드백이 보이지 않는지 확인한다.
+- 성공·실패 variant, 아이콘, 메시지, 닫기 버튼을 확인한다.
+- visible root에 중복 live role이 없고 Radix announcement가 한 번만 생성되는지 확인한다.
+- 실패는 foreground, 성공은 background 우선순위를 사용한다.
+- 4초 자동 닫기와 수동 닫기를 확인한다.
+- 모바일 하단 중앙 및 데스크톱 우하단 responsive class를 확인한다.
 
-### 회귀 검증
+### RoomPageClient
 
-- SearchPanel, PlaylistPanel, Playlist hook, 오류 메시지 관련 테스트를 실행한다.
-- Frontend TypeScript, ESLint, Next.js 프로덕션 빌드를 실행한다.
+- 검색 결과와 링크 추가가 기존 request body를 유지한다.
+- 두 경로의 성공·실패 Toast와 패널 유지 동작을 확인한다.
+- 패널 닫기 후 Toast 제거와 재오픈 시 stale feedback 부재를 확인한다.
 
 ## 예상 변경 파일
 
@@ -100,13 +142,16 @@ Search 기능 폴더에 Search 전용 `SearchAddToast` 컴포넌트를 둔다. �
 - `apps/frontend/src/features/search/components/SearchAddToast.test.tsx`
 - `apps/frontend/src/features/search/components/SearchPanel.tsx`
 - `apps/frontend/src/features/search/components/SearchPanel.test.tsx`
-- `apps/frontend/src/app/(protected)/room/[roomId]/RoomPageClient.tsx`
 - `apps/frontend/src/app/(protected)/room/[roomId]/RoomPageClient.test.tsx`
+- `docs/superpowers/specs/2026-07-10-search-add-toast-design.md`
+
+`RoomPageClient.tsx`, 공용 Toast, Search API, Playlist API, playlist hook은 인터페이스가 이미 충분하므로 변경하지 않는다.
 
 ## 완료 기준
 
-- 성공과 실패 Toast가 Figma의 주요 구조와 배치를 반영한다.
-- 공용 Toast primitive를 수정하지 않고 재사용한다.
-- 성공/실패 메시지와 닫힘 동작이 테스트로 검증된다.
-- Search, YouTube 검색 API, Playlist 추가 API 동작에는 회귀가 없다.
-- console.log와 불필요한 주석을 추가하지 않는다.
+- 데스크톱 Toast가 다이얼로그를 덮지 않고 화면 오른쪽 아래에 표시된다.
+- 모바일 Toast는 기존 하단 중앙 배치를 유지한다.
+- 검색/링크 탭이 없고 하나의 입력으로 두 동작을 수행한다.
+- URL 입력 시 Search API를 호출하지 않는다.
+- 성공/실패/자동 닫기/수동 닫기/패널 유지가 테스트된다.
+- 공용 Toast와 기존 API 계약을 변경하지 않는다.

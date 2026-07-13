@@ -4,8 +4,6 @@ import { useEffect, useState, type PropsWithChildren } from 'react';
 
 import { isMockingEnabled } from '@/shared/lib/env';
 
-import { PresenceMockPanel } from './PresenceMockPanel';
-
 export function MockingProvider({ children }: PropsWithChildren) {
   const [isWorkerReady, setIsWorkerReady] = useState(!isMockingEnabled());
 
@@ -33,10 +31,5 @@ export function MockingProvider({ children }: PropsWithChildren) {
     return null;
   }
 
-  return (
-    <>
-      {children}
-      <PresenceMockPanel />
-    </>
-  );
+  return <>{children}</>;
 }

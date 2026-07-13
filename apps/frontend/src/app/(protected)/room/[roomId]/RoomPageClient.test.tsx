@@ -31,6 +31,10 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+vi.mock('@/shared/mocks/PresenceMockPanel', () => ({
+  PresenceMockPanel: () => <div data-testid="presence-mock-panel" />,
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -72,6 +76,7 @@ describe('RoomPageClient', () => {
 
     expect(await screen.findByText('Room에 입장하지 못했어요')).toBeInTheDocument();
     expect(screen.getByText('존재하지 않거나 입장할 수 없는 Room입니다.')).toBeInTheDocument();
+    expect(screen.queryByTestId('presence-mock-panel')).toBeNull();
   });
 
   it('mocking 활성 시 Room에 정상 입장하고 현재 사용자명을 표시한다', async () => {
@@ -87,6 +92,7 @@ describe('RoomPageClient', () => {
     expect(screen.getAllByText(roomFixture.members[0].nickname).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(screen.getByTestId('presence-mock-panel')).toBeInTheDocument();
     expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
     expect(useRoomLiveConnections).toHaveBeenCalledWith(
       roomFixture.room.id,

@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
+import { PresenceMockPanel } from '@/shared/mocks/PresenceMockPanel';
 
 import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
@@ -215,6 +216,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         onAddUrl={handleAddYoutubeUrl}
         onClose={handleCloseSearch}
       />
+      <PresenceMockPanel />
     </>
   );
 }

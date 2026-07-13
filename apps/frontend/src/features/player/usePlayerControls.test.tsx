@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { playbackCommands } from './playbackCommands';
+import { usePlayerStore } from './playerStore';
 import { usePlayerControls } from './usePlayerControls';
 
 vi.mock('./playbackCommands', () => ({
@@ -20,6 +21,7 @@ const roomId = 'room-1';
 describe('usePlayerControls', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    usePlayerStore.getState().clearPlayback();
     vi.mocked(playbackCommands.changeTrack).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.pause).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.play).mockResolvedValue(undefined);
@@ -27,6 +29,7 @@ describe('usePlayerControls', () => {
   });
 
   afterEach(() => {
+    usePlayerStore.getState().clearPlayback();
     vi.useRealTimers();
   });
 
@@ -277,6 +280,28 @@ describe('usePlayerControls', () => {
 
     expect(playbackCommands.pause).not.toHaveBeenCalled();
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('pending');
+  });
+
+  it('Member 동기화 요청 실패 시 피드백 상태를 초기화한다', () => {
+    vi.mocked(playbackCommands.requestSync).mockImplementation(() => {
+      throw new Error('Socket is not connected.');
+    });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: false,
+        isPlaying: true,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlaybackStateChange(false, 42);
+    });
+
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
   });
 
   it('다른 명령이 pending이면 IFrame 재생 상태 명령을 보내지 않는다', async () => {

@@ -46,4 +46,27 @@ describe('usePlayerStore', () => {
 
     expect(usePlayerStore.getState().localPlaybackPosition).toBeNull();
   });
+
+  it('요청 중 sync-response를 수신하면 동기화 완료 상태로 전환한다', () => {
+    usePlayerStore.getState().beginPlaybackSync();
+    usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
+
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('synced');
+  });
+
+  it('playback:tick은 요청 중 동기화 피드백을 변경하지 않는다', () => {
+    usePlayerStore.getState().beginPlaybackSync();
+    usePlayerStore.getState().setPlaybackState(playbackState, 'tick');
+
+    expect(usePlayerStore.getState()).toMatchObject({
+      lastEventSource: 'tick',
+      playbackSyncStatus: 'pending',
+    });
+  });
+
+  it('요청하지 않은 sync-response는 완료 피드백을 만들지 않는다', () => {
+    usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
+
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
+  });
 });

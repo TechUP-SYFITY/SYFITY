@@ -73,6 +73,31 @@ describe('chatStore', () => {
     expect(useChatStore.getState().messages).toEqual([firstMessage, optimisticMessage]);
   });
 
+  it('prependMessages는 이전 메시지를 배열 앞에 추가한다', () => {
+    useChatStore.getState().setMessages([secondMessage]);
+
+    useChatStore.getState().prependMessages([firstMessage]);
+
+    expect(useChatStore.getState().messages).toEqual([firstMessage, secondMessage]);
+  });
+
+  it('prependMessages는 이미 있는 id를 중복 삽입하지 않는다', () => {
+    const olderMessage: ChatMessage = {
+      createdAt: '2026-07-01T10:11:00.000Z',
+      id: 'chat-0',
+      message: '먼저 온 메시지',
+      nickname: '수빈',
+      profileImage: null,
+      type: 'user',
+      userId: 'user-0',
+    };
+    useChatStore.getState().setMessages([firstMessage, secondMessage]);
+
+    useChatStore.getState().prependMessages([olderMessage, firstMessage]);
+
+    expect(useChatStore.getState().messages).toEqual([olderMessage, firstMessage, secondMessage]);
+  });
+
   it('reconcileOptimisticMessage는 ack가 먼저 온 경우 tempId 메시지의 id와 createdAt을 패치한다', () => {
     useChatStore.getState().setMessages([optimisticMessage]);
 
@@ -114,8 +139,18 @@ describe('chatStore', () => {
     expect(useChatStore.getState().messages).toEqual([secondMessage]);
   });
 
+  it('requestOutgoingScroll은 전송 스크롤 요청 id를 증가시킨다', () => {
+    expect(useChatStore.getState().outgoingScrollRequestId).toBe(0);
+
+    useChatStore.getState().requestOutgoingScroll();
+    useChatStore.getState().requestOutgoingScroll();
+
+    expect(useChatStore.getState().outgoingScrollRequestId).toBe(2);
+  });
+
   it('setSendError와 clearMessages는 전송 오류 상태를 갱신한다', () => {
     useChatStore.getState().setMessages([firstMessage]);
+    useChatStore.getState().requestOutgoingScroll();
     useChatStore.getState().setSendError('메시지 전송 실패');
 
     expect(useChatStore.getState().sendError).toBe('메시지 전송 실패');
@@ -123,6 +158,7 @@ describe('chatStore', () => {
     useChatStore.getState().clearMessages();
 
     expect(useChatStore.getState().messages).toEqual([]);
+    expect(useChatStore.getState().outgoingScrollRequestId).toBe(0);
     expect(useChatStore.getState().sendError).toBeNull();
   });
 });

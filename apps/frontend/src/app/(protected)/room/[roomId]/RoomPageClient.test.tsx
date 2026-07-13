@@ -6,12 +6,12 @@ import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { UserProfileResponse } from '@syfity/shared';
+import type { JoinRoomResponse, UserProfileResponse } from '@syfity/shared';
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
-import { useChatStore } from '@/features/chat/chatStore';
+import { useChatStore } from '@/features/chat/store/chatStore';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { useRoomStore } from '@/features/room/roomStore';
@@ -75,6 +75,33 @@ describe('RoomPageClient', () => {
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
     expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+  });
+
+  it('Room 입장 응답의 최신순 recentChats를 오래된순으로 저장한다', async () => {
+    server.use(
+      http.post('*/api/v1/rooms/join', () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            members: roomFixture.members,
+            playbackState: roomFixture.playbackState,
+            playlist: roomFixture.playlist,
+            recentChats: [...roomFixture.chats].reverse(),
+            room: roomFixture.room,
+          },
+        } satisfies JoinRoomResponse),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
   });
 
   it('이전 Room 상태가 남아 있어도 URL의 roomId로 연결한다', async () => {

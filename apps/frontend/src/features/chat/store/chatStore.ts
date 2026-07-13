@@ -8,12 +8,15 @@ import type { ChatSendAckData } from '@/shared/types/socket';
 
 interface ChatStoreState {
   messages: ChatMessage[];
+  outgoingScrollRequestId: number;
   sendError: string | null;
   addOptimisticMessage: (message: ChatMessage) => void;
   addReceivedMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
+  prependMessages: (olderMessages: ChatMessage[]) => void;
   reconcileOptimisticMessage: (tempId: string, data: ChatSendAckData) => void;
   removeMessage: (id: string) => void;
+  requestOutgoingScroll: () => void;
   setMessages: (messages: ChatMessage[]) => void;
   setSendError: (message: string | null) => void;
 }
@@ -35,8 +38,20 @@ export const useChatStore = create<ChatStoreState>((set) => ({
         messages: state.messages.map((chat, index) => (index === existingIndex ? message : chat)),
       };
     }),
-  clearMessages: () => set({ messages: [], sendError: null }),
+  clearMessages: () => set({ messages: [], outgoingScrollRequestId: 0, sendError: null }),
   messages: [],
+  outgoingScrollRequestId: 0,
+  prependMessages: (olderMessages) =>
+    set((state) => {
+      const existingIds = new Set(state.messages.map((message) => message.id));
+      const dedupedMessages = olderMessages.filter((message) => !existingIds.has(message.id));
+
+      if (dedupedMessages.length === 0) {
+        return state;
+      }
+
+      return { messages: [...dedupedMessages, ...state.messages] };
+    }),
   reconcileOptimisticMessage: (tempId, data) =>
     set((state) => {
       const hasReceivedMessage = state.messages.some((message) => message.id === data.id);
@@ -62,6 +77,10 @@ export const useChatStore = create<ChatStoreState>((set) => ({
   removeMessage: (id) =>
     set((state) => ({
       messages: state.messages.filter((message) => message.id !== id),
+    })),
+  requestOutgoingScroll: () =>
+    set((state) => ({
+      outgoingScrollRequestId: state.outgoingScrollRequestId + 1,
     })),
   sendError: null,
   setMessages: (messages) => set({ messages }),

@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/utils';
-import type { ChatMessage, RoomMember } from '@/shared/types/domain';
+import type { RoomMember } from '@/shared/types/domain';
 
 import { ChatPanel } from '@/features/chat/components/ChatPanel';
 import { MemberList } from '@/features/presence/components/MemberList';
@@ -14,24 +14,26 @@ import { MobileTabs, type RoomMobileTab } from '@/features/room/components/Mobil
 
 interface RoomLayoutProps {
   activeMobileTab: RoomMobileTab;
-  chats: ChatMessage[];
   currentUserName: string;
+  currentUserProfileImage?: string | null;
   isHost: boolean;
   members: RoomMember[];
   onMobileTabChange: (tab: RoomMobileTab) => void;
   renderPlayerPanel: () => ReactNode;
   renderPlaylistPanel: () => ReactNode;
+  roomId: string;
 }
 
 export function RoomLayout({
   activeMobileTab,
-  chats,
   currentUserName,
+  currentUserProfileImage,
   isHost,
   members,
   onMobileTabChange,
   renderPlayerPanel,
   renderPlaylistPanel,
+  roomId,
 }: RoomLayoutProps) {
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border xl:flex-row">
@@ -64,7 +66,11 @@ export function RoomLayout({
 
       {activeMobileTab === 'chat' ? (
         <div className="min-h-0 flex-1 overflow-hidden border-t border-border pb-16 xl:hidden">
-          <ChatPanel chats={chats} compact currentUserName={currentUserName} />
+          <ChatPanel
+            currentUserName={currentUserName}
+            currentUserProfileImage={currentUserProfileImage}
+            roomId={roomId}
+          />
         </div>
       ) : null}
 
@@ -80,7 +86,11 @@ export function RoomLayout({
       </div>
 
       <div className="hidden w-room-side min-w-0 shrink-0 self-stretch xl:flex">
-        <ChatPanel chats={chats} />
+        <ChatPanel
+          currentUserName={currentUserName}
+          currentUserProfileImage={currentUserProfileImage}
+          roomId={roomId}
+        />
       </div>
     </section>
   );

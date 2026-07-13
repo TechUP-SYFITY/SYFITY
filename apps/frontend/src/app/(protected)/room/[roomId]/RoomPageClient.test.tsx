@@ -11,6 +11,7 @@ import type { UserProfileResponse } from '@syfity/shared';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
+import { useChatStore } from '@/features/chat/chatStore';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { useRoomStore } from '@/features/room/roomStore';
@@ -41,6 +42,7 @@ describe('RoomPageClient', () => {
     useRoomStore.getState().clearRoom();
     usePlaylistStore.getState().clearPlaylist();
     usePlayerStore.getState().clearPlayback();
+    useChatStore.getState().clearMessages();
   });
 
   it('Strict Mode에서도 join 실패 시 로딩에 머무르지 않고 에러 상태를 렌더링한다', async () => {
@@ -71,6 +73,7 @@ describe('RoomPageClient', () => {
     expect(screen.getAllByText(roomFixture.members[0].nickname).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
     expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
   });
 

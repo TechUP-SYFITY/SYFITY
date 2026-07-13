@@ -38,13 +38,13 @@ describe('RoomLayout', () => {
       render(
         <RoomLayout
           activeMobileTab={activeMobileTab}
-          chats={[]}
           currentUserName="게스트"
           isHost
           members={[]}
           onMobileTabChange={vi.fn()}
           renderPlayerPanel={renderPlayerPanel}
           renderPlaylistPanel={renderPlaylistPanel}
+          roomId="room-1"
         />,
       );
 

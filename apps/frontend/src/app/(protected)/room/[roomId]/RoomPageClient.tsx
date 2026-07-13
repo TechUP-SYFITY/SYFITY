@@ -9,6 +9,7 @@ import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useMe } from '@/features/auth/hooks/useAuth';
+import { useChatStore } from '@/features/chat/chatStore';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
@@ -47,6 +48,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const miniPlayerVolume = usePlayerVolumeStore((state) => state.volume);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
+  const setMessages = useChatStore((state) => state.setMessages);
 
   const hasJoinedRoom = joinRoom.isSuccess;
   const addSearchResult = useAddPlaylistItem(roomId);
@@ -61,7 +63,8 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     setJoinedRoom(joinRoom.data);
     setPlaylist(joinRoom.data.playlist);
     setPlaybackState(joinRoom.data.playbackState, 'room-join');
-  }, [joinRoom.data, setJoinedRoom, setPlaybackState, setPlaylist]);
+    setMessages(joinRoom.data.recentChats);
+  }, [joinRoom.data, setJoinedRoom, setMessages, setPlaybackState, setPlaylist]);
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
@@ -123,8 +126,8 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       <RoomShell
         headerActions={<UserMenu />}
         activeMobileTab={activeMobileTab}
-        chats={[]}
         currentUserName={me?.nickname}
+        currentUserProfileImage={me?.profileImage}
         isHost={isHost}
         miniPlayerCommandError={miniPlayerControls.commandError}
         miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
@@ -162,6 +165,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
           />
         )}
         room={room}
+        roomId={roomId}
       />
       <SearchPanel
         addErrorMessage={

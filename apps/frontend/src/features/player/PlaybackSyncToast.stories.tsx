@@ -49,7 +49,7 @@ function withSyncStatus(syncStatus: PlaybackSyncStatus) {
       return () => {
         usePlayerStore.getState().clearPlayback();
       };
-    }, [syncStatus]);
+    }, []);
 
     return <Story />;
   };

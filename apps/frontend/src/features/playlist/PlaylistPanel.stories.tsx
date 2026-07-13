@@ -56,6 +56,7 @@ const meta = {
     msw: { handlers: [] },
   },
   args: {
+    currentPlaylistItemId: 'story-night-changes',
     roomId,
     isHost: true,
     isReady: true,

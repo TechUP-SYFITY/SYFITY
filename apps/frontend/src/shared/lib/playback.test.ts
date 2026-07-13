@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
-import { getCurrentPlaylistItem } from './playback';
+import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from './playback';
 
 const playlist = [
   createPlaylistItem('playlist-item-1', 'First Track'),
@@ -32,6 +32,41 @@ describe('getCurrentPlaylistItem', () => {
 
   it('playlist가 비어 있으면 undefined를 반환한다', () => {
     expect(getCurrentPlaylistItem([], createPlaybackState())).toBeUndefined();
+  });
+
+  it('현재 곡이 없으면 첫 번째 available 곡을 반환한다', () => {
+    const playlistWithUnavailable = [
+      { ...playlist[0], status: 'unavailable' as const },
+      playlist[1],
+    ];
+
+    expect(getCurrentPlaylistItem(playlistWithUnavailable, null)).toBe(playlist[1]);
+  });
+});
+
+describe('getAdjacentPlayablePlaylistItems', () => {
+  it('현재 곡 앞뒤의 unavailable 곡을 건너뛴다', () => {
+    const currentItem = createPlaylistItem('playlist-item-current', 'Current Track');
+    const previousItem = createPlaylistItem('playlist-item-previous', 'Previous Track');
+    const nextItem = createPlaylistItem('playlist-item-next', 'Next Track');
+    const playlistWithUnavailable = [
+      previousItem,
+      {
+        ...createPlaylistItem('playlist-item-unavailable-1', 'Unavailable'),
+        status: 'unavailable' as const,
+      },
+      currentItem,
+      {
+        ...createPlaylistItem('playlist-item-unavailable-2', 'Unavailable'),
+        status: 'unavailable' as const,
+      },
+      nextItem,
+    ];
+
+    expect(getAdjacentPlayablePlaylistItems(playlistWithUnavailable, currentItem)).toEqual({
+      nextItem,
+      previousItem,
+    });
   });
 });
 

@@ -56,6 +56,7 @@ function createQueryClient() {
 }
 
 function renderPlaylistPanel(options?: {
+  currentPlaylistItemId?: string;
   playlistItems?: PlaylistItem[];
   queryClient?: QueryClient;
 }) {
@@ -64,6 +65,7 @@ function renderPlaylistPanel(options?: {
   render(
     <QueryClientProvider client={queryClient}>
       <PlaylistPanel
+        currentPlaylistItemId={options?.currentPlaylistItemId ?? availableItem.id}
         playlistItems={options?.playlistItems}
         roomId={roomId}
         isHost
@@ -127,6 +129,16 @@ describe('PlaylistPanel', () => {
     expect(getMetaText('Channel One·3:00')).toHaveClass('text-muted-foreground');
     expect(getMetaText('Channel Two·3:20')).toHaveClass('text-muted-foreground/60');
     expect(screen.getByLabelText('Song Two 썸네일')).toHaveClass('opacity-45');
+  });
+
+  it('실제 현재 곡 ID와 일치하는 행만 강조한다', () => {
+    renderPlaylistPanel({
+      currentPlaylistItemId: unavailableItem.id,
+      playlistItems: [availableItem, unavailableItem],
+    });
+
+    expect(screen.getByTestId(`playlist-row-${availableItem.id}`)).not.toHaveClass('bg-primary/5');
+    expect(screen.getByTestId(`playlist-row-${unavailableItem.id}`)).toHaveClass('bg-primary/5');
   });
 
   it('기존 목록이 있으면 API 요청 중이어도 전체 로딩 스피너를 같이 표시하지 않는다', () => {

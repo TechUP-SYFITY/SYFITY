@@ -3,7 +3,7 @@
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
 import { useEffect, useState } from 'react';
 
-import { getCurrentPlaylistItem } from '@/shared/lib/playback';
+import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
 
 import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
@@ -38,6 +38,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
+  const localPlaybackPosition = usePlayerStore((state) => state.localPlaybackPosition);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const playbackState = usePlayerStore((state) => state.playbackState);
   const miniPlayerIsMuted = usePlayerVolumeStore((state) => state.isMuted);
@@ -64,14 +65,15 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
-  const currentIndex = currentTrack
-    ? playlist.findIndex((item) => item.id === currentTrack.id)
-    : -1;
-  const previousItem = currentIndex > 0 ? playlist[currentIndex - 1] : undefined;
-  const nextItem = currentIndex >= 0 ? playlist[currentIndex + 1] : undefined;
-  const miniPlayerHasPlayableTrack = Boolean(currentTrack && playbackState?.videoId);
+  const { nextItem, previousItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
+  const currentTime =
+    localPlaybackPosition && localPlaybackPosition.videoId === playbackState?.videoId
+      ? localPlaybackPosition.currentTime
+      : (playbackState?.currentTime ?? 0);
+  const miniPlayerPlaybackState = playbackState ? { ...playbackState, currentTime } : null;
+  const miniPlayerHasPlayableTrack = Boolean(currentTrack);
   const miniPlayerControls = usePlayerControls({
-    currentTime: playbackState?.currentTime ?? 0,
+    currentTime,
     hasPlayableTrack: miniPlayerHasPlayableTrack,
     isHost,
     isPlaying: playbackState?.isPlaying ?? false,
@@ -136,15 +138,23 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
         onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
         onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
+        onMiniPlayerSeek={miniPlayerControls.handleSeek}
         onMiniPlayerVolumeChange={setMiniPlayerVolume}
         onMobileTabChange={setActiveMobileTab}
-        playbackState={playbackState}
+        playbackState={miniPlayerPlaybackState}
         playlist={playlist}
         renderPlayerPanel={() => (
-          <PlayerPanel roomId={roomId} isHost={isHost} playlist={playlist} />
+          <PlayerPanel
+            roomId={roomId}
+            isHost={isHost}
+            onEnded={miniPlayerControls.handleNextTrack}
+            onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
+            playlist={playlist}
+          />
         )}
         renderPlaylistPanel={() => (
           <PlaylistPanel
+            currentPlaylistItemId={currentTrack?.id ?? null}
             roomId={roomId}
             isHost={isHost}
             isReady={hasJoinedRoom}

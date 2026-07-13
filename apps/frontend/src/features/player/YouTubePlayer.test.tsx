@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { usePlayerStore } from './playerStore';
 import type { PlayerPlaybackState } from './playerTypes';
 import { usePlayerVolumeStore } from './playerVolumeStore';
 import { YouTubePlayer } from './YouTubePlayer';
@@ -29,6 +30,9 @@ const playbackState: PlayerPlaybackState = {
 };
 
 const players: MockPlayer[] = [];
+let deferPlayerReady = false;
+let mockCurrentTime = 0;
+let playerOptions: YT.PlayerOptions | null = null;
 
 describe('YouTubePlayer', () => {
   beforeEach(() => {
@@ -37,6 +41,10 @@ describe('YouTubePlayer', () => {
       previousVolume: 70,
       volume: 70,
     });
+    usePlayerStore.getState().clearPlayback();
+    deferPlayerReady = false;
+    mockCurrentTime = 0;
+    playerOptions = null;
     players.length = 0;
 
     vi.stubGlobal('YT', {
@@ -44,7 +52,7 @@ describe('YouTubePlayer', () => {
         const player: MockPlayer = {
           cueVideoById: vi.fn(),
           destroy: vi.fn(),
-          getCurrentTime: vi.fn(() => 0),
+          getCurrentTime: vi.fn(() => mockCurrentTime),
           loadVideoById: vi.fn(),
           mute: vi.fn(),
           pauseVideo: vi.fn(),
@@ -55,13 +63,18 @@ describe('YouTubePlayer', () => {
         };
 
         players.push(player);
-        options.events?.onReady?.({ target: player as unknown as YT.Player });
+        playerOptions = options;
+
+        if (!deferPlayerReady) {
+          options.events?.onReady?.({ target: player as unknown as YT.Player });
+        }
 
         return player;
       }),
       PlayerState: {
         BUFFERING: 3,
         ENDED: 0,
+        PAUSED: 2,
         PLAYING: 1,
       },
     });
@@ -69,7 +82,9 @@ describe('YouTubePlayer', () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
+    usePlayerStore.getState().clearPlayback();
   });
 
   it('player ready 시 현재 로컬 볼륨을 적용한다', async () => {
@@ -79,6 +94,7 @@ describe('YouTubePlayer', () => {
         onBufferingRecovered={vi.fn()}
         onEnded={vi.fn()}
         onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
       />,
     );
 
@@ -95,6 +111,7 @@ describe('YouTubePlayer', () => {
         onBufferingRecovered={vi.fn()}
         onEnded={vi.fn()}
         onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
       />,
     );
 
@@ -119,6 +136,7 @@ describe('YouTubePlayer', () => {
         onBufferingRecovered={vi.fn()}
         onEnded={vi.fn()}
         onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
       />,
     );
 
@@ -133,5 +151,197 @@ describe('YouTubePlayer', () => {
     await waitFor(() => {
       expect(players[0]?.mute).toHaveBeenCalled();
     });
+  });
+
+  it('IFrame Player 현재 시간을 로컬 player store에 연결한다', async () => {
+    mockCurrentTime = 42;
+
+    render(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(
+      () => {
+        expect(usePlayerStore.getState().localPlaybackPosition).toEqual({
+          currentTime: 42,
+          videoId: 'video-1',
+        });
+      },
+      { timeout: 1_500 },
+    );
+  });
+
+  it('재생 중인 현재 시간을 1초보다 짧은 간격으로 다시 반영한다', async () => {
+    vi.useFakeTimers();
+    mockCurrentTime = 10;
+
+    render(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(usePlayerStore.getState().localPlaybackPosition?.currentTime).toBe(10);
+    mockCurrentTime = 11;
+
+    act(() => {
+      vi.advanceTimersByTime(249);
+    });
+    expect(usePlayerStore.getState().localPlaybackPosition?.currentTime).toBe(10);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(usePlayerStore.getState().localPlaybackPosition?.currentTime).toBe(11);
+  });
+
+  it('일시정지 상태에서는 로컬 재생 위치를 주기적으로 갱신하지 않는다', async () => {
+    mockCurrentTime = 42;
+
+    render(
+      <YouTubePlayer
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players[0]).toBeDefined();
+    });
+    expect(usePlayerStore.getState().localPlaybackPosition).toBeNull();
+  });
+
+  it('player ready가 늦어져도 가장 최신 playbackState를 적용한다', async () => {
+    deferPlayerReady = true;
+    const nextPlaybackState: PlayerPlaybackState = {
+      currentTime: 30,
+      isPlaying: true,
+      playlistItemId: 'playlist-item-2',
+      videoId: 'video-2',
+    };
+    const { rerender } = render(
+      <YouTubePlayer
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players[0]).toBeDefined();
+    });
+
+    rerender(
+      <YouTubePlayer
+        playbackState={nextPlaybackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    expect(players).toHaveLength(1);
+    expect(players[0]?.destroy).not.toHaveBeenCalled();
+
+    act(() => {
+      playerOptions?.events?.onReady?.({ target: players[0] as unknown as YT.Player });
+    });
+
+    expect(players[0]?.loadVideoById).toHaveBeenCalledWith({
+      startSeconds: 30,
+      videoId: 'video-2',
+    });
+  });
+
+  it('이벤트 콜백이 변경돼도 IFrame Player를 재생성하지 않고 최신 콜백을 호출한다', async () => {
+    const initialOnEnded = vi.fn();
+    const latestOnEnded = vi.fn();
+    const { rerender } = render(
+      <YouTubePlayer
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={initialOnEnded}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players).toHaveLength(1);
+    });
+
+    rerender(
+      <YouTubePlayer
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={latestOnEnded}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    act(() => {
+      playerOptions?.events?.onStateChange?.({
+        data: window.YT.PlayerState.ENDED,
+        target: players[0] as unknown as YT.Player,
+      });
+    });
+
+    expect(players).toHaveLength(1);
+    expect(players[0]?.destroy).not.toHaveBeenCalled();
+    expect(initialOnEnded).not.toHaveBeenCalled();
+    expect(latestOnEnded).toHaveBeenCalledOnce();
+  });
+
+  it('IFrame 재생 상태가 서버 상태와 달라지면 현재 위치와 상태를 전달한다', async () => {
+    mockCurrentTime = 42;
+    const onPlaybackStateChange = vi.fn();
+
+    render(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={onPlaybackStateChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players).toHaveLength(1);
+    });
+
+    act(() => {
+      playerOptions?.events?.onStateChange?.({
+        data: window.YT.PlayerState.PAUSED,
+        target: players[0] as unknown as YT.Player,
+      });
+    });
+
+    expect(onPlaybackStateChange).toHaveBeenCalledWith(false, 42);
   });
 });

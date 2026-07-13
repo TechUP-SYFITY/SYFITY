@@ -83,14 +83,15 @@ describe('PlaylistPanel reorder', () => {
       vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
 
       render(
-        <QueryClientProvider client={createQueryClient()}>
-          <PlaylistPanel
-            playlistItems={[firstItem, secondItem]}
+          <QueryClientProvider client={createQueryClient()}>
+            <PlaylistPanel
+              currentPlaylistItemId={firstItem.id}
+              playlistItems={[firstItem, secondItem]}
             roomId={roomId}
-            isHost
-            isReady
-            onOpenSearch={vi.fn()}
-          />
+              isHost
+              isReady
+              onOpenSearch={vi.fn()}
+            />
         </QueryClientProvider>,
       );
 
@@ -142,14 +143,15 @@ describe('PlaylistPanel reorder', () => {
     vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
 
     render(
-      <QueryClientProvider client={createQueryClient()}>
-        <PlaylistPanel
-          playlistItems={[firstItem, secondItem]}
+        <QueryClientProvider client={createQueryClient()}>
+          <PlaylistPanel
+            currentPlaylistItemId={firstItem.id}
+            playlistItems={[firstItem, secondItem]}
           roomId={roomId}
-          isHost
-          isReady
-          onOpenSearch={vi.fn()}
-        />
+            isHost
+            isReady
+            onOpenSearch={vi.fn()}
+          />
       </QueryClientProvider>,
     );
 

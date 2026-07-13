@@ -39,11 +39,13 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const joinRoom = useJoinRoom(roomId);
   const { data: me } = useMe();
+  const hostConnection = useRoomStore((state) => state.hostConnection);
   const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
   const localPlaybackPosition = usePlayerStore((state) => state.localPlaybackPosition);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
+  const clearPlayback = usePlayerStore((state) => state.clearPlayback);
   const playbackState = usePlayerStore((state) => state.playbackState);
   const miniPlayerIsMuted = usePlayerVolumeStore((state) => state.isMuted);
   const setMiniPlayerVolume = usePlayerVolumeStore((state) => state.setVolume);
@@ -56,7 +58,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const hasJoinedRoom = joinRoom.isSuccess;
   const addSearchResult = useAddPlaylistItem(roomId);
 
-  useRoomLiveConnections(roomId, hasJoinedRoom);
+  useRoomLiveConnections(roomId, hasJoinedRoom, clearPlayback);
 
   useEffect(() => {
     if (!joinRoom.data) {
@@ -70,6 +72,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   }, [joinRoom.data, setJoinedRoom, setMessages, setPlaybackState, setPlaylist]);
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
+  const canControlRoom = isHost && hostConnection.status === 'connected';
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const { nextItem, previousItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
   const currentTime =
@@ -81,7 +84,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const miniPlayerControls = usePlayerControls({
     currentTime,
     hasPlayableTrack: miniPlayerHasPlayableTrack,
-    isHost,
+    isHost: canControlRoom,
     isPlaying: playbackState?.isPlaying ?? false,
     nextItemId: nextItem?.id,
     previousItemId: previousItem?.id,
@@ -131,7 +134,8 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         activeMobileTab={activeMobileTab}
         currentUserName={me?.nickname}
         currentUserProfileImage={me?.profileImage}
-        isHost={isHost}
+        hostConnection={hostConnection}
+        isHost={canControlRoom}
         miniPlayerCommandError={miniPlayerControls.commandError}
         miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
         miniPlayerIsMuted={miniPlayerIsMuted}
@@ -153,7 +157,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         renderPlayerPanel={() => (
           <PlayerPanel
             roomId={roomId}
-            isHost={isHost}
+            isHost={canControlRoom}
             onEnded={miniPlayerControls.handleNextTrack}
             onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
             playlist={playlist}
@@ -163,7 +167,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
           <PlaylistPanel
             currentPlaylistItemId={currentTrack?.id ?? null}
             roomId={roomId}
-            isHost={isHost}
+            isHost={canControlRoom}
             isReady={hasJoinedRoom}
             onOpenSearch={handleOpenSearch}
           />

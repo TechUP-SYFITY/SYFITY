@@ -7,9 +7,11 @@ import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaybackState, PlaylistItem, RoomDetail, RoomMember } from '@/shared/types/domain';
 
+import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
 import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/room/components/MiniPlayer';
 import type { RoomMobileTab } from '@/features/room/components/MobileTabs';
 import { RoomStatusBar } from '@/features/room/components/RoomStatusBar';
+import type { HostConnectionState } from '@/features/room/roomTypes';
 
 import { RoomLayout } from './components/RoomLayout';
 
@@ -20,6 +22,7 @@ interface RoomShellProps {
   currentUserName?: string;
   currentUserProfileImage?: string | null;
   headerActions?: ReactNode;
+  hostConnection: HostConnectionState;
   isHost: boolean;
   miniPlayerCommandError: string | null;
   miniPlayerControlDisabled: boolean;
@@ -50,6 +53,7 @@ export function RoomShell({
   currentUserName = '게스트',
   currentUserProfileImage,
   headerActions,
+  hostConnection,
   isHost,
   miniPlayerCommandError,
   miniPlayerControlDisabled,
@@ -86,11 +90,13 @@ export function RoomShell({
           onlineMemberCount={onlineMemberCount}
           room={room}
         />
+        {hostConnection.status === 'connected' ? null : (
+          <HostConnectionNotice hostConnection={hostConnection} />
+        )}
         <RoomLayout
           activeMobileTab={activeMobileTab}
           currentUserName={currentUserName}
           currentUserProfileImage={currentUserProfileImage}
-          isHost={isHost}
           members={members}
           onMobileTabChange={onMobileTabChange}
           renderPlayerPanel={renderPlayerPanel}

@@ -76,7 +76,7 @@ export function InviteCodeDialog({
           <DialogCloseButton />
         </DialogHeader>
 
-        <div className="flex flex-col gap-5 p-5 sm:hidden">
+        <div className="flex min-w-0 flex-col gap-5 p-5 sm:hidden">
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold text-white/50">초대 코드</span>
             <div className="flex flex-col gap-2.5 rounded-2xl border border-primary/20 bg-primary/6 p-4">

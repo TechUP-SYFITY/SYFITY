@@ -9,16 +9,16 @@ import type { GetChatsResponse } from '@syfity/shared';
 import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { chatApi, type ChatHistoryCursor } from './chatApi';
-import { CHAT_HISTORY_PAGE_SIZE, CHAT_MAX_MESSAGE_LENGTH } from './chatConstants';
+import { chatApi, type ChatHistoryCursor } from '../api/chatApi';
+import { CHAT_HISTORY_PAGE_SIZE, CHAT_MAX_MESSAGE_LENGTH } from '../constants/chatConstants';
 import {
   captureScrollAnchor,
   isNearBottom,
   restoreScrollTopAfterPrepend,
   scrollToBottom,
   type ScrollAnchor,
-} from './chatScrollUtils';
-import { useChatStore } from './chatStore';
+} from '../lib/chatScrollUtils';
+import { useChatStore } from '../store/chatStore';
 
 type ChatHistoryPage = GetChatsResponse['data'];
 type ChatHistoryQueryKey = ReturnType<typeof chatQueryKeys.history>;

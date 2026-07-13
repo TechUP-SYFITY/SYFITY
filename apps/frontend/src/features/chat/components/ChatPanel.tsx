@@ -5,13 +5,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
 import type { ChatMessage } from '@/shared/types/domain';
 
-import { useChatScroll, useSendChatMessage, type UseChatScrollResult } from '../chatHooks';
-import { useChatStore } from '../chatStore';
 import { ChatHistoryStatus } from './ChatHistoryStatus';
 import { ChatInputForm } from './ChatInputForm';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSystemMessage } from './ChatSystemMessage';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
+import { useChatScroll, useSendChatMessage, type UseChatScrollResult } from '../hooks/chatHooks';
+import { useChatStore } from '../store/chatStore';
 
 interface ChatPanelProps {
   chatScrollResult?: UseChatScrollResult;

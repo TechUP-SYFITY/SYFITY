@@ -4,12 +4,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { UseChatScrollResult } from '../chatHooks';
-import { useChatScroll, useSendChatMessage } from '../chatHooks';
-import { useChatStore } from '../chatStore';
 import { ChatPanel } from './ChatPanel';
+import type { UseChatScrollResult } from '../hooks/chatHooks';
+import { useChatScroll, useSendChatMessage } from '../hooks/chatHooks';
+import { useChatStore } from '../store/chatStore';
 
-vi.mock('../chatHooks', () => ({
+vi.mock('../hooks/chatHooks', () => ({
   useChatScroll: vi.fn(),
   useSendChatMessage: vi.fn(),
 }));

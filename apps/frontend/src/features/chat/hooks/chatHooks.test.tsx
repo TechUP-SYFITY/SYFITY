@@ -19,15 +19,15 @@ import type {
   ServerToClientEvents,
 } from '@/shared/types/socket';
 
-import { chatApi } from './chatApi';
-import { CHAT_MAX_MESSAGE_LENGTH } from './chatConstants';
 import {
   type UseChatScrollResult,
   useChatScroll,
   useChatSocket,
   useSendChatMessage,
 } from './chatHooks';
-import { useChatStore } from './chatStore';
+import { chatApi } from '../api/chatApi';
+import { CHAT_MAX_MESSAGE_LENGTH } from '../constants/chatConstants';
+import { useChatStore } from '../store/chatStore';
 
 const socketMock = vi.hoisted(() => ({
   connect: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('@/shared/lib/socket/socketClient', () => ({
   },
 }));
 
-vi.mock('./chatApi', () => ({
+vi.mock('../api/chatApi', () => ({
   chatApi: {
     getChatHistory: vi.fn(),
   },

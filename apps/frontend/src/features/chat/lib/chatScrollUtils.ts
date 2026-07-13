@@ -1,4 +1,4 @@
-import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from './chatConstants';
+import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from '../constants/chatConstants';
 
 export interface ScrollAnchor {
   scrollTop: number;

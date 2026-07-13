@@ -9,7 +9,7 @@ import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useMe } from '@/features/auth/hooks/useAuth';
-import { useChatStore } from '@/features/chat/chatStore';
+import { useChatStore } from '@/features/chat/store/chatStore';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';

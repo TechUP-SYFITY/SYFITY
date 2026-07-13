@@ -11,7 +11,7 @@ import type { UserProfileResponse } from '@syfity/shared';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
-import { useChatStore } from '@/features/chat/chatStore';
+import { useChatStore } from '@/features/chat/store/chatStore';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import { useRoomStore } from '@/features/room/roomStore';

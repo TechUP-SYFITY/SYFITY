@@ -7,7 +7,7 @@ import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
-import { CHAT_MAX_MESSAGE_LENGTH } from '../chatConstants';
+import { CHAT_MAX_MESSAGE_LENGTH } from '../constants/chatConstants';
 
 interface ChatInputFormProps {
   errorMessage?: string;

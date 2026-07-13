@@ -19,73 +19,50 @@ vi.mock('@/features/room/components/RoomStatusBar', () => ({
   RoomStatusBar: () => null,
 }));
 
-vi.mock('./components/RoomDesktopLayout', () => ({
-  RoomDesktopLayout: ({ renderPlayerPanel }: { renderPlayerPanel: () => ReactNode }) => (
-    <div data-testid="desktop-layout">{renderPlayerPanel()}</div>
-  ),
-}));
-
-vi.mock('./components/RoomMobileLayout', () => ({
-  RoomMobileLayout: ({ renderPlayerPanel }: { renderPlayerPanel: () => ReactNode }) => (
-    <div data-testid="mobile-layout">{renderPlayerPanel()}</div>
+vi.mock('./components/RoomLayout', () => ({
+  RoomLayout: ({ renderPlayerPanel }: { renderPlayerPanel: () => ReactNode }) => (
+    <div data-testid="room-layout">{renderPlayerPanel()}</div>
   ),
 }));
 
 describe('RoomShell', () => {
   afterEach(() => {
     cleanup();
-    vi.unstubAllGlobals();
   });
 
-  it.each([
-    { isDesktop: true, visibleLayout: 'desktop-layout', hiddenLayout: 'mobile-layout' },
-    { isDesktop: false, visibleLayout: 'mobile-layout', hiddenLayout: 'desktop-layout' },
-  ])(
-    '$visibleLayout viewport에서 Player panel을 한 번만 렌더링한다',
-    ({ hiddenLayout, isDesktop, visibleLayout }) => {
-      vi.stubGlobal('matchMedia', createMatchMedia(isDesktop));
-      const renderPlayerPanel = vi.fn(() => <div data-testid="player-panel" />);
+  it('viewport 판정 없이 Player panel을 한 번만 렌더링한다', () => {
+    const renderPlayerPanel = vi.fn(() => <div data-testid="player-panel" />);
 
-      render(
-        <RoomShell
-          activeMobileTab="playlist"
-          chats={[]}
-          isHost
-          members={[]}
-          miniPlayerCommandError={null}
-          miniPlayerControlDisabled={false}
-          miniPlayerIsMuted={false}
-          miniPlayerNextDisabled
-          miniPlayerPendingCommand={null}
-          miniPlayerPreviousDisabled
-          miniPlayerVolume={70}
-          onMiniPlayerNextTrack={vi.fn()}
-          onMiniPlayerPlayPause={vi.fn()}
-          onMiniPlayerPreviousTrack={vi.fn()}
-          onMiniPlayerSeek={vi.fn()}
-          onMiniPlayerVolumeChange={vi.fn()}
-          onMobileTabChange={vi.fn()}
-          onMuteToggle={vi.fn()}
-          playbackState={null}
-          playlist={[]}
-          renderPlayerPanel={renderPlayerPanel}
-          renderPlaylistPanel={() => null}
-          room={null}
-        />,
-      );
+    render(
+      <RoomShell
+        activeMobileTab="playlist"
+        chats={[]}
+        isHost
+        members={[]}
+        miniPlayerCommandError={null}
+        miniPlayerControlDisabled={false}
+        miniPlayerIsMuted={false}
+        miniPlayerNextDisabled
+        miniPlayerPendingCommand={null}
+        miniPlayerPreviousDisabled
+        miniPlayerVolume={70}
+        onMiniPlayerNextTrack={vi.fn()}
+        onMiniPlayerPlayPause={vi.fn()}
+        onMiniPlayerPreviousTrack={vi.fn()}
+        onMiniPlayerSeek={vi.fn()}
+        onMiniPlayerVolumeChange={vi.fn()}
+        onMobileTabChange={vi.fn()}
+        onMuteToggle={vi.fn()}
+        playbackState={null}
+        playlist={[]}
+        renderPlayerPanel={renderPlayerPanel}
+        renderPlaylistPanel={() => null}
+        room={null}
+      />,
+    );
 
-      expect(screen.getByTestId(visibleLayout)).toBeInTheDocument();
-      expect(screen.queryByTestId(hiddenLayout)).not.toBeInTheDocument();
-      expect(screen.getAllByTestId('player-panel')).toHaveLength(1);
-      expect(renderPlayerPanel).toHaveBeenCalledTimes(1);
-    },
-  );
+    expect(screen.getByTestId('room-layout')).toBeInTheDocument();
+    expect(screen.getAllByTestId('player-panel')).toHaveLength(1);
+    expect(renderPlayerPanel).toHaveBeenCalledTimes(1);
+  });
 });
-
-function createMatchMedia(matches: boolean) {
-  return vi.fn().mockImplementation(() => ({
-    addEventListener: vi.fn(),
-    matches,
-    removeEventListener: vi.fn(),
-  }));
-}

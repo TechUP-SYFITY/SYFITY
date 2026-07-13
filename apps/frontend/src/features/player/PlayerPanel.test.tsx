@@ -142,6 +142,10 @@ describe('PlayerPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('pending');
+    expect(
+      screen.getByText('광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다'),
+    ).toBeInTheDocument();
   });
 
   it('IFrame 일시정지 이벤트를 공통 Player 제어 handler로 전달한다', () => {
@@ -172,6 +176,10 @@ describe('PlayerPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mock buffering recovered' }));
 
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
+    expect(
+      screen.queryByText('광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다'),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Song One' })).toBeInTheDocument();
   });
 

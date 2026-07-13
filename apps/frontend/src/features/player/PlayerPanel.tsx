@@ -8,6 +8,7 @@ import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { playbackCommands } from './playbackCommands';
+import { PlaybackSyncToast } from './PlaybackSyncToast';
 import { usePlayerStore } from './playerStore';
 import { YouTubePlayer } from './YouTubePlayer';
 
@@ -28,6 +29,8 @@ export function PlayerPanel({
 }: PlayerPanelProps) {
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playbackError = usePlayerStore((state) => state.playbackError);
+  const beginPlaybackSync = usePlayerStore((state) => state.beginPlaybackSync);
+  const clearPlaybackSync = usePlayerStore((state) => state.clearPlaybackSync);
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const posterUrl = currentTrack ? getThumbnailUrl(currentTrack) : null;
   const shouldShowPoster = Boolean(posterUrl) && !playbackState?.isPlaying;
@@ -37,9 +40,11 @@ export function PlayerPanel({
       return;
     }
 
+    beginPlaybackSync();
     try {
       playbackCommands.requestSync(roomId);
     } catch {
+      clearPlaybackSync();
       // 자동 동기화 요청은 다음 서버 tick에서 다시 보정된다.
     }
   }
@@ -112,6 +117,7 @@ export function PlayerPanel({
           </p>
         ) : null}
       </div>
+      <PlaybackSyncToast />
     </section>
   );
 }

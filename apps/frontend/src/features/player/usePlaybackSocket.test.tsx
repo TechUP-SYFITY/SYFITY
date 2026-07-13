@@ -67,12 +67,14 @@ describe('usePlaybackSocket', () => {
     renderHook(() => usePlaybackSocket(true));
 
     act(() => {
+      usePlayerStore.getState().beginPlaybackSync();
       listeners.get('playback:sync-response')?.(playbackState);
     });
 
     expect(usePlayerStore.getState()).toMatchObject({
       lastEventSource: 'sync-response',
       playbackState,
+      playbackSyncStatus: 'synced',
     });
   });
 

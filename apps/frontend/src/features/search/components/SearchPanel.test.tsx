@@ -77,32 +77,33 @@ describe('SearchPanel', () => {
     expect(useYoutubeSearchQueryMock).toHaveBeenCalledWith('Coldplay');
   });
 
-  it('uses a four-fifths viewport height for the mobile bottom sheet', () => {
+  it('keeps dialog accessibility full-screen while sizing only the visual surface', () => {
     renderPanel();
 
     const dialog = screen.getByRole('dialog', { name: '곡 추가' });
+    const surface = dialog.querySelector('[data-search-panel-surface]');
 
-    expect(dialog.className).toContain('h-[80dvh]');
-    expect(dialog.className).toContain('max-h-[calc(100dvh-1rem)]');
-    expect(dialog.className).not.toContain('h-[66.667dvh]');
-    expect(dialog.className).not.toContain('max-h-[620px]');
+    expect(dialog).toHaveClass('fixed', 'inset-0', 'pointer-events-none');
+    expect(dialog).not.toHaveClass('overflow-hidden', 'lg:-translate-x-1/2');
+    expect(surface).toHaveClass(
+      'pointer-events-auto',
+      'h-[80dvh]',
+      'max-h-[calc(100dvh-1rem)]',
+      'overflow-hidden',
+      'lg:w-md',
+      'lg:-translate-x-1/2',
+    );
   });
 
-  it('uses the shared medium width token on desktop', () => {
-    renderPanel();
+  it('renders feedback beside the visual surface inside the dialog subtree', () => {
+    renderPanel({ feedback: <p>곡 추가 피드백</p> });
 
     const dialog = screen.getByRole('dialog', { name: '곡 추가' });
+    const surface = dialog.querySelector('[data-search-panel-surface]');
+    const feedback = within(dialog).getByText('곡 추가 피드백');
 
-    expect(dialog.className).toContain('lg:w-md');
-    expect(dialog.className).not.toContain('lg:w-[448px]');
-  });
-
-  it('renders feedback inside the dialog accessibility subtree', () => {
-    renderPanel({ feedback: <p role="status">곡 추가 피드백</p> });
-
-    const dialog = screen.getByRole('dialog', { name: '곡 추가' });
-
-    expect(within(dialog).getByRole('status')).toHaveTextContent('곡 추가 피드백');
+    expect(dialog).toContainElement(feedback);
+    expect(surface).not.toContainElement(feedback);
   });
 
   it('connects each tab and tabpanel in both accessibility directions', () => {

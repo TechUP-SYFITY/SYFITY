@@ -86,7 +86,7 @@ export function SearchPanel({
         <DialogPrimitive.Content
           aria-describedby={undefined}
           aria-label="곡 추가"
-          className="fixed right-0 bottom-0 left-0 z-50 flex h-[80dvh] max-h-[calc(100dvh-1rem)] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 outline-none slide-in-from-bottom-4 lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-md lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
+          className="pointer-events-none fixed inset-0 z-50 outline-none"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             if (addMode === 'search') {
@@ -97,152 +97,160 @@ export function SearchPanel({
             linkInputRef.current?.focus();
           }}
         >
-          <div className="flex h-5 items-center justify-center border-b border-white/[0.04] lg:hidden">
-            <span className="h-1 w-10 rounded-full bg-white/20" />
-          </div>
-
-          <header className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4 lg:px-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#72f4a4]/25 bg-[#72f4a4]/12 text-[#72f4a4] shadow-[0_0_22px_rgba(114,244,164,0.12)] lg:h-8 lg:w-8">
-                <Music2 className="h-4 w-4" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <DialogPrimitive.Title className="text-base font-bold lg:text-sm">
-                  곡 추가
-                </DialogPrimitive.Title>
-                <p className="mt-0.5 truncate text-xs text-white/40">{roomName}</p>
-              </div>
-            </div>
-            <DialogPrimitive.Close asChild>
-              <button
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-white/55 transition hover:bg-white/[0.1] hover:text-white lg:h-7 lg:w-7 lg:bg-transparent"
-                type="button"
-                aria-label="검색 패널 닫기"
-              >
-                <ChevronDown className="h-4 w-4 lg:hidden" aria-hidden />
-                <X className="hidden h-4 w-4 lg:block" aria-hidden />
-              </button>
-            </DialogPrimitive.Close>
-          </header>
-
-          <Tabs
-            className="flex min-h-0 flex-1 flex-col"
-            value={addMode}
-            onValueChange={(value) => setAddMode(value as AddMode)}
+          <div
+            data-search-panel-surface
+            className="pointer-events-auto absolute right-0 bottom-0 left-0 flex h-[80dvh] max-h-[calc(100dvh-1rem)] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/[0.08] bg-[#101012]/95 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 outline-none slide-in-from-bottom-4 lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-md lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
           >
-            <TabsList
-              className="grid grid-cols-2 gap-1 border-b border-white/[0.07] bg-white/[0.025] p-1"
-              aria-label="곡 추가 방식"
-            >
-              <TabsTrigger
-                className="rounded-xl border-b-0 px-3 py-2 text-xs font-bold text-white/45 transition hover:text-white/70 data-[state=active]:border-transparent data-[state=active]:bg-white/[0.09] data-[state=active]:text-[#72f4a4]"
-                value="search"
-              >
-                검색
-              </TabsTrigger>
-              <TabsTrigger
-                className="rounded-xl border-b-0 px-3 py-2 text-xs font-bold text-white/45 transition hover:text-white/70 data-[state=active]:border-transparent data-[state=active]:bg-white/[0.09] data-[state=active]:text-[#72f4a4]"
-                value="link"
-              >
-                링크
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex h-5 items-center justify-center border-b border-white/[0.04] lg:hidden">
+              <span className="h-1 w-10 rounded-full bg-white/20" />
+            </div>
 
-            <TabsContent value="search" className="flex min-h-0 flex-1 flex-col">
-              <div className="border-b border-white/[0.07] px-4 py-4">
-                <div className="relative">
-                  <Search
-                    className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
-                    aria-hidden
-                  />
-                  <input
-                    ref={searchInputRef}
-                    className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-11 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09]"
-                    placeholder="YouTube 영상 검색"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
-                  {query ? (
-                    <button
-                      className="absolute top-1/2 right-4 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-white/38 transition hover:text-white/70"
-                      type="button"
-                      aria-label="검색어 지우기"
-                      onClick={() => setQuery('')}
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    </button>
+            <header className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4 lg:px-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#72f4a4]/25 bg-[#72f4a4]/12 text-[#72f4a4] shadow-[0_0_22px_rgba(114,244,164,0.12)] lg:h-8 lg:w-8">
+                  <Music2 className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <DialogPrimitive.Title className="text-base font-bold lg:text-sm">
+                    곡 추가
+                  </DialogPrimitive.Title>
+                  <p className="mt-0.5 truncate text-xs text-white/40">{roomName}</p>
+                </div>
+              </div>
+              <DialogPrimitive.Close asChild>
+                <button
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-white/55 transition hover:bg-white/[0.1] hover:text-white lg:h-7 lg:w-7 lg:bg-transparent"
+                  type="button"
+                  aria-label="검색 패널 닫기"
+                >
+                  <ChevronDown className="h-4 w-4 lg:hidden" aria-hidden />
+                  <X className="hidden h-4 w-4 lg:block" aria-hidden />
+                </button>
+              </DialogPrimitive.Close>
+            </header>
+
+            <Tabs
+              className="flex min-h-0 flex-1 flex-col"
+              value={addMode}
+              onValueChange={(value) => setAddMode(value as AddMode)}
+            >
+              <TabsList
+                className="grid grid-cols-2 gap-1 border-b border-white/[0.07] bg-white/[0.025] p-1"
+                aria-label="곡 추가 방식"
+              >
+                <TabsTrigger
+                  className="rounded-xl border-b-0 px-3 py-2 text-xs font-bold text-white/45 transition hover:text-white/70 data-[state=active]:border-transparent data-[state=active]:bg-white/[0.09] data-[state=active]:text-[#72f4a4]"
+                  value="search"
+                >
+                  검색
+                </TabsTrigger>
+                <TabsTrigger
+                  className="rounded-xl border-b-0 px-3 py-2 text-xs font-bold text-white/45 transition hover:text-white/70 data-[state=active]:border-transparent data-[state=active]:bg-white/[0.09] data-[state=active]:text-[#72f4a4]"
+                  value="link"
+                >
+                  링크
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="search" className="flex min-h-0 flex-1 flex-col">
+                <div className="border-b border-white/[0.07] px-4 py-4">
+                  <div className="relative">
+                    <Search
+                      className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
+                      aria-hidden
+                    />
+                    <input
+                      ref={searchInputRef}
+                      className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-11 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09]"
+                      placeholder="YouTube 영상 검색"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                    />
+                    {query ? (
+                      <button
+                        className="absolute top-1/2 right-4 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-white/38 transition hover:text-white/70"
+                        type="button"
+                        aria-label="검색어 지우기"
+                        onClick={() => setQuery('')}
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="min-h-[280px] flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                  {searchQuery.isLoading ? <SearchPanelLoading /> : null}
+                  {searchQuery.isError ? (
+                    <SearchPanelError message={searchQuery.error.message} />
+                  ) : null}
+                  {!searchQuery.isLoading && !searchQuery.isError && hasResults ? (
+                    <>
+                      <p className="border-b border-white/[0.055] px-4 py-3 text-xs text-white/45">
+                        검색 결과 {results.length}개
+                      </p>
+                      <ul>
+                        {results.map((result) => (
+                          <SearchResultItem
+                            key={result.videoId}
+                            isAddPending={isAddPending}
+                            result={result}
+                            onAdd={onAddResult ? () => onAddResult(result) : undefined}
+                          />
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                  {shouldShowEmpty ? <SearchPanelEmpty query={trimmedQuery} /> : null}
+                  {!hasSearchQuery && !searchQuery.isLoading && !searchQuery.isError ? (
+                    <SearchPanelIdle />
                   ) : null}
                 </div>
-              </div>
-              <div className="min-h-[280px] flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
-                {searchQuery.isLoading ? <SearchPanelLoading /> : null}
-                {searchQuery.isError ? (
-                  <SearchPanelError message={searchQuery.error.message} />
-                ) : null}
-                {!searchQuery.isLoading && !searchQuery.isError && hasResults ? (
-                  <>
-                    <p className="border-b border-white/[0.055] px-4 py-3 text-xs text-white/45">
-                      검색 결과 {results.length}개
-                    </p>
-                    <ul>
-                      {results.map((result) => (
-                        <SearchResultItem
-                          key={result.videoId}
-                          isAddPending={isAddPending}
-                          result={result}
-                          onAdd={onAddResult ? () => onAddResult(result) : undefined}
-                        />
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-                {shouldShowEmpty ? <SearchPanelEmpty query={trimmedQuery} /> : null}
-                {!hasSearchQuery && !searchQuery.isLoading && !searchQuery.isError ? (
-                  <SearchPanelIdle />
-                ) : null}
-              </div>
-            </TabsContent>
-            <TabsContent asChild value="link">
-              <form
-                className="flex min-h-[360px] flex-1 flex-col px-5 py-6"
-                onSubmit={handleLinkSubmit}
-              >
-                <label className="text-sm font-bold text-white" htmlFor="search-panel-youtube-url">
-                  YouTube 링크
-                </label>
-                <p className="mt-1 text-xs leading-5 text-white/45">
-                  YouTube 또는 YouTube Music의 공유 링크를 붙여 넣어주세요.
-                </p>
-                <div className="relative mt-5">
-                  <Link2
-                    className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
-                    aria-hidden
-                  />
-                  <input
-                    ref={linkInputRef}
-                    id="search-panel-youtube-url"
-                    className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-4 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="YouTube URL"
-                    value={youtubeUrl}
-                    disabled={isAddPending}
-                    onChange={(event) => setYoutubeUrl(event.target.value)}
-                  />
-                </div>
-                <button
-                  className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[18px] bg-[#72f4a4] px-4 text-sm font-bold text-black transition hover:bg-[#8af7b5] disabled:cursor-not-allowed disabled:opacity-45"
-                  type="submit"
-                  disabled={!youtubeUrl.trim() || !onAddUrl || isAddPending}
+              </TabsContent>
+              <TabsContent asChild value="link">
+                <form
+                  className="flex min-h-[360px] flex-1 flex-col px-5 py-6"
+                  onSubmit={handleLinkSubmit}
                 >
-                  {isAddPending ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : (
-                    <Plus className="h-4 w-4" aria-hidden />
-                  )}
-                  링크 추가
-                </button>
-              </form>
-            </TabsContent>
-          </Tabs>
+                  <label
+                    className="text-sm font-bold text-white"
+                    htmlFor="search-panel-youtube-url"
+                  >
+                    YouTube 링크
+                  </label>
+                  <p className="mt-1 text-xs leading-5 text-white/45">
+                    YouTube 또는 YouTube Music의 공유 링크를 붙여 넣어주세요.
+                  </p>
+                  <div className="relative mt-5">
+                    <Link2
+                      className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-white/45"
+                      aria-hidden
+                    />
+                    <input
+                      ref={linkInputRef}
+                      id="search-panel-youtube-url"
+                      className="h-[46px] w-full rounded-[18px] border border-white/[0.08] bg-white/[0.07] pr-4 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-[#72f4a4]/45 focus:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="YouTube URL"
+                      value={youtubeUrl}
+                      disabled={isAddPending}
+                      onChange={(event) => setYoutubeUrl(event.target.value)}
+                    />
+                  </div>
+                  <button
+                    className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[18px] bg-[#72f4a4] px-4 text-sm font-bold text-black transition hover:bg-[#8af7b5] disabled:cursor-not-allowed disabled:opacity-45"
+                    type="submit"
+                    disabled={!youtubeUrl.trim() || !onAddUrl || isAddPending}
+                  >
+                    {isAddPending ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Plus className="h-4 w-4" aria-hidden />
+                    )}
+                    링크 추가
+                  </button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </div>
           {feedback}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

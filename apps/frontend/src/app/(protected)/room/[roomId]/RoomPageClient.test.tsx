@@ -142,8 +142,11 @@ describe('RoomPageClient', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
 
-    const successStatuses = await screen.findAllByRole('status');
-    const successToast = successStatuses.find((status) => status.matches('[data-state="open"]'));
+    const successMessages = await screen.findAllByText('플레이리스트에 추가했어요 🎵');
+    const successToast =
+      successMessages
+        .find((message) => message.closest('[data-state="open"]'))
+        ?.closest<HTMLElement>('[data-state="open"]') ?? null;
     const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
 
     expect(successToast).toHaveTextContent('플레이리스트에 추가했어요 🎵');
@@ -153,6 +156,10 @@ describe('RoomPageClient', () => {
     await waitFor(() =>
       expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument(),
     );
+
+    const [reopenSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(reopenSearchButton as HTMLButtonElement);
+    expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
   });
 
   it('검색 결과 곡 추가 실패 Toast를 표시하고 SearchPanel을 유지한다', async () => {
@@ -194,13 +201,54 @@ describe('RoomPageClient', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
 
-    const errorToast = await screen.findByRole('alert');
+    const errorMessages = await screen.findAllByText('재생할 수 없는 영상이에요.');
+    const errorToast =
+      errorMessages
+        .find((message) => message.closest('[data-state="open"]'))
+        ?.closest<HTMLElement>('[data-state="open"]') ?? null;
     const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
 
     expect(errorToast).toHaveTextContent('재생할 수 없는 영상이에요.');
-    expect(within(errorToast).getByRole('button', { name: '닫기' })).toBeInTheDocument();
+    expect(
+      within(errorToast as HTMLElement).getByRole('button', { name: '닫기' }),
+    ).toBeInTheDocument();
     expect(searchDialog).toContainElement(errorToast);
     expect(requestedRoomId).toBe(roomFixture.room.id);
+  });
+
+  it('패널을 닫으면 진행 중이던 곡 추가 완료가 Toast를 되살리지 않는다', async () => {
+    let releaseRequest!: () => void;
+    let requestCompleted = false;
+    const requestGate = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+
+    server.use(
+      http.post('*/api/v1/rooms/:roomId/playlist', async () => {
+        await requestGate;
+        requestCompleted = true;
+        return HttpResponse.json({ success: true, data: roomFixture.playlist[0] });
+      }),
+    );
+
+    const Wrapper = createWrapper();
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(openSearchButton as HTMLButtonElement);
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색'), {
+      target: { value: 'Night Changes' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
+
+    releaseRequest();
+    await waitFor(() => expect(requestCompleted).toBe(true));
+    expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
   });
 
   it('곡 추가 패널의 링크 탭에서 YouTube URL을 추가한다', async () => {
@@ -241,13 +289,12 @@ describe('RoomPageClient', () => {
     });
 
     const successMessages = await screen.findAllByText('플레이리스트에 추가했어요 🎵');
-    const visibleMessage = successMessages.find((message) =>
-      message.closest('[data-state="open"][role="status"]'),
-    );
+    const successToast =
+      successMessages
+        .find((message) => message.closest('[data-state="open"]'))
+        ?.closest<HTMLElement>('[data-state="open"]') ?? null;
 
-    expect(visibleMessage?.closest('[role="status"]')).toHaveTextContent(
-      '플레이리스트에 추가했어요 🎵',
-    );
+    expect(successToast).toHaveTextContent('플레이리스트에 추가했어요 🎵');
     expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
   });
 });

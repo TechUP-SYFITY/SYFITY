@@ -9,7 +9,8 @@ import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useMe } from '@/features/auth/hooks/useAuth';
-import { useChatStore } from '@/features/chat/chatStore';
+import { sortChatMessagesAscending } from '@/features/chat/lib/chatMessageOrder';
+import { useChatStore } from '@/features/chat/store/chatStore';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
@@ -63,7 +64,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     setJoinedRoom(joinRoom.data);
     setPlaylist(joinRoom.data.playlist);
     setPlaybackState(joinRoom.data.playbackState, 'room-join');
-    setMessages(joinRoom.data.recentChats);
+    setMessages(sortChatMessagesAscending(joinRoom.data.recentChats));
   }, [joinRoom.data, setJoinedRoom, setMessages, setPlaybackState, setPlaylist]);
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;

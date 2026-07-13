@@ -1,0 +1,3 @@
+export const CHAT_MAX_MESSAGE_LENGTH = 300;
+export const CHAT_HISTORY_PAGE_SIZE = 50;
+export const CHAT_NEAR_BOTTOM_THRESHOLD_PX = 24;

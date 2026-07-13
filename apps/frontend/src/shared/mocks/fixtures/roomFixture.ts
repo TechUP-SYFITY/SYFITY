@@ -6,6 +6,21 @@ import type {
   RoomMember,
 } from '@/shared/types/domain';
 
+export const chatHistoryFixture = Array.from({ length: 60 }, (_, index) => {
+  const createdAt = new Date(Date.UTC(2026, 6, 1, 9, 12 + index)).toISOString();
+  const displayIndex = index + 1;
+
+  return {
+    createdAt,
+    id: `history-chat-${displayIndex}`,
+    message: `이전 채팅 메시지 ${displayIndex}`,
+    nickname: displayIndex % 5 === 0 ? null : '히스토리',
+    profileImage: null,
+    type: displayIndex % 5 === 0 ? 'system' : 'user',
+    userId: displayIndex % 5 === 0 ? null : `history-user-${displayIndex % 4}`,
+  };
+}) satisfies ChatMessage[];
+
 export const roomFixture = {
   chats: [
     {

@@ -3,8 +3,8 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { CHAT_MAX_MESSAGE_LENGTH } from '../chatConstants';
 import { ChatInputForm } from './ChatInputForm';
+import { CHAT_MAX_MESSAGE_LENGTH } from '../constants/chatConstants';
 
 describe('ChatInputForm', () => {
   afterEach(() => {

@@ -4,10 +4,18 @@
 import { useEffect } from 'react';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
+import type {
+  RoomClosedPayload,
+  RoomHostDisconnectedPayload,
+  RoomJoinPayload,
+} from '@/shared/types/socket';
 
 import { useRoomStore } from './roomStore';
 
-export const useRoomSocket = (roomId: string) => {
+export const useRoomSocket = (roomId: string, onRoomClosed?: () => void) => {
+  const markHostDisconnected = useRoomStore((state) => state.markHostDisconnected);
+  const markHostReconnected = useRoomStore((state) => state.markHostReconnected);
+  const markRoomClosed = useRoomStore((state) => state.markRoomClosed);
   const setRoomSocketError = useRoomStore((state) => state.setRoomSocketError);
   const updateMember = useRoomStore((state) => state.updateMember);
 
@@ -17,6 +25,24 @@ export const useRoomSocket = (roomId: string) => {
     }
 
     const socket = socketClient.connect();
+    const handleHostDisconnected = (payload: RoomHostDisconnectedPayload) => {
+      if (payload.roomId === roomId) {
+        markHostDisconnected(payload.waitUntil);
+      }
+    };
+    const handleHostReconnected = (payload: RoomJoinPayload) => {
+      if (payload.roomId === roomId) {
+        markHostReconnected();
+      }
+    };
+    const handleRoomClosed = (payload: RoomClosedPayload) => {
+      if (payload.roomId !== roomId) {
+        return;
+      }
+
+      markRoomClosed(payload.reason);
+      onRoomClosed?.();
+    };
     const joinRoom = () => {
       socket.emit('room:join', { roomId }, (response) => {
         if (response.success) {
@@ -28,14 +54,28 @@ export const useRoomSocket = (roomId: string) => {
       });
     };
 
-    joinRoom();
     socket.on('connect', joinRoom);
+    socket.on('room:host-disconnected', handleHostDisconnected);
+    socket.on('room:host-reconnected', handleHostReconnected);
+    socket.on('room:closed', handleRoomClosed);
     socket.on('presence:update', updateMember);
+    joinRoom();
 
     return () => {
       socket.off('connect', joinRoom);
+      socket.off('room:host-disconnected', handleHostDisconnected);
+      socket.off('room:host-reconnected', handleHostReconnected);
+      socket.off('room:closed', handleRoomClosed);
       socket.off('presence:update', updateMember);
       socket.emit('room:leave', { roomId });
     };
-  }, [roomId, setRoomSocketError, updateMember]);
+  }, [
+    markHostDisconnected,
+    markHostReconnected,
+    markRoomClosed,
+    onRoomClosed,
+    roomId,
+    setRoomSocketError,
+    updateMember,
+  ]);
 };

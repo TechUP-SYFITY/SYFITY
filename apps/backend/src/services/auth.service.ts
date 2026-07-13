@@ -43,7 +43,7 @@ export class AuthService {
   }
 
   getPostLoginRedirectUrl(returnUrl?: string): string {
-    return this.getSafeReturnUrl(returnUrl) ?? config.clientUrl;
+    return `${config.clientUrl}${this.getSafeReturnUrl(returnUrl) ?? ''}`;
   }
 
   async handleCallback(code: string): Promise<AuthTokens> {

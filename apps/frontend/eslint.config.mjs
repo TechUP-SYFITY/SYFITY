@@ -108,8 +108,13 @@ const eslintConfig = defineConfig([
           zones: [
             {
               target: './src/shared',
-              from: './src/features',
-              message: 'shared는 features를 import할 수 없습니다.',
+              from: ['./src/features', './src/widgets'],
+              message: 'shared는 features/widgets를 import할 수 없습니다.',
+            },
+            {
+              target: './src/features',
+              from: './src/widgets',
+              message: 'features는 widgets를 import할 수 없습니다.',
             },
             {
               target: './src/features/auth',

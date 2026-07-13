@@ -46,8 +46,8 @@ export const roomHandlers = [
       success: true,
       data: {
         createdAt: new Date().toISOString(),
-        id: 'mock-created-room',
-        inviteCode: 'MOCK01',
+        id: roomFixture.room.id,
+        inviteCode: roomFixture.room.inviteCode,
         name: body.name,
         status: 'active',
       },
@@ -69,10 +69,7 @@ export const roomHandlers = [
           updatedAt: roomFixture.playbackState.updatedAt ?? new Date().toISOString(),
         },
         playlist: roomFixture.playlist,
-        recentChats: roomFixture.chats.map((chat) => ({
-          profileImage: null,
-          ...chat,
-        })),
+        recentChats: roomFixture.chats,
         room: roomFixture.room,
       },
     } satisfies JoinRoomResponse);

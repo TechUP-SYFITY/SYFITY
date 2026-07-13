@@ -46,6 +46,8 @@ const secondItem: PlaylistItem = {
   videoId: 'video-2',
 };
 
+const originalElementFromPoint = document.elementFromPoint;
+
 function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -63,26 +65,99 @@ describe('PlaylistPanel reorder', () => {
 
   afterEach(() => {
     cleanup();
+    if (originalElementFromPoint) {
+      Object.defineProperty(document, 'elementFromPoint', {
+        configurable: true,
+        value: originalElementFromPoint,
+      });
+    } else {
+      Reflect.deleteProperty(document, 'elementFromPoint');
+    }
     usePlaylistStore.getState().clearPlaylist();
   });
 
-  it('updates the store when a parent playlist item is moved down.', async () => {
+  it.each(['touch', 'mouse'] as const)(
+    'updates the store when a playlist item is moved down with a %s handle.',
+    async (pointerType) => {
+      usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
+      vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
+
+      render(
+          <QueryClientProvider client={createQueryClient()}>
+            <PlaylistPanel
+              currentPlaylistItemId={firstItem.id}
+              playlistItems={[firstItem, secondItem]}
+            roomId={roomId}
+              isHost
+              isReady
+              onOpenSearch={vi.fn()}
+            />
+        </QueryClientProvider>,
+      );
+
+      const firstRow = screen.getByTestId(`playlist-row-${firstItem.id}`);
+      const secondRow = screen.getByTestId(`playlist-row-${secondItem.id}`);
+      const firstHandle = screen.getByTestId(`playlist-drag-handle-${firstItem.id}`);
+      Object.defineProperty(document, 'elementFromPoint', {
+        configurable: true,
+        value: vi.fn(() => secondRow),
+      });
+
+      fireEvent.focus(firstRow);
+      fireEvent.pointerDown(firstHandle, {
+        clientX: 24,
+        clientY: 24,
+        pointerId: 1,
+        pointerType,
+      });
+      fireEvent.pointerMove(firstHandle, {
+        clientX: 24,
+        clientY: 88,
+        pointerId: 1,
+        pointerType,
+      });
+      fireEvent.pointerUp(firstHandle, {
+        clientX: 24,
+        clientY: 88,
+        pointerId: 1,
+        pointerType,
+      });
+
+      await waitFor(() => {
+        expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
+          items: [
+            { id: secondItem.id, position: 1 },
+            { id: firstItem.id, position: 2 },
+          ],
+        });
+      });
+      expect(usePlaylistStore.getState().playlist.map((item) => item.id)).toEqual([
+        secondItem.id,
+        firstItem.id,
+      ]);
+    },
+  );
+
+  it('updates the store when a focused drag handle is moved down with keyboard.', async () => {
     usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
     vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
 
     render(
-      <QueryClientProvider client={createQueryClient()}>
-        <PlaylistPanel
-          playlistItems={[firstItem, secondItem]}
+        <QueryClientProvider client={createQueryClient()}>
+          <PlaylistPanel
+            currentPlaylistItemId={firstItem.id}
+            playlistItems={[firstItem, secondItem]}
           roomId={roomId}
-          isHost
-          isReady
-          onPlayItem={vi.fn()}
-        />
+            isHost
+            isReady
+            onOpenSearch={vi.fn()}
+          />
       </QueryClientProvider>,
     );
 
-    fireEvent.click(screen.getByTestId(`playlist-move-down-${firstItem.id}`));
+    fireEvent.keyDown(screen.getByTestId(`playlist-drag-handle-${firstItem.id}`), {
+      key: 'ArrowDown',
+    });
 
     await waitFor(() => {
       expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {

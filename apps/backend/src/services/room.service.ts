@@ -51,6 +51,7 @@ export class RoomService {
     const inviteCode = await this.generateUniqueInviteCode();
     const room = await this.roomRepo.createRoom({ name, hostId: userId, inviteCode });
 
+    await this.roomRepo.upsertRecentRoom(userId, room.id);
     this.playbackService.initializeCache(room.id);
 
     return room;

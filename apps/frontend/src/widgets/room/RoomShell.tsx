@@ -5,26 +5,20 @@ import type { ReactNode } from 'react';
 
 import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
-import type {
-  ChatMessage,
-  PlaybackState,
-  PlaylistItem,
-  RoomDetail,
-  RoomMember,
-} from '@/shared/types/domain';
+import type { PlaybackState, PlaylistItem, RoomDetail, RoomMember } from '@/shared/types/domain';
 
-import { MiniPlayer, type MiniPlayerPendingCommand } from './components/MiniPlayer';
-import type { RoomMobileTab } from './components/MobileTabs';
-import { RoomDesktopLayout } from './components/RoomDesktopLayout';
-import { RoomMobileLayout } from './components/RoomMobileLayout';
-import { RoomStatusBar } from './components/RoomStatusBar';
+import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/room/components/MiniPlayer';
+import type { RoomMobileTab } from '@/features/room/components/MobileTabs';
+import { RoomStatusBar } from '@/features/room/components/RoomStatusBar';
 
-export type { RoomMobileTab } from './components/MobileTabs';
+import { RoomLayout } from './components/RoomLayout';
+
+export type { RoomMobileTab } from '@/features/room/components/MobileTabs';
 
 interface RoomShellProps {
   activeMobileTab: RoomMobileTab;
-  chats: ChatMessage[];
   currentUserName?: string;
+  currentUserProfileImage?: string | null;
   headerActions?: ReactNode;
   isHost: boolean;
   miniPlayerCommandError: string | null;
@@ -40,6 +34,7 @@ interface RoomShellProps {
   onMiniPlayerNextTrack: () => void;
   onMiniPlayerPlayPause: () => void;
   onMiniPlayerPreviousTrack: () => void;
+  onMiniPlayerSeek: (seekTime: number) => void;
   onMiniPlayerVolumeChange: (volume: number) => void;
   onMobileTabChange: (tab: RoomMobileTab) => void;
   playbackState: PlaybackState | null;
@@ -47,12 +42,13 @@ interface RoomShellProps {
   renderPlayerPanel: () => ReactNode;
   renderPlaylistPanel: () => ReactNode;
   room: RoomDetail | null;
+  roomId: string;
 }
 
 export function RoomShell({
   activeMobileTab,
-  chats,
   currentUserName = '게스트',
+  currentUserProfileImage,
   headerActions,
   isHost,
   miniPlayerCommandError,
@@ -68,6 +64,7 @@ export function RoomShell({
   onMiniPlayerNextTrack,
   onMiniPlayerPlayPause,
   onMiniPlayerPreviousTrack,
+  onMiniPlayerSeek,
   onMiniPlayerVolumeChange,
   onMobileTabChange,
   playbackState,
@@ -75,6 +72,7 @@ export function RoomShell({
   renderPlayerPanel,
   renderPlaylistPanel,
   room,
+  roomId,
 }: RoomShellProps) {
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const onlineMemberCount = members.filter((member) => member.status === 'online').length;
@@ -88,21 +86,16 @@ export function RoomShell({
           onlineMemberCount={onlineMemberCount}
           room={room}
         />
-        <RoomDesktopLayout
-          chats={chats}
-          members={members}
-          renderPlayerPanel={renderPlayerPanel}
-          renderPlaylistPanel={renderPlaylistPanel}
-        />
-        <RoomMobileLayout
+        <RoomLayout
           activeMobileTab={activeMobileTab}
-          chats={chats}
           currentUserName={currentUserName}
+          currentUserProfileImage={currentUserProfileImage}
           isHost={isHost}
           members={members}
           onMobileTabChange={onMobileTabChange}
           renderPlayerPanel={renderPlayerPanel}
           renderPlaylistPanel={renderPlaylistPanel}
+          roomId={roomId}
         />
 
         <MiniPlayer
@@ -116,6 +109,7 @@ export function RoomShell({
           onNextTrack={onMiniPlayerNextTrack}
           onPlayPause={onMiniPlayerPlayPause}
           onPreviousTrack={onMiniPlayerPreviousTrack}
+          onSeek={onMiniPlayerSeek}
           onVolumeChange={onMiniPlayerVolumeChange}
           pendingCommand={miniPlayerPendingCommand}
           playbackState={playbackState}

@@ -1,8 +1,9 @@
-import { AudioLines } from 'lucide-react';
+import Link from 'next/link';
+
+import { SyfityWordmark } from '@/shared/components/layout';
 
 import { GoogleButton } from './GoogleButton';
 import { LoginErrorBanner } from './LoginErrorBanner';
-
 interface LoginCardProps {
   returnUrl?: string;
   hasError?: boolean;
@@ -15,7 +16,9 @@ export function LoginCard({ returnUrl, hasError = false }: LoginCardProps) {
 
       <div className="flex flex-col gap-7 px-9 pt-9 pb-8">
         <div className="flex flex-col items-center gap-4 text-center">
-          <AudioLines className="size-10 text-primary" aria-hidden />
+          <Link href="/" className="flex items-center gap-2">
+            <SyfityWordmark markClassName="size-8" textClassName="text-2xl" />
+          </Link>
           <div className="flex flex-col gap-1.5">
             <h1 className="text-xl leading-6 font-bold tracking-[-0.5px] text-white">
               Syfity 시작하기

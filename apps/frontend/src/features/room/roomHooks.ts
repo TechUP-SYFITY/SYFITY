@@ -3,8 +3,8 @@
 // Room REST API를 TanStack Query 훅으로 연결한다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { roomApi } from './roomApi';
-import type { CreateRoomRequest, UpdateRoomRequest } from './roomTypes';
+import { roomApi, type RoomApi } from './roomApi';
+import type { CreateRoomRequest, JoinRoomRequest, UpdateRoomRequest } from './roomTypes';
 
 export const roomQueryKeys = {
   all: ['rooms'] as const,
@@ -38,12 +38,22 @@ export const useCreateRoom = () => {
 export const useJoinRoom = (roomId: string) =>
   useQuery({
     enabled: roomId.length > 0,
-    queryFn: () => roomApi.joinRoom({ inviteCode: roomId }),
+    queryFn: async () => {
+      const room = await roomApi.getRoom(roomId);
+
+      return roomApi.joinRoom({ inviteCode: room.inviteCode });
+    },
     queryKey: roomQueryKeys.join(roomId),
     retry: false,
     // room join is a mount-time POST, but useQuery handles Strict Mode remounts
     // without the observer loss that useEffect + useMutation can trigger.
     staleTime: Infinity,
+  });
+
+// 초대 코드로 수동 입장하는 다이얼로그용 mutation 훅
+export const useJoinRoomMutation = (api: RoomApi = roomApi) =>
+  useMutation({
+    mutationFn: (body: JoinRoomRequest) => api.joinRoom(body),
   });
 
 export const useUpdateRoom = (roomId: string) => {

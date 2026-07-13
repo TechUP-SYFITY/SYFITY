@@ -40,6 +40,14 @@ function getRoomErrorMessage(error: unknown) {
       return '이미 종료된 Room입니다.';
     }
 
+    if (error.code === 'ROOM_INACTIVE') {
+      return '현재 이용할 수 없는 Room입니다.';
+    }
+
+    if (error.code === 'ROOM_ACCESS_DENIED') {
+      return '이 Room에 참여한 이력이 없어요. 초대 링크로 다시 입장해주세요.';
+    }
+
     return error.message;
   }
 

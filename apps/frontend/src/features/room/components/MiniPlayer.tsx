@@ -1,16 +1,26 @@
 'use client';
 
 // Room 하단에 고정되는 미니 플레이어 UI와 주입된 제어 상태를 표시한다.
+import {
+  Heart,
+  Pause,
+  Play,
+  Repeat,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import type { CSSProperties } from 'react';
 
 import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
-import { RoomIcon } from './RoomIcon';
 import { TrackArtwork } from './TrackArtwork';
 
-export type MiniPlayerPendingCommand = 'play' | 'pause' | 'previous' | 'next' | null;
+export type MiniPlayerPendingCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek' | null;
 
 interface MiniPlayerProps {
   commandError: string | null;
@@ -23,6 +33,7 @@ interface MiniPlayerProps {
   onNextTrack: () => void;
   onPlayPause: () => void;
   onPreviousTrack: () => void;
+  onSeek: (seekTime: number) => void;
   onVolumeChange: (volume: number) => void;
   pendingCommand: MiniPlayerPendingCommand;
   playbackState: PlaybackState | null;
@@ -41,6 +52,7 @@ export function MiniPlayer({
   onNextTrack,
   onPlayPause,
   onPreviousTrack,
+  onSeek,
   onVolumeChange,
   pendingCommand,
   playbackState,
@@ -56,6 +68,7 @@ export function MiniPlayer({
   const playPauseDisabled = controlDisabled;
   const previousControlDisabled = controlDisabled || previousDisabled;
   const nextControlDisabled = controlDisabled || nextDisabled;
+  const seekDisabled = controlDisabled || duration <= 0;
   const isVolumeMuted = isMuted || volume === 0;
   const visibleVolume = isVolumeMuted ? 0 : volume;
 
@@ -77,7 +90,7 @@ export function MiniPlayer({
           aria-label="좋아요 기능 준비 중"
           disabled
         >
-          <RoomIcon name="like" className="h-3.5 w-3.5" />
+          <Heart className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
         </button>
       </div>
 
@@ -89,7 +102,7 @@ export function MiniPlayer({
             aria-label="셔플 기능 준비 중"
             disabled
           >
-            <RoomIcon name="shuffle" className="h-3.5 w-3.5" />
+            <Shuffle className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
           </button>
           <button
             className={getIconButtonClass(previousControlDisabled)}
@@ -99,7 +112,7 @@ export function MiniPlayer({
             disabled={previousControlDisabled}
             onClick={onPreviousTrack}
           >
-            <RoomIcon name="previous" className="h-4 w-4" />
+            <SkipBack className="inline-block h-4 w-4 shrink-0" aria-hidden />
           </button>
           <button
             className={cn(
@@ -112,7 +125,11 @@ export function MiniPlayer({
             disabled={playPauseDisabled}
             onClick={onPlayPause}
           >
-            <RoomIcon name={isPlaying ? 'pause' : 'play'} className="h-4 w-4" />
+            {isPlaying ? (
+              <Pause className="inline-block h-4 w-4 shrink-0" aria-hidden />
+            ) : (
+              <Play className="inline-block h-4 w-4 shrink-0" aria-hidden />
+            )}
           </button>
           <button
             className={getIconButtonClass(nextControlDisabled)}
@@ -122,7 +139,7 @@ export function MiniPlayer({
             disabled={nextControlDisabled}
             onClick={onNextTrack}
           >
-            <RoomIcon name="next" className="h-4 w-4" />
+            <SkipForward className="inline-block h-4 w-4 shrink-0" aria-hidden />
           </button>
           <button
             className={cn(getIconButtonClass(true), 'hidden md:flex')}
@@ -130,18 +147,18 @@ export function MiniPlayer({
             aria-label="반복 재생 기능 준비 중"
             disabled
           >
-            <RoomIcon name="repeat" className="h-3.5 w-3.5" />
+            <Repeat className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
           </button>
         </div>
         <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-muted-foreground xl:flex">
           <span>{formatDuration(currentTime)}</span>
           <div
-            className="relative h-1 min-w-0 flex-1 rounded-full bg-muted"
-            role="progressbar"
-            aria-label="재생 진행률"
-            aria-valuemin={0}
-            aria-valuemax={duration}
-            aria-valuenow={currentTime}
+            className="relative h-1 min-w-0 flex-1 rounded-full bg-muted focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background"
+            role={isHost ? undefined : 'progressbar'}
+            aria-label={isHost ? undefined : '재생 진행률'}
+            aria-valuemin={isHost ? undefined : 0}
+            aria-valuemax={isHost ? undefined : duration}
+            aria-valuenow={isHost ? undefined : currentTime}
           >
             <div
               className="relative h-full rounded-full bg-primary"
@@ -154,6 +171,19 @@ export function MiniPlayer({
                 />
               ) : null}
             </div>
+            {isHost ? (
+              <input
+                className="absolute top-1/2 left-0 h-5 w-full -translate-y-1/2 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                type="range"
+                min={0}
+                max={duration}
+                step={1}
+                aria-label="재생 위치 조절"
+                disabled={seekDisabled}
+                value={currentTime}
+                onChange={(event) => onSeek(Number(event.currentTarget.value))}
+              />
+            ) : null}
           </div>
           <span>{formatDuration(duration)}</span>
         </div>
@@ -174,7 +204,11 @@ export function MiniPlayer({
           aria-label={isVolumeMuted ? '음소거 해제' : '음소거'}
           onClick={onMuteToggle}
         >
-          <RoomIcon name={isVolumeMuted ? 'volumeMuted' : 'volume'} className="h-3.5 w-3.5" />
+          {isVolumeMuted ? (
+            <VolumeX className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+          ) : (
+            <Volume2 className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+          )}
         </button>
         <input
           className="mini-player-volume-range"

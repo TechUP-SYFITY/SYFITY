@@ -40,6 +40,7 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     onNextTrack: vi.fn(),
     onPlayPause: vi.fn(),
     onPreviousTrack: vi.fn(),
+    onSeek: vi.fn(),
     onVolumeChange: vi.fn(),
     pendingCommand: null,
     playbackState,
@@ -61,10 +62,7 @@ describe('MiniPlayer', () => {
     expect(screen.getByText('0:45')).toBeInTheDocument();
     expect(screen.getByText('3:00')).toBeInTheDocument();
     expect(screen.getByTestId('mini-player-progress-thumb')).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: '재생 진행률' })).toHaveAttribute(
-      'aria-valuenow',
-      '45',
-    );
+    expect(screen.getByRole('slider', { name: '재생 위치 조절' })).toHaveValue('45');
   });
 
   it('진행 시간이 0초이면 시간 텍스트와 겹치지 않도록 progress thumb를 숨긴다', () => {
@@ -76,10 +74,7 @@ describe('MiniPlayer', () => {
     });
 
     expect(screen.queryByTestId('mini-player-progress-thumb')).not.toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: '재생 진행률' })).toHaveAttribute(
-      'aria-valuenow',
-      '0',
-    );
+    expect(screen.getByRole('slider', { name: '재생 위치 조절' })).toHaveValue('0');
   });
 
   it('Host가 재생, 이전 곡, 다음 곡 버튼을 누르면 주입된 핸들러를 호출한다', () => {
@@ -114,6 +109,23 @@ describe('MiniPlayer', () => {
     expect(screen.getByRole('button', { name: '이전 곡' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '다음 곡' })).toBeDisabled();
     expect(screen.getByText('Host만 재생을 제어할 수 있어요')).toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: '재생 위치 조절' })).not.toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: '재생 진행률' })).toHaveAttribute(
+      'aria-valuenow',
+      '45',
+    );
+  });
+
+  it('Host가 진행 슬라이더를 변경하면 seek 값을 전달한다', () => {
+    const onSeek = vi.fn();
+
+    renderMiniPlayer({ onSeek });
+
+    fireEvent.change(screen.getByRole('slider', { name: '재생 위치 조절' }), {
+      target: { value: '90' },
+    });
+
+    expect(onSeek).toHaveBeenCalledWith(90);
   });
 
   it('제어 명령 실패 메시지를 MiniPlayer 위에 표시한다', () => {

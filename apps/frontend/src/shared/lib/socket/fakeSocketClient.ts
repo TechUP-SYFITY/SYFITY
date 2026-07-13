@@ -96,7 +96,37 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
     case 'playback:play': {
       const payload = args[0] as PlaybackCurrentTimePayload;
       const ack = readAck(args[1]);
-      const next = updatePlaybackState(ctx.getPlaybackState(), {
+      const current = ctx.getPlaybackState();
+
+      if (current.videoId === null) {
+        const firstAvailable = roomFixture.playlist.find((item) => item.status === 'available');
+
+        if (!firstAvailable) {
+          ack?.({
+            success: false,
+            error: {
+              code: 'PLAYLIST_ITEM_NOT_FOUND',
+              message: 'Playable item not found',
+            },
+          });
+          return;
+        }
+
+        const next = updatePlaybackState(current, {
+          currentTime: 0,
+          isPlaying: true,
+          playlistItemId: firstAvailable.id,
+          videoId: firstAvailable.videoId,
+        });
+
+        ctx.setPlaybackState(next);
+        ack?.({ success: true });
+        ctx.emitLocal('playback:change-track', next);
+        ctx.emitLocal('chat:system', createSystemMessage('Host가 재생을 시작했습니다.'));
+        return;
+      }
+
+      const next = updatePlaybackState(current, {
         currentTime: payload.currentTime,
         isPlaying: true,
       });
@@ -104,6 +134,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
       ctx.setPlaybackState(next);
       ack?.({ success: true });
       ctx.emitLocal('playback:play', next);
+      ctx.emitLocal('chat:system', createSystemMessage('Host가 재생을 시작했습니다.'));
       break;
     }
 
@@ -118,6 +149,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
       ctx.setPlaybackState(next);
       ack?.({ success: true });
       ctx.emitLocal('playback:pause', next);
+      ctx.emitLocal('chat:system', createSystemMessage('Host가 일시정지했습니다.'));
       break;
     }
 
@@ -139,7 +171,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
       const ack = readAck(args[1]);
       const targetItem = roomFixture.playlist.find((item) => item.id === payload.playlistItemId);
 
-      if (!targetItem) {
+      if (targetItem?.status !== 'available') {
         ack?.({
           success: false,
           error: {
@@ -152,6 +184,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
 
       const next = updatePlaybackState(ctx.getPlaybackState(), {
         currentTime: 0,
+        isPlaying: true,
         playlistItemId: targetItem.id,
         videoId: targetItem.videoId,
       });
@@ -193,8 +226,8 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
         userId: roomFixture.members[0]?.userId ?? null,
       };
 
-      ack?.({ success: true, data: { createdAt: message.createdAt, id: message.id } });
       ctx.emitLocal('chat:received', message);
+      ack?.({ success: true, data: { createdAt: message.createdAt, id: message.id } });
       break;
     }
   }
@@ -214,4 +247,15 @@ function updatePlaybackState(current: PlaybackState, patch: Partial<PlaybackStat
 
 function createId(prefix: string) {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
+}
+
+function createSystemMessage(message: string): ChatMessage {
+  return {
+    createdAt: new Date().toISOString(),
+    id: createId('mock-chat-system'),
+    message,
+    nickname: null,
+    type: 'system',
+    userId: null,
+  };
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { AudioLines } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/shared/components/ui/Button';
@@ -17,8 +18,6 @@ import { Input } from '@/shared/components/ui/Input';
 
 import { useCreateRoom } from '@/features/room/roomHooks';
 import type { CreateRoomResponse } from '@/features/room/roomTypes';
-
-import { RoomIcon } from './RoomIcon';
 
 interface CreateRoomDialogProps {
   open: boolean;
@@ -68,7 +67,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreated }: CreateRoomDi
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <DialogIconBadge>
-              <RoomIcon name="brand" />
+              <AudioLines className="inline-block shrink-0" aria-hidden />
             </DialogIconBadge>
             <DialogTitle>방 만들기</DialogTitle>
           </div>
@@ -113,7 +112,7 @@ export function CreateRoomDialog({ open, onOpenChange, onCreated }: CreateRoomDi
               isLoading={createRoom.isPending}
               disabled={trimmedName.length === 0}
             >
-              <RoomIcon name="brand" />
+              <AudioLines className="inline-block shrink-0" aria-hidden />
               만들기
             </Button>
           </DialogFooter>

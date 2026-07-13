@@ -10,6 +10,7 @@ export const roomQueryKeys = {
   all: ['rooms'] as const,
   detail: (roomId: string) => [...roomQueryKeys.all, 'detail', roomId] as const,
   join: (roomId: string) => [...roomQueryKeys.all, 'join', roomId] as const,
+  joinByCode: (inviteCode: string) => [...roomQueryKeys.all, 'join-by-code', inviteCode] as const,
   recent: () => [...roomQueryKeys.all, 'recent'] as const,
 };
 
@@ -54,6 +55,16 @@ export const useJoinRoom = (roomId: string) =>
 export const useJoinRoomMutation = (api: RoomApi = roomApi) =>
   useMutation({
     mutationFn: (body: JoinRoomRequest) => api.joinRoom(body),
+  });
+
+export const useJoinRoomByCode = (inviteCode: string, api: RoomApi = roomApi) =>
+  useQuery({
+    enabled: inviteCode.length > 0,
+    queryFn: () => api.joinRoom({ inviteCode }),
+    queryKey: roomQueryKeys.joinByCode(inviteCode),
+    retry: false,
+    gcTime: 0,
+    staleTime: Infinity,
   });
 
 export const useUpdateRoom = (roomId: string) => {

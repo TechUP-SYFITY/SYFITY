@@ -2,7 +2,7 @@
 
 import { Headphones, Home, Loader2, Lock, LogIn, TimerOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/shared/components/ui/Button';
 import {
@@ -18,7 +18,7 @@ import { Input } from '@/shared/components/ui/Input';
 import { ApiClientError } from '@/shared/types/api';
 
 import type { RoomApi } from '../roomApi';
-import { useJoinRoomMutation } from '../roomHooks';
+import { useJoinRoomByCode } from '../roomHooks';
 
 interface JoinRoomDialogProps {
   open: boolean;
@@ -63,45 +63,18 @@ function JoinRoomForm({
   roomApiClient,
 }: Omit<JoinRoomDialogProps, 'open'>) {
   const router = useRouter();
-  const [code, setCode] = useState(() => sanitizeInviteCode(initialCode ?? ''));
-  const [isPrefilled, setIsPrefilled] = useState(
-    () => sanitizeInviteCode(initialCode ?? '').length > 0,
-  );
+  const prefilledCode = sanitizeInviteCode(initialCode ?? '');
+  const [code, setCode] = useState(prefilledCode);
+  const [submittedCode, setSubmittedCode] = useState(prefilledCode);
+  const [isPrefilled, setIsPrefilled] = useState(() => prefilledCode.length > 0);
   const [hasInvalidChar, setHasInvalidChar] = useState(false);
-  const joinRoom = useJoinRoomMutation(roomApiClient);
-  const { mutate: mutateJoin } = joinRoom;
-  const autoValidatedRef = useRef(false);
-
-  const submitJoin = useCallback(
-    (value: string) => {
-      const target = value.trim();
-      if (target.length === 0) {
-        return;
-      }
-
-      mutateJoin(
-        { inviteCode: target },
-        {
-          onSuccess: (data) => {
-            onOpenChange(false);
-            router.push(`/room/${data.room.id}`);
-          },
-        },
-      );
-    },
-    [mutateJoin, onOpenChange, router],
-  );
+  const joinRoom = useJoinRoomByCode(submittedCode, roomApiClient);
 
   useEffect(() => {
-    if (autoValidatedRef.current) {
-      return;
+    if (joinRoom.data) {
+      router.push(`/room/${joinRoom.data.room.id}`);
     }
-    const prefilled = sanitizeInviteCode(initialCode ?? '');
-    if (prefilled.length > 0) {
-      autoValidatedRef.current = true;
-      submitJoin(prefilled);
-    }
-  }, [initialCode, submitJoin]);
+  }, [joinRoom.data, router]);
 
   const trimmedCode = code.trim();
   const errorCode = joinRoom.error instanceof ApiClientError ? joinRoom.error.code : undefined;
@@ -112,7 +85,7 @@ function JoinRoomForm({
       roomIssue = ROOM_ISSUE_BY_CODE[errorCode];
     }
   }
-  const isLoading = joinRoom.isPending;
+  const isLoading = joinRoom.fetchStatus === 'fetching' || joinRoom.isSuccess;
   const isBlocked = roomIssue === 'closed' || roomIssue === 'inactive';
 
   let inputErrorMessage: string | undefined;
@@ -142,7 +115,11 @@ function JoinRoomForm({
       return;
     }
 
-    submitJoin(trimmedCode);
+    if (trimmedCode === submittedCode) {
+      void joinRoom.refetch();
+    } else {
+      setSubmittedCode(trimmedCode);
+    }
   };
 
   return (

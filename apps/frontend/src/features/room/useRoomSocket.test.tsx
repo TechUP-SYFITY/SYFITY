@@ -1,4 +1,4 @@
-// Room Socket의 Host 연결 상태 이벤트가 Room 상태에 반영되는지 검증한다.
+// Room Socket이 Host 연결 상태와 참여자 목록 재동기화를 Room 상태에 반영하는지 검증한다.
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,7 +6,7 @@ import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { SyfityListenEvents } from '@/shared/lib/socket/types';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
-import type { PlaybackState } from '@/shared/types/domain';
+import type { PlaybackState, RoomMember } from '@/shared/types/domain';
 import type { RoomHostConnectionState, ServerToClientEvents } from '@/shared/types/socket';
 
 import { useRoomStore } from './roomStore';
@@ -14,12 +14,14 @@ import { useRoomSocket } from './useRoomSocket';
 
 type EventName = keyof SyfityListenEvents;
 type EventHandler = (...args: never[]) => void;
+type RoomJoinData = {
+  hostConnection: RoomHostConnectionState;
+  members?: RoomMember[];
+  playbackState: PlaybackState;
+};
 
 const handlers = new Map<EventName, EventHandler>();
-let roomJoinResponse: SocketAck<{
-  hostConnection: RoomHostConnectionState;
-  playbackState: PlaybackState;
-}>;
+let roomJoinResponse: SocketAck<RoomJoinData>;
 const socket = {
   disconnect: vi.fn(),
   emit: vi.fn((event: string, _payload: unknown, ack?: (response: unknown) => void) => {
@@ -42,6 +44,15 @@ vi.mock('@/shared/lib/socket/socketClient', () => ({
     connect: vi.fn(),
   },
 }));
+
+const member: RoomMember = {
+  id: 'member-1',
+  nickname: '민지',
+  profileImage: null,
+  role: 'host',
+  status: 'online',
+  userId: 'member-1',
+};
 
 function emitServerEvent<TEvent extends keyof ServerToClientEvents>(
   event: TEvent,
@@ -73,6 +84,12 @@ describe('useRoomSocket', () => {
 
   afterEach(() => {
     useRoomStore.getState().clearRoom();
+  });
+
+  it('roomId가 없으면 socket에 연결하지 않는다', () => {
+    renderHook(() => useRoomSocket(''));
+
+    expect(socketClient.connect).not.toHaveBeenCalled();
   });
 
   it('Host 연결 끊김과 재연결 이벤트를 현재 Room 상태에 반영한다', () => {
@@ -171,8 +188,8 @@ describe('useRoomSocket', () => {
 
   it('Room 종료 이벤트를 반영하고 종료 후 처리를 호출한다', () => {
     const onRoomClosed = vi.fn();
-    useRoomStore.getState().setJoinedRoom(roomFixture);
-    renderHook(() => useRoomSocket(roomFixture.room.id, onRoomClosed));
+    useRoomStore.getState().setJoinedRoom(roomFixture.room);
+    renderHook(() => useRoomSocket(roomFixture.room.id, undefined, onRoomClosed));
 
     act(() => {
       emitServerEvent('room:closed', {
@@ -198,5 +215,69 @@ describe('useRoomSocket', () => {
     expect(handlers.has('room:host-reconnected')).toBe(false);
     expect(handlers.has('room:closed')).toBe(false);
     expect(socket.emit).toHaveBeenCalledWith('room:leave', { roomId: 'room-a' });
+  });
+
+  it('members가 있는 join ack를 onRejoined로 전달한다', () => {
+    const onRejoined = vi.fn();
+
+    roomJoinResponse = {
+      success: true,
+      data: {
+        hostConnection: { status: 'connected' },
+        members: [member],
+        playbackState: roomFixture.playbackState,
+      },
+    };
+
+    renderHook(() => useRoomSocket('room-1', onRejoined));
+
+    expect(onRejoined).toHaveBeenCalledWith([member]);
+  });
+
+  it('BE 과도기에서 members가 없으면 기존 roster를 건드리지 않는다', () => {
+    const onRejoined = vi.fn();
+
+    renderHook(() => useRoomSocket('room-1', onRejoined));
+
+    expect(onRejoined).not.toHaveBeenCalled();
+  });
+
+  it('members가 빈 배열이면 기존 roster를 덮어쓰지 않는다', () => {
+    const onRejoined = vi.fn();
+
+    roomJoinResponse = {
+      success: true,
+      data: {
+        hostConnection: { status: 'connected' },
+        members: [],
+        playbackState: roomFixture.playbackState,
+      },
+    };
+
+    renderHook(() => useRoomSocket('room-1', onRejoined));
+
+    expect(onRejoined).not.toHaveBeenCalled();
+  });
+
+  it('재연결마다 최신 members를 다시 전달한다', () => {
+    const onRejoined = vi.fn();
+
+    roomJoinResponse = {
+      success: true,
+      data: {
+        hostConnection: { status: 'connected' },
+        members: [member],
+        playbackState: roomFixture.playbackState,
+      },
+    };
+
+    renderHook(() => useRoomSocket('room-1', onRejoined));
+    expect(onRejoined).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      handlers.get('connect')?.();
+    });
+
+    expect(onRejoined).toHaveBeenCalledTimes(2);
   });
 });

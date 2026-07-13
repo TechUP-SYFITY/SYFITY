@@ -15,6 +15,7 @@ import { server } from '@/shared/mocks/server';
 import { useChatStore } from '@/features/chat/store/chatStore';
 import { usePlayerStore } from '@/features/player/playerStore';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
+import { usePresenceStore } from '@/features/presence/presenceStore';
 import { useRoomStore } from '@/features/room/roomStore';
 
 import { RoomPageClient } from './RoomPageClient';
@@ -52,6 +53,7 @@ describe('RoomPageClient', () => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     useRoomStore.getState().clearRoom();
+    usePresenceStore.getState().clearMembers();
     usePlaylistStore.getState().clearPlaylist();
     usePlayerStore.getState().clearPlayback();
     useChatStore.getState().clearMessages();

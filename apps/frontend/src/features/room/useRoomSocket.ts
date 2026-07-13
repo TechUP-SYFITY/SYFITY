@@ -4,6 +4,7 @@
 import { useEffect } from 'react';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
+import type { RoomMember } from '@/shared/types/domain';
 import type {
   RoomClosedPayload,
   RoomHostDisconnectedPayload,
@@ -12,12 +13,15 @@ import type {
 
 import { useRoomStore } from './roomStore';
 
-export const useRoomSocket = (roomId: string, onRoomClosed?: () => void) => {
+export const useRoomSocket = (
+  roomId: string,
+  onRejoined?: (members: RoomMember[]) => void,
+  onRoomClosed?: () => void,
+) => {
   const markHostDisconnected = useRoomStore((state) => state.markHostDisconnected);
   const markHostReconnected = useRoomStore((state) => state.markHostReconnected);
   const markRoomClosed = useRoomStore((state) => state.markRoomClosed);
   const setRoomSocketError = useRoomStore((state) => state.setRoomSocketError);
-  const updateMember = useRoomStore((state) => state.updateMember);
 
   useEffect(() => {
     if (!roomId) {
@@ -53,6 +57,12 @@ export const useRoomSocket = (roomId: string, onRoomClosed?: () => void) => {
             markHostReconnected();
           }
           setRoomSocketError(null);
+          const members = response.data?.members;
+
+          if (Array.isArray(members) && members.length > 0) {
+            onRejoined?.(members);
+          }
+
           return;
         }
 
@@ -64,7 +74,6 @@ export const useRoomSocket = (roomId: string, onRoomClosed?: () => void) => {
     socket.on('room:host-disconnected', handleHostDisconnected);
     socket.on('room:host-reconnected', handleHostReconnected);
     socket.on('room:closed', handleRoomClosed);
-    socket.on('presence:update', updateMember);
     joinRoom();
 
     return () => {
@@ -72,16 +81,15 @@ export const useRoomSocket = (roomId: string, onRoomClosed?: () => void) => {
       socket.off('room:host-disconnected', handleHostDisconnected);
       socket.off('room:host-reconnected', handleHostReconnected);
       socket.off('room:closed', handleRoomClosed);
-      socket.off('presence:update', updateMember);
       socket.emit('room:leave', { roomId });
     };
   }, [
     markHostDisconnected,
     markHostReconnected,
     markRoomClosed,
+    onRejoined,
     onRoomClosed,
     roomId,
     setRoomSocketError,
-    updateMember,
   ]);
 };

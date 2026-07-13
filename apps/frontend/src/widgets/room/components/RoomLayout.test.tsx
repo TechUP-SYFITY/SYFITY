@@ -18,10 +18,6 @@ vi.mock('@/features/presence/components/MemberSidebar', () => ({
   MemberSidebar: () => <div data-testid="member-sidebar" />,
 }));
 
-vi.mock('@/features/room/components/HostConnectionNotice', () => ({
-  HostConnectionNotice: () => <div data-testid="host-connection-notice" />,
-}));
-
 vi.mock('@/features/room/components/MobileTabs', () => ({
   MobileTabs: () => <div data-testid="mobile-tabs" />,
 }));
@@ -39,7 +35,6 @@ describe('RoomLayout', () => {
         <RoomLayout
           activeMobileTab={activeMobileTab}
           currentUserName="게스트"
-          members={[]}
           onMobileTabChange={vi.fn()}
           renderPlayerPanel={renderPlayerPanel}
           renderPlaylistPanel={renderPlaylistPanel}

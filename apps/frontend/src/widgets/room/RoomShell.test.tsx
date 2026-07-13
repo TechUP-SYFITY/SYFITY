@@ -42,7 +42,6 @@ describe('RoomShell', () => {
         activeMobileTab="playlist"
         hostConnection={{ status: 'connected' }}
         isHost
-        members={[]}
         miniPlayerCommandError={null}
         miniPlayerControlDisabled={false}
         miniPlayerIsMuted={false}
@@ -57,6 +56,7 @@ describe('RoomShell', () => {
         onMiniPlayerVolumeChange={vi.fn()}
         onMobileTabChange={vi.fn()}
         onMuteToggle={vi.fn()}
+        onlineMemberCount={0}
         playbackState={null}
         playlist={[]}
         renderPlayerPanel={renderPlayerPanel}

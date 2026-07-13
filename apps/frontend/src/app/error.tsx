@@ -1,6 +1,7 @@
 'use client';
 
 import { RotateCcw, TriangleAlert } from 'lucide-react';
+import { useEffect } from 'react';
 
 import { ErrorPageShell } from '@/features/error/components/ErrorPageShell';
 import { ErrorState } from '@/features/error/components/ErrorState';
@@ -10,7 +11,12 @@ interface ErrorProps {
   reset: () => void;
 }
 
-export default function Error({ reset }: ErrorProps) {
+export default function Error({ error, reset }: ErrorProps) {
+  useEffect(() => {
+    // eslint-disable-next-line no-console -- 에러 바운더리에 걸린 원인을 진단 로그로 남겨야 함
+    console.error(error);
+  }, [error]);
+
   return (
     <ErrorPageShell glowClassName="bg-destructive/5">
       <ErrorState

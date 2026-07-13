@@ -128,6 +128,10 @@ export class RoomService {
     return { member, wasOnline: !didTransition };
   }
 
+  async getMembers(roomId: string): Promise<RoomMemberRecord[]> {
+    return this.roomRepo.findMembers(roomId);
+  }
+
   async leaveRoom(roomId: string, userId: string): Promise<LeaveRoomResult> {
     const room = await assertActiveRoomMember(this.roomRepo, roomId, userId);
     if (room.hostId === userId) {

@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ERROR_CODES } from '@syfity/shared';
 
-import { PlaylistService, type PlaylistSocketServer } from './playlist.service';
+import { PlaylistService } from './playlist.service';
 import type { YouTubeVideoDetail } from '../lib/youtube/youtube.client';
+import { broadcastToRoom } from '../socket/broadcast';
 import type { PlaybackStateRecord } from '../types/playback';
 import type {
   IPlaylistRepository,
@@ -12,6 +13,10 @@ import type {
 } from '../types/playlist';
 import type { RoomDetailRecord } from '../types/room';
 import type { PlaybackStatePayload } from '../types/socket';
+
+vi.mock('../socket/broadcast', () => ({
+  broadcastToRoom: vi.fn(),
+}));
 
 const room: RoomDetailRecord = {
   id: 'room-1',
@@ -135,11 +140,6 @@ function makeFixture(
     getVideoDetails: vi.fn().mockResolvedValue(overrides.videoDetails ?? [videoDetail]),
   };
 
-  const emit = vi.fn().mockReturnValue(true);
-  const io = {
-    to: vi.fn().mockReturnValue({ emit }),
-  } satisfies PlaylistSocketServer;
-
   const playbackService = {
     getPlaybackState: vi
       .fn()
@@ -149,17 +149,19 @@ function makeFixture(
   };
 
   return {
-    service: new PlaylistService(playlistRepo, roomRepo, youtubeClient, io, playbackService),
+    service: new PlaylistService(playlistRepo, roomRepo, youtubeClient, playbackService),
     playlistRepo,
     roomRepo,
     youtubeClient,
-    io,
-    emit,
     playbackService,
   };
 }
 
 describe('PlaylistService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('Room이 없으면 플레이리스트 조회에서 ROOM_NOT_FOUND를 반환한다', async () => {
     const { service, playlistRepo } = makeFixture({ room: null });
 
@@ -316,13 +318,12 @@ describe('PlaylistService', () => {
   });
 
   it('곡 추가 후 lastActivityAt을 갱신하고 playlist:updated를 broadcast한다', async () => {
-    const { service, roomRepo, io, emit } = makeFixture();
+    const { service, roomRepo } = makeFixture();
 
     await service.addItem('room-1', 'user-1', { videoId: 'video-1' });
 
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
-    expect(io.to).toHaveBeenCalledWith('room:room-1');
-    expect(emit).toHaveBeenCalledWith('playlist:updated', {
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
       playlist: [
         {
           id: 'playlist-item-1',
@@ -435,7 +436,7 @@ describe('PlaylistService', () => {
       { id: 'playlist-item-1', position: 2 },
       { id: 'playlist-item-2', position: 1 },
     ];
-    const { service, playlistRepo, roomRepo, io, emit } = makeFixture({
+    const { service, playlistRepo, roomRepo } = makeFixture({
       playlist: [playlistItem, secondPlaylistItem],
     });
 
@@ -443,8 +444,7 @@ describe('PlaylistService', () => {
 
     expect(playlistRepo.reorderItems).toHaveBeenCalledWith(items);
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
-    expect(io.to).toHaveBeenCalledWith('room:room-1');
-    expect(emit).toHaveBeenCalledWith('playlist:updated', {
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
       playlist: [
         {
           id: 'playlist-item-1',
@@ -536,7 +536,7 @@ describe('PlaylistService', () => {
   });
 
   it('Member는 본인이 추가한 곡을 삭제할 수 있다', async () => {
-    const { service, playlistRepo, emit } = makeFixture({
+    const { service, playlistRepo } = makeFixture({
       lookupItem: { ...playlistItemLookup, addedBy: 'user-2' },
       playlist: [],
     });
@@ -546,7 +546,7 @@ describe('PlaylistService', () => {
     ).resolves.toBeUndefined();
 
     expect(playlistRepo.deleteItem).toHaveBeenCalledWith('playlist-item-1');
-    expect(emit).toHaveBeenCalledWith('playlist:updated', { playlist: [] });
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', { playlist: [] });
   });
 
   it('Host는 타인이 추가한 곡을 삭제할 수 있다', async () => {
@@ -576,7 +576,7 @@ describe('PlaylistService', () => {
   });
 
   it('현재 재생 곡이 아니면 PlaybackState 변경 없이 playlist:updated만 broadcast한다', async () => {
-    const { service, playlistRepo, roomRepo, emit, playbackService } = makeFixture({
+    const { service, playlistRepo, roomRepo, playbackService } = makeFixture({
       lookupItem: playlistItemLookup,
       playlist: [],
     });
@@ -589,12 +589,12 @@ describe('PlaylistService', () => {
     expect(playbackService.resetPlayback).not.toHaveBeenCalled();
     expect(playlistRepo.deleteItem).toHaveBeenCalledWith('playlist-item-1');
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
-    expect(emit).toHaveBeenCalledTimes(1);
-    expect(emit).toHaveBeenCalledWith('playlist:updated', { playlist: [] });
+    expect(broadcastToRoom).toHaveBeenCalledTimes(1);
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', { playlist: [] });
   });
 
   it('현재 재생 곡 삭제 시 다음 available 곡으로 PlaybackState를 먼저 갱신하고 broadcast한다', async () => {
-    const { service, playlistRepo, emit, playbackService } = makeFixture({
+    const { service, playlistRepo, playbackService } = makeFixture({
       lookupItem: playlistItemLookup,
       playbackState: { ...playbackState, playlistItemId: 'playlist-item-1', videoId: 'video-1' },
     });
@@ -610,8 +610,13 @@ describe('PlaylistService', () => {
     expect(playbackService.setTrack.mock.invocationCallOrder[0]).toBeLessThan(
       playlistRepo.deleteItem.mock.invocationCallOrder[0],
     );
-    expect(emit).toHaveBeenNthCalledWith(1, 'playback:change-track', nextTrackPayload);
-    expect(emit).toHaveBeenNthCalledWith(2, 'playlist:updated', {
+    expect(broadcastToRoom).toHaveBeenNthCalledWith(
+      1,
+      'room-1',
+      'playback:change-track',
+      nextTrackPayload,
+    );
+    expect(broadcastToRoom).toHaveBeenNthCalledWith(2, 'room-1', 'playlist:updated', {
       playlist: [
         {
           id: 'playlist-item-2',
@@ -644,7 +649,7 @@ describe('PlaylistService', () => {
   });
 
   it('현재 재생 곡 삭제 시 다음 available 곡이 없으면 PlaybackState를 초기화하고 pause를 broadcast한다', async () => {
-    const { service, playlistRepo, emit, playbackService } = makeFixture({
+    const { service, playlistRepo, playbackService } = makeFixture({
       lookupItem: playlistItemLookup,
       playbackState: { ...playbackState, playlistItemId: 'playlist-item-1', videoId: 'video-1' },
     });
@@ -660,8 +665,8 @@ describe('PlaylistService', () => {
     expect(playbackService.resetPlayback.mock.invocationCallOrder[0]).toBeLessThan(
       playlistRepo.deleteItem.mock.invocationCallOrder[0],
     );
-    expect(emit).toHaveBeenNthCalledWith(1, 'playback:pause', resetPayload);
-    expect(emit).toHaveBeenNthCalledWith(2, 'playlist:updated', {
+    expect(broadcastToRoom).toHaveBeenNthCalledWith(1, 'room-1', 'playback:pause', resetPayload);
+    expect(broadcastToRoom).toHaveBeenNthCalledWith(2, 'room-1', 'playlist:updated', {
       playlist: [
         {
           id: 'playlist-item-unavailable',

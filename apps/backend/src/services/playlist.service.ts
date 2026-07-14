@@ -1,8 +1,9 @@
-import { ERROR_CODES, type AddPlaylistItemRequest, type PlaylistItem } from '@syfity/shared';
+import { ERROR_CODES, type AddPlaylistItemRequest } from '@syfity/shared';
 
 import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { IYouTubeClient } from '../lib/youtube/youtube.client';
+import { broadcastToRoom } from '../socket/broadcast';
 import {
   toPlaylistItem,
   type IPlaylistRepository,
@@ -12,15 +13,6 @@ import {
 import type { IRoomRepository } from '../types/room';
 import type { PlaybackStatePayload } from '../types/socket';
 import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
-
-type PlaylistRoomEmitter = {
-  emit(event: 'playlist:updated', payload: { playlist: PlaylistItem[] }): boolean;
-  emit(event: 'playback:change-track' | 'playback:pause', payload: PlaybackStatePayload): boolean;
-};
-
-export type PlaylistSocketServer = {
-  to(room: string): PlaylistRoomEmitter;
-};
 
 type PlaylistPlaybackService = Pick<
   PlaybackService,
@@ -35,7 +27,6 @@ export class PlaylistService {
       'findRoomById' | 'touchLastActivity' | 'findMembership'
     >,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
-    private readonly io: PlaylistSocketServer,
     private readonly playbackService: PlaylistPlaybackService,
   ) {}
 
@@ -78,7 +69,7 @@ export class PlaylistService {
     await this.roomRepo.touchLastActivity(roomId);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
     });
 
@@ -113,7 +104,7 @@ export class PlaylistService {
     await this.roomRepo.touchLastActivity(roomId);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
     });
   }
@@ -175,9 +166,9 @@ export class PlaylistService {
     const updatedPlaylist = await this.playlistRepo.getPlaylist(roomId);
 
     if (broadcastEvent && statePayload) {
-      this.io.to(`room:${roomId}`).emit(broadcastEvent, statePayload);
+      broadcastToRoom(roomId, broadcastEvent, statePayload);
     }
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: updatedPlaylist.map(toPlaylistItem),
     });
   }

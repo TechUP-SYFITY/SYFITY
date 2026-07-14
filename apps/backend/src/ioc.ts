@@ -2,7 +2,6 @@ import { OAuth2Client } from 'google-auth-library';
 import type { IocContainer } from 'tsoa';
 
 import { cache } from './lib/cache';
-import { getIo } from './lib/io';
 import { prisma } from './lib/prisma';
 import { YouTubeClient } from './lib/youtube/youtube.client';
 
@@ -73,19 +72,12 @@ export const roomService = new RoomService(
   chatRepository,
   playbackService,
 );
-let playlistService: PlaylistService | null = null;
-
-function getPlaylistService(): PlaylistService {
-  playlistService ??= new PlaylistService(
-    playlistRepository,
-    roomRepository,
-    playlistYoutubeClient,
-    getIo(),
-    playbackService,
-  );
-
-  return playlistService;
-}
+export const playlistService = new PlaylistService(
+  playlistRepository,
+  roomRepository,
+  playlistYoutubeClient,
+  playbackService,
+);
 
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
@@ -94,7 +86,7 @@ register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);
   return new SearchController(new SearchService(youtubeClient, cache));
 });
-register(PlaylistController, () => new PlaylistController(getPlaylistService()));
+register(PlaylistController, () => new PlaylistController(playlistService));
 
 export const iocContainer: IocContainer = {
   get<T>(controller: new (...args: never[]) => T): T {

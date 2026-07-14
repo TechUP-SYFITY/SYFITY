@@ -1,7 +1,8 @@
+import { DocsContainer } from '@storybook/addon-docs/blocks';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { delay, http, HttpResponse } from 'msw';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { expect, fn, waitFor, within } from 'storybook/test';
 
 import type { SearchResponse } from '@syfity/shared';
@@ -26,6 +27,26 @@ const thumbnailHandler = http.get(THUMBNAIL_ENDPOINT, ({ request }) => {
 
 type StoryRender = () => ReactNode;
 
+function SearchPanelDocsContainer({ children, ...props }: ComponentProps<typeof DocsContainer>) {
+  return (
+    <DocsContainer {...props}>
+      <style>{`
+        .sbdocs-content {
+          max-width: 1200px;
+        }
+
+        .docs-story iframe[src*='features-search-searchpanel--mobile'] {
+          display: block;
+          width: 375px !important;
+          max-width: 100%;
+          margin-inline: auto;
+        }
+      `}</style>
+      {children}
+    </DocsContainer>
+  );
+}
+
 function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -49,6 +70,13 @@ const meta = {
   title: 'Features/Search/SearchPanel',
   component: SearchPanel,
   parameters: {
+    docs: {
+      container: SearchPanelDocsContainer,
+      story: {
+        iframeHeight: '640px',
+        inline: false,
+      },
+    },
     layout: 'fullscreen',
     msw: {
       handlers: [...searchHandlers, thumbnailHandler],
@@ -86,6 +114,13 @@ export const Default: Story = {
 export const Mobile: Story = {
   globals: {
     viewport: { value: 'mobile', isRotated: false },
+  },
+  parameters: {
+    docs: {
+      story: {
+        iframeHeight: '812px',
+      },
+    },
   },
 };
 

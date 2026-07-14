@@ -1,6 +1,6 @@
 // Home 페이지 진입점.
-import { HomePageClient } from './HomePageClient';
+import { HomePage } from '@/widgets/home/HomePage';
 
-export default function HomePage() {
-  return <HomePageClient />;
+export default function HomePageRoute() {
+  return <HomePage />;
 }

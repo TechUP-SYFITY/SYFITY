@@ -1,3 +1,5 @@
+import { isDriverAdapterError } from '@prisma/driver-adapter-utils';
+
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type {
   AddPlaylistItemData,
@@ -22,8 +24,19 @@ const PLAYLIST_ITEM_SELECT = {
 
 // 두 요청이 동시에 같은 Room에 곡을 추가하면 max(position) 조회와 insert 사이에
 // 경합이 생겨 동일한 position이 중복 저장될 수 있다. Serializable 격리 수준에서는
-// 이런 write skew를 DB가 감지해 한쪽 트랜잭션을 P2034로 실패시키므로 재시도로 해소한다.
+// 이런 write skew를 DB가 감지해 한쪽 트랜잭션을 실패시키므로 재시도로 해소한다.
 const ADD_ITEM_MAX_ATTEMPTS = 3;
+
+// @prisma/adapter-pg(driver adapter) 경로에서는 write conflict가
+// PrismaClientKnownRequestError(P2034)로 변환되지 않고 DriverAdapterError로
+// 그대로 전달된다 (cause.kind === 'TransactionWriteConflict', Postgres SQLSTATE 40001).
+// 두 형태를 모두 확인해야 재시도가 실제로 동작한다.
+function isSerializationFailure(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+    return true;
+  }
+  return isDriverAdapterError(error) && error.cause.kind === 'TransactionWriteConflict';
+}
 
 type PlaylistItemTxClient = {
   playlistItem: Pick<PrismaClient['playlistItem'], 'aggregate' | 'create'>;
@@ -88,9 +101,7 @@ export class PlaylistRepository implements IPlaylistRepository {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         });
       } catch (error) {
-        const isSerializationFailure =
-          error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
-        if (!isSerializationFailure || attempt >= ADD_ITEM_MAX_ATTEMPTS) {
+        if (!isSerializationFailure(error) || attempt >= ADD_ITEM_MAX_ATTEMPTS) {
           throw error;
         }
       }

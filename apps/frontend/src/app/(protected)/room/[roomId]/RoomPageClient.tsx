@@ -27,6 +27,7 @@ import { RoomErrorState } from '@/features/room/components/RoomErrorState';
 import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
 import { useJoinRoom } from '@/features/room/roomHooks';
 import { useRoomStore } from '@/features/room/roomStore';
+import { useMobileOverlayHistory } from '@/features/room/useMobileOverlayHistory';
 import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
 import {
   SearchAddToast,
@@ -42,6 +43,7 @@ interface RoomPageClientProps {
 
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
+  useMobileOverlayHistory(activeMobileTab !== 'playlist', () => setActiveMobileTab('playlist'));
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const [toastFeedback, setToastFeedback] = useState<SearchAddToastFeedback | null>(null);

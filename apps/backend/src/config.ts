@@ -31,6 +31,7 @@ export const config = {
   vercelPreviewOriginPattern: process.env.VERCEL_PREVIEW_ORIGIN_PATTERN,
   // FE/BE가 서로 다른 서브도메인인 운영 환경에서 인증 쿠키를 공유하기 위한 Domain.
   // 별도 환경변수 없이 CLIENT_URL의 hostname을 재사용한다 (예: https://syfity.site → syfity.site).
+  // Domain 속성은 leading dot 없이도 해당 도메인과 모든 서브도메인에 적용된다.
   cookieDomain: getCookieDomain(clientUrl),
   jwt: {
     accessSecret: requireEnv('JWT_ACCESS_SECRET'),

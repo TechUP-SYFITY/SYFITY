@@ -11,6 +11,7 @@ import type {
   PlaylistItemLookupRecord,
   PlaylistItemRecord,
 } from '../types/playlist';
+import { PlaylistDuplicateVideoError } from '../types/playlist';
 import type { RoomDetailRecord } from '../types/room';
 import type { PlaybackStatePayload } from '../types/socket';
 
@@ -116,6 +117,8 @@ function makeFixture(
     room?: RoomDetailRecord | null;
     playlist?: PlaylistItemRecord[];
     addedItem?: PlaylistItemRecord;
+    addItemError?: Error;
+    duplicateItem?: PlaylistItemRecord | null;
     lookupItem?: PlaylistItemLookupRecord | null;
     playbackState?: PlaybackStateRecord | null;
     videoDetails?: YouTubeVideoDetail[];
@@ -123,7 +126,13 @@ function makeFixture(
 ) {
   const playlistRepo = {
     getPlaylist: vi.fn().mockResolvedValue(overrides.playlist ?? [playlistItem]),
-    addItem: vi.fn().mockResolvedValue(overrides.addedItem ?? playlistItem),
+    addItem:
+      'addItemError' in overrides
+        ? vi.fn().mockRejectedValue(overrides.addItemError)
+        : vi.fn().mockResolvedValue(overrides.addedItem ?? playlistItem),
+    findItemByRoomAndVideoId: vi
+      .fn()
+      .mockResolvedValue('duplicateItem' in overrides ? overrides.duplicateItem : null),
     findItemById: vi.fn().mockResolvedValue(overrides.lookupItem ?? null),
     markUnavailable: vi.fn().mockResolvedValue(undefined),
     deleteItem: vi.fn().mockResolvedValue(undefined),
@@ -224,6 +233,7 @@ describe('PlaylistService', () => {
     );
 
     expect(youtubeClient.getVideoDetails).toHaveBeenCalledWith(['video-1']);
+    expect(playlistRepo.findItemByRoomAndVideoId).toHaveBeenCalledWith('room-1', 'video-1');
     expect(playlistRepo.addItem).toHaveBeenCalledWith({
       roomId: 'room-1',
       videoId: 'video-1',
@@ -233,6 +243,32 @@ describe('PlaylistService', () => {
       duration: 180,
       addedBy: 'user-1',
     });
+  });
+
+  it('같은 Room에 이미 추가된 videoId면 중복 오류를 반환한다', async () => {
+    const { service, playlistRepo, youtubeClient } = makeFixture({ duplicateItem: playlistItem });
+
+    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
+      {
+        status: 409,
+        code: ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
+      },
+    );
+    expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
+    expect(playlistRepo.addItem).not.toHaveBeenCalled();
+  });
+
+  it('동시 추가로 DB unique 제약이 충돌해도 중복 오류를 반환한다', async () => {
+    const { service } = makeFixture({
+      addItemError: new PlaylistDuplicateVideoError(),
+    });
+
+    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
+      {
+        status: 409,
+        code: ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
+      },
+    );
   });
 
   it.each([

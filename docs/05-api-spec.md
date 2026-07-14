@@ -6,7 +6,7 @@
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
 | 버전      | v1.7                                                                                            |
-| 상태      | YouTube Music 카테고리 검색 필터와 50개 단일 페이지 조회 반영                                   |
+| 상태      | YouTube Music 검색 필터와 플레이리스트 중복 영상 차단 반영                                      |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
 
@@ -541,7 +541,7 @@ Room의 플레이리스트 조회. `position` 오름차순으로 반환한다.
 
 추가 성공 시 Socket `playlist:updated` 이벤트를 broadcast한다.
 
-MVP에서 중복 추가를 허용한다.
+Room 안에서는 동일 `videoId`를 한 번만 추가할 수 있다. 기존 항목의 상태가 `available` 또는 `unavailable`인 경우 모두 재추가를 거부한다.
 
 **Request Body**
 
@@ -579,6 +579,7 @@ MVP에서 중복 추가를 허용한다.
 | `ROOM_ACCESS_DENIED`         | 403  | Room 참여자가 아님    |
 | `PLAYLIST_INVALID_URL`       | 400  | videoId 파싱 불가 URL |
 | `PLAYLIST_VIDEO_UNAVAILABLE` | 400  | 재생 불가 영상        |
+| `PLAYLIST_DUPLICATE_VIDEO`   | 409  | 이미 추가된 동일 영상 |
 | `SERVER_YOUTUBE_API_ERROR`   | 502  | YouTube API 호출 실패 |
 
 ---

@@ -37,9 +37,12 @@ export type ReorderPlaylistItemInput = {
   position: number;
 };
 
+export class PlaylistDuplicateVideoError extends Error {}
+
 export interface IPlaylistRepository {
   getPlaylist(roomId: string): Promise<PlaylistItemRecord[]>;
   addItem(data: AddPlaylistItemData): Promise<PlaylistItemRecord>;
+  findItemByRoomAndVideoId(roomId: string, videoId: string): Promise<PlaylistItemRecord | null>;
   findItemById(itemId: string): Promise<PlaylistItemLookupRecord | null>;
   markUnavailable(itemId: string): Promise<void>;
   deleteItem(itemId: string): Promise<void>;

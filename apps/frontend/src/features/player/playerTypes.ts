@@ -6,6 +6,11 @@ export type PlaybackEventSource =
 
 export type PlaybackSyncStatus = 'idle' | 'pending' | 'synced';
 
+export type PlayerController = {
+  pause(): void;
+  play(): void;
+};
+
 export interface PlaybackCommandResult {
   success: true;
 }

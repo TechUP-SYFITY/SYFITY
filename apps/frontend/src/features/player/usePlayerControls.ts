@@ -1,8 +1,9 @@
 // Player 재생 제어 상태와 Socket 명령 실행을 관리한다.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
 import { playbackCommands } from './playbackCommands';
 import { usePlayerStore } from './playerStore';
+import type { PlayerController } from './playerTypes';
 
 export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek';
 
@@ -16,6 +17,7 @@ interface UsePlayerControlsParams {
   hasPlayableTrack: boolean;
   isPlaying: boolean;
   nextItemId?: string;
+  playerControllerRef?: RefObject<PlayerController | null>;
   previousItemId?: string;
 }
 
@@ -27,6 +29,7 @@ export function usePlayerControls({
   hasPlayableTrack,
   isPlaying,
   nextItemId,
+  playerControllerRef,
   previousItemId,
 }: UsePlayerControlsParams) {
   const seekTimeoutRef = useRef<number | null>(null);
@@ -46,7 +49,11 @@ export function usePlayerControls({
     [],
   );
 
-  async function runHostCommand(command: PlayerCommand, action: () => Promise<unknown>) {
+  async function runHostCommand(
+    command: PlayerCommand,
+    action: () => Promise<unknown>,
+    onFailure?: () => void,
+  ) {
     if (!canControlRoom || pendingCommandRef.current) {
       return;
     }
@@ -63,6 +70,7 @@ export function usePlayerControls({
     try {
       await action();
     } catch (error) {
+      onFailure?.();
       setCommandError(getPlayerCommandErrorMessage(error));
     } finally {
       pendingCommandRef.current = null;
@@ -80,7 +88,15 @@ export function usePlayerControls({
       return;
     }
 
-    void runHostCommand('play', () => playbackCommands.play(roomId, currentTime));
+    void runHostCommand(
+      'play',
+      () => {
+        // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
+        playerControllerRef?.current?.play();
+        return playbackCommands.play(roomId, currentTime);
+      },
+      () => playerControllerRef?.current?.pause(),
+    );
   }
 
   function handlePreviousTrack() {

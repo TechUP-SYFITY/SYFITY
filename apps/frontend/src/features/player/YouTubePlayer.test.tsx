@@ -104,6 +104,30 @@ describe('YouTubePlayer', () => {
     expect(players[0]?.unMute).toHaveBeenCalled();
   });
 
+  it('player ready 시 즉시 재생 제어기를 등록하고 unmount 시 해제한다', async () => {
+    const playerControllerRef = { current: null as null | { pause(): void; play(): void } };
+    const { unmount } = render(
+      <YouTubePlayer
+        playerControllerRef={playerControllerRef}
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(playerControllerRef.current).not.toBeNull();
+    });
+    playerControllerRef.current?.play();
+    expect(players[0]?.playVideo).toHaveBeenCalledOnce();
+
+    unmount();
+
+    expect(playerControllerRef.current).toBeNull();
+  });
+
   it('로컬 볼륨 변경을 YouTube Player에 반영한다', async () => {
     render(
       <YouTubePlayer

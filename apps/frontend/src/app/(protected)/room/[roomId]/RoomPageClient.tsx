@@ -15,6 +15,7 @@ import { sortChatMessagesAscending } from '@/features/chat/lib/chatMessageOrder'
 import { useChatStore } from '@/features/chat/store/chatStore';
 import { PlayerPanel } from '@/features/player/PlayerPanel';
 import { usePlayerStore } from '@/features/player/playerStore';
+import type { PlayerController } from '@/features/player/playerTypes';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
 import { usePlayerControls } from '@/features/player/usePlayerControls';
 import { getPlaylistErrorMessage } from '@/features/playlist/playlistErrorMessage';
@@ -50,6 +51,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const [toastFeedback, setToastFeedback] = useState<SearchAddToastFeedback | null>(null);
   const toastIdRef = useRef(0);
+  const playerControllerRef = useRef<PlayerController | null>(null);
   const joinRoom = useJoinRoom(roomId);
   const { data: me } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
@@ -110,6 +112,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     isHost,
     isPlaying: playbackState?.isPlaying ?? false,
     nextItemId: nextItem?.id,
+    playerControllerRef,
     previousItemId: previousItem?.id,
     roomId,
   });
@@ -195,6 +198,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
             canControlRoom={canControlRoom}
             roomId={roomId}
             isHost={isHost}
+            playerControllerRef={playerControllerRef}
             onEnded={miniPlayerControls.handleNextTrack}
             onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
             playlist={playlist}

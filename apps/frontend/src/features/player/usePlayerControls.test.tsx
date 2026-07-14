@@ -181,6 +181,67 @@ describe('usePlayerControls', () => {
     });
   });
 
+  it('Host의 재생 탭에서 서버 명령 전에 로컬 플레이어를 즉시 재생한다', async () => {
+    const callOrder: string[] = [];
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(() => callOrder.push('local-play')),
+      },
+    };
+    vi.mocked(playbackCommands.play).mockImplementation(async () => {
+      callOrder.push('socket-play');
+    });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlayPause();
+    });
+
+    expect(callOrder).toEqual(['local-play', 'socket-play']);
+    expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(playbackCommands.play).toHaveBeenCalledWith(roomId, 12);
+    });
+  });
+
+  it('낙관적 재생 명령이 실패하면 로컬 플레이어를 다시 일시정지한다', async () => {
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(),
+      },
+    };
+    vi.mocked(playbackCommands.play).mockRejectedValue(new Error('Socket is not connected.'));
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlayPause();
+    });
+
+    await waitFor(() => {
+      expect(playerControllerRef.current.pause).toHaveBeenCalledOnce();
+    });
+  });
+
   it('재생 가능한 곡이 없으면 next 명령을 보내지 않는다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({

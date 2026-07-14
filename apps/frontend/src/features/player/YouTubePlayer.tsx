@@ -5,7 +5,7 @@ import { useEffect, useRef, type MutableRefObject } from 'react';
 
 import { usePlayerStore } from './playerStore';
 import { getPlaybackCorrection } from './playerSync';
-import type { PlayerPlaybackState } from './playerTypes';
+import type { PlayerController, PlayerPlaybackState } from './playerTypes';
 import { usePlayerVolumeStore } from './playerVolumeStore';
 
 declare global {
@@ -45,6 +45,7 @@ const loadYouTubeApi = () => {
 };
 
 interface YouTubePlayerProps {
+  playerControllerRef?: MutableRefObject<PlayerController | null>;
   playbackState: PlayerPlaybackState | null;
   onBufferingRecovered: () => void;
   onEnded: () => void;
@@ -53,6 +54,7 @@ interface YouTubePlayerProps {
 }
 
 export function YouTubePlayer({
+  playerControllerRef,
   playbackState,
   onBufferingRecovered,
   onEnded,
@@ -86,6 +88,7 @@ export function YouTubePlayer({
 
   useEffect(() => {
     let isMounted = true;
+    let controller: PlayerController | null = null;
 
     void loadYouTubeApi().then(() => {
       if (!isMounted || !containerRef.current || playerRef.current) {
@@ -97,6 +100,13 @@ export function YouTubePlayer({
           onError: (event) => onErrorRef.current(Number(event.data)),
           onReady: (event) => {
             isPlayerReadyRef.current = true;
+            controller = {
+              pause: () => event.target.pauseVideo(),
+              play: () => event.target.playVideo(),
+            };
+            if (playerControllerRef) {
+              playerControllerRef.current = controller;
+            }
             applyPlayerVolume(event.target, usePlayerVolumeStore.getState());
             applyPlaybackState(event.target, playbackStateRef.current, loadedVideoIdRef);
           },
@@ -151,8 +161,11 @@ export function YouTubePlayer({
       playerRef.current = null;
       loadedVideoIdRef.current = null;
       previousPlayerStateRef.current = null;
+      if (playerControllerRef?.current === controller) {
+        playerControllerRef.current = null;
+      }
     };
-  }, []);
+  }, [playerControllerRef]);
 
   useEffect(() => {
     const player = playerRef.current;

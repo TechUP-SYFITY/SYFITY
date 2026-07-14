@@ -25,9 +25,15 @@ vi.mock('./useRoomLiveConnections', () => ({
   useRoomLiveConnections: vi.fn(),
 }));
 
+const { routerPush, routerReplace } = vi.hoisted(() => ({
+  routerPush: vi.fn(),
+  routerReplace: vi.fn(),
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: routerPush,
+    replace: routerReplace,
   }),
 }));
 
@@ -215,7 +221,7 @@ describe('RoomPageClient', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
   });
 
-  it('Room 종료 callback으로 재생 상태를 정리한다', async () => {
+  it('Room 종료 callback으로 재생 상태를 정리하고 /home으로 이동한다', async () => {
     const Wrapper = createWrapper();
 
     render(
@@ -235,6 +241,7 @@ describe('RoomPageClient', () => {
     });
 
     expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(routerReplace).toHaveBeenCalledWith('/home');
   });
 
   it('Room 초대 버튼으로 초대 모달을 열고 실제 초대 코드와 링크를 복사한다', async () => {

@@ -1,6 +1,7 @@
 'use client';
 
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
@@ -42,6 +43,7 @@ interface RoomPageClientProps {
 }
 
 export function RoomPageClient({ roomId }: RoomPageClientProps) {
+  const router = useRouter();
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
   useMobileOverlayHistory(activeMobileTab !== 'playlist', () => setActiveMobileTab('playlist'));
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -72,7 +74,12 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const hasJoinedRoom = joinRoom.isSuccess;
   const addSearchResult = useAddPlaylistItem(roomId);
 
-  useRoomLiveConnections(roomId, hasJoinedRoom, clearPlayback);
+  const handleRoomClosed = () => {
+    clearPlayback();
+    router.replace('/home');
+  };
+
+  useRoomLiveConnections(roomId, hasJoinedRoom, handleRoomClosed);
 
   useEffect(() => {
     if (!joinRoom.data) {

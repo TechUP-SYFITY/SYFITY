@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Frontend Architecture                                                          |
-| 버전      | v1.1                                                                                  |
-| 상태      | `widgets` 레이어 채택 사례 반영                                                       |
+| 버전      | v1.2                                                                                  |
+| 상태      | Vercel 운영 환경변수 설정 반영                                                        |
 | 작성 목적 | Syfity MVP 프론트엔드 구조 정의                                                       |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -461,3 +461,15 @@ export const queryClient = new QueryClient({
 NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
 ```
+
+### 11.1 운영(Vercel) 환경변수 설정
+
+Vercel의 Production과 Preview 환경에는 아래 값을 모두 설정한다. Preview도 별도 스테이징 BE 없이 운영 BE를 사용하므로, 테스트에서 생성한 Room·채팅 데이터가 운영 DB에 반영될 수 있다.
+
+| 변수                      | Production                       | Preview                          |
+| ------------------------- | -------------------------------- | -------------------------------- |
+| `NEXT_PUBLIC_API_URL`     | `https://api.syfity.site/api/v1` | `https://api.syfity.site/api/v1` |
+| `NEXT_PUBLIC_SOCKET_URL`  | `https://api.syfity.site`        | `https://api.syfity.site`        |
+| `NEXT_PUBLIC_API_MOCKING` | `disabled`                       | `disabled`                       |
+
+Vercel 프로젝트의 Root Directory는 `apps/frontend`로 지정하고, Build Step에서 root directory 밖의 파일을 포함하는 옵션을 활성화한다. `prebuild` 훅은 `@syfity/shared`의 런타임 산출물을 먼저 생성한다.

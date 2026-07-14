@@ -2,13 +2,13 @@
 
 ## 1. 문서 정보
 
-| 항목      | 내용                             |
-| --------- | -------------------------------- |
-| 문서명    | Syfity System Architecture       |
-| 버전      | v1.0                             |
-| 상태      | 초안                             |
-| 작성 목적 | Syfity MVP 전체 시스템 구조 정의 |
-| 기반 문서 | `01-prd.md`                      |
+| 항목      | 내용                                         |
+| --------- | -------------------------------------------- |
+| 문서명    | Syfity System Architecture                   |
+| 버전      | v1.1                                         |
+| 상태      | Vercel 운영 도메인 및 Preview CORS 정책 반영 |
+| 작성 목적 | Syfity MVP 전체 시스템 구조 정의             |
+| 기반 문서 | `01-prd.md`                                  |
 
 ---
 
@@ -128,8 +128,8 @@ DB              → Supabase CLI (Docker 로컬 인스턴스)
 ### 운영 환경
 
 ```
-apps/frontend   → https://{vercel-project}.vercel.app
-apps/backend    → https://{render-service}.onrender.com
+apps/frontend   → https://syfity.site
+apps/backend    → https://api.syfity.site
 DB              → Supabase 클라우드 (prod 프로젝트)
 ```
 
@@ -139,13 +139,13 @@ Render 무료 티어에서 슬립, 재시작, 성능 문제가 반복될 경우 
 
 Seoul 리전 기준 EC2 온디맨드 비용은 t4g.micro가 컴퓨트 월 약 $7.59, t3.micro가 약 $8.54 수준이다. EBS와 소량 트래픽을 포함하면 총액은 월 $10~12선을 예상한다.
 
-### 커스텀 도메인 적용 시 (추후)
+### 커스텀 도메인
 
-도메인 미확정. 결정 시 FE는 Vercel에, BE는 서브도메인으로 연결한다.
+FE의 canonical origin은 `https://syfity.site`이며, BE는 `https://api.syfity.site`를 사용한다. `www.syfity.site`는 Vercel에서 apex 도메인으로 리다이렉트하여 별도 CORS origin으로 취급하지 않는다.
 
 ```
-apps/frontend   → https://{domain}
-apps/backend    → https://api.{domain}   (서브도메인)
+apps/frontend   → https://syfity.site
+apps/backend    → https://api.syfity.site
 ```
 
 ### 환경변수
@@ -153,7 +153,7 @@ apps/backend    → https://api.{domain}   (서브도메인)
 **apps/frontend (.env.local)**
 
 ```
-NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
 ```
 
@@ -164,8 +164,11 @@ PORT=4000
 CLIENT_URL=http://localhost:3000
 
 # CORS 허용 origin (쉼표 구분, 로컬은 기본값으로 fallback)
-# 운영: ALLOWED_ORIGINS={vercel-url},{custom-domain} (결정 후 설정)
+# 운영: ALLOWED_ORIGINS=https://syfity.site
 ALLOWED_ORIGINS=http://localhost:3000
+
+# 특정 Vercel 프로젝트/팀 Preview URL만 허용하는 선택적 정규식
+VERCEL_PREVIEW_ORIGIN_PATTERN=
 
 # Supabase (로컬)
 DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
@@ -292,11 +295,13 @@ FE와 BE의 도메인이 다르기 때문에 Express에서 CORS를 명시적으�
 
 ```ts
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'];
+const previewOriginPattern = compilePreviewOriginPattern();
 
-const isAllowedOrigin = (origin: string) => allowedOrigins.includes(origin);
+const isAllowedOrigin = (origin: string) =>
+  allowedOrigins.includes(origin) || previewOriginPattern?.test(origin) === true;
 ```
 
-`*.vercel.app` 같은 와일드카드 패턴은 사용하지 않는다. Vercel은 누구나 무료로 임의의 `*.vercel.app` 서브도메인을 배포할 수 있어, 와일드카드를 허용하면 `credentials: true` 쿠키와 결합해 CSRF 공격 표면이 된다. FE 프리뷰 배포가 필요해지면 `ALLOWED_ORIGINS`에 실제 프로덕션/프리뷰 origin을 명시적으로 추가한다.
+`*.vercel.app` 같은 전체 와일드카드는 사용하지 않는다. Vercel은 누구나 무료로 임의의 `*.vercel.app` 서브도메인을 배포할 수 있어, 와일드카드를 허용하면 `credentials: true` 쿠키와 결합해 CSRF 공격 표면이 된다. PR Preview가 필요한 경우 `VERCEL_PREVIEW_ORIGIN_PATTERN`에 해당 Vercel 프로젝트와 팀 슬러그로 범위를 제한한 **`^`/`$` 앵커 포함 정규식**을 설정한다. 정규식이 없거나, 앵커가 없거나, 잘못되면 Preview origin은 허용되지 않으며, `ALLOWED_ORIGINS`의 정확 일치 규칙만 적용된다.
 
 ```ts
 app.use(

@@ -13,6 +13,7 @@ export const config = {
   port: process.env.PORT ?? '4000',
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:3000',
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
+  vercelPreviewOriginPattern: process.env.VERCEL_PREVIEW_ORIGIN_PATTERN,
   jwt: {
     accessSecret: requireEnv('JWT_ACCESS_SECRET'),
     refreshSecret: requireEnv('JWT_REFRESH_SECRET'),

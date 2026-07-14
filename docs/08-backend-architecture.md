@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.8                                                                                  |
-| 상태      | Presence 서비스 추가                                                                  |
+| 버전      | v1.9                                                                                  |
+| 상태      | Vercel Preview CORS 환경변수 추가                                                     |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -397,6 +397,7 @@ export const config = {
   port: process.env.PORT ?? '4000',
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:3000',
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
+  vercelPreviewOriginPattern: process.env.VERCEL_PREVIEW_ORIGIN_PATTERN,
   jwt: {
     accessSecret: requireEnv('JWT_ACCESS_SECRET'),
     refreshSecret: requireEnv('JWT_REFRESH_SECRET'),
@@ -751,6 +752,7 @@ declare namespace Express {
 PORT=4000
 CLIENT_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000
+VERCEL_PREVIEW_ORIGIN_PATTERN=
 
 # JWT
 JWT_ACCESS_SECRET=
@@ -772,16 +774,17 @@ GOOGLE_CALLBACK_URL=http://localhost:4000/api/v1/auth/google/callback
 
 Render Blueprint는 민감값을 `sync: false`로 선언하고, 실제 값은 Render 대시보드에서 직접 입력한다.
 
-| 키                                          | 운영 값 기준                                                                                                                                                                                                         |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                  | `production`                                                                                                                                                                                                         |
-| `NODE_VERSION`                              | `22`                                                                                                                                                                                                                 |
-| `CLIENT_URL`                                | T21에서 확정되는 FE 프로덕션 URL. T20 시점에는 임시값을 입력하고 T21 완료 후 `https://{domain}`으로 갱신                                                                                                             |
-| `ALLOWED_ORIGINS`                           | 프로덕션 origin을 쉼표로 구분해 명시. `cors.ts`는 `*.vercel.app` 같은 와일드카드를 허용하지 않고 이 목록과 정확히 일치하는 origin만 허용한다 — Vercel Preview를 쓰려면 실제 preview origin을 이 목록에 추가해야 한다 |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                                                                                                                                    |
-| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                                                                                                                                  |
-| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                                                                                                                              |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                                                                                                                              |
-| `GOOGLE_CALLBACK_URL`                       | `https://api.{domain}/api/v1/auth/google/callback`                                                                                                                                                                   |
+| 키                                          | 운영 값 기준                                                                                                                                                                                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                                                                                                                                                                                                        |
+| `NODE_VERSION`                              | `22`                                                                                                                                                                                                                                |
+| `CLIENT_URL`                                | `https://syfity.site`                                                                                                                                                                                                               |
+| `ALLOWED_ORIGINS`                           | 프로덕션 origin을 쉼표로 구분해 명시. 운영 값은 `https://syfity.site`이며, 이 목록은 정확 일치로만 허용한다                                                                                                                         |
+| `VERCEL_PREVIEW_ORIGIN_PATTERN`             | 선택값. 특정 Vercel 프로젝트/팀 Preview URL만 매칭하는 `^`/`$` 앵커 포함 정규식. 예: `^https://syfity-frontend-[a-z0-9-]+-techup-syfity\\.vercel\\.app$`. 미설정, 앵커 누락 또는 잘못된 정규식이면 Preview origin을 허용하지 않는다 |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                                                                                                                                                   |
+| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                                                                                                                                                 |
+| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                                                                                                                                             |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                                                                                                                                             |
+| `GOOGLE_CALLBACK_URL`                       | `https://api.syfity.site/api/v1/auth/google/callback`                                                                                                                                                                               |
 
 `PORT`는 Render web service가 자동 주입하므로 고정하지 않는다. Supabase Direct Connection은 IPv6 전용일 수 있어 Render에서는 Session Pooler 사용을 기본값으로 둔다.

@@ -7,8 +7,8 @@ import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaybackState, PlaylistItem, RoomDetail } from '@/shared/types/domain';
 
+import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/player/components/MiniPlayer';
 import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
-import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/room/components/MiniPlayer';
 import type { RoomMobileTab } from '@/features/room/components/MobileTabs';
 import { RoomStatusBar } from '@/features/room/components/RoomStatusBar';
 import type { HostConnectionState } from '@/features/room/types/roomTypes';

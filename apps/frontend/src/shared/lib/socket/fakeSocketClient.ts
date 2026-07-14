@@ -40,6 +40,8 @@ const createFakeSocket = (): SyfitySocket => {
   queueMicrotask(() => emitLocal('connect'));
 
   return {
+    connect: () => {},
+    connected: true,
     disconnect: () => {
       listeners.clear();
     },

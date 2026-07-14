@@ -1,3 +1,4 @@
+import { DriverAdapterError } from '@prisma/driver-adapter-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PlaylistRepository, type PlaylistRepositoryPrisma } from './playlist.repository';
@@ -35,6 +36,14 @@ const writeConflictError = new Prisma.PrismaClientKnownRequestError(
   'Transaction failed due to a write conflict or a deadlock. Please retry your transaction',
   { code: 'P2034', clientVersion: 'test' },
 );
+
+// @prisma/adapter-pg(driver adapter) 경로에서 실제로 발생하는 write conflict 형태.
+// P2034로 변환되지 않고 DriverAdapterError(cause.kind === 'TransactionWriteConflict')로 전달된다.
+const driverAdapterWriteConflictError = new DriverAdapterError({
+  kind: 'TransactionWriteConflict',
+  originalCode: '40001',
+  originalMessage: 'could not serialize access due to read/write dependencies among transactions',
+});
 
 function makePrisma(
   overrides: {
@@ -159,6 +168,19 @@ describe('PlaylistRepository', () => {
     const transaction = vi
       .fn()
       .mockRejectedValueOnce(writeConflictError)
+      .mockResolvedValueOnce(playlistItem);
+    const prisma = makePrisma({ transaction });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.addItem(addItemData)).resolves.toEqual(playlistItem);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('동시 추가로 인한 write conflict(DriverAdapterError)는 재시도 후 성공한다', async () => {
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(driverAdapterWriteConflictError)
       .mockResolvedValueOnce(playlistItem);
     const prisma = makePrisma({ transaction });
     const repo = new PlaylistRepository(prisma);

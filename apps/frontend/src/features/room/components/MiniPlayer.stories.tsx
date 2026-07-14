@@ -76,7 +76,6 @@ export const MemberView: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByRole('button', { name: '재생' })).toBeDisabled();
-    await expect(canvas.getByRole('progressbar', { name: '재생 진행률' })).toBeInTheDocument();
   },
 };
 

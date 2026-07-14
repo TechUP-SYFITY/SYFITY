@@ -16,8 +16,8 @@ import {
 } from '@/shared/components/ui/Dialog';
 import { Input } from '@/shared/components/ui/Input';
 
-import { useCreateRoom } from '../roomHooks';
-import type { CreateRoomResponse } from '../roomTypes';
+import { useCreateRoom } from '../hooks/roomHooks';
+import type { CreateRoomResponse } from '../types/roomTypes';
 
 interface CreateRoomDialogProps {
   open: boolean;

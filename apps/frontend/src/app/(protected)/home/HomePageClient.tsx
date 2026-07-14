@@ -7,8 +7,8 @@ import { HomeShell } from '@/features/home/HomeShell';
 import { CreateRoomDialog } from '@/features/room/components/CreateRoomDialog';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { JoinRoomDialog } from '@/features/room/components/JoinRoomDialog';
-import { useRecentRooms } from '@/features/room/roomHooks';
-import type { CreateRoomResponse, RoomInviteInfo } from '@/features/room/roomTypes';
+import { useRecentRooms } from '@/features/room/hooks/roomHooks';
+import type { CreateRoomResponse, RoomInviteInfo } from '@/features/room/types/roomTypes';
 
 export function HomePageClient() {
   const { data: user, isLoading: isUserLoading } = useMe();

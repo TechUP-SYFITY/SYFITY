@@ -11,7 +11,7 @@ import { HostConnectionNotice } from '@/features/room/components/HostConnectionN
 import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/room/components/MiniPlayer';
 import type { RoomMobileTab } from '@/features/room/components/MobileTabs';
 import { RoomStatusBar } from '@/features/room/components/RoomStatusBar';
-import type { HostConnectionState } from '@/features/room/roomTypes';
+import type { HostConnectionState } from '@/features/room/types/roomTypes';
 
 import { RoomLayout } from './components/RoomLayout';
 

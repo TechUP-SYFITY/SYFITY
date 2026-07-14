@@ -2,11 +2,11 @@
 
 // REST 입장 완료 이후 Room/Playback/Playlist Socket 연결을 한 번에 초기화한다.
 import { useChatSocket } from '@/features/chat/hooks/chatHooks';
-import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
-import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
+import { usePlaybackSocket } from '@/features/player/hooks/usePlaybackSocket';
+import { usePlaylistSocket } from '@/features/playlist/hooks/playlistHooks';
 import { usePresenceSocket } from '@/features/presence/hooks/usePresenceSocket';
 import { usePresenceStore } from '@/features/presence/store/presenceStore';
-import { useRoomSocket } from '@/features/room/useRoomSocket';
+import { useRoomSocket } from '@/features/room/hooks/useRoomSocket';
 
 export function useRoomLiveConnections(
   roomId: string,

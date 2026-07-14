@@ -13,10 +13,10 @@ import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
 import { useChatStore } from '@/features/chat/store/chatStore';
-import { usePlayerStore } from '@/features/player/playerStore';
-import { usePlaylistStore } from '@/features/playlist/playlistStore';
+import { usePlayerStore } from '@/features/player/store/playerStore';
+import { usePlaylistStore } from '@/features/playlist/store/playlistStore';
 import { usePresenceStore } from '@/features/presence/store/presenceStore';
-import { useRoomStore } from '@/features/room/roomStore';
+import { useRoomStore } from '@/features/room/store/roomStore';
 
 import { RoomPageClient } from './RoomPageClient';
 import { useRoomLiveConnections } from './useRoomLiveConnections';

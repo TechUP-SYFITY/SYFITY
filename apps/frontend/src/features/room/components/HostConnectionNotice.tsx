@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 import type { RoomClosedReason } from '@/shared/types/domain';
 
-import type { HostConnectionState } from '../roomTypes';
+import type { HostConnectionState } from '../types/roomTypes';
 
 interface HostConnectionNoticeProps {
   hostConnection: Exclude<HostConnectionState, { status: 'connected' }>;

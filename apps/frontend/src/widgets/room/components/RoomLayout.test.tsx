@@ -48,4 +48,53 @@ describe('RoomLayout', () => {
       expect(renderPlaylistPanel).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('좁은 뷰포트의 chat 탭에서는 오버레이 안에서 ChatPanel을 렌더링한다 (데스크톱용 인스턴스 1개 + 모바일 오버레이 1개)', () => {
+    render(
+      <RoomLayout
+        activeMobileTab="chat"
+        currentUserName="게스트"
+        onMobileTabChange={vi.fn()}
+        renderPlayerPanel={() => <div data-testid="player-panel" />}
+        renderPlaylistPanel={() => <div data-testid="playlist-panel" />}
+        roomId="room-1"
+      />,
+    );
+
+    expect(screen.getAllByTestId('chat-panel')).toHaveLength(2);
+    expect(screen.queryByTestId('room-tall-viewport-panel')).not.toBeInTheDocument();
+  });
+
+  it('세로 공간이 넉넉한 뷰포트에서는 오버레이 대신 페이지 흐름 안에 ChatPanel을 렌더링한다 (데스크톱용 인스턴스 1개 + 페이지 내 패널 1개)', () => {
+    const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) =>
+        ({
+          matches: true,
+          media: query,
+          onchange: null,
+          addListener: () => {},
+          removeListener: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+
+    render(
+      <RoomLayout
+        activeMobileTab="chat"
+        currentUserName="게스트"
+        onMobileTabChange={vi.fn()}
+        renderPlayerPanel={() => <div data-testid="player-panel" />}
+        renderPlaylistPanel={() => <div data-testid="playlist-panel" />}
+        roomId="room-1"
+      />,
+    );
+
+    expect(screen.getByTestId('room-tall-viewport-panel')).toBeInTheDocument();
+    expect(screen.getAllByTestId('chat-panel')).toHaveLength(2);
+    expect(screen.queryByTestId('room-mobile-overlay')).not.toBeInTheDocument();
+
+    matchMediaSpy.mockRestore();
+  });
 });

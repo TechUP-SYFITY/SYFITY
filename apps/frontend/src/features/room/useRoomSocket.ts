@@ -70,10 +70,20 @@ export const useRoomSocket = (
       });
     };
 
+    // 브라우저가 백그라운드 탭의 타이머/소켓을 강하게 스로틀링하면, 소켓이
+    // 끊긴 채로 소켓.io 자체 재연결 backoff를 한참 기다려야 할 수 있다.
+    // 탭이 다시 보이는 시점에 바로 재연결을 시도해 복귀 체감 지연을 줄인다.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !socket.connected) {
+        socket.connect();
+      }
+    };
+
     socket.on('connect', joinRoom);
     socket.on('room:host-disconnected', handleHostDisconnected);
     socket.on('room:host-reconnected', handleHostReconnected);
     socket.on('room:closed', handleRoomClosed);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     joinRoom();
 
     return () => {
@@ -81,6 +91,7 @@ export const useRoomSocket = (
       socket.off('room:host-disconnected', handleHostDisconnected);
       socket.off('room:host-reconnected', handleHostReconnected);
       socket.off('room:closed', handleRoomClosed);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.emit('room:leave', { roomId });
     };
   }, [

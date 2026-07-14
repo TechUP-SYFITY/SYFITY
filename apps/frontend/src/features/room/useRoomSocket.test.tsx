@@ -1,5 +1,5 @@
 // Room Socket이 Host 연결 상태와 참여자 목록 재동기화를 Room 상태에 반영하는지 검증한다.
-import { act, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
@@ -23,6 +23,8 @@ type RoomJoinData = {
 const handlers = new Map<EventName, EventHandler>();
 let roomJoinResponse: SocketAck<RoomJoinData>;
 const socket = {
+  connect: vi.fn(),
+  connected: true,
   disconnect: vi.fn(),
   emit: vi.fn((event: string, _payload: unknown, ack?: (response: unknown) => void) => {
     if (event === 'room:join') {
@@ -38,6 +40,10 @@ const socket = {
     handlers.set(event, handler);
   }),
 };
+
+function setVisibilityState(state: DocumentVisibilityState) {
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue(state);
+}
 
 vi.mock('@/shared/lib/socket/socketClient', () => ({
   socketClient: {
@@ -71,6 +77,7 @@ describe('useRoomSocket', () => {
   beforeEach(() => {
     handlers.clear();
     vi.clearAllMocks();
+    socket.connected = true;
     vi.mocked(socketClient.connect).mockReturnValue(socket as never);
     roomJoinResponse = {
       success: true,
@@ -83,7 +90,9 @@ describe('useRoomSocket', () => {
   });
 
   afterEach(() => {
+    cleanup();
     useRoomStore.getState().clearRoom();
+    vi.restoreAllMocks();
   });
 
   it('roomId가 없으면 socket에 연결하지 않는다', () => {
@@ -279,5 +288,44 @@ describe('useRoomSocket', () => {
     });
 
     expect(onRejoined).toHaveBeenCalledTimes(2);
+  });
+
+  it('탭이 다시 보이고 소켓이 끊긴 상태면 즉시 재연결을 시도한다', () => {
+    socket.connected = false;
+    setVisibilityState('visible');
+
+    renderHook(() => useRoomSocket('room-a'));
+
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(socket.connect).toHaveBeenCalledOnce();
+  });
+
+  it('탭이 다시 보여도 이미 연결되어 있으면 재연결을 시도하지 않는다', () => {
+    socket.connected = true;
+    setVisibilityState('visible');
+
+    renderHook(() => useRoomSocket('room-a'));
+
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(socket.connect).not.toHaveBeenCalled();
+  });
+
+  it('탭이 숨겨지는 시점에는 재연결을 시도하지 않는다', () => {
+    socket.connected = false;
+    setVisibilityState('hidden');
+
+    renderHook(() => useRoomSocket('room-a'));
+
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(socket.connect).not.toHaveBeenCalled();
   });
 });

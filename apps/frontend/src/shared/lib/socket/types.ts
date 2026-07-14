@@ -9,12 +9,14 @@ type ReservedEvents = {
 export type SyfityListenEvents = ServerToClientEvents & ReservedEvents;
 
 export interface SyfitySocket {
+  readonly connected: boolean;
   emit<Ev extends keyof ClientToServerEvents>(
     event: Ev,
     ...args: Parameters<ClientToServerEvents[Ev]>
   ): void;
   on<Ev extends keyof SyfityListenEvents>(event: Ev, listener: SyfityListenEvents[Ev]): void;
   off<Ev extends keyof SyfityListenEvents>(event: Ev, listener?: SyfityListenEvents[Ev]): void;
+  connect(): void;
   disconnect(): void;
 }
 

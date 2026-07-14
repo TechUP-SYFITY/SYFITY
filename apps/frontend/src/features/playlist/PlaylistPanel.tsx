@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/shared/components/ui';
+import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { PlaylistEmptyState } from './components/PlaylistEmptyState';
@@ -14,7 +15,6 @@ import { PlaylistLoadingState } from './components/PlaylistLoadingState';
 import { PlaylistMutationError } from './components/PlaylistMutationError';
 import { PlaylistPanelHeader } from './components/PlaylistPanelHeader';
 import type { PlaylistApi } from './playlistApi';
-import { getPlaylistErrorMessage } from './playlistErrorMessage';
 import { useDeletePlaylistItem, usePlaylist, useReorderPlaylist } from './playlistHooks';
 import { usePlaylistStore } from './playlistStore';
 
@@ -59,7 +59,7 @@ export function PlaylistPanel({
   const isInitialLoading = isLoading && visiblePlaylist.length === 0;
   const isBackgroundFetching = isFetching && !isLoading && visiblePlaylist.length > 0;
   const mutationError = deletePlaylistItem.error ?? reorderPlaylist.error;
-  const mutationErrorMessage = mutationError ? getPlaylistErrorMessage(mutationError) : undefined;
+  const mutationErrorMessage = mutationError ? getApiErrorMessage(mutationError) : undefined;
 
   const resetMutationErrors = () => {
     deletePlaylistItem.reset();
@@ -245,7 +245,7 @@ export function PlaylistPanel({
         {isInitialLoading ? <PlaylistLoadingState /> : null}
         {isPlaylistError ? (
           <PlaylistErrorState
-            errorMessage={getPlaylistErrorMessage(playlistError)}
+            errorMessage={getApiErrorMessage(playlistError)}
             onRetry={handleRetry}
           />
         ) : null}

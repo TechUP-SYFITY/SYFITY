@@ -2,7 +2,7 @@ import { CircleAlert, Home } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/shared/components/ui';
-import { ApiClientError } from '@/shared/types/api';
+import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
 
 interface RoomErrorStateProps {
   error: unknown;
@@ -17,7 +17,7 @@ export function RoomErrorState({ error, roomId }: RoomErrorStateProps) {
           <CircleAlert className="h-5 w-5" aria-hidden />
         </div>
         <h1 className="mt-5 text-lg font-bold text-white">Room에 입장하지 못했어요</h1>
-        <p className="mt-2 text-sm leading-6 text-white/50">{getRoomErrorMessage(error)}</p>
+        <p className="mt-2 text-sm leading-6 text-white/50">{getApiErrorMessage(error)}</p>
         <p className="mt-3 max-w-full truncate text-xs text-white/30">Room ID: {roomId}</p>
         <Button asChild variant="ghost" className="mt-6 rounded-2xl">
           <Link href="/home">
@@ -28,36 +28,4 @@ export function RoomErrorState({ error, roomId }: RoomErrorStateProps) {
       </div>
     </main>
   );
-}
-
-function getRoomErrorMessage(error: unknown) {
-  if (error instanceof ApiClientError) {
-    if (error.code === 'ROOM_NOT_FOUND') {
-      return '존재하지 않거나 입장할 수 없는 Room입니다.';
-    }
-
-    if (error.code === 'ROOM_CLOSED') {
-      return '이미 종료된 Room입니다.';
-    }
-
-    if (error.code === 'ROOM_INACTIVE') {
-      return '현재 이용할 수 없는 Room입니다.';
-    }
-
-    if (error.code === 'ROOM_ACCESS_DENIED') {
-      return '이 Room에 참여한 이력이 없어요. 초대 링크로 다시 입장해주세요.';
-    }
-
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    if (error.message === 'Failed to fetch') {
-      return '서버에 연결하지 못했어요. 백엔드 실행 상태를 확인해주세요.';
-    }
-
-    return error.message;
-  }
-
-  return '잠시 후 다시 시도해주세요.';
 }

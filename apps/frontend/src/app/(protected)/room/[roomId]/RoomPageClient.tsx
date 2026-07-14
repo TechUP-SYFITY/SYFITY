@@ -4,6 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
 import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
 import { PresenceMockPanel } from '@/shared/mocks/PresenceMockPanel';
 
@@ -18,7 +19,6 @@ import { usePlayerStore } from '@/features/player/playerStore';
 import type { PlayerController } from '@/features/player/playerTypes';
 import { usePlayerVolumeStore } from '@/features/player/playerVolumeStore';
 import { usePlayerControls } from '@/features/player/usePlayerControls';
-import { getPlaylistErrorMessage } from '@/features/playlist/playlistErrorMessage';
 import { useAddPlaylistItem } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
@@ -145,7 +145,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
     setToastFeedback(null);
     addSearchResult.reset();
     addSearchResult.mutate(body, {
-      onError: (error) => showAddToast('error', getPlaylistErrorMessage(error)),
+      onError: (error) => showAddToast('error', getApiErrorMessage(error)),
       onSuccess: () => showAddToast('success', '플레이리스트에 추가했어요 🎵'),
     });
   };

@@ -140,6 +140,14 @@ describe('AuthController', () => {
     });
   });
 
+  it('CLIENT_URL이 URL 형식이 아니면 명확한 설정 오류를 발생시킨다', async () => {
+    vi.stubEnv('CLIENT_URL', 'syfity.site');
+
+    await expect(import('./auth.controller')).rejects.toThrow(
+      'CLIENT_URL이 올바른 URL 형식이 아닙니다.',
+    );
+  });
+
   it('콜백 실패 시 clientUrl 에러 쿼리로 리다이렉트하고 에러를 로깅한다', async () => {
     const { logger } = await import('../lib/logger');
     const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});

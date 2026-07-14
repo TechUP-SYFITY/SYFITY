@@ -2,7 +2,7 @@
 
 // Playlist 데이터 훅과 패널 UI 조합을 담당한다.
 import { Plus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 
 import { Button } from '@/shared/components/ui';
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
@@ -16,6 +16,7 @@ import { PlaylistMutationError } from './PlaylistMutationError';
 import { PlaylistPanelHeader } from './PlaylistPanelHeader';
 import type { PlaylistApi } from '../api/playlistApi';
 import { useDeletePlaylistItem, usePlaylist, useReorderPlaylist } from '../hooks/playlistHooks';
+import { usePlaylistReorderInteraction } from '../hooks/usePlaylistReorderInteraction';
 import { usePlaylistStore } from '../store/playlistStore';
 
 interface PlaylistPanelProps {
@@ -39,9 +40,6 @@ export function PlaylistPanel({
   onOpenSearch,
   playlistApiClient,
 }: PlaylistPanelProps) {
-  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
-  const draggingItemIdRef = useRef<string | null>(null);
-  const [focusedActionItemId, setFocusedActionItemId] = useState<string | null>(null);
   const shouldUseParentPlaylist = Boolean(playlistItems);
   const {
     data,
@@ -64,27 +62,6 @@ export function PlaylistPanel({
   const resetMutationErrors = () => {
     deletePlaylistItem.reset();
     reorderPlaylist.reset();
-  };
-
-  const setActiveDraggingItemId = (itemId: string | null) => {
-    draggingItemIdRef.current = itemId;
-    setDraggingItemId(itemId);
-  };
-
-  const preventMouseFocus = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (event.pointerType === 'mouse') {
-      event.preventDefault();
-    }
-  };
-
-  const handleRowBlur = (event: React.FocusEvent<HTMLDivElement>, itemId: string) => {
-    const nextTarget = event.relatedTarget;
-
-    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
-      return;
-    }
-
-    setFocusedActionItemId((currentItemId) => (currentItemId === itemId ? null : currentItemId));
   };
 
   const handleOpenSearch = () => {
@@ -110,116 +87,24 @@ export function PlaylistPanel({
     }
   }, [data?.playlist, setPlaylist, shouldUseParentPlaylist]);
 
-  const handleDrop = (targetItemId: string) => {
-    const currentDraggingItemId = draggingItemIdRef.current;
-
-    if (
-      !isReady ||
-      !canControlRoom ||
-      !currentDraggingItemId ||
-      currentDraggingItemId === targetItemId
-    ) {
-      setActiveDraggingItemId(null);
-      return;
-    }
-
-    const currentIndex = visiblePlaylist.findIndex((item) => item.id === currentDraggingItemId);
-    const nextIndex = visiblePlaylist.findIndex((item) => item.id === targetItemId);
-
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePlaylist.length) {
-      setActiveDraggingItemId(null);
-      return;
-    }
-
-    const nextPlaylist = [...visiblePlaylist];
-    const [targetItem] = nextPlaylist.splice(currentIndex, 1);
-
-    if (!targetItem) {
-      setActiveDraggingItemId(null);
-      return;
-    }
-
-    nextPlaylist.splice(nextIndex, 0, targetItem);
-    resetMutationErrors();
-    setActiveDraggingItemId(null);
-    reorderPlaylist.mutate({
-      items: nextPlaylist.map((item, index) => ({
-        id: item.id,
-        position: index + 1,
-      })),
-    });
-  };
-
-  const handleKeyboardReorder = (itemId: string, direction: -1 | 1) => {
-    if (!isReady || !canControlRoom) {
-      return;
-    }
-
-    const currentIndex = visiblePlaylist.findIndex((item) => item.id === itemId);
-    const nextIndex = currentIndex + direction;
-
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= visiblePlaylist.length) {
-      return;
-    }
-
-    const nextPlaylist = [...visiblePlaylist];
-    const [targetItem] = nextPlaylist.splice(currentIndex, 1);
-
-    if (!targetItem) {
-      return;
-    }
-
-    nextPlaylist.splice(nextIndex, 0, targetItem);
-    resetMutationErrors();
-    reorderPlaylist.mutate({
-      items: nextPlaylist.map((item, index) => ({
-        id: item.id,
-        position: index + 1,
-      })),
-    });
-  };
-
-  const handleDragHandlePointerDown = (
-    itemId: string,
-    event: React.PointerEvent<HTMLButtonElement>,
-  ) => {
-    if (!isReady || !canControlRoom) {
-      return;
-    }
-
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setActiveDraggingItemId(itemId);
-  };
-
-  const handleDragHandlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!draggingItemIdRef.current) {
-      return;
-    }
-
-    event.preventDefault();
-  };
-
-  const handleDragHandlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!draggingItemIdRef.current) {
-      return;
-    }
-
-    event.preventDefault();
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-
-    const targetRow = document
-      .elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>('[data-playlist-item-id]');
-    const targetItemId = targetRow?.dataset.playlistItemId;
-
-    if (!targetItemId) {
-      setActiveDraggingItemId(null);
-      return;
-    }
-
-    handleDrop(targetItemId);
-  };
+  const {
+    draggingItemId,
+    focusedActionItemId,
+    handleDragHandlePointerDown,
+    handleDragHandlePointerMove,
+    handleDragHandlePointerUp,
+    handleKeyboardReorder,
+    handleRowBlur,
+    preventMouseFocus,
+    setActiveDraggingItemId,
+    setFocusedActionItemId,
+  } = usePlaylistReorderInteraction({
+    canControlRoom,
+    isReady,
+    onBeforeReorder: resetMutationErrors,
+    onReorder: reorderPlaylist.mutate,
+    playlist: visiblePlaylist,
+  });
 
   const handleDelete = (itemId: string) => {
     if (!canControlRoom) {

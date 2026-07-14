@@ -43,10 +43,6 @@ export const Inactive: Story = {
   args: { error: createRoomError('ROOM_INACTIVE') },
 };
 
-export const AccessDenied: Story = {
-  args: { error: createRoomError('ROOM_ACCESS_DENIED') },
-};
-
 export const ServerUnavailable: Story = {
   args: { error: new Error('Failed to fetch') },
 };

@@ -78,7 +78,6 @@ describe('RoomShell', () => {
         activeMobileTab="playlist"
         hostConnection={{ status: 'disconnected', waitUntil: '2026-07-13T08:00:00.000Z' }}
         isHost={false}
-        members={[]}
         miniPlayerCommandError={null}
         miniPlayerControlDisabled
         miniPlayerIsMuted={false}
@@ -93,6 +92,7 @@ describe('RoomShell', () => {
         onMiniPlayerVolumeChange={vi.fn()}
         onMobileTabChange={vi.fn()}
         onMuteToggle={vi.fn()}
+        onlineMemberCount={0}
         playbackState={null}
         playlist={[]}
         renderPlayerPanel={() => null}

@@ -20,12 +20,32 @@ describe('useRoomLiveConnections', () => {
   it('room join ack의 members를 presence store에 연결한다', () => {
     renderHook(() => useRoomLiveConnections('room-1', true));
 
-    expect(useRoomSocket).toHaveBeenCalledWith('room-1', usePresenceStore.getState().setMembers);
+    expect(useRoomSocket).toHaveBeenCalledWith(
+      'room-1',
+      usePresenceStore.getState().setMembers,
+      undefined,
+    );
   });
 
   it('비활성 상태에서는 빈 roomId로 room socket을 호출한다', () => {
     renderHook(() => useRoomLiveConnections('room-1', false));
 
-    expect(useRoomSocket).toHaveBeenCalledWith('', usePresenceStore.getState().setMembers);
+    expect(useRoomSocket).toHaveBeenCalledWith(
+      '',
+      usePresenceStore.getState().setMembers,
+      undefined,
+    );
+  });
+
+  it('Room 종료 callback을 room socket에 그대로 전달한다', () => {
+    const onRoomClosed = vi.fn();
+
+    renderHook(() => useRoomLiveConnections('room-1', true, onRoomClosed));
+
+    expect(useRoomSocket).toHaveBeenCalledWith(
+      'room-1',
+      usePresenceStore.getState().setMembers,
+      onRoomClosed,
+    );
   });
 });

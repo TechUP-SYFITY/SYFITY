@@ -2,13 +2,13 @@
 
 ## 1. 문서 정보
 
-| 항목      | 내용                                         |
-| --------- | -------------------------------------------- |
-| 문서명    | Syfity System Architecture                   |
-| 버전      | v1.1                                         |
-| 상태      | Vercel 운영 도메인 및 Preview CORS 정책 반영 |
-| 작성 목적 | Syfity MVP 전체 시스템 구조 정의             |
-| 기반 문서 | `01-prd.md`                                  |
+| 항목      | 내용                                               |
+| --------- | -------------------------------------------------- |
+| 문서명    | Syfity System Architecture                         |
+| 버전      | v1.2                                               |
+| 상태      | 인증 쿠키 Domain 공유 정책(CLIENT_URL 재사용) 반영 |
+| 작성 목적 | Syfity MVP 전체 시스템 구조 정의                   |
+| 기반 문서 | `01-prd.md`                                        |
 
 ---
 
@@ -161,6 +161,7 @@ NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
 
 ```
 PORT=4000
+# 운영 환경에서는 이 값의 hostname을 인증 쿠키 Domain으로도 재사용한다 (예: syfity.site)
 CLIENT_URL=http://localhost:3000
 
 # CORS 허용 origin (쉼표 구분, 로컬은 기본값으로 fallback)

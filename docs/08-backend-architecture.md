@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.9                                                                                  |
-| 상태      | Vercel Preview CORS 환경변수 추가                                                     |
+| 버전      | v1.10                                                                                 |
+| 상태      | 인증 쿠키 Domain 공유 정책(CLIENT_URL 재사용) 반영                                    |
 | 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -392,12 +392,16 @@ export function requireEnv(name: string): string {
   return value;
 }
 
+const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
+
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: process.env.PORT ?? '4000',
-  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:3000',
+  clientUrl,
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
   vercelPreviewOriginPattern: process.env.VERCEL_PREVIEW_ORIGIN_PATTERN,
+  // 별도 환경변수 없이 CLIENT_URL의 hostname을 인증 쿠키 Domain으로 재사용한다.
+  cookieDomain: new URL(clientUrl).hostname,
   jwt: {
     accessSecret: requireEnv('JWT_ACCESS_SECRET'),
     refreshSecret: requireEnv('JWT_REFRESH_SECRET'),
@@ -778,7 +782,7 @@ Render Blueprint는 민감값을 `sync: false`로 선언하고, 실제 값은 Re
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `NODE_ENV`                                  | `production`                                                                                                                                                                                                                        |
 | `NODE_VERSION`                              | `22`                                                                                                                                                                                                                                |
-| `CLIENT_URL`                                | `https://syfity.site`                                                                                                                                                                                                               |
+| `CLIENT_URL`                                | `https://syfity.site`. hostname(`syfity.site`)이 인증 쿠키 Domain으로도 재사용되어 `api.syfity.site`와 `syfity.site` 양쪽에서 쿠키가 공유된다                                                                                       |
 | `ALLOWED_ORIGINS`                           | 프로덕션 origin을 쉼표로 구분해 명시. 운영 값은 `https://syfity.site`이며, 이 목록은 정확 일치로만 허용한다                                                                                                                         |
 | `VERCEL_PREVIEW_ORIGIN_PATTERN`             | 선택값. 특정 Vercel 프로젝트/팀 Preview URL만 매칭하는 `^`/`$` 앵커 포함 정규식. 예: `^https://syfity-frontend-[a-z0-9-]+-techup-syfity\\.vercel\\.app$`. 미설정, 앵커 누락 또는 잘못된 정규식이면 Preview origin을 허용하지 않는다 |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                                                                                                                                                   |

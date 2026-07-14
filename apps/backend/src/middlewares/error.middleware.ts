@@ -3,8 +3,9 @@ import type { NextFunction, Request, Response } from 'express';
 import { ERROR_CODES } from '@syfity/shared';
 
 import { AppError } from '../errors/appError';
+import { logger } from '../lib/logger';
 
-export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
     res.status(err.status).json({
       success: false,
@@ -12,6 +13,8 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     });
     return;
   }
+
+  logger.error({ err, method: req.method, path: req.path }, '[errorHandler] 처리되지 않은 에러');
 
   res.status(500).json({
     success: false,

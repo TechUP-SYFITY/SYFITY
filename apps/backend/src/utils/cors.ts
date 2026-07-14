@@ -15,9 +15,9 @@ function compilePreviewOriginPattern(): RegExp | undefined {
 
   try {
     return new RegExp(pattern);
-  } catch (error) {
+  } catch (err) {
     logger.warn(
-      { error },
+      { err },
       'VERCEL_PREVIEW_ORIGIN_PATTERN이 올바른 정규식이 아닙니다. Preview origin 허용을 비활성화합니다.',
     );
     return undefined;

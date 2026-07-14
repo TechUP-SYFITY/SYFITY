@@ -54,11 +54,14 @@ describe('isAllowedOrigin', () => {
 
   it('잘못된 preview origin 정규식은 경고 후 정확 일치 목록으로 폴백한다', async () => {
     const warn = vi.fn();
-    vi.stubEnv('VERCEL_PREVIEW_ORIGIN_PATTERN', '[');
+    vi.stubEnv('VERCEL_PREVIEW_ORIGIN_PATTERN', '^[$');
     vi.doMock('../lib/logger', () => ({ logger: { warn } }));
     const { isAllowedOrigin } = await import('./cors');
 
-    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(
+      { err: expect.any(SyntaxError) },
+      'VERCEL_PREVIEW_ORIGIN_PATTERN이 올바른 정규식이 아닙니다. Preview origin 허용을 비활성화합니다.',
+    );
     expect(isAllowedOrigin('https://app.example.com')).toBe(true);
     expect(isAllowedOrigin('https://syfity-frontend-git-main-techup-syfity.vercel.app')).toBe(
       false,

@@ -231,6 +231,9 @@ importers:
 
   apps/backend:
     dependencies:
+      '@badwords/languages':
+        specifier: ^2.2.0
+        version: 2.2.0
       '@prisma/adapter-pg':
         specifier: ^7.8.0
         version: 7.8.0
@@ -246,6 +249,9 @@ importers:
       '@tsoa/runtime':
         specifier: 7.0.0-alpha.0
         version: 7.0.0-alpha.0
+      badwords-wasm:
+        specifier: ^2.2.0
+        version: 2.2.0
       cookie:
         specifier: ^2.0.0
         version: 2.0.0
@@ -594,6 +600,9 @@ packages:
   '@babel/types@7.29.7':
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
+
+  '@badwords/languages@2.2.0':
+    resolution: {integrity: sha512-DeF6pWTfw+Z7X/r7voGxAeLmgjiefp4QeL0BA9XkxlRFvA1yqqoWZ0tNNaBCE1/Ea8690BUO5vWLRVWqlrVIiA==}
 
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
@@ -3492,6 +3501,9 @@ packages:
 
   babel-plugin-react-compiler@1.0.0:
     resolution: {integrity: sha512-Ixm8tFfoKKIPYdCCKYTsqv+Fd4IJ0DQqMyEimo+pxUOMUR9cVPlwTrFt9Avu+3cb6Zp3mAzl+t1MrG2fxxKsxw==}
+
+  badwords-wasm@2.2.0:
+    resolution: {integrity: sha512-T241zDGKYgOJhFobI/HkulAMjxaij30T4/RFsZ0JXbHKreJ0vL9GxirkdaOFSJUxYlvrVOFIKxtybY9syXdc8w==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -6763,6 +6775,8 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
+  '@badwords/languages@2.2.0': {}
+
   '@bcoe/v8-coverage@1.0.2': {}
 
   '@blazediff/core@1.9.1': {}
@@ -9786,6 +9800,8 @@ snapshots:
   babel-plugin-react-compiler@1.0.0:
     dependencies:
       '@babel/types': 7.29.7
+
+  badwords-wasm@2.2.0: {}
 
   balanced-match@1.0.2: {}
 

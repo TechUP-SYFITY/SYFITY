@@ -14,11 +14,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@badwords/languages": "^2.2.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@prisma/driver-adapter-utils": "^7.8.0",
     "@syfity/shared": "workspace:*",
     "@tsoa/runtime": "7.0.0-alpha.0",
+    "badwords-wasm": "^2.2.0",
     "cookie": "^2.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

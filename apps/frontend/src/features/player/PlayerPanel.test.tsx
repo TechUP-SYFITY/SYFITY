@@ -80,10 +80,11 @@ const playlist: PlaylistItem[] = [
 const onEnded = vi.fn();
 const onPlaybackStateChange = vi.fn();
 
-function renderPlayerPanel(isHost = true, playlistItems = playlist) {
+function renderPlayerPanel(isHost = true, playlistItems = playlist, canControlRoom = isHost) {
   return render(
     <ToastProvider>
       <PlayerPanel
+        canControlRoom={canControlRoom}
         roomId={roomId}
         isHost={isHost}
         onEnded={onEnded}
@@ -213,6 +214,16 @@ describe('PlayerPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 
+    expect(playbackCommands.reportError).not.toHaveBeenCalled();
+  });
+
+  it('Host 역할은 유지하지만 제어할 수 없으면 배지 없이 재생 실패 보고를 차단한다', () => {
+    seedPlayback(false);
+    renderPlayerPanel(true, playlist, false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
+
+    expect(screen.queryByText('호스트 제어')).not.toBeInTheDocument();
     expect(playbackCommands.reportError).not.toHaveBeenCalled();
   });
 });

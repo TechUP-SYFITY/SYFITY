@@ -9,14 +9,12 @@ import type { RoomMember } from '@/shared/types/domain';
 import { ChatPanel } from '@/features/chat/components/ChatPanel';
 import { MemberList } from '@/features/presence/components/MemberList';
 import { MemberSidebar } from '@/features/presence/components/MemberSidebar';
-import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
 import { MobileTabs, type RoomMobileTab } from '@/features/room/components/MobileTabs';
 
 interface RoomLayoutProps {
   activeMobileTab: RoomMobileTab;
   currentUserName: string;
   currentUserProfileImage?: string | null;
-  isHost: boolean;
   members: RoomMember[];
   onMobileTabChange: (tab: RoomMobileTab) => void;
   renderPlayerPanel: () => ReactNode;
@@ -28,7 +26,6 @@ export function RoomLayout({
   activeMobileTab,
   currentUserName,
   currentUserProfileImage,
-  isHost,
   members,
   onMobileTabChange,
   renderPlayerPanel,
@@ -37,12 +34,6 @@ export function RoomLayout({
 }: RoomLayoutProps) {
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border xl:flex-row">
-      {!isHost ? (
-        <div className="shrink-0 xl:hidden">
-          <HostConnectionNotice />
-        </div>
-      ) : null}
-
       <div className="hidden w-room-members shrink-0 self-stretch xl:flex">
         <MemberSidebar members={members} />
       </div>

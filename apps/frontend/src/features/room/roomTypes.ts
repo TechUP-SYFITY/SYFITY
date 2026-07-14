@@ -11,8 +11,14 @@ import type {
   UpdateRoomResponse as SharedUpdateRoomResponse,
 } from '@syfity/shared';
 
+import type { RoomClosedReason } from '@/shared/types/domain';
+
 export type CreateRoomRequest = SharedCreateRoomRequest;
 export type CreateRoomResponse = SharedCreateRoomResponse['data'];
+export type HostConnectionState =
+  | { status: 'connected' }
+  | { status: 'disconnected'; waitUntil: string }
+  | { status: 'closed'; reason: RoomClosedReason };
 export interface RoomInviteInfo {
   id: string;
   inviteCode: string;

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -86,7 +86,11 @@ describe('RoomPageClient', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
-    expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+    expect(useRoomLiveConnections).toHaveBeenCalledWith(
+      roomFixture.room.id,
+      true,
+      expect.any(Function),
+    );
   });
 
   it('Room 입장 응답의 최신순 recentChats를 오래된순으로 저장한다', async () => {
@@ -132,11 +136,19 @@ describe('RoomPageClient', () => {
     );
 
     expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
-    expect(useRoomLiveConnections).not.toHaveBeenCalledWith('stale-room-id', false);
-    expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+    expect(useRoomLiveConnections).not.toHaveBeenCalledWith(
+      'stale-room-id',
+      false,
+      expect.any(Function),
+    );
+    expect(useRoomLiveConnections).toHaveBeenCalledWith(
+      roomFixture.room.id,
+      true,
+      expect.any(Function),
+    );
   });
 
-  it('현재 사용자가 host가 아니면 host 전용 제어 안내를 표시한다', async () => {
+  it('현재 사용자가 host가 아니면 host 제어를 제한하되 연결 끊김 배너는 표시하지 않는다', async () => {
     server.use(
       http.get('*/api/v1/me', () =>
         HttpResponse.json({
@@ -159,10 +171,62 @@ describe('RoomPageClient', () => {
     );
 
     expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getByText('호스트 제어')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
+    expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+  });
+
+  it('Host 연결 상태에 따라 안내와 제어 권한을 전환한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
+
+    act(() => {
+      useRoomStore.getState().markHostDisconnected('2099-01-01T00:00:00.000Z');
+    });
+
     expect(
       screen.getByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...'),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+    expect(screen.queryByText('호스트 제어')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
+
+    act(() => {
+      useRoomStore.getState().markHostReconnected();
+    });
+
+    expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
+  });
+
+  it('Room 종료 callback으로 재생 상태를 정리한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(usePlayerStore.getState().playbackState).not.toBeNull();
+
+    const onRoomClosed = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[2];
+    expect(onRoomClosed).toBeTypeOf('function');
+
+    act(() => {
+      onRoomClosed?.();
+    });
+
+    expect(usePlayerStore.getState().playbackState).toBeNull();
   });
 
   it('Room 초대 버튼으로 초대 모달을 열고 실제 초대 코드와 링크를 복사한다', async () => {

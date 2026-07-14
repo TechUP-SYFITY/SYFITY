@@ -15,6 +15,10 @@ vi.mock('@/features/room/components/MiniPlayer', () => ({
   MiniPlayer: () => null,
 }));
 
+vi.mock('@/features/room/components/HostConnectionNotice', () => ({
+  HostConnectionNotice: () => <div data-testid="host-connection-notice" />,
+}));
+
 vi.mock('@/features/room/components/RoomStatusBar', () => ({
   RoomStatusBar: () => null,
 }));
@@ -36,6 +40,7 @@ describe('RoomShell', () => {
     render(
       <RoomShell
         activeMobileTab="playlist"
+        hostConnection={{ status: 'connected' }}
         isHost
         members={[]}
         miniPlayerCommandError={null}
@@ -64,5 +69,39 @@ describe('RoomShell', () => {
     expect(screen.getByTestId('room-layout')).toBeInTheDocument();
     expect(screen.getAllByTestId('player-panel')).toHaveLength(1);
     expect(renderPlayerPanel).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('host-connection-notice')).not.toBeInTheDocument();
+  });
+
+  it('Host 연결이 끊기면 PC와 모바일 공통 위치에 안내를 표시한다', () => {
+    render(
+      <RoomShell
+        activeMobileTab="playlist"
+        hostConnection={{ status: 'disconnected', waitUntil: '2026-07-13T08:00:00.000Z' }}
+        isHost={false}
+        members={[]}
+        miniPlayerCommandError={null}
+        miniPlayerControlDisabled
+        miniPlayerIsMuted={false}
+        miniPlayerNextDisabled
+        miniPlayerPendingCommand={null}
+        miniPlayerPreviousDisabled
+        miniPlayerVolume={70}
+        onMiniPlayerNextTrack={vi.fn()}
+        onMiniPlayerPlayPause={vi.fn()}
+        onMiniPlayerPreviousTrack={vi.fn()}
+        onMiniPlayerSeek={vi.fn()}
+        onMiniPlayerVolumeChange={vi.fn()}
+        onMobileTabChange={vi.fn()}
+        onMuteToggle={vi.fn()}
+        playbackState={null}
+        playlist={[]}
+        renderPlayerPanel={() => null}
+        renderPlaylistPanel={() => null}
+        room={null}
+        roomId="room-1"
+      />,
+    );
+
+    expect(screen.getByTestId('host-connection-notice')).toBeInTheDocument();
   });
 });

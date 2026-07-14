@@ -55,6 +55,7 @@ function makePresenceService(
     cancelMemberOfflineTimer: vi.fn().mockReturnValue(true),
     scheduleHostCloseTimer: vi.fn((_roomId: string, onExpire: () => void) => {
       onExpire();
+      return '2026-07-01T12:01:00.000Z';
     }),
     cancelHostCloseTimer: vi.fn().mockReturnValue(true),
     setMemberOffline: vi.fn().mockResolvedValue(offlineMember),

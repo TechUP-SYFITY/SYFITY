@@ -4,12 +4,14 @@ import { ListMusic, Plus } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 
 interface PlaylistPanelHeaderProps {
+  disabled: boolean;
   isBackgroundFetching: boolean;
   itemCount: number;
   onAddClick: () => void;
 }
 
 export function PlaylistPanelHeader({
+  disabled,
   isBackgroundFetching,
   itemCount,
   onAddClick,
@@ -31,6 +33,7 @@ export function PlaylistPanelHeader({
         size="sm"
         className="rounded-2xl"
         type="button"
+        disabled={disabled}
         onClick={onAddClick}
       >
         <Plus className="h-3 w-3" aria-hidden />

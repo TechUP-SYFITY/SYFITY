@@ -22,6 +22,9 @@ export interface RoomHostDisconnectedPayload {
   waitUntil: string;
 }
 
+export type RoomHostConnectionState =
+  { status: 'connected' } | { status: 'disconnected'; waitUntil: string };
+
 export interface PlaybackCurrentTimePayload {
   roomId: string;
   currentTime: number;
@@ -86,7 +89,12 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   'room:join': (
     payload: RoomJoinPayload,
-    ack: (response: SocketAck<{ playbackState: PlaybackState }>) => void,
+    ack: (
+      response: SocketAck<{
+        hostConnection: RoomHostConnectionState;
+        playbackState: PlaybackState;
+      }>,
+    ) => void,
   ) => void;
   'room:leave': (payload: RoomJoinPayload) => void;
   'playback:play': (

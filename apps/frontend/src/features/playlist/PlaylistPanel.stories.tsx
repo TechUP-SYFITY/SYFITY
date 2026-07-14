@@ -167,6 +167,26 @@ export const MemberView: Story = {
   decorators: [withPlaylistStoryFrame()],
 };
 
+export const HostControlsDisabled: Story = {
+  args: {
+    canControlRoom: false,
+    isHost: true,
+    isReady: false,
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByRole('button', { name: '곡 추가' })).toBeDisabled();
+
+    await userEvent.click(await canvas.findByTestId('playlist-row-story-night-changes'));
+
+    await expect(canvas.getByRole('button', { name: 'Night Changes 순서 변경' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Night Changes 삭제' })).toBeDisabled();
+  },
+};
+
 export const DeleteFailureInteraction: Story = {
   args: {
     playlistApiClient: createPlaylistApiMock({

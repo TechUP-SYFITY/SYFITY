@@ -13,7 +13,7 @@ function createRoomError(code: string, message = 'Room 입장에 실패했어요
 }
 
 const meta = {
-  title: 'Features/Room/RoomErrorState',
+  title: 'Widgets/Room/RoomErrorState',
   component: RoomErrorState,
   parameters: { layout: 'fullscreen' },
   args: {

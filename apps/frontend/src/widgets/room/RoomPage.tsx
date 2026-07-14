@@ -1,8 +1,7 @@
 'use client';
 
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
 import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
@@ -11,25 +10,13 @@ import { PresenceMockPanel } from '@/shared/mocks/PresenceMockPanel';
 import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
-import { useMe } from '@/features/auth/hooks/useAuth';
-import { sortChatMessagesAscending } from '@/features/chat/lib/chatMessageOrder';
-import { useChatStore } from '@/features/chat/store/chatStore';
 import { PlayerPanel } from '@/features/player/components/PlayerPanel';
 import { usePlayerControls } from '@/features/player/hooks/usePlayerControls';
-import { usePlayerStore } from '@/features/player/store/playerStore';
-import { usePlayerVolumeStore } from '@/features/player/store/playerVolumeStore';
 import type { PlayerController } from '@/features/player/types/playerTypes';
 import { PlaylistPanel } from '@/features/playlist/components/PlaylistPanel';
 import { useAddPlaylistItem } from '@/features/playlist/hooks/playlistHooks';
-import { usePlaylistStore } from '@/features/playlist/store/playlistStore';
 import type { AddPlaylistItemRequest } from '@/features/playlist/types/playlistTypes';
-import { usePresenceStore } from '@/features/presence/store/presenceStore';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
-import { RoomErrorState } from '@/features/room/components/RoomErrorState';
-import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
-import { useJoinRoom } from '@/features/room/hooks/roomHooks';
-import { useRoomStore } from '@/features/room/store/roomStore';
-import { useMobileOverlayHistory } from '@/features/room/useMobileOverlayHistory';
 import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
 import {
   SearchAddToast,
@@ -37,14 +24,25 @@ import {
 } from '@/features/search/components/SearchAddToast';
 import { SearchPanel } from '@/features/search/components/SearchPanel';
 
-import { useRoomLiveConnections } from './useRoomLiveConnections';
+import { RoomErrorState } from './components/RoomErrorState';
+import { RoomLoadingState } from './components/RoomLoadingState';
+import { useMobileOverlayHistory } from './hooks/useMobileOverlayHistory';
+import { useRoomPageSession } from './hooks/useRoomPageSession';
+import { RoomSocketProvider } from './RoomSocketProvider';
 
-interface RoomPageClientProps {
+interface RoomPageProps {
   roomId: string;
 }
 
-export function RoomPageClient({ roomId }: RoomPageClientProps) {
-  const router = useRouter();
+export function RoomPage({ roomId }: RoomPageProps) {
+  return (
+    <RoomSocketProvider>
+      <RoomPageContent roomId={roomId} />
+    </RoomSocketProvider>
+  );
+}
+
+function RoomPageContent({ roomId }: RoomPageProps) {
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
   useMobileOverlayHistory(activeMobileTab !== 'playlist', () => setActiveMobileTab('playlist'));
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -52,48 +50,22 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [toastFeedback, setToastFeedback] = useState<SearchAddToastFeedback | null>(null);
   const toastIdRef = useRef(0);
   const playerControllerRef = useRef<PlayerController | null>(null);
-  const joinRoom = useJoinRoom(roomId);
-  const { data: me } = useMe();
-  const hostConnection = useRoomStore((state) => state.hostConnection);
-  const room = useRoomStore((state) => state.room);
-  const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
-  const onlineMemberCount = usePresenceStore(
-    (state) => state.members.filter((member) => member.status === 'online').length,
-  );
-  const setMembers = usePresenceStore((state) => state.setMembers);
-  const localPlaybackPosition = usePlayerStore((state) => state.localPlaybackPosition);
-  const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
-  const clearPlayback = usePlayerStore((state) => state.clearPlayback);
-  const playbackState = usePlayerStore((state) => state.playbackState);
-  const miniPlayerIsMuted = usePlayerVolumeStore((state) => state.isMuted);
-  const setMiniPlayerVolume = usePlayerVolumeStore((state) => state.setVolume);
-  const toggleMiniPlayerMute = usePlayerVolumeStore((state) => state.toggleMuted);
-  const miniPlayerVolume = usePlayerVolumeStore((state) => state.volume);
-  const playlist = usePlaylistStore((state) => state.playlist);
-  const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
-  const setMessages = useChatStore((state) => state.setMessages);
-
-  const hasJoinedRoom = joinRoom.isSuccess;
+  const {
+    hasJoinedRoom,
+    hostConnection,
+    isMuted: miniPlayerIsMuted,
+    joinRoom,
+    localPlaybackPosition,
+    me,
+    onlineMemberCount,
+    playbackState,
+    playlist,
+    room,
+    setVolume: setMiniPlayerVolume,
+    toggleMuted: toggleMiniPlayerMute,
+    volume: miniPlayerVolume,
+  } = useRoomPageSession(roomId);
   const addSearchResult = useAddPlaylistItem(roomId);
-
-  const handleRoomClosed = () => {
-    clearPlayback();
-    router.replace('/home');
-  };
-
-  useRoomLiveConnections(roomId, hasJoinedRoom, handleRoomClosed);
-
-  useEffect(() => {
-    if (!joinRoom.data) {
-      return;
-    }
-
-    setJoinedRoom(joinRoom.data.room);
-    setMembers(joinRoom.data.members);
-    setPlaylist(joinRoom.data.playlist);
-    setPlaybackState(joinRoom.data.playbackState, 'room-join');
-    setMessages(sortChatMessagesAscending(joinRoom.data.recentChats));
-  }, [joinRoom.data, setJoinedRoom, setMembers, setMessages, setPlaybackState, setPlaylist]);
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
   const canControlRoom = isHost && hostConnection.status === 'connected';
@@ -193,7 +165,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         onlineMemberCount={onlineMemberCount}
         playbackState={miniPlayerPlaybackState}
         playlist={playlist}
-        renderPlayerPanel={() => (
+        playerPanel={
           <PlayerPanel
             canControlRoom={canControlRoom}
             roomId={roomId}
@@ -203,8 +175,8 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
             onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
             playlist={playlist}
           />
-        )}
-        renderPlaylistPanel={() => (
+        }
+        playlistPanel={
           <PlaylistPanel
             canControlRoom={canControlRoom}
             currentPlaylistItemId={currentTrack?.id ?? null}
@@ -213,7 +185,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
             isReady={hasJoinedRoom}
             onOpenSearch={handleOpenSearch}
           />
-        )}
+        }
         room={room}
         roomId={roomId}
       />

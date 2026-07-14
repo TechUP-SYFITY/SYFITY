@@ -18,7 +18,7 @@ vi.mock('@/features/presence/components/MemberSidebar', () => ({
   MemberSidebar: () => <div data-testid="member-sidebar" />,
 }));
 
-vi.mock('@/features/room/components/MobileTabs', () => ({
+vi.mock('./MobileTabs', () => ({
   MobileTabs: () => <div data-testid="mobile-tabs" />,
 }));
 
@@ -28,24 +28,19 @@ describe('RoomLayout', () => {
   it.each(['playlist', 'members', 'chat'] as const)(
     '%s 탭에서도 Player와 Playlist를 각각 한 번만 렌더링한다',
     (activeMobileTab) => {
-      const renderPlayerPanel = vi.fn(() => <div data-testid="player-panel" />);
-      const renderPlaylistPanel = vi.fn(() => <div data-testid="playlist-panel" />);
-
       render(
         <RoomLayout
           activeMobileTab={activeMobileTab}
           currentUserName="게스트"
           onMobileTabChange={vi.fn()}
-          renderPlayerPanel={renderPlayerPanel}
-          renderPlaylistPanel={renderPlaylistPanel}
+          playerPanel={<div data-testid="player-panel" />}
+          playlistPanel={<div data-testid="playlist-panel" />}
           roomId="room-1"
         />,
       );
 
       expect(screen.getAllByTestId('player-panel')).toHaveLength(1);
       expect(screen.getAllByTestId('playlist-panel')).toHaveLength(1);
-      expect(renderPlayerPanel).toHaveBeenCalledTimes(1);
-      expect(renderPlaylistPanel).toHaveBeenCalledTimes(1);
     },
   );
 
@@ -55,8 +50,8 @@ describe('RoomLayout', () => {
         activeMobileTab="chat"
         currentUserName="게스트"
         onMobileTabChange={vi.fn()}
-        renderPlayerPanel={() => <div data-testid="player-panel" />}
-        renderPlaylistPanel={() => <div data-testid="playlist-panel" />}
+        playerPanel={<div data-testid="player-panel" />}
+        playlistPanel={<div data-testid="playlist-panel" />}
         roomId="room-1"
       />,
     );
@@ -85,8 +80,8 @@ describe('RoomLayout', () => {
         activeMobileTab="chat"
         currentUserName="게스트"
         onMobileTabChange={vi.fn()}
-        renderPlayerPanel={() => <div data-testid="player-panel" />}
-        renderPlaylistPanel={() => <div data-testid="playlist-panel" />}
+        playerPanel={<div data-testid="player-panel" />}
+        playlistPanel={<div data-testid="playlist-panel" />}
         roomId="room-1"
       />,
     );

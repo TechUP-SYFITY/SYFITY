@@ -5,7 +5,7 @@ import { expect, within } from 'storybook/test';
 import { RoomLoadingState } from './RoomLoadingState';
 
 const meta = {
-  title: 'Features/Room/RoomLoadingState',
+  title: 'Widgets/Room/RoomLoadingState',
   component: RoomLoadingState,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof RoomLoadingState>;

@@ -18,10 +18,10 @@ import { usePlaylistStore } from '@/features/playlist/store/playlistStore';
 import { usePresenceStore } from '@/features/presence/store/presenceStore';
 import { useRoomStore } from '@/features/room/store/roomStore';
 
-import { RoomPageClient } from './RoomPageClient';
-import { useRoomLiveConnections } from './useRoomLiveConnections';
+import { useRoomLiveConnections } from './hooks/useRoomLiveConnections';
+import { RoomPage } from './RoomPage';
 
-vi.mock('./useRoomLiveConnections', () => ({
+vi.mock('./hooks/useRoomLiveConnections', () => ({
   useRoomLiveConnections: vi.fn(),
 }));
 
@@ -57,7 +57,7 @@ function createWrapper() {
   };
 }
 
-describe('RoomPageClient', () => {
+describe('RoomPage', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -75,7 +75,7 @@ describe('RoomPageClient', () => {
     render(
       <StrictMode>
         <Wrapper>
-          <RoomPageClient roomId="unknown-room" />
+          <RoomPage roomId="unknown-room" />
         </Wrapper>
       </StrictMode>,
     );
@@ -90,7 +90,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -126,7 +126,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -145,7 +145,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -180,7 +180,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -196,7 +196,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -226,7 +226,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -256,7 +256,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -286,7 +286,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -342,7 +342,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -391,7 +391,7 @@ describe('RoomPageClient', () => {
     const Wrapper = createWrapper();
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 
@@ -433,7 +433,7 @@ describe('RoomPageClient', () => {
 
     render(
       <Wrapper>
-        <RoomPageClient roomId={roomFixture.room.id} />
+        <RoomPage roomId={roomFixture.room.id} />
       </Wrapper>,
     );
 

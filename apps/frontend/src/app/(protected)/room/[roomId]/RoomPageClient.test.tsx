@@ -39,9 +39,9 @@ function createWrapper() {
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>{children}</ToastProvider>
-      </QueryClientProvider>
+      <ToastProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </ToastProvider>
     );
   };
 }
@@ -266,7 +266,44 @@ describe('RoomPageClient', () => {
     });
   });
 
-  it('검색 결과 곡 추가 실패를 SearchPanel 안에 표시한다', async () => {
+  it('검색 결과 곡 추가 성공 Toast를 표시하고 SearchPanel을 유지한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(openSearchButton as HTMLButtonElement);
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
+      target: { value: 'Night Changes' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
+
+    const successMessages = await screen.findAllByText('플레이리스트에 추가했어요 🎵');
+    const successToast =
+      successMessages
+        .find((message) => message.closest('[data-state="open"]'))
+        ?.closest<HTMLElement>('[data-state="open"]') ?? null;
+    const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
+
+    expect(successToast).toHaveTextContent('플레이리스트에 추가했어요 🎵');
+    expect(searchDialog).not.toContainElement(successToast);
+
+    fireEvent.click((successToast as HTMLElement).querySelector('button') as HTMLButtonElement);
+    await waitFor(() =>
+      expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
+    const [reopenSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(reopenSearchButton as HTMLButtonElement);
+    expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
+  });
+
+  it('검색 결과 곡 추가 실패 Toast를 표시하고 SearchPanel을 유지한다', async () => {
     let requestedRoomId: string | undefined;
 
     server.use(
@@ -300,16 +337,70 @@ describe('RoomPageClient', () => {
 
     expect(await screen.findByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색'), {
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'Night Changes' },
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('재생할 수 없는 영상이에요.');
+    const errorMessages = await screen.findAllByText('재생할 수 없는 영상이에요.');
+    const errorToast =
+      errorMessages
+        .find((message) => message.closest('[data-state="open"]'))
+        ?.closest<HTMLElement>('[data-state="open"]') ?? null;
+    const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
+
+    expect(errorToast).toHaveTextContent('재생할 수 없는 영상이에요.');
+    expect((errorToast as HTMLElement).querySelector('button')).toBeInTheDocument();
+    expect(searchDialog).not.toContainElement(errorToast);
     expect(requestedRoomId).toBe(roomFixture.room.id);
   });
 
-  it('곡 추가 패널의 링크 탭에서 YouTube URL을 추가한다', async () => {
+  it('패널을 닫으면 진행 중이던 곡 추가 완료가 Toast를 되살리지 않는다', async () => {
+    let releaseRequest!: () => void;
+    const requestGate = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+    const delayedItem = {
+      ...roomFixture.playlist[0],
+      id: 'delayed-added-item',
+      position: roomFixture.playlist.length + 1,
+    };
+
+    server.use(
+      http.post('*/api/v1/rooms/:roomId/playlist', async () => {
+        await requestGate;
+        return HttpResponse.json({ success: true, data: delayedItem });
+      }),
+    );
+
+    const Wrapper = createWrapper();
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(openSearchButton as HTMLButtonElement);
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
+      target: { value: 'Night Changes' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
+
+    releaseRequest();
+    await waitFor(() =>
+      expect(usePlaylistStore.getState().playlist.some((item) => item.id === delayedItem.id)).toBe(
+        true,
+      ),
+    );
+
+    const [reopenSearchButton] = await screen.findAllByRole('button', { name: '추가' });
+    fireEvent.click(reopenSearchButton as HTMLButtonElement);
+    expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
+  });
+
+  it('곡 추가 패널의 통합 입력창에서 YouTube URL을 추가한다', async () => {
     let requestedBody: unknown;
 
     server.use(
@@ -333,11 +424,7 @@ describe('RoomPageClient', () => {
 
     const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
     fireEvent.click(openSearchButton as HTMLButtonElement);
-    fireEvent.mouseDown(await screen.findByRole('tab', { name: '링크' }), {
-      button: 0,
-      ctrlKey: false,
-    });
-    fireEvent.change(screen.getByPlaceholderText('YouTube URL'), {
+    fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'https://youtu.be/yellow' },
     });
     fireEvent.click(screen.getByRole('button', { name: '링크 추가' }));
@@ -345,5 +432,14 @@ describe('RoomPageClient', () => {
     await waitFor(() => {
       expect(requestedBody).toEqual({ youtubeUrl: 'https://youtu.be/yellow' });
     });
+
+    const successMessages = await screen.findAllByText('플레이리스트에 추가했어요 🎵');
+    const successToast =
+      successMessages
+        .find((message) => message.closest('[data-state="open"]'))
+        ?.closest<HTMLElement>('[data-state="open"]') ?? null;
+
+    expect(successToast).toHaveTextContent('플레이리스트에 추가했어요 🎵');
+    expect(screen.getByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
   });
 });

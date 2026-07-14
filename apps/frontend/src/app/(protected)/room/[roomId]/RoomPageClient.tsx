@@ -1,7 +1,7 @@
 'use client';
 
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
 
@@ -19,12 +19,17 @@ import { getPlaylistErrorMessage } from '@/features/playlist/playlistErrorMessag
 import { useAddPlaylistItem } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
+import type { AddPlaylistItemRequest } from '@/features/playlist/playlistTypes';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
 import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
 import { useJoinRoom } from '@/features/room/roomHooks';
 import { useRoomStore } from '@/features/room/roomStore';
 import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
+import {
+  SearchAddToast,
+  type SearchAddToastFeedback,
+} from '@/features/search/components/SearchAddToast';
 import { SearchPanel } from '@/features/search/components/SearchPanel';
 
 import { useRoomLiveConnections } from './useRoomLiveConnections';
@@ -37,6 +42,8 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
+  const [toastFeedback, setToastFeedback] = useState<SearchAddToastFeedback | null>(null);
+  const toastIdRef = useRef(0);
   const joinRoom = useJoinRoom(roomId);
   const { data: me } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
@@ -107,7 +114,22 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
 
   const handleCloseSearch = () => {
     addSearchResult.reset();
+    setToastFeedback(null);
     setIsSearchPanelOpen(false);
+  };
+
+  const showAddToast = (variant: SearchAddToastFeedback['variant'], message: string) => {
+    toastIdRef.current += 1;
+    setToastFeedback({ id: toastIdRef.current, message, variant });
+  };
+
+  const addPlaylistItem = (body: AddPlaylistItemRequest) => {
+    setToastFeedback(null);
+    addSearchResult.reset();
+    addSearchResult.mutate(body, {
+      onError: (error) => showAddToast('error', getPlaylistErrorMessage(error)),
+      onSuccess: () => showAddToast('success', '플레이리스트에 추가했어요 🎵'),
+    });
   };
 
   const handleAddSearchResult = (result: YoutubeSearchResult) => {
@@ -115,8 +137,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       return;
     }
 
-    addSearchResult.reset();
-    addSearchResult.mutate({ videoId: result.videoId });
+    addPlaylistItem({ videoId: result.videoId });
   };
 
   const handleAddYoutubeUrl = (youtubeUrl: string) => {
@@ -124,8 +145,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       return;
     }
 
-    addSearchResult.reset();
-    addSearchResult.mutate({ youtubeUrl });
+    addPlaylistItem({ youtubeUrl });
   };
 
   return (
@@ -180,8 +200,8 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       />
       <InviteCodeDialog room={room} open={isInviteOpen} onOpenChange={setIsInviteOpen} />
       <SearchPanel
-        addErrorMessage={
-          addSearchResult.isError ? getPlaylistErrorMessage(addSearchResult.error) : undefined
+        feedback={
+          <SearchAddToast feedback={toastFeedback} onClose={() => setToastFeedback(null)} />
         }
         isAddPending={addSearchResult.isPending}
         isOpen={isSearchPanelOpen}

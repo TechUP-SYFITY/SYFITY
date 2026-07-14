@@ -95,7 +95,7 @@ export function SearchPanel({
         >
           <div
             data-search-panel-surface
-            className="pointer-events-auto absolute inset-x-0 bottom-0 flex h-[80dvh] max-h-[calc(100dvh-1rem)] w-full animate-in flex-col overflow-hidden rounded-t-[24px] border border-white/8 bg-[#101012]/95 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 outline-none slide-in-from-bottom-4 lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-md lg:-translate-1/2 lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
+            className="pointer-events-auto absolute inset-x-0 bottom-0 flex h-[80dvh] max-h-[calc(100dvh-1rem)] w-full animate-in flex-col overflow-hidden rounded-t-3xl border border-white/8 bg-[#101012]/95 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.72)] duration-300 outline-none slide-in-from-bottom-4 lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:w-md lg:-translate-1/2 lg:rounded-[18px] lg:shadow-[0_24px_90px_rgba(0,0,0,0.55)]"
           >
             <div className="flex h-5 items-center justify-center border-b border-white/4 lg:hidden">
               <span className="h-1 w-10 rounded-full bg-white/20" />
@@ -141,7 +141,7 @@ export function SearchPanel({
                   )}
                   <input
                     ref={searchInputRef}
-                    className="h-[46px] w-full rounded-[18px] border border-white/8 bg-white/[0.07] pr-11 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-primary-400/45 focus:bg-white/9"
+                    className="h-11.5 w-full rounded-[18px] border border-white/8 bg-white/[0.07] pr-11 pl-10 text-sm text-white transition outline-none placeholder:text-white/38 focus:border-primary-400/45 focus:bg-white/9"
                     placeholder="YouTube 영상 검색 또는 링크 붙여넣기"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
@@ -158,7 +158,7 @@ export function SearchPanel({
                   ) : null}
                 </div>
               </div>
-              <div className="min-h-[280px] flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
+              <div className="min-h-room-members flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
                 {isLinkInput ? (
                   <SearchPanelLinkInput
                     canAdd={Boolean(onAddUrl)}
@@ -217,7 +217,7 @@ function SearchPanelLinkInput({
   url: string;
 }) {
   return (
-    <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
+    <div className="flex min-h-room-members flex-col items-center justify-center px-6 text-center">
       <span className="flex size-14 items-center justify-center rounded-2xl border border-primary-400/20 bg-primary-400/10 text-primary-400">
         <Link2 className="size-6" aria-hidden />
       </span>
@@ -249,7 +249,7 @@ function SearchResultItem({
   onAdd?: () => void;
 }) {
   return (
-    <li className="flex min-h-[68px] items-center gap-3 border-b border-white/5.5 px-4 py-3 transition hover:bg-white/2.5 lg:min-h-[69px]">
+    <li className="flex min-h-17 items-center gap-3 border-b border-white/5.5 px-4 py-3 transition hover:bg-white/2.5 lg:min-h-17.25">
       <span
         className="size-11 shrink-0 rounded-2xl bg-cover bg-center"
         style={{ backgroundImage: `url(${result.thumbnailUrl})` }}
@@ -279,7 +279,7 @@ function SearchResultItem({
 
 function SearchPanelLoading() {
   return (
-    <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center text-white/45">
+    <div className="flex min-h-room-members flex-col items-center justify-center px-6 text-center text-white/45">
       <LoaderCircle className="size-7 animate-spin text-primary-400" aria-hidden />
       <p className="mt-4 text-sm font-semibold text-white/70">검색 중이에요</p>
     </div>
@@ -288,7 +288,7 @@ function SearchPanelLoading() {
 
 function SearchPanelEmpty({ query }: { query: string }) {
   return (
-    <div className="flex min-h-[280px] flex-col items-center justify-center px-8 text-center">
+    <div className="flex min-h-room-members flex-col items-center justify-center px-8 text-center">
       <EmptyStateIcon />
       <p className="mt-4 text-sm font-bold text-white">검색 결과가 없어요</p>
       <p className="mt-2 text-xs/5 text-white/45">
@@ -300,7 +300,7 @@ function SearchPanelEmpty({ query }: { query: string }) {
 
 function SearchPanelError({ message }: { message: string }) {
   return (
-    <div className="flex min-h-[280px] flex-col items-center justify-center px-8 text-center">
+    <div className="flex min-h-room-members flex-col items-center justify-center px-8 text-center">
       <EmptyStateIcon className="text-red-300/80" />
       <p className="mt-4 text-sm font-bold text-white">검색에 실패했어요</p>
       <p className="mt-2 text-xs/5 text-white/45">{message}</p>
@@ -310,7 +310,7 @@ function SearchPanelError({ message }: { message: string }) {
 
 function SearchPanelIdle() {
   return (
-    <div className="flex min-h-[280px] flex-col items-center justify-center px-8 text-center">
+    <div className="flex min-h-room-members flex-col items-center justify-center px-8 text-center">
       <EmptyStateIcon />
       <p className="mt-4 text-sm font-bold text-white">검색어를 입력해 주세요</p>
       <p className="mt-2 text-xs/5 text-white/45">Room에 추가할 YouTube 영상을 검색할 수 있어요.</p>

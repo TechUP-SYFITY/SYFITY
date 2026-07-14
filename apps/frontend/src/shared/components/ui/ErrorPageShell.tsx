@@ -14,13 +14,13 @@ export function ErrorPageShell({ children, glowClassName = 'bg-primary/5' }: Err
       <div
         aria-hidden
         className={cn(
-          'pointer-events-none absolute -top-32 left-1/4 size-125 rounded-full blur-[120px]',
+          `pointer-events-none absolute -top-32 left-1/4 size-125 rounded-full blur-[120px]`,
           glowClassName,
         )}
       />
       <div
         aria-hidden
-        className="animate-blob pointer-events-none absolute right-1/4 -bottom-24 size-100 rounded-full bg-accent/5 blur-[120px]"
+        className="pointer-events-none absolute right-1/4 -bottom-24 size-100 animate-blob rounded-full bg-accent/5 blur-[120px]"
       />
 
       <Header variant="app" />

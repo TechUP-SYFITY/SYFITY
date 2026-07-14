@@ -52,7 +52,7 @@ function MemberGroup({
           <div
             className={`flex items-center gap-3 rounded-2xl px-2 py-1.5 ${
               member.role === 'host' && !isMuted ? 'bg-muted/20' : ''
-            }`}
+            } `}
             key={member.userId}
           >
             <MemberAvatar
@@ -64,14 +64,11 @@ function MemberGroup({
               <p
                 className={`truncate text-sm font-semibold ${
                   isMuted ? 'text-white/35' : 'text-white/90'
-                }`}
+                } `}
               >
                 {member.nickname}
                 {member.role === 'host' ? (
-                  <Crown
-                    className="ml-1 inline-block h-2.5 w-2.5 shrink-0 text-warning"
-                    aria-hidden
-                  />
+                  <Crown className="ml-1 inline-block size-2.5 shrink-0 text-warning" aria-hidden />
                 ) : null}
               </p>
               <p className="text-xs text-white/35">{isMuted ? '오프라인' : '온라인'}</p>

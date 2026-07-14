@@ -42,8 +42,8 @@ export function RecentRooms({ rooms, isLoading, onCreateRoom, onJoinRoom }: Rece
             >
               <div className="size-13 shrink-0 rounded-2xl bg-white/8" />
               <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="h-4 w-2/5 rounded bg-white/8" />
-                <div className="h-3 w-1/4 rounded bg-white/5" />
+                <div className="h-4 w-2/5 rounded-sm bg-white/8" />
+                <div className="h-3 w-1/4 rounded-sm bg-white/5" />
               </div>
             </div>
           ))}

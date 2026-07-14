@@ -25,7 +25,7 @@ export function MobileTabs({
       <TabsList className="grid h-12 grid-cols-3 border-t border-border bg-background">
         {tabs.map((tab) => (
           <TabsTrigger className="h-12 text-sm" key={tab.id} value={tab.id}>
-            <tab.icon className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+            <tab.icon className="inline-block size-3.5 shrink-0" aria-hidden />
             {tab.label}
           </TabsTrigger>
         ))}

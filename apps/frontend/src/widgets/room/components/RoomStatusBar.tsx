@@ -19,7 +19,7 @@ export function RoomStatusBar({
       <div>
         <h1 className="text-sm font-bold">{room?.name ?? 'Room'}</h1>
         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          <span className="size-1.5 rounded-full bg-primary" />
           {onlineMemberCount}명 접속 중
         </p>
       </div>

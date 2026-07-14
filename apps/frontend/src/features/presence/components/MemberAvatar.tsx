@@ -18,9 +18,9 @@ export function MemberAvatar({ label, muted = false, profileImage }: MemberAvata
         <AvatarFallback>{label.slice(0, 1)}</AvatarFallback>
       </Avatar>
       <span
-        className={`absolute right-0 bottom-0 h-3 w-3 translate-x-0.5 translate-y-0.5 rounded-full border-2 border-gray-950 ${
+        className={`absolute right-0 bottom-0 size-3 translate-0.5 rounded-full border-2 border-gray-950 ${
           muted ? 'bg-white/18' : 'bg-primary ring-2 ring-primary/30'
-        }`}
+        } `}
       />
     </span>
   );

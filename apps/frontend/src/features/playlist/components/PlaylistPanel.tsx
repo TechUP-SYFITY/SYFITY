@@ -171,7 +171,7 @@ export function PlaylistPanel({
         disabled={!canControlRoom}
         onClick={handleOpenSearch}
       >
-        <Plus className="h-4 w-4" aria-hidden />곡 추가
+        <Plus className="size-4" aria-hidden />곡 추가
       </Button>
     </aside>
   );

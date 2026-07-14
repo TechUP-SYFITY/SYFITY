@@ -15,12 +15,12 @@ export function RoomInviteButton({ disabled, onClick }: RoomInviteButtonProps) {
     <Button
       variant="primary-soft"
       size="sm"
-      className="h-9 w-9 rounded-full px-0 md:h-8 md:w-auto md:px-4"
+      className="size-9 rounded-full px-0 md:h-8 md:w-auto md:px-4"
       disabled={disabled}
       type="button"
       onClick={onClick}
     >
-      <Share2 className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+      <Share2 className="inline-block size-3.5 shrink-0" aria-hidden />
       <span className="hidden md:inline">초대</span>
     </Button>
   );

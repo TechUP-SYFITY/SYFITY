@@ -9,7 +9,7 @@ export function TrackArtwork({ track }: { track: PlaylistItem | undefined }) {
   if (track) {
     return (
       <span
-        className="h-10 w-10 shrink-0 rounded-2xl bg-cover bg-center"
+        className="size-10 shrink-0 rounded-2xl bg-cover bg-center"
         style={{ backgroundImage: `url(${getTrackThumbnailUrl(track)})` }}
         role="img"
         aria-label={`${track.title} 썸네일`}
@@ -18,8 +18,8 @@ export function TrackArtwork({ track }: { track: PlaylistItem | undefined }) {
   }
 
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-input text-muted-foreground">
-      <Music2 className="h-4 w-4" aria-hidden />
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-input text-muted-foreground">
+      <Music2 className="size-4" aria-hidden />
     </div>
   );
 }

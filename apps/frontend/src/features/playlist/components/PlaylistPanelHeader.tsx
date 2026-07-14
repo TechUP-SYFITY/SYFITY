@@ -19,7 +19,7 @@ export function PlaylistPanelHeader({
   return (
     <div className="hidden h-12 items-center justify-between border-b border-border px-4 xl:flex">
       <h2 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-        <ListMusic className="h-4 w-4 text-primary" aria-hidden />
+        <ListMusic className="size-4 text-primary" aria-hidden />
         재생목록
         <span className="font-normal text-muted-foreground">{itemCount}곡</span>
         {isBackgroundFetching ? (
@@ -36,7 +36,7 @@ export function PlaylistPanelHeader({
         disabled={disabled}
         onClick={onAddClick}
       >
-        <Plus className="h-3 w-3" aria-hidden />
+        <Plus className="size-3" aria-hidden />
         추가
       </Button>
     </div>

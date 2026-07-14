@@ -21,13 +21,13 @@ export function FeatureCard({
       <span
         className={cn(
           'flex size-12 items-center justify-center rounded-xl',
-          tone === 'primary' ? 'bg-primary/12 text-primary' : 'bg-accent/12 text-accent',
+          tone === 'primary' ? 'bg-primary/12 text-primary' : `bg-accent/12 text-accent`,
         )}
       >
         <Icon className="size-5" aria-hidden />
       </span>
       <h3 className="mt-5 text-base font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-white/50">{description}</p>
+      <p className="mt-2 text-sm/relaxed text-white/50">{description}</p>
     </div>
   );
 }

@@ -79,20 +79,20 @@ export function PlayerPanel({
         {shouldShowPoster ? (
           <div className="pointer-events-none absolute inset-0">
             <div
-              className="h-full w-full bg-cover bg-center opacity-80"
+              className="size-full bg-cover bg-center opacity-80"
               style={{
                 backgroundImage: `url(${posterUrl})`,
               }}
             />
             <div className="absolute inset-0 bg-linear-to-r from-background/50 via-foreground/5 to-accent/20" />
             <div className="absolute inset-0 bg-background/10" />
-            <div className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-background/60 text-foreground">
-              <Play className="h-6 w-6 translate-x-0.5" aria-hidden />
+            <div className="absolute top-1/2 left-1/2 flex size-14 -translate-1/2 items-center justify-center rounded-full bg-background/60 text-foreground">
+              <Play className="size-6 translate-x-0.5" aria-hidden />
             </div>
           </div>
         ) : null}
         <div className="pointer-events-none absolute top-4 left-4 rounded-full bg-background/70 px-3 py-1 text-xs font-bold text-primary">
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+          <span className="mr-1 inline-block size-1.5 rounded-full bg-primary" />
           LIVE SYNC
         </div>
         <span className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-background/80 px-2 py-1 text-xs font-bold text-foreground">
@@ -119,7 +119,7 @@ export function PlayerPanel({
       <div className="min-h-5 space-y-1 text-sm text-muted-foreground">
         {playbackError ? (
           <p className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" aria-hidden />
+            <AlertTriangle className="size-4" aria-hidden />
             재생할 수 없는 영상이에요. 오류 코드 {playbackError.errorCode}
           </p>
         ) : null}

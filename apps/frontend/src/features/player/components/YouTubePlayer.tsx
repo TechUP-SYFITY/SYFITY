@@ -214,7 +214,7 @@ export function YouTubePlayer({
 
   return (
     <div className="aspect-video w-full bg-black">
-      <div className="h-full w-full" ref={containerRef} />
+      <div className="size-full" ref={containerRef} />
     </div>
   );
 }

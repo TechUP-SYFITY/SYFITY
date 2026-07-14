@@ -73,7 +73,7 @@ export function MiniPlayer({
   const visibleVolume = isVolumeMuted ? 0 : volume;
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/95 px-5 backdrop-blur xl:static xl:h-room-mini-player xl:px-6">
+    <footer className="fixed inset-x-0 bottom-0 z-20 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/95 px-5 backdrop-blur-sm xl:static xl:h-room-mini-player xl:px-6">
       <div className="flex w-56 min-w-0 flex-none items-center gap-3">
         <TrackArtwork track={currentTrack} />
         <div className="w-24 min-w-0 flex-none">
@@ -85,24 +85,24 @@ export function MiniPlayer({
           </p>
         </div>
         <button
-          className={cn(getIconButtonClass(true), 'hidden sm:flex')}
+          className={cn(getIconButtonClass(true), `hidden sm:flex`)}
           type="button"
           aria-label="좋아요 기능 준비 중"
           disabled
         >
-          <Heart className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+          <Heart className="inline-block size-3.5 shrink-0" aria-hidden />
         </button>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1">
         <div className="flex h-9 items-center justify-center gap-4">
           <button
-            className={cn(getIconButtonClass(true), 'hidden md:flex')}
+            className={cn(getIconButtonClass(true), `hidden md:flex`)}
             type="button"
             aria-label="셔플 기능 준비 중"
             disabled
           >
-            <Shuffle className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+            <Shuffle className="inline-block size-3.5 shrink-0" aria-hidden />
           </button>
           <button
             className={getIconButtonClass(previousControlDisabled)}
@@ -112,12 +112,12 @@ export function MiniPlayer({
             disabled={previousControlDisabled}
             onClick={onPreviousTrack}
           >
-            <SkipBack className="inline-block h-4 w-4 shrink-0" aria-hidden />
+            <SkipBack className="inline-block size-4 shrink-0" aria-hidden />
           </button>
           <button
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-lg transition disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none',
-              pendingCommand === 'play' || pendingCommand === 'pause' ? 'animate-pulse' : '',
+              `flex size-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-lg transition disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none`,
+              pendingCommand === 'play' || pendingCommand === 'pause' ? `animate-pulse` : '',
             )}
             type="button"
             aria-label={playPauseLabel}
@@ -126,9 +126,9 @@ export function MiniPlayer({
             onClick={onPlayPause}
           >
             {isPlaying ? (
-              <Pause className="inline-block h-4 w-4 shrink-0" aria-hidden />
+              <Pause className="inline-block size-4 shrink-0" aria-hidden />
             ) : (
-              <Play className="inline-block h-4 w-4 shrink-0" aria-hidden />
+              <Play className="inline-block size-4 shrink-0" aria-hidden />
             )}
           </button>
           <button
@@ -139,18 +139,18 @@ export function MiniPlayer({
             disabled={nextControlDisabled}
             onClick={onNextTrack}
           >
-            <SkipForward className="inline-block h-4 w-4 shrink-0" aria-hidden />
+            <SkipForward className="inline-block size-4 shrink-0" aria-hidden />
           </button>
           <button
-            className={cn(getIconButtonClass(true), 'hidden md:flex')}
+            className={cn(getIconButtonClass(true), `hidden md:flex`)}
             type="button"
             aria-label="반복 재생 기능 준비 중"
             disabled
           >
-            <Repeat className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+            <Repeat className="inline-block size-3.5 shrink-0" aria-hidden />
           </button>
         </div>
-        <div className="hidden w-full max-w-96 items-center gap-2 text-xs leading-4 text-muted-foreground xl:flex">
+        <div className="hidden w-full max-w-96 items-center gap-2 text-xs/4 text-muted-foreground xl:flex">
           <span>{formatDuration(currentTime)}</span>
           <div
             className="relative h-1 min-w-0 flex-1 rounded-full bg-muted focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background"
@@ -166,7 +166,7 @@ export function MiniPlayer({
             >
               {progressPercent > 0 ? (
                 <span
-                  className="absolute top-1/2 right-0 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow-lg"
+                  className="absolute top-1/2 right-0 size-2.5 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow-lg"
                   data-testid="mini-player-progress-thumb"
                 />
               ) : null}
@@ -205,9 +205,9 @@ export function MiniPlayer({
           onClick={onMuteToggle}
         >
           {isVolumeMuted ? (
-            <VolumeX className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+            <VolumeX className="inline-block size-3.5 shrink-0" aria-hidden />
           ) : (
-            <Volume2 className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+            <Volume2 className="inline-block size-3.5 shrink-0" aria-hidden />
           )}
         </button>
         <input
@@ -232,10 +232,13 @@ export function MiniPlayer({
 
 function getIconButtonClass(disabled: boolean) {
   return cn(
-    'flex h-5 w-5 items-center justify-center text-sm transition',
+    'flex size-5 items-center justify-center text-sm transition',
     disabled
       ? 'cursor-not-allowed text-muted-foreground opacity-50'
-      : 'text-muted-foreground hover:text-foreground',
+      : `
+        text-muted-foreground
+        hover:text-foreground
+      `,
   );
 }
 

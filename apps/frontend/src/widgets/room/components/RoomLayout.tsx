@@ -58,7 +58,7 @@ export function RoomLayout({
       </div>
 
       <div
-        className="shrink-0 px-5 py-4 xl:min-w-0 xl:flex-1 xl:self-stretch xl:border-r xl:border-border xl:px-6 xl:py-6"
+        className="shrink-0 px-5 py-4 xl:min-w-0 xl:flex-1 xl:self-stretch xl:border-r xl:border-border xl:p-6"
         data-testid="room-player-slot"
       >
         {playerPanel}
@@ -66,9 +66,9 @@ export function RoomLayout({
 
       <div
         className={cn(
-          'min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-28',
+          `scrollbar-none min-h-0 flex-1 overflow-y-auto border-t border-border pb-28`,
           activeMobileTab === 'playlist' ? 'flex' : 'hidden',
-          'xl:flex xl:w-room-side xl:flex-none xl:shrink-0 xl:self-stretch xl:overflow-hidden xl:border-t-0 xl:pb-0',
+          `xl:flex xl:w-room-side xl:flex-none xl:shrink-0 xl:self-stretch xl:overflow-hidden xl:border-t-0 xl:pb-0`,
         )}
         data-testid="room-playlist-slot"
       >

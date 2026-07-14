@@ -10,7 +10,7 @@ export function PlaylistArtwork({ item }: PlaylistArtworkProps) {
   return (
     <span
       className={cn(
-        'h-10 w-10 shrink-0 rounded-2xl bg-cover bg-center',
+        'size-10 shrink-0 rounded-2xl bg-cover bg-center',
         item.status === 'unavailable' && 'opacity-45 grayscale',
       )}
       style={{ backgroundImage: `url(${getThumbnailUrl(item)})` }}

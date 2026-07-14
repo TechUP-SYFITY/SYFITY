@@ -114,37 +114,35 @@
   }
 }
 
-@layer components {
-  .mini-player-volume-range {
-    --mini-player-volume-percent: 0%;
+@utility mini-player-volume-range {
+  --mini-player-volume-percent: 0%;
 
-    width: 7rem;
-    height: 0.125rem;
-    cursor: pointer;
-    appearance: none;
-    outline: none;
-    border-radius: var(--radius-full);
-    background: linear-gradient(
-      to right,
-      color-mix(in srgb, var(--foreground) 38%, transparent) 0%,
-      color-mix(in srgb, var(--foreground) 38%, transparent) var(--mini-player-volume-percent),
-      color-mix(in srgb, var(--foreground) 10%, transparent) var(--mini-player-volume-percent),
-      color-mix(in srgb, var(--foreground) 10%, transparent) 100%
-    );
-  }
+  width: 7rem;
+  height: 0.125rem;
+  cursor: pointer;
+  appearance: none;
+  outline: none;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--foreground) 38%, transparent) 0%,
+    color-mix(in srgb, var(--foreground) 38%, transparent) var(--mini-player-volume-percent),
+    color-mix(in srgb, var(--foreground) 10%, transparent) var(--mini-player-volume-percent),
+    color-mix(in srgb, var(--foreground) 10%, transparent) 100%
+  );
 
-  .mini-player-volume-range:focus-visible {
+  &:focus-visible {
     box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--primary) 45%, transparent);
   }
 
-  .mini-player-volume-range::-webkit-slider-thumb {
+  &::-webkit-slider-thumb {
     width: 0;
     height: 0;
     appearance: none;
     background: transparent;
   }
 
-  .mini-player-volume-range::-moz-range-thumb {
+  &::-moz-range-thumb {
     width: 0;
     height: 0;
     border: 0;
@@ -152,13 +150,11 @@
   }
 }
 
-@layer utilities {
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 
-  .scrollbar-none::-webkit-scrollbar {
+  &::-webkit-scrollbar {
     display: none;
   }
 }
@@ -184,11 +180,11 @@
   }
 }
 
-.animate-rise {
+@utility animate-rise {
   animation: rise-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.animate-blob {
+@utility animate-blob {
   animation: blob-float 14s ease-in-out infinite;
 }
 

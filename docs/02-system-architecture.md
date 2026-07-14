@@ -301,7 +301,7 @@ const isAllowedOrigin = (origin: string) =>
   allowedOrigins.includes(origin) || previewOriginPattern?.test(origin) === true;
 ```
 
-`*.vercel.app` 같은 전체 와일드카드는 사용하지 않는다. Vercel은 누구나 무료로 임의의 `*.vercel.app` 서브도메인을 배포할 수 있어, 와일드카드를 허용하면 `credentials: true` 쿠키와 결합해 CSRF 공격 표면이 된다. PR Preview가 필요한 경우 `VERCEL_PREVIEW_ORIGIN_PATTERN`에 해당 Vercel 프로젝트와 팀 슬러그로 범위를 제한한 정규식을 설정한다. 정규식이 없거나 잘못되면 Preview origin은 허용되지 않으며, `ALLOWED_ORIGINS`의 정확 일치 규칙만 적용된다.
+`*.vercel.app` 같은 전체 와일드카드는 사용하지 않는다. Vercel은 누구나 무료로 임의의 `*.vercel.app` 서브도메인을 배포할 수 있어, 와일드카드를 허용하면 `credentials: true` 쿠키와 결합해 CSRF 공격 표면이 된다. PR Preview가 필요한 경우 `VERCEL_PREVIEW_ORIGIN_PATTERN`에 해당 Vercel 프로젝트와 팀 슬러그로 범위를 제한한 **`^`/`$` 앵커 포함 정규식**을 설정한다. 정규식이 없거나, 앵커가 없거나, 잘못되면 Preview origin은 허용되지 않으며, `ALLOWED_ORIGINS`의 정확 일치 규칙만 적용된다.
 
 ```ts
 app.use(

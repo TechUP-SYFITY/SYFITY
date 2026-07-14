@@ -40,6 +40,18 @@ describe('isAllowedOrigin', () => {
     expect(isAllowedOrigin('https://other-project-git-main-techup-syfity.vercel.app')).toBe(false);
   });
 
+  it('전체 origin 앵커가 없는 preview origin 정규식은 경고 후 거부한다', async () => {
+    const warn = vi.fn();
+    vi.stubEnv('VERCEL_PREVIEW_ORIGIN_PATTERN', 'syfity-frontend-[a-z0-9-]+-techup-syfity');
+    vi.doMock('../lib/logger', () => ({ logger: { warn } }));
+    const { isAllowedOrigin } = await import('./cors');
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(isAllowedOrigin('https://syfity-frontend-git-main-techup-syfity.vercel.app')).toBe(
+      false,
+    );
+  });
+
   it('잘못된 preview origin 정규식은 경고 후 정확 일치 목록으로 폴백한다', async () => {
     const warn = vi.fn();
     vi.stubEnv('VERCEL_PREVIEW_ORIGIN_PATTERN', '[');

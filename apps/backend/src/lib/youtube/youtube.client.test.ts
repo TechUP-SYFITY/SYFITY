@@ -52,6 +52,7 @@ describe('YouTubeClient', () => {
     expect(url.pathname).toBe('/youtube/v3/search');
     expect(url.searchParams.get('q')).toBe('아이유');
     expect(url.searchParams.get('maxResults')).toBe('10');
+    expect(url.searchParams.get('videoCategoryId')).toBe('10');
   });
 
   it('검색 응답에 videoId가 없는 항목은 제외한다', async () => {
@@ -90,6 +91,33 @@ describe('YouTubeClient', () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  it('영상 상세 응답의 categoryId를 매핑한다', async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        items: [
+          {
+            id: 'video-1',
+            snippet: { categoryId: '10' },
+            contentDetails: { duration: 'PT3M' },
+          },
+        ],
+      }),
+    );
+    const client = new YouTubeClient('api-key', fetchFn);
+
+    await expect(client.getVideoDetails(['video-1'])).resolves.toEqual([
+      {
+        videoId: 'video-1',
+        title: '',
+        channelTitle: '',
+        thumbnailUrl: '',
+        duration: 180,
+        embeddable: true,
+        categoryId: '10',
+      },
+    ]);
+  });
+
   it.each([
     ['PT1H2M3S', 3723],
     ['PT30M', 1800],
@@ -122,6 +150,7 @@ describe('YouTubeClient', () => {
         thumbnailUrl: 'https://example.com/medium.jpg',
         duration: expectedSeconds,
         embeddable: true,
+        categoryId: '',
       },
     ]);
 
@@ -152,6 +181,7 @@ describe('YouTubeClient', () => {
         thumbnailUrl: '',
         duration: 180,
         embeddable: false,
+        categoryId: '',
       },
     ]);
   });
@@ -178,6 +208,7 @@ describe('YouTubeClient', () => {
         thumbnailUrl: '',
         duration: 180,
         embeddable: true,
+        categoryId: '',
       },
     ]);
   });

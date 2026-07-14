@@ -41,6 +41,7 @@ const details: YouTubeVideoDetail[] = [
     thumbnailUrl: 'https://example.com/a.jpg',
     duration: 10,
     embeddable: true,
+    categoryId: '10',
   },
   {
     videoId: 'video-b',
@@ -49,6 +50,7 @@ const details: YouTubeVideoDetail[] = [
     thumbnailUrl: 'https://example.com/b.jpg',
     duration: 20,
     embeddable: true,
+    categoryId: '10',
   },
   {
     videoId: 'video-c',
@@ -57,6 +59,7 @@ const details: YouTubeVideoDetail[] = [
     thumbnailUrl: 'https://example.com/c.jpg',
     duration: 30,
     embeddable: true,
+    categoryId: '10',
   },
 ];
 
@@ -107,7 +110,7 @@ describe('SearchService', () => {
     const service = new SearchService(youtubeClient, cache);
 
     await expect(service.search('BTS')).resolves.toEqual(searchResults);
-    expect(youtubeClient.search).toHaveBeenCalledWith('BTS', 10);
+    expect(youtubeClient.search).toHaveBeenCalledWith('BTS', 50);
     expect(youtubeClient.getVideoDetails).toHaveBeenCalledWith(['video-a', 'video-b', 'video-c']);
     expect(cache.set).toHaveBeenCalledWith(
       CacheKeys.ytSearch('BTS'),
@@ -143,6 +146,60 @@ describe('SearchService', () => {
     await expect(service.search('BTS')).resolves.toEqual(searchResults.slice(0, 2));
   });
 
+  it('Music 카테고리 영상만 검색 결과에 포함한다', async () => {
+    const youtubeClient = makeYouTubeClient({
+      getVideoDetails: vi
+        .fn()
+        .mockResolvedValue([
+          details[0],
+          { ...details[1], categoryId: '20' },
+          { ...details[2], categoryId: '' },
+        ]),
+    });
+    const service = new SearchService(youtubeClient, makeCache());
+
+    await expect(service.search('BTS')).resolves.toEqual([searchResults[0]]);
+  });
+
+  it('Music 결과가 10개를 초과하면 상위 10개만 반환하고 캐시한다', async () => {
+    const manySearchItems = Array.from({ length: 12 }, (_, index) => ({
+      videoId: `video-${index + 1}`,
+      title: `Song ${index + 1}`,
+      channelTitle: 'Channel',
+      thumbnailUrl: `https://example.com/${index + 1}.jpg`,
+    }));
+    const manyDetails = manySearchItems.map((item, index) => ({
+      ...item,
+      duration: index + 1,
+      embeddable: true,
+      categoryId: '10',
+    }));
+    const youtubeClient = makeYouTubeClient({
+      search: vi.fn().mockResolvedValue(manySearchItems),
+      getVideoDetails: vi.fn().mockResolvedValue(manyDetails),
+    });
+    const cache = makeCache();
+    const service = new SearchService(youtubeClient, cache);
+
+    const results = await service.search('BTS');
+
+    expect(results).toHaveLength(10);
+    expect(results.map((result) => result.videoId)).toEqual(
+      manySearchItems.slice(0, 10).map((item) => item.videoId),
+    );
+    expect(cache.set).toHaveBeenCalledWith(CacheKeys.ytSearch('BTS'), results, CacheTTL.YT_SEARCH);
+  });
+
+  it('필터링 뒤 Music 결과가 10개 미만이면 있는 결과만 반환한다', async () => {
+    const youtubeClient = makeYouTubeClient({
+      getVideoDetails: vi.fn().mockResolvedValue([details[0]]),
+    });
+    const service = new SearchService(youtubeClient, makeCache());
+
+    await expect(service.search('BTS')).resolves.toEqual([searchResults[0]]);
+    expect(youtubeClient.search).toHaveBeenCalledTimes(1);
+  });
+
   it('YouTube API 오류는 그대로 전파한다', async () => {
     const error = new Error('youtube failed');
     const youtubeClient = makeYouTubeClient({
@@ -174,6 +231,6 @@ describe('SearchService', () => {
     await service.search(' BTS ');
 
     expect(cache.get).toHaveBeenCalledWith(CacheKeys.ytSearch('BTS'));
-    expect(youtubeClient.search).toHaveBeenCalledWith('BTS', 10);
+    expect(youtubeClient.search).toHaveBeenCalledWith('BTS', 50);
   });
 });

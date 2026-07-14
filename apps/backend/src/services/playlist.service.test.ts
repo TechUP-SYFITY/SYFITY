@@ -103,6 +103,7 @@ const videoDetail: YouTubeVideoDetail = {
   thumbnailUrl: 'https://example.com/thumb.jpg',
   duration: 180,
   embeddable: true,
+  categoryId: '10',
 };
 
 function makeFixture(

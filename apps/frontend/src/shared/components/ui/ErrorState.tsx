@@ -6,12 +6,9 @@ import type { ReactNode } from 'react';
 import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
-interface ErrorStateAction {
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  icon?: ReactNode;
-}
+type ErrorStateAction = { label: string; icon?: ReactNode } & (
+  { href: string; onClick?: never } | { href?: never; onClick: () => void }
+);
 
 interface ErrorStateProps {
   icon: ReactNode;
@@ -25,7 +22,10 @@ interface ErrorStateProps {
 export function ErrorState({ icon, code, title, description, action, className }: ErrorStateProps) {
   return (
     <div className={cn('flex w-full max-w-120 flex-col items-center px-4 text-center', className)}>
-      <div className="flex size-24 items-center justify-center rounded-full border border-white/10 bg-surface/70 shadow-[0_0_32px_rgba(114,244,164,0.13)]">
+      <div
+        aria-hidden
+        className="flex size-24 items-center justify-center rounded-full border border-white/10 bg-surface/70 shadow-[0_0_32px_rgba(114,244,164,0.13)]"
+      >
         {icon}
       </div>
 

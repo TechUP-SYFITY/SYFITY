@@ -1,7 +1,6 @@
 import { Compass, House } from 'lucide-react';
 
-import { ErrorPageShell } from '@/features/error/components/ErrorPageShell';
-import { ErrorState } from '@/features/error/components/ErrorState';
+import { ErrorPageShell, ErrorState } from '@/shared/components/ui';
 
 export default function NotFound() {
   return (

@@ -3,8 +3,7 @@
 import { RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect } from 'react';
 
-import { ErrorPageShell } from '@/features/error/components/ErrorPageShell';
-import { ErrorState } from '@/features/error/components/ErrorState';
+import { ErrorPageShell, ErrorState } from '@/shared/components/ui';
 
 interface ErrorProps {
   error: Error & { digest?: string };

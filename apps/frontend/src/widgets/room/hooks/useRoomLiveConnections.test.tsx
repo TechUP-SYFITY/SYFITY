@@ -6,7 +6,7 @@ import { useRoomSocket } from '@/features/room/hooks/useRoomSocket';
 
 import { useRoomLiveConnections } from './useRoomLiveConnections';
 
-vi.mock('@/features/chat/hooks/chatHooks', () => ({ useChatSocket: vi.fn() }));
+vi.mock('@/features/chat/hooks/useChatSocket', () => ({ useChatSocket: vi.fn() }));
 vi.mock('@/features/player/hooks/usePlaybackSocket', () => ({ usePlaybackSocket: vi.fn() }));
 vi.mock('@/features/playlist/hooks/playlistHooks', () => ({ usePlaylistSocket: vi.fn() }));
 vi.mock('@/features/presence/hooks/usePresenceSocket', () => ({ usePresenceSocket: vi.fn() }));

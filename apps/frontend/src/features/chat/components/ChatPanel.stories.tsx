@@ -6,7 +6,7 @@ import { expect, within } from 'storybook/test';
 import type { ChatMessage } from '@/shared/types/domain';
 
 import { ChatPanel } from './ChatPanel';
-import type { UseChatScrollResult } from '../hooks/chatHooks';
+import type { UseChatScrollResult } from '../hooks/useChatScroll';
 import { useChatStore } from '../store/chatStore';
 
 const roomId = 'story-room';

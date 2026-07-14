@@ -10,7 +10,8 @@ import { ChatInputForm } from './ChatInputForm';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSystemMessage } from './ChatSystemMessage';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
-import { useChatScroll, useSendChatMessage, type UseChatScrollResult } from '../hooks/chatHooks';
+import { useChatScroll, type UseChatScrollResult } from '../hooks/useChatScroll';
+import { useSendChatMessage } from '../hooks/useSendChatMessage';
 import { useChatStore } from '../store/chatStore';
 
 interface ChatPanelProps {

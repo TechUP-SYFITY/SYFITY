@@ -1,7 +1,7 @@
 'use client';
 
 // REST 입장 완료 이후 Room/Playback/Playlist Socket 연결을 한 번에 초기화한다.
-import { useChatSocket } from '@/features/chat/hooks/chatHooks';
+import { useChatSocket } from '@/features/chat/hooks/useChatSocket';
 import { usePlaybackSocket } from '@/features/player/hooks/usePlaybackSocket';
 import { usePlaylistSocket } from '@/features/playlist/hooks/playlistHooks';
 import { usePresenceSocket } from '@/features/presence/hooks/usePresenceSocket';

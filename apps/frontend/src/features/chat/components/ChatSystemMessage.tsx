@@ -6,7 +6,7 @@ interface ChatSystemMessageProps {
 
 export function ChatSystemMessage({ chat }: ChatSystemMessageProps) {
   return (
-    <p className="mx-auto w-fit rounded-full bg-input px-3 py-1 text-xs text-muted-foreground">
+    <p className="mx-auto w-fit max-w-full rounded-full bg-input px-3 py-1 text-xs break-words text-muted-foreground">
       {chat.message}
     </p>
   );

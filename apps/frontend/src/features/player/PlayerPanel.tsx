@@ -13,6 +13,7 @@ import { usePlayerStore } from './playerStore';
 import { YouTubePlayer } from './YouTubePlayer';
 
 interface PlayerPanelProps {
+  canControlRoom: boolean;
   roomId: string;
   isHost: boolean;
   onEnded: () => void;
@@ -21,6 +22,7 @@ interface PlayerPanelProps {
 }
 
 export function PlayerPanel({
+  canControlRoom,
   roomId,
   isHost,
   onEnded,
@@ -50,7 +52,7 @@ export function PlayerPanel({
   }
 
   function handlePlayerError(errorCode: number) {
-    if (!isHost || !playbackState?.videoId) {
+    if (!canControlRoom || !playbackState?.videoId) {
       return;
     }
 

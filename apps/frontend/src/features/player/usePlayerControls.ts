@@ -9,6 +9,7 @@ export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek';
 const SEEK_DEBOUNCE_MS = 200;
 
 interface UsePlayerControlsParams {
+  canControlRoom?: boolean;
   roomId: string;
   isHost: boolean;
   currentTime: number;
@@ -21,6 +22,7 @@ interface UsePlayerControlsParams {
 export function usePlayerControls({
   roomId,
   isHost,
+  canControlRoom = isHost,
   currentTime,
   hasPlayableTrack,
   isPlaying,
@@ -33,7 +35,7 @@ export function usePlayerControls({
   const [commandError, setCommandError] = useState<string | null>(null);
   const beginPlaybackSync = usePlayerStore((state) => state.beginPlaybackSync);
   const clearPlaybackSync = usePlayerStore((state) => state.clearPlaybackSync);
-  const controlDisabled = !isHost || !hasPlayableTrack || Boolean(pendingCommand);
+  const controlDisabled = !canControlRoom || !hasPlayableTrack || Boolean(pendingCommand);
 
   useEffect(
     () => () => {
@@ -45,7 +47,7 @@ export function usePlayerControls({
   );
 
   async function runHostCommand(command: PlayerCommand, action: () => Promise<unknown>) {
-    if (!isHost || pendingCommandRef.current) {
+    if (!canControlRoom || pendingCommandRef.current) {
       return;
     }
 
@@ -118,6 +120,10 @@ export function usePlayerControls({
       return;
     }
 
+    if (!canControlRoom) {
+      return;
+    }
+
     const command = nextIsPlaying ? 'play' : 'pause';
     const action = nextIsPlaying ? playbackCommands.play : playbackCommands.pause;
 
@@ -126,7 +132,7 @@ export function usePlayerControls({
 
   function handleSeek(seekTime: number) {
     if (
-      !isHost ||
+      !canControlRoom ||
       pendingCommandRef.current ||
       !hasPlayableTrack ||
       !Number.isFinite(seekTime) ||

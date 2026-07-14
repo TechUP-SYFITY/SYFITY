@@ -39,7 +39,6 @@ describe('RoomLayout', () => {
         <RoomLayout
           activeMobileTab={activeMobileTab}
           currentUserName="게스트"
-          isHost
           members={[]}
           onMobileTabChange={vi.fn()}
           renderPlayerPanel={renderPlayerPanel}

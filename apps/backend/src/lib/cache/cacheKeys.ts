@@ -1,7 +1,7 @@
 export const CacheKeys = {
   /**
    * Host 타이머 상태. TTL: 60초.
-   * 값: NodeJS.Timeout 참조 - 인메모리 전용 (NodeJS.Timeout 직렬화 불가).
+   * 값: HostCloseTimerState - 인메모리 전용 (NodeJS.Timeout 직렬화 불가).
    */
   hostTimer: (roomId: string) => `host-timer:${roomId}`,
 

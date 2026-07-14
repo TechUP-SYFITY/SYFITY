@@ -56,7 +56,9 @@ function createQueryClient() {
 }
 
 function renderPlaylistPanel(options?: {
+  canControlRoom?: boolean;
   currentPlaylistItemId?: string;
+  isHost?: boolean;
   playlistItems?: PlaylistItem[];
   queryClient?: QueryClient;
 }) {
@@ -65,10 +67,11 @@ function renderPlaylistPanel(options?: {
   render(
     <QueryClientProvider client={queryClient}>
       <PlaylistPanel
+        canControlRoom={options?.canControlRoom ?? true}
         currentPlaylistItemId={options?.currentPlaylistItemId ?? availableItem.id}
         playlistItems={options?.playlistItems}
         roomId={roomId}
-        isHost
+        isHost={options?.isHost ?? true}
         isReady
         onOpenSearch={vi.fn()}
       />
@@ -225,6 +228,32 @@ describe('PlaylistPanel', () => {
       'xl:bg-transparent',
       'xl:text-destructive/70',
     );
+  });
+
+  it('Host 역할은 유지하지만 제어할 수 없으면 Playlist 조작을 비활성화한다', () => {
+    const onOpenSearch = vi.fn();
+
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <PlaylistPanel
+          canControlRoom={false}
+          currentPlaylistItemId={availableItem.id}
+          playlistItems={[availableItem]}
+          roomId={roomId}
+          isHost
+          isReady
+          onOpenSearch={onOpenSearch}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.focus(screen.getByTestId(`playlist-row-${availableItem.id}`));
+
+    expect(screen.getByRole('button', { name: 'Song One 순서 변경' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Song One 삭제' })).toBeDisabled();
+    screen
+      .getAllByRole('button', { name: /곡 추가|추가/ })
+      .forEach((button) => expect(button).toBeDisabled());
   });
 });
 

@@ -85,8 +85,17 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
 ) {
   switch (event) {
     case 'room:join': {
-      const ack = readAck<{ playbackState: PlaybackState }>(args[1]);
-      ack?.({ success: true, data: { playbackState: ctx.getPlaybackState() } });
+      const ack = readAck<{
+        hostConnection: { status: 'connected' };
+        playbackState: PlaybackState;
+      }>(args[1]);
+      ack?.({
+        success: true,
+        data: {
+          hostConnection: { status: 'connected' },
+          playbackState: ctx.getPlaybackState(),
+        },
+      });
       break;
     }
 

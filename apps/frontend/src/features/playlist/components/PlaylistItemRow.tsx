@@ -10,6 +10,7 @@ import { PlaylistArtwork } from './PlaylistArtwork';
 
 interface PlaylistItemRowProps {
   isCurrent: boolean;
+  isControlEnabled: boolean;
   isDeletePending: boolean;
   isDragging: boolean;
   isFocused: boolean;
@@ -29,6 +30,7 @@ interface PlaylistItemRowProps {
 
 export function PlaylistItemRow({
   isCurrent,
+  isControlEnabled,
   isDeletePending,
   isDragging,
   isFocused,
@@ -98,7 +100,7 @@ export function PlaylistItemRow({
               'h-10 w-10 cursor-grab touch-none rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted active:cursor-grabbing xl:h-8 xl:w-8',
               !isReady && 'cursor-not-allowed',
             )}
-            disabled={!isReady}
+            disabled={!isReady || !isControlEnabled}
             draggable={false}
             type="button"
             data-testid={`playlist-drag-handle-${item.id}`}
@@ -125,7 +127,7 @@ export function PlaylistItemRow({
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full border-0 bg-destructive/10 text-destructive hover:bg-destructive/15 xl:h-8 xl:w-8 xl:bg-transparent xl:text-destructive/70 xl:hover:bg-destructive/10"
-            disabled={!isReady || isDeletePending}
+            disabled={!isReady || !isControlEnabled || isDeletePending}
             type="button"
             aria-label={`${item.title} 삭제`}
             onClick={(event) => {

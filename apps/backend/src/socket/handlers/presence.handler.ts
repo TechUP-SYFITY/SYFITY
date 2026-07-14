@@ -8,7 +8,7 @@ import {
   roomService as defaultRoomService,
 } from '../../ioc';
 import { logger } from '../../lib/logger';
-import { HOST_CLOSE_TIMEOUT_MS, type PresenceService } from '../../services/presence.service';
+import type { PresenceService } from '../../services/presence.service';
 import type { RoomService } from '../../services/room.service';
 import type {
   PresenceUpdatePayload,
@@ -96,15 +96,14 @@ async function handleRoomDisconnect(
     });
 
     if (role === 'host') {
-      const payload: RoomHostDisconnectedPayload = {
-        roomId,
-        waitUntil: new Date(Date.now() + HOST_CLOSE_TIMEOUT_MS).toISOString(),
-      };
-      io.to(roomKey).emit('room:host-disconnected', payload);
-
-      deps.presenceService.scheduleHostCloseTimer(roomId, () => {
+      const waitUntil = deps.presenceService.scheduleHostCloseTimer(roomId, () => {
         void handleHostTimeout(io, roomId, userId, deps);
       });
+      const payload: RoomHostDisconnectedPayload = {
+        roomId,
+        waitUntil,
+      };
+      io.to(roomKey).emit('room:host-disconnected', payload);
     }
   } catch (err) {
     logger.error({ err, roomId, userId }, '[presence] disconnect 처리 실패');

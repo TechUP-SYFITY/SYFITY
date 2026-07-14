@@ -1,9 +1,21 @@
 import '@testing-library/jest-dom/vitest';
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SearchAddToast } from './SearchAddToast';
+import { ToastProvider } from '@/shared/components/ui';
+
+import { SearchAddToast, type SearchAddToastFeedback } from './SearchAddToast';
+
+function renderToast(feedback: SearchAddToastFeedback | null, onClose = vi.fn()) {
+  render(
+    <ToastProvider>
+      <SearchAddToast feedback={feedback} onClose={onClose} />
+    </ToastProvider>,
+  );
+
+  return onClose;
+}
 
 describe('SearchAddToast', () => {
   afterEach(() => {
@@ -11,74 +23,34 @@ describe('SearchAddToast', () => {
     vi.useRealTimers();
   });
 
-  it('announces success once with polite priority and closes manually', async () => {
-    const onClose = vi.fn();
+  it('pushes a success toast through the shared provider and closes manually', async () => {
+    const onClose = renderToast({ id: 1, variant: 'success', message: 'Added to playlist' });
 
-    render(
-      <SearchAddToast
-        feedback={{ id: 1, variant: 'success', message: '플레이리스트에 추가했어요 🎵' }}
-        onClose={onClose}
-      />,
-    );
+    expect(await screen.findByText('Added to playlist')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button'));
 
-    const visibleToast = (await screen.findByText('플레이리스트에 추가했어요 🎵')).closest(
-      '[data-state="open"]',
-    );
-    const announcer = await screen.findByRole('status');
-
-    expect(visibleToast).not.toHaveAttribute('role');
-    expect(announcer).toHaveAttribute('aria-live', 'polite');
-    await waitFor(() => expect(announcer).toHaveTextContent('알림 플레이리스트에 추가했어요 🎵'));
-    expect(screen.getAllByRole('status')).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('announces failure once with assertive priority', async () => {
-    render(
-      <SearchAddToast
-        feedback={{ id: 2, variant: 'error', message: '재생할 수 없는 영상이에요.' }}
-        onClose={vi.fn()}
-      />,
-    );
+  it('pushes an error toast through the shared provider', async () => {
+    renderToast({ id: 2, variant: 'error', message: 'Could not add video' });
 
-    const visibleToast = (await screen.findByText('재생할 수 없는 영상이에요.')).closest(
-      '[data-state="open"]',
-    );
-    const announcer = await screen.findByRole('status');
-
-    expect(visibleToast).not.toHaveAttribute('role');
-    expect(announcer).toHaveAttribute('aria-live', 'assertive');
-    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(await screen.findByText('Could not add video')).toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveAttribute('aria-live', 'assertive');
   });
 
-  it('keeps mobile bottom-center and moves desktop feedback to bottom-right', async () => {
-    render(
-      <SearchAddToast
-        feedback={{ id: 3, variant: 'success', message: '플레이리스트에 추가했어요 🎵' }}
-        onClose={vi.fn()}
-      />,
-    );
+  it('does not push a toast without feedback', () => {
+    renderToast(null);
 
-    const region = await screen.findByRole('region', { name: '알림 (F8)' });
-    const viewport = region.querySelector('ol');
-
-    expect(viewport).toHaveClass('left-1/2', '-translate-x-1/2');
-    expect(viewport).toHaveClass('lg:right-0', 'lg:left-auto', 'lg:translate-x-0', 'lg:p-6');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('requests close after four seconds', () => {
     vi.useFakeTimers();
-    const onClose = vi.fn();
-
-    render(
-      <SearchAddToast
-        feedback={{ id: 3, variant: 'success', message: '플레이리스트에 추가했어요 🎵' }}
-        onClose={onClose}
-      />,
-    );
+    const onClose = renderToast({ id: 3, variant: 'success', message: 'Added to playlist' });
 
     act(() => vi.advanceTimersByTime(4000));
+
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

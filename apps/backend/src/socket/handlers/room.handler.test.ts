@@ -26,7 +26,7 @@ type RoomHandlerService = Pick<
 type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
 type RoomHandlerPresenceService = Pick<
   PresenceService,
-  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer'
+  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer' | 'getHostConnectionState'
 >;
 
 const member: RoomMemberRecord = {
@@ -85,6 +85,7 @@ function makePresenceService(
   return {
     cancelMemberOfflineTimer: vi.fn().mockReturnValue(true),
     cancelHostCloseTimer: vi.fn().mockReturnValue(false),
+    getHostConnectionState: vi.fn().mockReturnValue({ status: 'connected' }),
     ...overrides,
   };
 }
@@ -185,7 +186,10 @@ describe('registerRoomHandlers', () => {
       message: 'Alice님이 입장했습니다.',
       createdAt: '2026-07-01T12:01:00.000Z',
     });
-    expect(ack).toHaveBeenCalledWith({ success: true, data: { playbackState } });
+    expect(ack).toHaveBeenCalledWith({
+      success: true,
+      data: { hostConnection: { status: 'connected' }, playbackState },
+    });
   });
 
   it('room:join에서 이미 online 상태면 시스템 메시지를 생성하지 않는다', async () => {
@@ -201,7 +205,10 @@ describe('registerRoomHandlers', () => {
 
     expect(roomService.createSystemMessage).not.toHaveBeenCalled();
     expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
-    expect(ack).toHaveBeenCalledWith({ success: true, data: { playbackState } });
+    expect(ack).toHaveBeenCalledWith({
+      success: true,
+      data: { hostConnection: { status: 'connected' }, playbackState },
+    });
   });
 
   it('room:join 성공 시 대기 중인 멤버 offline 타이머를 취소한다', async () => {
@@ -285,6 +292,36 @@ describe('registerRoomHandlers', () => {
     expect(roomEmit).not.toHaveBeenCalledWith('room:host-reconnected', expect.anything());
   });
 
+  it('room:join에서 현재 Host 연결 끊김 상태와 waitUntil을 성공 ack로 반환한다', async () => {
+    const { io } = makeIo();
+    const { socket, handlers } = makeSocket();
+    const presenceService = makePresenceService({
+      getHostConnectionState: vi.fn().mockReturnValue({
+        status: 'disconnected',
+        waitUntil: '2026-07-01T12:01:00.000Z',
+      }),
+    });
+
+    registerRoomHandlers(io, socket, {
+      roomService: makeRoomService(),
+      playbackService: makePlaybackService(),
+      presenceService,
+    });
+    const ack = vi.fn();
+    await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
+
+    expect(ack).toHaveBeenCalledWith({
+      success: true,
+      data: {
+        hostConnection: {
+          status: 'disconnected',
+          waitUntil: '2026-07-01T12:01:00.000Z',
+        },
+        playbackState,
+      },
+    });
+  });
+
   it('room:join 시스템 메시지 생성 실패 시 chat:system 없이 성공 ack를 보낸다', async () => {
     const { io, roomEmit } = makeIo();
     const { socket, handlers } = makeSocket();
@@ -297,7 +334,10 @@ describe('registerRoomHandlers', () => {
     await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
 
     expect(roomEmit).not.toHaveBeenCalledWith('chat:system', expect.anything());
-    expect(ack).toHaveBeenCalledWith({ success: true, data: { playbackState } });
+    expect(ack).toHaveBeenCalledWith({
+      success: true,
+      data: { hostConnection: { status: 'connected' }, playbackState },
+    });
   });
 
   it('room:join에서 roomId가 없으면 VALIDATION_ERROR ack를 반환하고 service를 호출하지 않는다', async () => {

@@ -19,6 +19,7 @@ import { useDeletePlaylistItem, usePlaylist, useReorderPlaylist } from './playli
 import { usePlaylistStore } from './playlistStore';
 
 interface PlaylistPanelProps {
+  canControlRoom: boolean;
   currentPlaylistItemId: string | null;
   playlistItems?: PlaylistItem[];
   roomId: string;
@@ -29,6 +30,7 @@ interface PlaylistPanelProps {
 }
 
 export function PlaylistPanel({
+  canControlRoom,
   currentPlaylistItemId,
   playlistItems,
   roomId,
@@ -86,6 +88,10 @@ export function PlaylistPanel({
   };
 
   const handleOpenSearch = () => {
+    if (!canControlRoom) {
+      return;
+    }
+
     resetMutationErrors();
     onOpenSearch();
   };
@@ -107,7 +113,12 @@ export function PlaylistPanel({
   const handleDrop = (targetItemId: string) => {
     const currentDraggingItemId = draggingItemIdRef.current;
 
-    if (!isReady || !isHost || !currentDraggingItemId || currentDraggingItemId === targetItemId) {
+    if (
+      !isReady ||
+      !canControlRoom ||
+      !currentDraggingItemId ||
+      currentDraggingItemId === targetItemId
+    ) {
       setActiveDraggingItemId(null);
       return;
     }
@@ -140,7 +151,7 @@ export function PlaylistPanel({
   };
 
   const handleKeyboardReorder = (itemId: string, direction: -1 | 1) => {
-    if (!isReady || !isHost) {
+    if (!isReady || !canControlRoom) {
       return;
     }
 
@@ -172,7 +183,7 @@ export function PlaylistPanel({
     itemId: string,
     event: React.PointerEvent<HTMLButtonElement>,
   ) => {
-    if (!isReady || !isHost) {
+    if (!isReady || !canControlRoom) {
       return;
     }
 
@@ -211,6 +222,10 @@ export function PlaylistPanel({
   };
 
   const handleDelete = (itemId: string) => {
+    if (!canControlRoom) {
+      return;
+    }
+
     resetMutationErrors();
     deletePlaylistItem.mutate(itemId);
   };
@@ -218,6 +233,7 @@ export function PlaylistPanel({
   return (
     <aside className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border bg-background">
       <PlaylistPanelHeader
+        disabled={!canControlRoom}
         isBackgroundFetching={isBackgroundFetching}
         itemCount={visiblePlaylist.length}
         onAddClick={handleOpenSearch}
@@ -234,7 +250,7 @@ export function PlaylistPanel({
           />
         ) : null}
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
-          <PlaylistEmptyState isReady={isReady} onAddClick={handleOpenSearch} />
+          <PlaylistEmptyState isReady={isReady && canControlRoom} onAddClick={handleOpenSearch} />
         ) : null}
         {visiblePlaylist.map((item) => {
           const isCurrent = item.id === currentPlaylistItemId;
@@ -247,6 +263,7 @@ export function PlaylistPanel({
               isDragging={draggingItemId === item.id}
               isFocused={focusedActionItemId === item.id}
               isHost={isHost}
+              isControlEnabled={canControlRoom}
               isReady={isReady}
               item={item}
               onBlurWithin={(event) => handleRowBlur(event, item.id)}
@@ -266,6 +283,7 @@ export function PlaylistPanel({
       <Button
         className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-lg xl:hidden"
         type="button"
+        disabled={!canControlRoom}
         onClick={handleOpenSearch}
       >
         <Plus className="h-4 w-4" aria-hidden />곡 추가

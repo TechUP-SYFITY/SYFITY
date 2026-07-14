@@ -554,7 +554,8 @@ export function registerRoomHandlers(
 
   socket.on('room:join', async (payload, ack) => {
     // roomService로 참여 상태 갱신(원자적 조건부 UPDATE로 wasOnline 판단),
-    // presenceService로 대기 중인 유예 타이머 취소, playbackService로 재생 상태 조회 후 ack 응답.
+    // presenceService로 대기 중인 유예 타이머 취소 및 현재 Host 연결 상태 조회,
+    // playbackService로 재생 상태 조회 후 ack 응답.
     // wasOnline이 false일 때만 입장 시스템 메시지 broadcast.
   });
 

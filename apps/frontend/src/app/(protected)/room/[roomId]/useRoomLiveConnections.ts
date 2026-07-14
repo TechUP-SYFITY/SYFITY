@@ -6,9 +6,13 @@ import { usePlaybackSocket } from '@/features/player/usePlaybackSocket';
 import { usePlaylistSocket } from '@/features/playlist/playlistHooks';
 import { useRoomSocket } from '@/features/room/useRoomSocket';
 
-export function useRoomLiveConnections(roomId: string, enabled: boolean) {
+export function useRoomLiveConnections(
+  roomId: string,
+  enabled: boolean,
+  onRoomClosed?: () => void,
+) {
   usePlaybackSocket(enabled);
   usePlaylistSocket(enabled ? roomId : '');
-  useRoomSocket(enabled ? roomId : '');
+  useRoomSocket(enabled ? roomId : '', onRoomClosed);
   useChatSocket(enabled ? roomId : '');
 }

@@ -1,13 +1,14 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { JoinRoomResponse, UserProfileResponse } from '@syfity/shared';
 
+import { ToastProvider } from '@/shared/components/ui';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
@@ -23,6 +24,12 @@ vi.mock('./useRoomLiveConnections', () => ({
   useRoomLiveConnections: vi.fn(),
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -31,7 +38,11 @@ function createWrapper() {
   });
 
   return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+      <ToastProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </ToastProvider>
+    );
   };
 }
 
@@ -39,6 +50,7 @@ describe('RoomPageClient', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     useRoomStore.getState().clearRoom();
     usePlaylistStore.getState().clearPlaylist();
     usePlayerStore.getState().clearPlayback();
@@ -74,7 +86,11 @@ describe('RoomPageClient', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
-    expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+    expect(useRoomLiveConnections).toHaveBeenCalledWith(
+      roomFixture.room.id,
+      true,
+      expect.any(Function),
+    );
   });
 
   it('Room 입장 응답의 최신순 recentChats를 오래된순으로 저장한다', async () => {
@@ -120,11 +136,19 @@ describe('RoomPageClient', () => {
     );
 
     expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
-    expect(useRoomLiveConnections).not.toHaveBeenCalledWith('stale-room-id', false);
-    expect(useRoomLiveConnections).toHaveBeenCalledWith(roomFixture.room.id, true);
+    expect(useRoomLiveConnections).not.toHaveBeenCalledWith(
+      'stale-room-id',
+      false,
+      expect.any(Function),
+    );
+    expect(useRoomLiveConnections).toHaveBeenCalledWith(
+      roomFixture.room.id,
+      true,
+      expect.any(Function),
+    );
   });
 
-  it('현재 사용자가 host가 아니면 host 전용 제어 안내를 표시한다', async () => {
+  it('현재 사용자가 host가 아니면 host 제어를 제한하되 연결 끊김 배너는 표시하지 않는다', async () => {
     server.use(
       http.get('*/api/v1/me', () =>
         HttpResponse.json({
@@ -147,10 +171,99 @@ describe('RoomPageClient', () => {
     );
 
     expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getByText('호스트 제어')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
+    expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+  });
+
+  it('Host 연결 상태에 따라 안내와 제어 권한을 전환한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
+
+    act(() => {
+      useRoomStore.getState().markHostDisconnected('2099-01-01T00:00:00.000Z');
+    });
+
     expect(
       screen.getByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...'),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+    expect(screen.queryByText('호스트 제어')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
+
+    act(() => {
+      useRoomStore.getState().markHostReconnected();
+    });
+
+    expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
+    expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
+  });
+
+  it('Room 종료 callback으로 재생 상태를 정리한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(usePlayerStore.getState().playbackState).not.toBeNull();
+
+    const onRoomClosed = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[2];
+    expect(onRoomClosed).toBeTypeOf('function');
+
+    act(() => {
+      onRoomClosed?.();
+    });
+
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+  });
+
+  it('Room 초대 버튼으로 초대 모달을 열고 실제 초대 코드와 링크를 복사한다', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      'navigator',
+      Object.create(window.navigator, {
+        clipboard: { value: { writeText } },
+      }),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPageClient roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '초대' }));
+
+    expect(screen.getByRole('dialog', { name: '친구 초대' })).toBeInTheDocument();
+    expect(screen.getAllByText(roomFixture.room.inviteCode).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: '초대 코드 복사' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenNthCalledWith(1, roomFixture.room.inviteCode);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '초대 링크 복사' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining(`/room/join?code=${roomFixture.room.inviteCode}`),
+      );
+    });
   });
 
   it('검색 결과 곡 추가 성공 Toast를 표시하고 SearchPanel을 유지한다', async () => {
@@ -177,13 +290,14 @@ describe('RoomPageClient', () => {
     const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
 
     expect(successToast).toHaveTextContent('플레이리스트에 추가했어요 🎵');
-    expect(searchDialog).toContainElement(successToast);
+    expect(searchDialog).not.toContainElement(successToast);
 
-    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
+    fireEvent.click((successToast as HTMLElement).querySelector('button') as HTMLButtonElement);
     await waitFor(() =>
       expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument(),
     );
 
+    fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
     const [reopenSearchButton] = await screen.findAllByRole('button', { name: '추가' });
     fireEvent.click(reopenSearchButton as HTMLButtonElement);
     expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
@@ -236,10 +350,8 @@ describe('RoomPageClient', () => {
     const searchDialog = screen.getByRole('dialog', { name: '곡 추가' });
 
     expect(errorToast).toHaveTextContent('재생할 수 없는 영상이에요.');
-    expect(
-      within(errorToast as HTMLElement).getByRole('button', { name: '닫기' }),
-    ).toBeInTheDocument();
-    expect(searchDialog).toContainElement(errorToast);
+    expect((errorToast as HTMLElement).querySelector('button')).toBeInTheDocument();
+    expect(searchDialog).not.toContainElement(errorToast);
     expect(requestedRoomId).toBe(roomFixture.room.id);
   });
 

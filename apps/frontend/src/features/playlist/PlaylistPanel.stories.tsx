@@ -56,6 +56,7 @@ const meta = {
     msw: { handlers: [] },
   },
   args: {
+    canControlRoom: true,
     currentPlaylistItemId: 'story-night-changes',
     roomId,
     isHost: true,
@@ -160,6 +161,7 @@ export const ParentPlaylistData: Story = {
 
 export const MemberView: Story = {
   args: {
+    canControlRoom: false,
     isHost: false,
   },
   decorators: [withPlaylistStoryFrame()],

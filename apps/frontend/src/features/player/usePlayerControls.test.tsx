@@ -283,6 +283,27 @@ describe('usePlayerControls', () => {
     expect(usePlayerStore.getState().playbackSyncStatus).toBe('pending');
   });
 
+  it('Host 역할이지만 Room 제어가 잠기면 재생 명령과 Member 동기화 요청을 보내지 않는다', () => {
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        canControlRoom: false,
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlaybackStateChange(true, 42);
+    });
+
+    expect(result.current.controlDisabled).toBe(true);
+    expect(playbackCommands.play).not.toHaveBeenCalled();
+    expect(playbackCommands.requestSync).not.toHaveBeenCalled();
+  });
+
   it('Member 동기화 요청 실패 시 피드백 상태를 초기화한다', () => {
     vi.mocked(playbackCommands.requestSync).mockImplementation(() => {
       throw new Error('Socket is not connected.');

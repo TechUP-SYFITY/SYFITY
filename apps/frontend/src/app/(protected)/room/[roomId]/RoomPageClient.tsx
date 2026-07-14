@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
+import { PresenceMockPanel } from '@/shared/mocks/PresenceMockPanel';
 
 import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
@@ -20,6 +21,7 @@ import { useAddPlaylistItem } from '@/features/playlist/playlistHooks';
 import { PlaylistPanel } from '@/features/playlist/PlaylistPanel';
 import { usePlaylistStore } from '@/features/playlist/playlistStore';
 import type { AddPlaylistItemRequest } from '@/features/playlist/playlistTypes';
+import { usePresenceStore } from '@/features/presence/store/presenceStore';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { RoomErrorState } from '@/features/room/components/RoomErrorState';
 import { RoomLoadingState } from '@/features/room/components/RoomLoadingState';
@@ -47,9 +49,12 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
   const joinRoom = useJoinRoom(roomId);
   const { data: me } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
-  const members = useRoomStore((state) => state.members);
   const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
+  const onlineMemberCount = usePresenceStore(
+    (state) => state.members.filter((member) => member.status === 'online').length,
+  );
+  const setMembers = usePresenceStore((state) => state.setMembers);
   const localPlaybackPosition = usePlayerStore((state) => state.localPlaybackPosition);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const clearPlayback = usePlayerStore((state) => state.clearPlayback);
@@ -72,11 +77,12 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
       return;
     }
 
-    setJoinedRoom(joinRoom.data);
+    setJoinedRoom(joinRoom.data.room);
+    setMembers(joinRoom.data.members);
     setPlaylist(joinRoom.data.playlist);
     setPlaybackState(joinRoom.data.playbackState, 'room-join');
     setMessages(sortChatMessagesAscending(joinRoom.data.recentChats));
-  }, [joinRoom.data, setJoinedRoom, setMessages, setPlaybackState, setPlaylist]);
+  }, [joinRoom.data, setJoinedRoom, setMembers, setMessages, setPlaybackState, setPlaylist]);
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
   const canControlRoom = isHost && hostConnection.status === 'connected';
@@ -164,7 +170,6 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
         miniPlayerPreviousDisabled={!previousItem}
         miniPlayerVolume={miniPlayerVolume}
-        members={members}
         onInviteClick={() => setIsInviteOpen(true)}
         onMuteToggle={toggleMiniPlayerMute}
         onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
@@ -173,6 +178,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         onMiniPlayerSeek={miniPlayerControls.handleSeek}
         onMiniPlayerVolumeChange={setMiniPlayerVolume}
         onMobileTabChange={setActiveMobileTab}
+        onlineMemberCount={onlineMemberCount}
         playbackState={miniPlayerPlaybackState}
         playlist={playlist}
         renderPlayerPanel={() => (
@@ -210,6 +216,7 @@ export function RoomPageClient({ roomId }: RoomPageClientProps) {
         onAddUrl={handleAddYoutubeUrl}
         onClose={handleCloseSearch}
       />
+      <PresenceMockPanel />
     </>
   );
 }

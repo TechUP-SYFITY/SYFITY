@@ -1,4 +1,9 @@
-import type { HostConnectionState, RoomMemberStatus, RoomRole } from './room';
+import type {
+  HostConnectionState,
+  RoomMemberRecord,
+  RoomMemberStatus,
+  RoomRole,
+} from './room';
 
 export type RoomJoinPayload = {
   roomId: string;
@@ -60,7 +65,11 @@ export type PlaybackAck = { success: true } | { success: false; error: SocketAck
 export type RoomJoinAck =
   | {
       success: true;
-      data: { hostConnection: HostConnectionState; playbackState: PlaybackStatePayload };
+      data: {
+        hostConnection: HostConnectionState;
+        members: RoomMemberRecord[];
+        playbackState: PlaybackStatePayload;
+      };
     }
   | { success: false; error: SocketAckError };
 

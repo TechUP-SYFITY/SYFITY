@@ -502,6 +502,14 @@ describe('RoomService', () => {
     });
   });
 
+  it('Room 참여자 목록 조회를 repository에 위임한다', async () => {
+    const { service, roomRepo } = makeService();
+
+    await expect(service.getMembers('room-1')).resolves.toEqual([member]);
+
+    expect(roomRepo.findMembers).toHaveBeenCalledWith('room-1');
+  });
+
   it('online 전환 시 Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {
     const { service, roomRepo } = makeService({
       roomRepo: { findRoomById: vi.fn().mockResolvedValue(null) },

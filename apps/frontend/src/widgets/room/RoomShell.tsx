@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 
 import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
-import type { PlaybackState, PlaylistItem, RoomDetail, RoomMember } from '@/shared/types/domain';
+import type { PlaybackState, PlaylistItem, RoomDetail } from '@/shared/types/domain';
 
 import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
 import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/room/components/MiniPlayer';
@@ -31,7 +31,7 @@ interface RoomShellProps {
   miniPlayerPendingCommand: MiniPlayerPendingCommand;
   miniPlayerPreviousDisabled: boolean;
   miniPlayerVolume: number;
-  members: RoomMember[];
+  onlineMemberCount: number;
   onInviteClick?: () => void;
   onMuteToggle: () => void;
   onMiniPlayerNextTrack: () => void;
@@ -62,7 +62,6 @@ export function RoomShell({
   miniPlayerPendingCommand,
   miniPlayerPreviousDisabled,
   miniPlayerVolume,
-  members,
   onInviteClick,
   onMuteToggle,
   onMiniPlayerNextTrack,
@@ -71,6 +70,7 @@ export function RoomShell({
   onMiniPlayerSeek,
   onMiniPlayerVolumeChange,
   onMobileTabChange,
+  onlineMemberCount,
   playbackState,
   playlist,
   renderPlayerPanel,
@@ -79,7 +79,6 @@ export function RoomShell({
   roomId,
 }: RoomShellProps) {
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
-  const onlineMemberCount = members.filter((member) => member.status === 'online').length;
 
   return (
     <main className="h-dvh overflow-hidden bg-background text-foreground">
@@ -97,7 +96,6 @@ export function RoomShell({
           activeMobileTab={activeMobileTab}
           currentUserName={currentUserName}
           currentUserProfileImage={currentUserProfileImage}
-          members={members}
           onMobileTabChange={onMobileTabChange}
           renderPlayerPanel={renderPlayerPanel}
           renderPlaylistPanel={renderPlaylistPanel}

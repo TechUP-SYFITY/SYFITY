@@ -4,7 +4,6 @@
 import type { ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/utils';
-import type { RoomMember } from '@/shared/types/domain';
 
 import { ChatPanel } from '@/features/chat/components/ChatPanel';
 import { MemberList } from '@/features/presence/components/MemberList';
@@ -15,7 +14,6 @@ interface RoomLayoutProps {
   activeMobileTab: RoomMobileTab;
   currentUserName: string;
   currentUserProfileImage?: string | null;
-  members: RoomMember[];
   onMobileTabChange: (tab: RoomMobileTab) => void;
   renderPlayerPanel: () => ReactNode;
   renderPlaylistPanel: () => ReactNode;
@@ -26,7 +24,6 @@ export function RoomLayout({
   activeMobileTab,
   currentUserName,
   currentUserProfileImage,
-  members,
   onMobileTabChange,
   renderPlayerPanel,
   renderPlaylistPanel,
@@ -35,7 +32,7 @@ export function RoomLayout({
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border xl:flex-row">
       <div className="hidden w-room-members shrink-0 self-stretch xl:flex">
-        <MemberSidebar members={members} />
+        <MemberSidebar />
       </div>
 
       <div
@@ -51,7 +48,7 @@ export function RoomLayout({
 
       {activeMobileTab === 'members' ? (
         <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-16 xl:hidden">
-          <MemberList members={members} />
+          <MemberList />
         </div>
       ) : null}
 

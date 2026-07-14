@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
-import type { ChatMessage, PlaybackState } from '@/shared/types/domain';
+import type { ChatMessage, PlaybackState, RoomMember } from '@/shared/types/domain';
 import type { RoomHostConnectionState } from '@/shared/types/socket';
 
-import { fakeSocketClient } from './fakeSocketClient';
+import { fakeSocketClient, simulateServerEvent } from './fakeSocketClient';
 
 describe('fakeSocketClient', () => {
   afterEach(() => {
@@ -22,12 +22,13 @@ describe('fakeSocketClient', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('acks room join with fixture playback state', () => {
+  it('acks room join with fixture playback state and members', () => {
     const socket = fakeSocketClient.connect();
     const ack = vi.fn<
       (
         response: SocketAck<{
           hostConnection: RoomHostConnectionState;
+          members: RoomMember[];
           playbackState: PlaybackState;
         }>,
       ) => void
@@ -39,6 +40,7 @@ describe('fakeSocketClient', () => {
       success: true,
       data: {
         hostConnection: { status: 'connected' },
+        members: roomFixture.members,
         playbackState: roomFixture.playbackState,
       },
     });
@@ -195,5 +197,51 @@ describe('fakeSocketClient', () => {
         type: 'user',
       }),
     );
+  });
+
+  it('does nothing when a server event is simulated without a connection', () => {
+    expect(() =>
+      simulateServerEvent('presence:update', {
+        nickname: '새 멤버',
+        profileImage: null,
+        role: 'member',
+        status: 'online',
+        userId: 'new-member',
+      }),
+    ).not.toThrow();
+  });
+
+  it('delivers simulated server events while connected', () => {
+    const socket = fakeSocketClient.connect();
+    const listener = vi.fn();
+    const payload = {
+      nickname: '새 멤버',
+      profileImage: null,
+      role: 'member' as const,
+      status: 'online' as const,
+      userId: 'new-member',
+    };
+
+    socket.on('presence:update', listener);
+    simulateServerEvent('presence:update', payload);
+
+    expect(listener).toHaveBeenCalledWith(payload);
+  });
+
+  it('stops delivering simulated server events after disconnecting', () => {
+    const socket = fakeSocketClient.connect();
+    const listener = vi.fn();
+
+    socket.on('presence:update', listener);
+    fakeSocketClient.disconnect();
+    simulateServerEvent('presence:update', {
+      nickname: '새 멤버',
+      profileImage: null,
+      role: 'member',
+      status: 'online',
+      userId: 'new-member',
+    });
+
+    expect(listener).not.toHaveBeenCalled();
   });
 });

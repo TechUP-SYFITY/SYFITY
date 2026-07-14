@@ -41,7 +41,10 @@ export function HostConnectionNotice({ hostConnection }: HostConnectionNoticePro
     : '호스트 연결이 끊겼습니다. 재접속을 기다리는 중...';
 
   return (
-    <div className="flex h-9 items-center gap-2 bg-accent/15 px-5 text-xs text-accent-300">
+    <div
+      className="flex h-9 items-center gap-2 bg-accent/15 px-5 text-xs text-accent-300"
+      role="status"
+    >
       <WifiOff className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 flex-1 truncate">{message}</span>
       {isClosed ? null : (

@@ -8,12 +8,17 @@ export function requireEnv(name: string): string {
   return value;
 }
 
+const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
+
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: process.env.PORT ?? '4000',
-  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:3000',
+  clientUrl,
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
   vercelPreviewOriginPattern: process.env.VERCEL_PREVIEW_ORIGIN_PATTERN,
+  // FE/BE가 서로 다른 서브도메인인 운영 환경에서 인증 쿠키를 공유하기 위한 Domain.
+  // 별도 환경변수 없이 CLIENT_URL의 hostname을 재사용한다 (예: https://syfity.site → syfity.site).
+  cookieDomain: new URL(clientUrl).hostname,
   jwt: {
     accessSecret: requireEnv('JWT_ACCESS_SECRET'),
     refreshSecret: requireEnv('JWT_REFRESH_SECRET'),

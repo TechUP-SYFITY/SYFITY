@@ -66,8 +66,9 @@ export class AuthController {
     await this.authService.logout(userId);
 
     const res = req.res!;
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token', { path: '/api/v1/auth/refresh' });
+    const domain = config.nodeEnv === 'production' ? config.cookieDomain : undefined;
+    res.clearCookie('access_token', { domain });
+    res.clearCookie('refresh_token', { domain, path: '/api/v1/auth/refresh' });
 
     return { success: true, data: { message: 'logged out' } };
   }
@@ -98,6 +99,7 @@ export class AuthController {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
       sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
+      domain: config.nodeEnv === 'production' ? config.cookieDomain : undefined,
       maxAge,
     };
   }

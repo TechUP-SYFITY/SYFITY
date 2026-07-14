@@ -69,6 +69,9 @@ function withSearchStoryFrame() {
 const meta = {
   title: 'Features/Search/SearchPanel',
   component: SearchPanel,
+  beforeEach: () => {
+    thumbnailRequestSpy.mockClear();
+  },
   parameters: {
     docs: {
       container: SearchPanelDocsContainer,
@@ -195,6 +198,7 @@ export const LinkInput: Story = {
   args: { initialQuery: 'https://youtu.be/syFZfO_wfMQ' },
   play: async ({ canvasElement }) => {
     const page = within(canvasElement.ownerDocument.body);
+    await expect(thumbnailRequestSpy).not.toHaveBeenCalled();
     await expect(
       page.findByText('이 링크를 플레이리스트에 추가할까요?'),
     ).resolves.toBeInTheDocument();

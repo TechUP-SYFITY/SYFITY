@@ -6,9 +6,36 @@ import { QueryProvider } from '@/shared/lib/query/QueryProvider';
 import { MockingProvider } from '@/shared/mocks/MockingProvider';
 import './globals.css';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://syfity.site';
+const SITE_NAME = 'Syfity';
+const SITE_DESCRIPTION = '하나의 Room에서 같은 음악을 실시간으로 함께 듣는 소셜 리스닝 플랫폼';
+
 export const metadata: Metadata = {
-  title: 'Syfity',
-  description: '하나의 Room에서 같은 음악을 실시간으로 함께 듣는 소셜 리스닝 플랫폼',
+  metadataBase: new URL(SITE_URL),
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    locale: 'ko_KR',
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Syfity — 함께 듣는 순간, 음악이 더 가까워진다',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: ['/og-image.png'],
+  },
 };
 
 export default function RootLayout({

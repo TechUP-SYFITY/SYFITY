@@ -2,7 +2,7 @@
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
 import { AlertTriangle, Play } from 'lucide-react';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 
 import { formatDuration } from '@/shared/lib/formatDuration';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
@@ -18,7 +18,7 @@ interface PlayerPanelProps {
   canControlRoom: boolean;
   roomId: string;
   isHost: boolean;
-  playerControllerRef?: MutableRefObject<PlayerController | null>;
+  playerControllerRef?: RefObject<PlayerController | null>;
   onEnded: () => void;
   onPlaybackStateChange: (isPlaying: boolean, currentTime: number) => void;
   playlist: PlaylistItem[];

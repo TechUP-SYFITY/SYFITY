@@ -1,7 +1,9 @@
+/// <reference types="youtube" />
+
 'use client';
 
 // YouTube IFrame Player API를 React 컴포넌트 생명주기에 연결한다.
-import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 import { getPlaybackCorrection } from '../lib/playerSync';
 import { usePlayerStore } from '../store/playerStore';
@@ -10,6 +12,7 @@ import type { PlayerController, PlayerPlaybackState } from '../types/playerTypes
 
 declare global {
   interface Window {
+    YT?: typeof YT;
     onYouTubeIframeAPIReady?: () => void;
   }
 }
@@ -45,7 +48,7 @@ const loadYouTubeApi = () => {
 };
 
 interface YouTubePlayerProps {
-  playerControllerRef?: MutableRefObject<PlayerController | null>;
+  playerControllerRef?: RefObject<PlayerController | null>;
   playbackState: PlayerPlaybackState | null;
   onBufferingRecovered: () => void;
   onEnded: () => void;
@@ -222,7 +225,7 @@ export function YouTubePlayer({
 function applyPlaybackState(
   player: YT.Player,
   playbackState: PlayerPlaybackState | null,
-  loadedVideoIdRef: MutableRefObject<string | null>,
+  loadedVideoIdRef: RefObject<string | null>,
 ) {
   if (!playbackState?.videoId) {
     return;

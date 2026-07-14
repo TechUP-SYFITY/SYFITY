@@ -47,13 +47,13 @@ export function RoomLayout({
       </div>
 
       {activeMobileTab === 'members' ? (
-        <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-16 xl:hidden">
+        <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-[calc(4rem+env(safe-area-inset-bottom))] xl:hidden">
           <MemberList />
         </div>
       ) : null}
 
       {activeMobileTab === 'chat' ? (
-        <div className="min-h-0 flex-1 overflow-hidden border-t border-border pb-16 xl:hidden">
+        <div className="min-h-0 flex-1 overflow-hidden border-t border-border pb-[calc(4rem+env(safe-area-inset-bottom))] xl:hidden">
           <ChatPanel
             currentUserName={currentUserName}
             currentUserProfileImage={currentUserProfileImage}
@@ -64,7 +64,7 @@ export function RoomLayout({
 
       <div
         className={cn(
-          'min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-16',
+          'min-h-0 flex-1 scrollbar-none overflow-y-auto border-t border-border pb-[calc(4rem+env(safe-area-inset-bottom))]',
           activeMobileTab === 'playlist' ? 'flex' : 'hidden',
           'xl:flex xl:w-room-side xl:flex-none xl:shrink-0 xl:self-stretch xl:overflow-hidden xl:border-t-0 xl:pb-0',
         )}

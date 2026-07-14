@@ -167,6 +167,16 @@ export const MemberView: Story = {
   decorators: [withPlaylistStoryFrame()],
 };
 
+export const HostControlsDisabled: Story = {
+  args: {
+    canControlRoom: false,
+    isHost: true,
+    isReady: false,
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+};
+
 export const DeleteFailureInteraction: Story = {
   args: {
     playlistApiClient: createPlaylistApiMock({

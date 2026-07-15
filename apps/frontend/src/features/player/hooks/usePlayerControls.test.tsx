@@ -2,6 +2,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiClientError } from '@/shared/types/api';
+
 import { usePlayerControls } from './usePlayerControls';
 import { playbackCommands } from '../lib/playbackCommands';
 import { usePlayerStore } from '../store/playerStore';
@@ -239,6 +241,29 @@ describe('usePlayerControls', () => {
 
     await waitFor(() => {
       expect(playerControllerRef.current.pause).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('Socket ack 오류를 공통 사용자 메시지로 표시한다', async () => {
+    vi.mocked(playbackCommands.play).mockRejectedValue(
+      new ApiClientError({ code: 'AUTH_FORBIDDEN', message: '권한이 없습니다.' }),
+    );
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlayPause();
+    });
+
+    await waitFor(() => {
+      expect(result.current.commandError).toBe('이 작업을 할 권한이 없어요.');
     });
   });
 

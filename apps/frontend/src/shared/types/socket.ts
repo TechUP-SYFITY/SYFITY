@@ -1,5 +1,5 @@
 // Socket.IO 이벤트 payload와 ack 타입을 정의한다.
-import type { ApiError, SocketAck } from './api';
+import { ApiClientError, type ApiError, type SocketAck } from './api';
 import type {
   ChatMessage,
   PlaybackState,
@@ -120,5 +120,5 @@ export interface ClientToServerEvents {
 }
 
 export function createSocketError(error: ApiError): Error {
-  return new Error(`${error.code}: ${error.message}`);
+  return new ApiClientError(error);
 }

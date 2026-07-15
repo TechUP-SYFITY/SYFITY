@@ -58,6 +58,7 @@ type YouTubeVideosResponse = {
       title?: string;
       channelTitle?: string;
       thumbnails?: YouTubeThumbnailSet;
+      categoryId?: string;
     };
     contentDetails?: {
       duration?: string;

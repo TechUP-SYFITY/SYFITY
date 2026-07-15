@@ -48,6 +48,9 @@ export const useJoinRoom = (roomId: string) =>
     retry: false,
     // room join is a mount-time POST, but useQuery handles Strict Mode remounts
     // without the observer loss that useEffect + useMutation can trigger.
+    // gcTime: 0 evicts the cache entry on unmount so re-entering the room always
+    // refetches instead of replaying a stale playlist/playbackState snapshot.
+    gcTime: 0,
     staleTime: Infinity,
   });
 

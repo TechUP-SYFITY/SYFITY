@@ -136,8 +136,8 @@ pnpm dev:be   # 백엔드 (Express + Socket.IO)
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 기획     | [00. Project Plan](./docs/00-project-plan.md) · [01. PRD](./docs/01-prd.md) · [98. Market Research](./docs/98-market-research.md) · [99. Technical/Legal Feasibility](./docs/99-technical-legal-feasibility.md)                                                             |
 | 아키텍처 | [02. System Architecture](./docs/02-system-architecture.md) · [03. Realtime Sync](./docs/03-realtime-sync-design.md) · [04. Database](./docs/04-database-design.md) · [07. Frontend](./docs/07-frontend-architecture.md) · [08. Backend](./docs/08-backend-architecture.md) |
-| 명세     | [05. API Spec](./docs/05-api-spec.md) · [06. Socket Event Spec](./docs/06-socket-event-spec.md) · [09. UI/UX Flow](./docs/09-ui-ux-flow.md) · [10. Design System](./docs/10-design-system.md) · [11. Error/Empty State](./docs/11-error-empty-state.md)                     |
-| 운영     | [12. Test Plan](./docs/12-test-plan.md) · [13. Deployment/Operation](./docs/13-deployment-operation.md) · [97. Code Convention](./docs/97-code-convention.md)                                                                                                               |
+| 명세     | [05. API Spec](./docs/05-api-spec.md) · [06. Socket Event Spec](./docs/06-socket-event-spec.md) · [09. UI/UX Flow](./docs/09-ui-ux-flow.md) · [10. Design System](./docs/10-design-system.md)                                                                               |
+| 운영     | [97. Code Convention](./docs/97-code-convention.md)                                                                                                                                                                                                                         |
 
 <br>
 

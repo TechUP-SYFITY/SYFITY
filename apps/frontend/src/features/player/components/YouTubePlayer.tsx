@@ -74,6 +74,7 @@ export function YouTubePlayer({
   const onPlaybackStateChangeRef = useRef(onPlaybackStateChange);
   const playbackStateRef = useRef(playbackState);
   const previousPlayerStateRef = useRef<number | null>(null);
+  const suppressNextPausedSyncRef = useRef(false);
   const setLocalPlaybackPosition = usePlayerStore((state) => state.setLocalPlaybackPosition);
   const isMuted = usePlayerVolumeStore((state) => state.isMuted);
   const volume = usePlayerVolumeStore((state) => state.volume);
@@ -111,14 +112,28 @@ export function YouTubePlayer({
               playerControllerRef.current = controller;
             }
             applyPlayerVolume(event.target, usePlayerVolumeStore.getState());
-            applyPlaybackState(event.target, playbackStateRef.current, loadedVideoIdRef);
+            applyPlaybackState(
+              event.target,
+              playbackStateRef.current,
+              loadedVideoIdRef,
+              previousPlayerStateRef,
+              suppressNextPausedSyncRef,
+            );
           },
           onStateChange: (event) => {
             const previousState = previousPlayerStateRef.current;
             previousPlayerStateRef.current = event.data;
             const currentPlaybackState = playbackStateRef.current;
 
+            // loadVideoById로 재생 중이던 영상을 교체하면 브라우저가 src 전환 과정에서
+            // 순간적으로 PAUSED 이벤트를 끼워 넣는 경우가 있다. 이를 실제 일시정지로
+            // 오인해 서버에 pause 명령을 되돌려 보내지 않도록 로드 직후 1회만 무시한다.
+            const isLoadArtifactPause =
+              suppressNextPausedSyncRef.current && event.data === window.YT.PlayerState.PAUSED;
+            suppressNextPausedSyncRef.current = false;
+
             if (
+              !isLoadArtifactPause &&
               currentPlaybackState?.videoId &&
               (event.data === window.YT.PlayerState.PLAYING ||
                 event.data === window.YT.PlayerState.PAUSED)
@@ -187,7 +202,13 @@ export function YouTubePlayer({
       return;
     }
 
-    applyPlaybackState(player, playbackState, loadedVideoIdRef);
+    applyPlaybackState(
+      player,
+      playbackState,
+      loadedVideoIdRef,
+      previousPlayerStateRef,
+      suppressNextPausedSyncRef,
+    );
   }, [playbackState]);
 
   useEffect(() => {
@@ -226,6 +247,8 @@ function applyPlaybackState(
   player: YT.Player,
   playbackState: PlayerPlaybackState | null,
   loadedVideoIdRef: RefObject<string | null>,
+  previousPlayerStateRef: RefObject<number | null>,
+  suppressNextPausedSyncRef: RefObject<boolean>,
 ) {
   if (!playbackState?.videoId) {
     return;
@@ -233,6 +256,11 @@ function applyPlaybackState(
 
   if (loadedVideoIdRef.current !== playbackState.videoId) {
     loadedVideoIdRef.current = playbackState.videoId;
+    // 재생 중이던 영상을 loadVideoById로 교체하면 src 전환 과정에서 브라우저가
+    // 순간적으로 PAUSED 이벤트를 끼워 넣는 경우가 있다. 직전까지 실제로 재생 중이었을
+    // 때만 이 artifact를 의심해, 다음 상태 이벤트가 PAUSED면 1회 무시한다.
+    suppressNextPausedSyncRef.current =
+      previousPlayerStateRef.current === window.YT.PlayerState.PLAYING;
 
     if (playbackState.isPlaying) {
       player.loadVideoById({

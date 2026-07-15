@@ -368,4 +368,93 @@ describe('YouTubePlayer', () => {
 
     expect(onPlaybackStateChange).toHaveBeenCalledWith(false, 42);
   });
+
+  it('재생 중 트랙을 전환하면 교체 과정의 일시적 PAUSED 이벤트를 서버에 동기화하지 않는다', async () => {
+    const onPlaybackStateChange = vi.fn();
+
+    const { rerender } = render(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={onPlaybackStateChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players).toHaveLength(1);
+    });
+
+    act(() => {
+      playerOptions?.events?.onStateChange?.({
+        data: window.YT.PlayerState.PLAYING,
+        target: players[0] as unknown as YT.Player,
+      });
+    });
+
+    rerender(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true, videoId: 'video-2' }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={onPlaybackStateChange}
+      />,
+    );
+
+    act(() => {
+      playerOptions?.events?.onStateChange?.({
+        data: window.YT.PlayerState.PAUSED,
+        target: players[0] as unknown as YT.Player,
+      });
+    });
+
+    expect(onPlaybackStateChange).not.toHaveBeenCalled();
+  });
+
+  it('일시정지 상태에서 트랙을 전환한 뒤 발생한 PAUSED 이벤트는 그대로 동기화한다', async () => {
+    mockCurrentTime = 5;
+    const onPlaybackStateChange = vi.fn();
+
+    const { rerender } = render(
+      <YouTubePlayer
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={onPlaybackStateChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players).toHaveLength(1);
+    });
+
+    act(() => {
+      playerOptions?.events?.onStateChange?.({
+        data: window.YT.PlayerState.PAUSED,
+        target: players[0] as unknown as YT.Player,
+      });
+    });
+
+    rerender(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true, videoId: 'video-2' }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={onPlaybackStateChange}
+      />,
+    );
+
+    act(() => {
+      playerOptions?.events?.onStateChange?.({
+        data: window.YT.PlayerState.PAUSED,
+        target: players[0] as unknown as YT.Player,
+      });
+    });
+
+    expect(onPlaybackStateChange).toHaveBeenCalledWith(false, 5);
+  });
 });

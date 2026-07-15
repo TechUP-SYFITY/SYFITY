@@ -224,7 +224,11 @@ export class PlaylistService {
       return this.nonEmpty(parsed.pathname.split('/')[1]);
     }
 
-    if (parsed.hostname !== 'youtube.com' && parsed.hostname !== 'www.youtube.com') {
+    if (
+      parsed.hostname !== 'youtube.com' &&
+      parsed.hostname !== 'www.youtube.com' &&
+      parsed.hostname !== 'music.youtube.com'
+    ) {
       return null;
     }
 

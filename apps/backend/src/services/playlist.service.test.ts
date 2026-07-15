@@ -276,6 +276,7 @@ describe('PlaylistService', () => {
     ['youtu.be', 'https://youtu.be/video-1'],
     ['embed', 'https://www.youtube.com/embed/video-1'],
     ['shorts', 'https://youtube.com/shorts/video-1'],
+    ['music.youtube.com', 'https://music.youtube.com/watch?v=video-1'],
   ])('youtubeUrl %s 형식에서 videoId를 파싱한다', async (_name, youtubeUrl) => {
     const { service, youtubeClient } = makeFixture();
 

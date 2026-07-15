@@ -216,6 +216,74 @@ describe('usePlayerControls', () => {
     });
   });
 
+  it('Host의 이전 곡 탭에서 서버 명령 전에 로컬 플레이어를 즉시 재생한다', async () => {
+    const callOrder: string[] = [];
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(() => callOrder.push('local-play')),
+      },
+    };
+    vi.mocked(playbackCommands.changeTrack).mockImplementation(async () => {
+      callOrder.push('socket-change-track');
+    });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        playerControllerRef,
+        previousItemId: 'playlist-item-0',
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePreviousTrack();
+    });
+
+    expect(callOrder).toEqual(['local-play', 'socket-change-track']);
+    expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-0');
+    });
+  });
+
+  it('Host의 다음 곡 탭에서 서버 명령 전에 로컬 플레이어를 즉시 재생한다', async () => {
+    const callOrder: string[] = [];
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(() => callOrder.push('local-play')),
+      },
+    };
+    vi.mocked(playbackCommands.changeTrack).mockImplementation(async () => {
+      callOrder.push('socket-change-track');
+    });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        nextItemId: 'playlist-item-2',
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleNextTrack();
+    });
+
+    expect(callOrder).toEqual(['local-play', 'socket-change-track']);
+    expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+    });
+  });
+
   it('낙관적 재생 명령이 실패하면 로컬 플레이어를 다시 일시정지한다', async () => {
     const playerControllerRef = {
       current: {

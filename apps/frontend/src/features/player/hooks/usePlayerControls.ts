@@ -116,6 +116,8 @@ export function usePlayerControls({
       return;
     }
 
+    // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
+    playerControllerRef?.current?.play();
     void runHostCommand('previous', () => playbackCommands.changeTrack(roomId, previousItemId));
   }
 
@@ -129,6 +131,8 @@ export function usePlayerControls({
       return;
     }
 
+    // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
+    playerControllerRef?.current?.play();
     void runHostCommand('next', () => playbackCommands.changeTrack(roomId, nextItemId));
   }
 

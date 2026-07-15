@@ -85,7 +85,7 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
       >
         <textarea
           ref={textareaRef}
-          className="max-h-28 min-h-8 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-sm/5 text-foreground outline-none placeholder:text-white/50 focus-visible:ring-0"
+          className="max-h-28 min-h-8 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-sm/5 wrap-break-word text-foreground outline-none placeholder:text-white/50 focus-visible:ring-0"
           placeholder="메시지 입력..."
           rows={1}
           value={value}

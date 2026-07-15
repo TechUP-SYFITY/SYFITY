@@ -7,6 +7,7 @@ import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
 import { getIo } from '../lib/io';
 import { logger } from '../lib/logger';
+import { broadcastToRoom } from '../socket/broadcast';
 import type { ChatMessageRecord, IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
@@ -18,22 +19,12 @@ import type {
   RoomRecord,
   RoomUpdateRecord,
 } from '../types/room';
-import type { ChatSystemPayload, RoomClosedPayload } from '../types/socket';
+import type { RoomClosedPayload } from '../types/socket';
 import { toChatSystemPayload } from '../utils/chatPayload';
 import { assertActiveRoomMember } from '../utils/roomAccess';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
 const RECENT_CHAT_LIMIT = 50;
-
-type RoomClosedEmitter = {
-  emit(event: 'room:closed', payload: RoomClosedPayload): boolean;
-  emit(event: 'chat:system', payload: ChatSystemPayload): boolean;
-};
-
-export type RoomSocketServer = {
-  to(room: string): RoomClosedEmitter;
-  socketsLeave(room: string): void;
-};
 
 export class RoomService {
   constructor(
@@ -181,16 +172,16 @@ export class RoomService {
   }
 
   async closeRoomAndBroadcast(roomId: string, userId: string): Promise<void> {
-    const io: RoomSocketServer = getIo();
+    const io = getIo();
     await this.closeRoom(roomId, userId);
 
     const systemMessage = await this.createSystemMessage(roomId, 'Room이 종료되었습니다.');
     if (systemMessage) {
-      io.to(`room:${roomId}`).emit('chat:system', toChatSystemPayload(systemMessage));
+      broadcastToRoom(roomId, 'chat:system', toChatSystemPayload(systemMessage));
     }
 
     const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
-    io.to(`room:${roomId}`).emit('room:closed', payload);
+    broadcastToRoom(roomId, 'room:closed', payload);
     io.socketsLeave(`room:${roomId}`);
   }
 

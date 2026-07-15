@@ -16,12 +16,38 @@ Syfity는 여러 사용자가 하나의 Room에 모여 같은 음악을 실시�
 
 ## 👥 팀
 
-| 이름   | 역할 |
-| ------ | ---- |
-| 김민교 | 팀장 |
-| 엄한나 | 팀원 |
-| 이주영 | 팀원 |
-| 이중호 | 팀원 |
+<table>
+  <tr>
+    <td align="center">
+      <strong>김민교 (팀장)</strong><br />
+      <a href="https://github.com/DrCloy">
+        <img src="https://github.com/DrCloy.png?size=100" width="100" height="100" alt="김민교 GitHub 프로필 이미지" />
+      </a><br />
+      <a href="https://github.com/DrCloy">@DrCloy</a>
+    </td>
+    <td align="center">
+      <strong>엄한나</strong><br />
+      <a href="https://github.com/hanna-um">
+        <img src="https://github.com/hanna-um.png?size=100" width="100" height="100" alt="엄한나 GitHub 프로필 이미지" />
+      </a><br />
+      <a href="https://github.com/hanna-um">@hanna-um</a>
+    </td>
+    <td align="center">
+      <strong>이주영</strong><br />
+      <a href="https://github.com/ele-003">
+        <img src="https://github.com/ele-003.png?size=100" width="100" height="100" alt="이주영 GitHub 프로필 이미지" />
+      </a><br />
+      <a href="https://github.com/ele-003">@ele-003</a>
+    </td>
+    <td align="center">
+      <strong>이중호</strong><br />
+      <a href="https://github.com/intothehead">
+        <img src="https://github.com/intothehead.png?size=100" width="100" height="100" alt="이중호 GitHub 프로필 이미지" />
+      </a><br />
+      <a href="https://github.com/intothehead">@intothehead</a>
+    </td>
+  </tr>
+</table>
 
 <br>
 

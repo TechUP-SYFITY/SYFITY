@@ -14,6 +14,17 @@ Syfity는 여러 사용자가 하나의 Room에 모여 같은 음악을 실시�
 
 <br>
 
+## 👥 팀
+
+| 이름   | 역할 |
+| ------ | ---- |
+| 김민교 | 팀장 |
+| 엄한나 | 팀원 |
+| 이주영 | 팀원 |
+| 이중호 | 팀원 |
+
+<br>
+
 ## ✨ 주요 기능
 
 - **Room 관리** — Google 계정 로그인, Room 생성과 초대 코드 기반 입장, 이전에 참여한 Room 최근 목록에서 재입장, 방장·참여자 역할 구분
@@ -75,16 +86,15 @@ syfity/
     frontend/         → Next.js (Vercel 배포)
     backend/          → Express.js + Socket.IO (Render 배포)
   packages/
-    shared/           → 공통 타입·상수·DTO (@syfity/shared)
+    shared/           → 공통 상수·DTO (@syfity/shared)
       src/
-        types/        → 공통 도메인 타입
         constants/    → 공통 상수
         dto/          → API 요청/응답 타입
   docs/               → 설계 문서
   supabase/           → DB 마이그레이션
 ```
 
-FE와 BE는 `@syfity/shared`를 통해 도메인 타입, 상수, API/Socket DTO를 공유합니다.
+FE와 BE는 `@syfity/shared`를 통해 상수와 API/Socket DTO를 공유합니다.
 
 <br>
 
@@ -138,9 +148,3 @@ pnpm dev:be   # 백엔드 (Express + Socket.IO)
 | 아키텍처 | [02. System Architecture](./docs/02-system-architecture.md) · [03. Realtime Sync](./docs/03-realtime-sync-design.md) · [04. Database](./docs/04-database-design.md) · [07. Frontend](./docs/07-frontend-architecture.md) · [08. Backend](./docs/08-backend-architecture.md) |
 | 명세     | [05. API Spec](./docs/05-api-spec.md) · [06. Socket Event Spec](./docs/06-socket-event-spec.md) · [09. UI/UX Flow](./docs/09-ui-ux-flow.md) · [10. Design System](./docs/10-design-system.md)                                                                               |
 | 운영     | [97. Code Convention](./docs/97-code-convention.md)                                                                                                                                                                                                                         |
-
-<br>
-
-## 👥 팀
-
-김민교 (팀장) · 엄한나 · 이주영 · 이중호

@@ -10,7 +10,8 @@ import { ChatInputForm } from './ChatInputForm';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSystemMessage } from './ChatSystemMessage';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
-import { useChatScroll, useSendChatMessage, type UseChatScrollResult } from '../hooks/chatHooks';
+import { useChatScroll, type UseChatScrollResult } from '../hooks/useChatScroll';
+import { useSendChatMessage } from '../hooks/useSendChatMessage';
 import { useChatStore } from '../store/chatStore';
 
 interface ChatPanelProps {
@@ -51,7 +52,7 @@ export function ChatPanel({
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollContainerRef}
-          className="h-full min-h-0 scrollbar-none overflow-y-auto px-6 py-5"
+          className="scrollbar-none h-full min-h-0 overflow-y-auto px-6 py-5"
         >
           <div
             data-testid="chat-message-stack"

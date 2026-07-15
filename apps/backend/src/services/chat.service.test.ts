@@ -84,6 +84,25 @@ describe('ChatService', () => {
     expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
   });
 
+  it('비속어를 마스킹한 메시지를 저장한다', async () => {
+    const chatRepo = makeChatRepo();
+    const roomRepo = makeRoomRepo();
+    const service = new ChatService(chatRepo, roomRepo);
+
+    await service.sendMessage({
+      roomId: 'room-1',
+      userId: 'user-1',
+      message: '정말 씨발',
+    });
+
+    expect(chatRepo.createMessage).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      userId: 'user-1',
+      type: 'user',
+      message: '정말 **',
+    });
+  });
+
   it('Room lastActivity 갱신 실패는 채팅 전송을 실패시키지 않는다', async () => {
     const error = new Error('touch failed');
     const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});

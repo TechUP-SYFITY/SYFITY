@@ -5,8 +5,8 @@ import { expect, fn, userEvent, within } from 'storybook/test';
 
 import { ApiClientError } from '@/shared/types/api';
 
-import type { RoomApi } from '../roomApi';
 import { JoinRoomDialog } from './JoinRoomDialog';
+import type { RoomApi } from '../api/roomApi';
 
 type RoomApiOverride = Partial<RoomApi>;
 type StoryRender = () => ReactNode;

@@ -11,7 +11,7 @@ vi.mock('@/shared/components/layout', () => ({
   Header: () => null,
 }));
 
-vi.mock('@/features/room/components/MiniPlayer', () => ({
+vi.mock('@/features/player/components/MiniPlayer', () => ({
   MiniPlayer: () => null,
 }));
 
@@ -19,13 +19,13 @@ vi.mock('@/features/room/components/HostConnectionNotice', () => ({
   HostConnectionNotice: () => <div data-testid="host-connection-notice" />,
 }));
 
-vi.mock('@/features/room/components/RoomStatusBar', () => ({
+vi.mock('./components/RoomStatusBar', () => ({
   RoomStatusBar: () => null,
 }));
 
 vi.mock('./components/RoomLayout', () => ({
-  RoomLayout: ({ renderPlayerPanel }: { renderPlayerPanel: () => ReactNode }) => (
-    <div data-testid="room-layout">{renderPlayerPanel()}</div>
+  RoomLayout: ({ playerPanel }: { playerPanel: ReactNode }) => (
+    <div data-testid="room-layout">{playerPanel}</div>
   ),
 }));
 
@@ -35,8 +35,6 @@ describe('RoomShell', () => {
   });
 
   it('viewport 판정 없이 Player panel을 한 번만 렌더링한다', () => {
-    const renderPlayerPanel = vi.fn(() => <div data-testid="player-panel" />);
-
     render(
       <RoomShell
         activeMobileTab="playlist"
@@ -59,8 +57,8 @@ describe('RoomShell', () => {
         onlineMemberCount={0}
         playbackState={null}
         playlist={[]}
-        renderPlayerPanel={renderPlayerPanel}
-        renderPlaylistPanel={() => null}
+        playerPanel={<div data-testid="player-panel" />}
+        playlistPanel={null}
         room={null}
         roomId="room-1"
       />,
@@ -68,7 +66,6 @@ describe('RoomShell', () => {
 
     expect(screen.getByTestId('room-layout')).toBeInTheDocument();
     expect(screen.getAllByTestId('player-panel')).toHaveLength(1);
-    expect(renderPlayerPanel).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('host-connection-notice')).not.toBeInTheDocument();
   });
 
@@ -95,8 +92,8 @@ describe('RoomShell', () => {
         onlineMemberCount={0}
         playbackState={null}
         playlist={[]}
-        renderPlayerPanel={() => null}
-        renderPlaylistPanel={() => null}
+        playerPanel={null}
+        playlistPanel={null}
         room={null}
         roomId="room-1"
       />,

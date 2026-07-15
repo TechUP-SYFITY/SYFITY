@@ -79,13 +79,13 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
     <form className="min-w-0 flex-1" onSubmit={handleSubmit}>
       <div
         className={cn(
-          'flex min-h-11 min-w-0 items-end rounded-2xl border bg-input px-3 py-1.5 transition-colors',
+          `flex min-h-11 min-w-0 items-end rounded-2xl border bg-input px-3 py-1.5 transition-colors`,
           visibleError ? 'border-destructive' : 'border-border',
         )}
       >
         <textarea
           ref={textareaRef}
-          className="max-h-28 min-h-8 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-sm leading-5 text-foreground outline-none placeholder:text-white/50 focus-visible:ring-0"
+          className="max-h-28 min-h-8 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-sm/5 text-foreground outline-none placeholder:text-white/50 focus-visible:ring-0"
           placeholder="메시지 입력..."
           rows={1}
           value={value}
@@ -98,11 +98,11 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="mb-0.5 h-7 w-7 shrink-0 rounded-xl border-0 bg-transparent text-muted-foreground hover:bg-transparent"
+          className="mb-0.5 size-7 shrink-0 rounded-xl border-0 bg-transparent text-muted-foreground hover:bg-transparent"
           type="submit"
           aria-label="메시지 보내기"
         >
-          <Send className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+          <Send className="inline-block size-3.5 shrink-0" aria-hidden />
         </Button>
       </div>
       {visibleError ? (

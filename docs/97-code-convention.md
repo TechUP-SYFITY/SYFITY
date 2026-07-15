@@ -2,13 +2,13 @@
 
 ## 1. 문서 정보
 
-| 항목      | 내용                                             |
-| --------- | ------------------------------------------------ |
-| 문서명    | Syfity Code Convention                           |
-| 버전      | v1.1                                             |
-| 상태      | API 레이어 파일명 관행을 실제 구현 기준으로 보정 |
-| 작성 목적 | Syfity 프로젝트 Git 및 코드 컨벤션 정의          |
-| 적용 범위 | FE (Next.js), BE (Express.js) 공통 적용          |
+| 항목      | 내용                                          |
+| --------- | --------------------------------------------- |
+| 문서명    | Syfity Code Convention                        |
+| 버전      | v1.2                                          |
+| 상태      | 프론트엔드 레이어와 feature slice 관행 정합화 |
+| 작성 목적 | Syfity 프로젝트 Git 및 코드 컨벤션 정의       |
+| 적용 범위 | FE (Next.js), BE (Express.js) 공통 적용       |
 
 ---
 
@@ -135,6 +135,13 @@ feat/fix/chore → dev → main
 #### 커스텀 훅
 
 - `use` prefix (예: `useAuth`, `useSocket`)
+
+#### 프론트엔드 레이어와 feature slice
+
+- `app`은 라우트·params·layout·오류 경계만 담당하고, 화면 조립과 클라이언트 상태는 `widgets` 또는 `features`에 둔다.
+- `widgets`는 Landing·Home·Room처럼 여러 feature를 조합하는 화면 단위 UI를 둔다.
+- `features`는 도메인별 API, hooks, store, components, types, lib, constants 중 필요한 slice만 둔다.
+- feature 간 직접 import는 금지한다. 여러 도메인 조합은 widget에서 수행하고, 공통화할 코드만 `shared`로 옮긴다.
 
 #### 파일 / 폴더
 

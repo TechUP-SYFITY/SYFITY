@@ -2,6 +2,8 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { AppError } from '../../errors/appError';
 
+export const YOUTUBE_MUSIC_CATEGORY_ID = '10';
+
 export type YouTubeSearchItem = {
   videoId: string;
   title: string;
@@ -16,6 +18,7 @@ export type YouTubeVideoDetail = {
   thumbnailUrl: string;
   duration: number;
   embeddable: boolean;
+  categoryId: string;
 };
 
 export interface IYouTubeClient {
@@ -43,6 +46,7 @@ type YouTubeSearchResponse = {
       title?: string;
       channelTitle?: string;
       thumbnails?: YouTubeThumbnailSet;
+      categoryId?: string;
     };
   }>;
 };
@@ -54,6 +58,7 @@ type YouTubeVideosResponse = {
       title?: string;
       channelTitle?: string;
       thumbnails?: YouTubeThumbnailSet;
+      categoryId?: string;
     };
     contentDetails?: {
       duration?: string;
@@ -76,6 +81,7 @@ export class YouTubeClient implements IYouTubeClient {
       q: query,
       part: 'snippet',
       type: 'video',
+      videoCategoryId: YOUTUBE_MUSIC_CATEGORY_ID,
       maxResults: String(maxResults),
       key: this.apiKey,
     }).toString();
@@ -125,6 +131,7 @@ export class YouTubeClient implements IYouTubeClient {
         thumbnailUrl: this.getThumbnailUrl(item.snippet?.thumbnails),
         duration: this.parseDuration(item.contentDetails?.duration ?? ''),
         embeddable: item.status?.embeddable ?? true,
+        categoryId: item.snippet?.categoryId ?? '',
       }));
   }
 

@@ -2,6 +2,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { AppError } from '../errors/appError';
 import { logger } from '../lib/logger';
+import { maskProfanity } from '../lib/profanityFilter';
 import type { ChatMessageRecord, ChatRecord, IChatRepository } from '../types/chat';
 import type { IRoomRepository } from '../types/room';
 import { assertActiveRoomMember } from '../utils/roomAccess';
@@ -37,11 +38,13 @@ export class ChatService {
 
     await assertActiveRoomMember(this.roomRepo, params.roomId, params.userId);
 
+    const maskedMessage = maskProfanity(trimmed);
+
     const record = await this.chatRepo.createMessage({
       roomId: params.roomId,
       userId: params.userId,
       type: 'user',
-      message: trimmed,
+      message: maskedMessage,
     });
 
     try {

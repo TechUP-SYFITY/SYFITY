@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Frontend Architecture                                                          |
-| 버전      | v1.2                                                                                  |
-| 상태      | Vercel 운영 환경변수 설정 반영                                                        |
+| 버전      | v2.0                                                                                  |
+| 상태      | app/widget/feature 책임과 실제 slice 구조 정합화                                      |
 | 작성 목적 | Syfity MVP 프론트엔드 구조 정의                                                       |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -50,23 +50,24 @@ apps/frontend/
           join/
             page.tsx          → 초대 링크 진입점 (/room/join?code=ABC123)
           [roomId]/
-            page.tsx          → Room Page
-            layout.tsx        → Room 레이아웃 (Socket 연결/해제)
-      page.tsx                → Landing Page (로그인)
+            page.tsx          → roomId를 Room widget에 전달
+      page.tsx                → Landing widget 렌더링
       layout.tsx              → Root 레이아웃
       proxy.ts                → Route 보호 (쿠키 존재 여부 체크)
 
     features/                 → 기능 단위 모듈 (FSD features + entities 통합)
-      auth/
-      room/
-      player/
-      playlist/
-      chat/
-      presence/
-      search/
+      auth/                   → 인증 도메인
+      room/                   → Room REST·입장·상태 도메인
+      player/                 → 재생 제어·상태 도메인
+      playlist/               → 재생목록 도메인
+      chat/                   → 채팅 도메인
+      presence/               → 참여자 상태 도메인
+      search/                 → YouTube 검색 도메인
 
     widgets/                  → 여러 feature를 조합하는 복합 UI
-      room/                   → Room Page 조립 UI (RoomShell, PC/모바일 레이아웃)
+      landing/                → Landing 화면 조립 UI
+      home/                   → Home 화면 조립 UI
+      room/                   → Room Page·세션 조립 UI (RoomShell, 반응형 레이아웃)
 
     shared/                   → 공통 모듈
       components/             → 공통 UI 컴포넌트 (디자인 시스템 문서 참조)
@@ -89,19 +90,21 @@ apps/frontend/
   store/      → Zustand store
   components/ → feature 전용 컴포넌트
   types/      → feature 전용 타입
+  lib/        → feature 전용 순수 로직
+  constants/  → feature 전용 상수
 ```
 
 ### feature별 slice 구성
 
-| feature  | api | hooks | store | components | types |
-| -------- | --- | ----- | ----- | ---------- | ----- |
-| auth     | O   | O     | X     | X          | O     |
-| room     | O   | O     | O     | O          | O     |
-| player   | X   | O     | O     | O          | O     |
-| playlist | O   | O     | O     | O          | O     |
-| chat     | O   | O     | O     | O          | O     |
-| presence | X   | O     | O     | O          | O     |
-| search   | O   | O     | X     | O          | O     |
+| feature  | api | hooks | store | components | types | lib/constants |
+| -------- | --- | ----- | ----- | ---------- | ----- | ------------- |
+| auth     | O   | O     | X     | O          | X     | X             |
+| room     | O   | O     | O     | O          | O     | X             |
+| player   | X   | O     | O     | O          | O     | O             |
+| playlist | O   | O     | O     | O          | O     | X             |
+| chat     | O   | O     | O     | O          | X     | O             |
+| presence | X   | O     | O     | O          | O     | X             |
+| search   | O   | O     | X     | O          | X     | X             |
 
 - `auth` store X → 사용자 정보는 TanStack Query (`useMe`)로 관리
 - `player` api X → 재생 제어는 Socket 이벤트로 처리
@@ -119,19 +122,19 @@ app → widgets → features → shared
 - `shared`에서 `features`/`widgets` import 금지
 - `features`에서 `widgets` import 금지
 - `features` 간 직접 import 금지 (공통 로직은 `shared`로 이동)
-- `widgets`는 여러 feature를 조합하는 UI만 담당하고 feature의 상태 소유권을 가져가지 않음
+- `widgets`는 화면 흐름을 조합하며, 여러 feature를 연결하는 페이지 단위 상태·효과를 둘 수 있음
 
 **app (page / layout)**
 
-- 컴포넌트 조합만 담당
-- 비즈니스 로직, 데이터 페칭 없음
+- 라우트, params, layout, 오류 경계만 담당
+- feature/widget의 데이터 페칭·클라이언트 상태를 직접 소유하지 않음
 - Server Component 기본
 
 **widgets**
 
-- 여러 feature 컴포넌트를 조합하는 복합 UI 담당
-- 데이터와 이벤트 핸들러는 app 또는 feature 훅에서 주입받음
-- feature 내부 상태나 API/Socket 계약을 직접 소유하지 않음
+- 여러 feature 컴포넌트와 훅을 조합하는 화면 단위 UI 담당
+- 페이지 진입·이탈에 결합된 데이터 초기화, 여러 feature를 잇는 Socket 연결, 화면 전용 로컬 상태를 소유할 수 있음
+- 도메인 API·store·Socket 이벤트의 구현은 feature에 둠
 
 **features / hooks**
 
@@ -331,15 +334,14 @@ export const socketClient = {
 
 ### Socket 연결/해제 시점
 
-layout은 Server Component로 유지하고, Socket 연결/해제는 별도 Client Component(`RoomSocketProvider`)에서 담당한다. `RoomSocketProvider`는 Socket 연결/해제만 처리하며, `room:join` 이벤트 전송은 REST 완료 후 별도 훅에서 처리한다.
+라우트의 `page.tsx`는 `roomId`만 Room widget에 전달한다. 각 feature Socket 훅은 REST 입장 완료 후 연결·구독하고, `widgets/room/RoomSocketProvider`는 페이지 이탈 시 연결을 정리한다. `room:join` 이벤트 전송도 REST 완료 후 별도 훅에서 처리한다.
 
 ```ts
-// features/room/components/RoomSocketProvider.tsx
+// widgets/room/RoomSocketProvider.tsx
 'use client';
 
 export function RoomSocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    socketClient.connect();
     return () => {
       socketClient.disconnect();
     };
@@ -350,13 +352,9 @@ export function RoomSocketProvider({ children }: { children: React.ReactNode }) 
 ```
 
 ```ts
-// src/app/(protected)/room/[roomId]/layout.tsx (Server Component)
-export default function RoomLayout({ children }) {
-  return (
-    <RoomSocketProvider>
-      {children}
-    </RoomSocketProvider>
-  );
+// widgets/room/RoomPage.tsx
+export function RoomPage({ roomId }) {
+  return <RoomSocketProvider>{/* Room page UI */}</RoomSocketProvider>;
 }
 ```
 

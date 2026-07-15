@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                 |
 | --------- | ------------------------------------------------------------------------------------ |
 | 문서명    | Syfity Socket Event Spec                                                             |
-| 버전      | v1.5                                                                                 |
-| 상태      | `room:join` ack에 참여자 목록을 포함해 재연결 시 roster 재동기화 지원                |
+| 버전      | v1.6                                                                                 |
+| 상태      | 사용자 채팅 비속어를 서버에서 마스킹하여 저장·broadcast                              |
 | 작성 목적 | Syfity MVP Socket.IO 이벤트 명세 정의                                                |
 | 기반 문서 | `01-prd.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `05-api-spec.md` |
 
@@ -611,7 +611,7 @@ Playlist 변경(추가/삭제/순서 변경) 시 전체 목록을 broadcast. RES
 
 #### `chat:send` C→S
 
-채팅 메시지 전송. 서버에서 DB 저장 후 `chat:received`로 broadcast.
+채팅 메시지 전송. 서버는 공백·길이·참여 권한을 검증한 뒤, 한국어 비속어와 지원 목록의 초성 축약을 `*`로 마스킹하여 DB에 저장하고 `chat:received`로 broadcast한다. 시스템 메시지에는 필터를 적용하지 않는다.
 
 **Payload**
 
@@ -648,7 +648,7 @@ FE는 optimistic update로 먼저 UI에 표시 후 ack 수신 시 실제 id/crea
 
 #### `chat:received` S→C
 
-모든 참여자에게 새 메시지를 broadcast. 발신자 본인도 포함한다. FE는 ack 수신 시 optimistic 메시지를 `chat:received` 데이터로 교체한다. 서버에서 메시지 가공(욕설 필터링 등) 후 broadcast하므로 본인도 서버 처리 결과를 받아야 한다.
+모든 참여자에게 마스킹된 새 메시지를 broadcast. 발신자 본인도 포함한다. FE는 ack 수신 시 optimistic 메시지를 `chat:received` 데이터로 교체하므로, 발신자도 서버 처리 결과를 받는다.
 
 **Payload**
 

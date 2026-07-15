@@ -17,7 +17,7 @@ export function TabsTrigger({
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        'flex cursor-pointer items-center justify-center gap-1.5 border-b-2 border-transparent px-4 py-3 text-xs font-bold text-white/40 transition-colors outline-none focus-visible:text-white/70 data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4',
+        `flex cursor-pointer items-center justify-center gap-1.5 border-b-2 border-transparent px-4 py-3 text-xs font-bold text-white/40 transition-colors outline-none focus-visible:text-white/70 data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4`,
         className,
       )}
       {...props}

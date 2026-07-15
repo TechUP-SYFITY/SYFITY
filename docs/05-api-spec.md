@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                            |
 | --------- | ----------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                 |
-| 버전      | v1.6                                                                                            |
-| 상태      | 채팅 응답 profileImage 필드 반영                                                                |
+| 버전      | v1.7                                                                                            |
+| 상태      | YouTube Music 검색 필터와 플레이리스트 중복 영상 차단 반영                                      |
 | 작성 목적 | Syfity MVP REST API 명세 정의                                                                   |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md` |
 
@@ -541,7 +541,7 @@ Room의 플레이리스트 조회. `position` 오름차순으로 반환한다.
 
 추가 성공 시 Socket `playlist:updated` 이벤트를 broadcast한다.
 
-MVP에서 중복 추가를 허용한다.
+Room 안에서는 동일 `videoId`를 한 번만 추가할 수 있다. 기존 항목의 상태가 `available` 또는 `unavailable`인 경우 모두 재추가를 거부한다.
 
 **Request Body**
 
@@ -579,6 +579,7 @@ MVP에서 중복 추가를 허용한다.
 | `ROOM_ACCESS_DENIED`         | 403  | Room 참여자가 아님    |
 | `PLAYLIST_INVALID_URL`       | 400  | videoId 파싱 불가 URL |
 | `PLAYLIST_VIDEO_UNAVAILABLE` | 400  | 재생 불가 영상        |
+| `PLAYLIST_DUPLICATE_VIDEO`   | 409  | 이미 추가된 동일 영상 |
 | `SERVER_YOUTUBE_API_ERROR`   | 502  | YouTube API 호출 실패 |
 
 ---
@@ -702,7 +703,9 @@ MVP에서 중복 추가를 허용한다.
 
 #### `GET /search`
 
-YouTube 영상 검색. 서버에서 YouTube Data API `search.list`를 호출한다 (100유닛/회). 동일 검색어는 5분간 캐싱한다. 결과는 10개 고정으로 반환한다.
+YouTube Music 영상 검색. 서버는 `search.list`에 Music 카테고리(`videoCategoryId=10`)를 지정해 최대 50개를 한 번 조회하고, `videos.list`의 `snippet.categoryId`로 Music 카테고리를 다시 확인한다. 동일 검색어는 5분간 캐싱한다.
+
+Music으로 확인된 결과 중 검색 순서 상위 10개만 반환한다. 필터링 결과가 10개 미만이면 있는 만큼만, 없으면 빈 배열을 정상 반환한다. 추가 페이지 조회는 하지 않는다. `search.list`는 기본 일일 Search Queries 한도에서 호출 횟수로 관리되므로, 50개 단일 페이지 조회는 20개 조회와 같은 1회 호출이다.
 
 **Query**
 

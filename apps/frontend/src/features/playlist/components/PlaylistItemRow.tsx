@@ -57,7 +57,7 @@ export function PlaylistItemRow({
       data-testid={`playlist-row-${item.id}`}
       data-playlist-item-id={item.id}
       className={cn(
-        'group min-w-0 overflow-hidden border-b border-border px-4 py-3 transition',
+        `group min-w-0 overflow-hidden border-b border-border px-4 py-3 transition`,
         isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20',
         isDragging && 'opacity-60',
       )}
@@ -77,7 +77,7 @@ export function PlaylistItemRow({
           >
             {item.title}
             {isUnavailable ? (
-              <CircleAlert className="ml-1 inline-block h-3 w-3 text-destructive" aria-hidden />
+              <CircleAlert className="ml-1 inline-block size-3 text-destructive" aria-hidden />
             ) : null}
           </p>
           <p className={cn('mt-1 truncate text-xs', getMetaColorClass(isUnavailable))}>
@@ -97,7 +97,7 @@ export function PlaylistItemRow({
             variant="ghost"
             size="icon"
             className={cn(
-              'h-10 w-10 cursor-grab touch-none rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted active:cursor-grabbing xl:h-8 xl:w-8',
+              `size-10 cursor-grab touch-none rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted active:cursor-grabbing xl:size-8`,
               !isReady && 'cursor-not-allowed',
             )}
             disabled={!isReady || !isControlEnabled}
@@ -121,12 +121,12 @@ export function PlaylistItemRow({
             onPointerMove={onDragHandlePointerMove}
             onPointerUp={onDragHandlePointerUp}
           >
-            <GripVertical className="h-4 w-4" aria-hidden />
+            <GripVertical className="size-4" aria-hidden />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full border-0 bg-destructive/10 text-destructive hover:bg-destructive/15 xl:h-8 xl:w-8 xl:bg-transparent xl:text-destructive/70 xl:hover:bg-destructive/10"
+            className="size-10 rounded-full border-0 bg-destructive/10 text-destructive hover:bg-destructive/15 xl:size-8 xl:bg-transparent xl:text-destructive/70 xl:hover:bg-destructive/10"
             disabled={!isReady || !isControlEnabled || isDeletePending}
             type="button"
             aria-label={`${item.title} 삭제`}
@@ -136,7 +136,7 @@ export function PlaylistItemRow({
             }}
             onPointerDown={onPreventMouseFocus}
           >
-            <Trash2 className="h-4 w-4" aria-hidden />
+            <Trash2 className="size-4" aria-hidden />
           </Button>
         </div>
       </div>

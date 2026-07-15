@@ -1,4 +1,4 @@
-import { LandingShell } from '@/features/landing/LandingShell';
+import { LandingShell } from '@/widgets/landing/LandingShell';
 
 export default function Home() {
   return <LandingShell />;

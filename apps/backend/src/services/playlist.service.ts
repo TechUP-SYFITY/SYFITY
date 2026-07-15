@@ -1,26 +1,19 @@
-import { ERROR_CODES, type AddPlaylistItemRequest, type PlaylistItem } from '@syfity/shared';
+import { ERROR_CODES, type AddPlaylistItemRequest } from '@syfity/shared';
 
 import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { IYouTubeClient } from '../lib/youtube/youtube.client';
+import { broadcastToRoom } from '../socket/broadcast';
 import {
   toPlaylistItem,
   type IPlaylistRepository,
+  PlaylistDuplicateVideoError,
   type PlaylistItemRecord,
   type ReorderPlaylistItemInput,
 } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
 import type { PlaybackStatePayload } from '../types/socket';
 import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
-
-type PlaylistRoomEmitter = {
-  emit(event: 'playlist:updated', payload: { playlist: PlaylistItem[] }): boolean;
-  emit(event: 'playback:change-track' | 'playback:pause', payload: PlaybackStatePayload): boolean;
-};
-
-export type PlaylistSocketServer = {
-  to(room: string): PlaylistRoomEmitter;
-};
 
 type PlaylistPlaybackService = Pick<
   PlaybackService,
@@ -35,7 +28,6 @@ export class PlaylistService {
       'findRoomById' | 'touchLastActivity' | 'findMembership'
     >,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
-    private readonly io: PlaylistSocketServer,
     private readonly playbackService: PlaylistPlaybackService,
   ) {}
 
@@ -53,6 +45,11 @@ export class PlaylistService {
     await assertActiveRoomMember(this.roomRepo, roomId, userId);
 
     const videoId = this.resolveVideoId(request);
+    const existingItem = await this.playlistRepo.findItemByRoomAndVideoId(roomId, videoId);
+    if (existingItem) {
+      throw this.createDuplicateVideoError();
+    }
+
     const [video] = await this.youtubeClient.getVideoDetails([videoId]);
     if (!video || video.duration === 0) {
       throw new AppError(400, ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE, '재생할 수 없는 영상입니다.');
@@ -65,20 +62,28 @@ export class PlaylistService {
       );
     }
 
-    const item = await this.playlistRepo.addItem({
-      roomId,
-      videoId: video.videoId,
-      title: video.title,
-      channelTitle: video.channelTitle,
-      thumbnailUrl: video.thumbnailUrl,
-      duration: video.duration,
-      addedBy: userId,
-    });
+    let item: PlaylistItemRecord;
+    try {
+      item = await this.playlistRepo.addItem({
+        roomId,
+        videoId: video.videoId,
+        title: video.title,
+        channelTitle: video.channelTitle,
+        thumbnailUrl: video.thumbnailUrl,
+        duration: video.duration,
+        addedBy: userId,
+      });
+    } catch (error) {
+      if (error instanceof PlaylistDuplicateVideoError) {
+        throw this.createDuplicateVideoError();
+      }
+      throw error;
+    }
 
     await this.roomRepo.touchLastActivity(roomId);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
     });
 
@@ -113,7 +118,7 @@ export class PlaylistService {
     await this.roomRepo.touchLastActivity(roomId);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
     });
   }
@@ -175,9 +180,9 @@ export class PlaylistService {
     const updatedPlaylist = await this.playlistRepo.getPlaylist(roomId);
 
     if (broadcastEvent && statePayload) {
-      this.io.to(`room:${roomId}`).emit(broadcastEvent, statePayload);
+      broadcastToRoom(roomId, broadcastEvent, statePayload);
     }
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: updatedPlaylist.map(toPlaylistItem),
     });
   }
@@ -197,6 +202,14 @@ export class PlaylistService {
     }
 
     return videoId;
+  }
+
+  private createDuplicateVideoError(): AppError {
+    return new AppError(
+      409,
+      ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
+      '이미 플레이리스트에 추가된 곡입니다.',
+    );
   }
 
   private parseVideoId(url: string): string | null {

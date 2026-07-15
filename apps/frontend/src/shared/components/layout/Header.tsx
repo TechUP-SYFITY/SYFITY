@@ -31,14 +31,25 @@ export function Header({
   const headerClass = cn(
     variant === 'landing' && 'absolute inset-x-0 top-0 z-20',
     variant === 'app' &&
-      'sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl',
+      `
+        sticky top-0 z-40 border-b border-border bg-background/80
+        backdrop-blur-xl
+      `,
     className,
   );
 
   // 2. 내부 레이아웃 컨테이너 스타일 결정
   const containerClass = cn(
     'flex h-16 w-full items-center justify-between',
-    variant === 'landing' ? 'mx-auto max-w-6xl px-4 sm:px-6' : 'px-5 sm:px-8',
+    variant === 'landing'
+      ? `
+      mx-auto max-w-6xl px-4
+      sm:px-6
+    `
+      : `
+      px-5
+      sm:px-8
+    `,
     containerClassName,
   );
 

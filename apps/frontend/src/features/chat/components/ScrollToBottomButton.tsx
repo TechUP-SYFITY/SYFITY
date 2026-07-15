@@ -15,7 +15,7 @@ export function ScrollToBottomButton({ isVisible, onClick }: ScrollToBottomButto
   return (
     <Button
       aria-label="맨 아래로 이동"
-      className="absolute right-4 bottom-4 z-10 rounded-full border border-border bg-background/95 px-3 py-2 text-xs text-foreground shadow-lg backdrop-blur hover:bg-muted"
+      className="absolute right-4 bottom-4 z-10 rounded-full border border-border bg-background/95 px-3 py-2 text-xs text-foreground shadow-lg backdrop-blur-sm hover:bg-muted"
       onClick={onClick}
       size="sm"
       variant="primary-soft"

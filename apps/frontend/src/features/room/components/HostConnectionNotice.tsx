@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 import type { RoomClosedReason } from '@/shared/types/domain';
 
-import type { HostConnectionState } from '../roomTypes';
+import type { HostConnectionState } from '../types/roomTypes';
 
 interface HostConnectionNoticeProps {
   hostConnection: Exclude<HostConnectionState, { status: 'connected' }>;
@@ -45,12 +45,12 @@ export function HostConnectionNotice({ hostConnection }: HostConnectionNoticePro
       className="flex h-9 items-center gap-2 bg-accent/15 px-5 text-xs text-accent-300"
       role="status"
     >
-      <WifiOff className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+      <WifiOff className="inline-block size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 flex-1 truncate">{message}</span>
       {isClosed ? null : (
         <>
           <span className="font-bold tabular-nums">{formatRemainingTime(remainingSeconds)}</span>
-          <RefreshCw className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+          <RefreshCw className="inline-block size-3.5 shrink-0" aria-hidden />
         </>
       )}
     </div>

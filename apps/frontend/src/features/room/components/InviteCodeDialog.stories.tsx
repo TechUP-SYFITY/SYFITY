@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { fn } from 'storybook/test';
 
-import type { RoomInviteInfo } from '../roomTypes';
 import { InviteCodeDialog } from './InviteCodeDialog';
+import type { RoomInviteInfo } from '../types/roomTypes';
 
 const room: RoomInviteInfo = {
   id: 'story-room',

@@ -91,7 +91,7 @@ describe('SearchPanel', () => {
       'max-h-[calc(100dvh-1rem)]',
       'overflow-hidden',
       'lg:w-md',
-      'lg:-translate-x-1/2',
+      'lg:-translate-1/2',
     );
   });
 

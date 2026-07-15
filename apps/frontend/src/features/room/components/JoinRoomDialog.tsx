@@ -17,8 +17,8 @@ import {
 import { Input } from '@/shared/components/ui/Input';
 import { ApiClientError } from '@/shared/types/api';
 
-import type { RoomApi } from '../roomApi';
-import { useJoinRoomByCode } from '../roomHooks';
+import type { RoomApi } from '../api/roomApi';
+import { useJoinRoomByCode } from '../hooks/roomHooks';
 
 interface JoinRoomDialogProps {
   open: boolean;

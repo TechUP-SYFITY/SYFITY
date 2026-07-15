@@ -1,12 +1,13 @@
 import { isDriverAdapterError } from '@prisma/driver-adapter-utils';
 
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
-import type {
-  AddPlaylistItemData,
-  IPlaylistRepository,
-  PlaylistItemLookupRecord,
-  PlaylistItemRecord,
-  ReorderPlaylistItemInput,
+import {
+  PlaylistDuplicateVideoError,
+  type AddPlaylistItemData,
+  type IPlaylistRepository,
+  type PlaylistItemLookupRecord,
+  type PlaylistItemRecord,
+  type ReorderPlaylistItemInput,
 } from '../types/playlist';
 
 const PLAYLIST_ITEM_SELECT = {
@@ -48,6 +49,10 @@ function isSerializationFailure(error: unknown): boolean {
     return true;
   }
   return isDriverAdapterError(error) && error.cause.kind === 'TransactionWriteConflict';
+}
+
+function isUniqueConstraintFailure(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }
 
 type PlaylistItemTxClient = {
@@ -113,12 +118,22 @@ export class PlaylistRepository implements IPlaylistRepository {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         });
       } catch (error) {
+        if (isUniqueConstraintFailure(error)) {
+          throw new PlaylistDuplicateVideoError();
+        }
         if (!isSerializationFailure(error) || attempt >= ADD_ITEM_MAX_ATTEMPTS) {
           throw error;
         }
         await sleep(retryDelayMs(attempt));
       }
     }
+  }
+
+  findItemByRoomAndVideoId(roomId: string, videoId: string): Promise<PlaylistItemRecord | null> {
+    return this.prisma.playlistItem.findUnique({
+      where: { roomId_videoId: { roomId, videoId } },
+      select: PLAYLIST_ITEM_SELECT,
+    });
   }
 
   findItemById(itemId: string): Promise<PlaylistItemLookupRecord | null> {

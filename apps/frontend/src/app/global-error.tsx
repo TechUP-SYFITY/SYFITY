@@ -21,7 +21,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   }, [error]);
 
   return (
-    <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
+    <html lang="ko" className={` ${pretendard.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <ErrorPageShell glowClassName="bg-destructive/5">
           <ErrorState

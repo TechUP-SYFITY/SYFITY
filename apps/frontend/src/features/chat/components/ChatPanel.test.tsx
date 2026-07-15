@@ -5,12 +5,16 @@ import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatPanel } from './ChatPanel';
-import type { UseChatScrollResult } from '../hooks/chatHooks';
-import { useChatScroll, useSendChatMessage } from '../hooks/chatHooks';
+import type { UseChatScrollResult } from '../hooks/useChatScroll';
+import { useChatScroll } from '../hooks/useChatScroll';
+import { useSendChatMessage } from '../hooks/useSendChatMessage';
 import { useChatStore } from '../store/chatStore';
 
-vi.mock('../hooks/chatHooks', () => ({
+vi.mock('../hooks/useChatScroll', () => ({
   useChatScroll: vi.fn(),
+}));
+
+vi.mock('../hooks/useSendChatMessage', () => ({
   useSendChatMessage: vi.fn(),
 }));
 

@@ -4,24 +4,64 @@ import { Slot } from 'radix-ui';
 import { cn } from '@/shared/lib/utils';
 
 export const buttonVariants = cva(
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg font-bold whitespace-nowrap transition-[background,box-shadow,filter,opacity] outline-none focus-visible:ring-2 focus-visible:ring-ring active:brightness-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed aria-disabled:opacity-50 [&_svg]:shrink-0',
+  `
+    inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
+    font-bold whitespace-nowrap
+    transition-[background,box-shadow,filter,opacity] outline-none
+    focus-visible:ring-2 focus-visible:ring-ring
+    active:brightness-95
+    disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50
+    aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed
+    aria-disabled:opacity-50
+    [&_svg]:shrink-0
+  `,
   {
     variants: {
       variant: {
-        primary:
-          'bg-primary text-primary-foreground shadow-[0_0_16px_rgba(114,244,164,0.25)] hover:brightness-105',
-        gradient:
-          'bg-[linear-gradient(160deg,var(--accent)_0%,var(--primary)_100%)] text-white shadow-[0_0_12px_rgba(136,92,246,0.35)] hover:brightness-105',
-        ghost: 'border border-white/10 bg-white/5 text-white hover:bg-white/10',
-        'primary-soft': 'border border-primary/25 bg-primary/10 text-primary hover:bg-primary/15',
-        'accent-soft': 'border border-accent/30 bg-accent/10 text-accent hover:bg-accent/15',
-        destructive: 'bg-destructive text-primary-foreground hover:brightness-105',
+        primary: `
+            bg-primary text-primary-foreground
+            shadow-[0_0_16px_rgba(114,244,164,0.25)]
+            hover:brightness-105
+          `,
+        gradient: `
+            bg-[linear-gradient(160deg,var(--accent)_0%,var(--primary)_100%)]
+            text-white shadow-[0_0_12px_rgba(136,92,246,0.35)]
+            hover:brightness-105
+          `,
+        ghost: `
+          border border-white/10 bg-white/5 text-white
+          hover:bg-white/10
+        `,
+        'primary-soft': `
+          border border-primary/25 bg-primary/10 text-primary
+          hover:bg-primary/15
+        `,
+        'accent-soft': `
+          border border-accent/30 bg-accent/10 text-accent
+          hover:bg-accent/15
+        `,
+        destructive: `
+          bg-destructive text-primary-foreground
+          hover:brightness-105
+        `,
       },
       size: {
-        sm: 'px-3 py-1.5 text-xs [&_svg]:size-3',
-        md: 'px-4 py-2.5 text-sm [&_svg]:size-4',
-        lg: 'px-6 py-3.5 text-sm [&_svg]:size-4',
-        icon: 'size-10 p-0 [&_svg]:size-4',
+        sm: `
+          px-3 py-1.5 text-xs
+          [&_svg]:size-3
+        `,
+        md: `
+          px-4 py-2.5 text-sm
+          [&_svg]:size-4
+        `,
+        lg: `
+          px-6 py-3.5 text-sm
+          [&_svg]:size-4
+        `,
+        icon: `
+          size-10 p-0
+          [&_svg]:size-4
+        `,
       },
     },
     defaultVariants: {

@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/Dialog';
 
-import type { RoomInviteInfo } from '../roomTypes';
+import type { RoomInviteInfo } from '../types/roomTypes';
 
 interface InviteCodeDialogProps {
   room: RoomInviteInfo | null;

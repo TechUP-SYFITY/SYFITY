@@ -7,15 +7,15 @@ import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaybackState, PlaylistItem, RoomDetail } from '@/shared/types/domain';
 
+import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/player/components/MiniPlayer';
 import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
-import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/room/components/MiniPlayer';
-import type { RoomMobileTab } from '@/features/room/components/MobileTabs';
-import { RoomStatusBar } from '@/features/room/components/RoomStatusBar';
-import type { HostConnectionState } from '@/features/room/roomTypes';
+import type { HostConnectionState } from '@/features/room/types/roomTypes';
 
+import type { RoomMobileTab } from './components/MobileTabs';
 import { RoomLayout } from './components/RoomLayout';
+import { RoomStatusBar } from './components/RoomStatusBar';
 
-export type { RoomMobileTab } from '@/features/room/components/MobileTabs';
+export type { RoomMobileTab } from './components/MobileTabs';
 
 interface RoomShellProps {
   activeMobileTab: RoomMobileTab;
@@ -42,8 +42,8 @@ interface RoomShellProps {
   onMobileTabChange: (tab: RoomMobileTab) => void;
   playbackState: PlaybackState | null;
   playlist: PlaylistItem[];
-  renderPlayerPanel: () => ReactNode;
-  renderPlaylistPanel: () => ReactNode;
+  playerPanel: ReactNode;
+  playlistPanel: ReactNode;
   room: RoomDetail | null;
   roomId: string;
 }
@@ -73,8 +73,8 @@ export function RoomShell({
   onlineMemberCount,
   playbackState,
   playlist,
-  renderPlayerPanel,
-  renderPlaylistPanel,
+  playerPanel,
+  playlistPanel,
   room,
   roomId,
 }: RoomShellProps) {
@@ -97,8 +97,8 @@ export function RoomShell({
           currentUserName={currentUserName}
           currentUserProfileImage={currentUserProfileImage}
           onMobileTabChange={onMobileTabChange}
-          renderPlayerPanel={renderPlayerPanel}
-          renderPlaylistPanel={renderPlaylistPanel}
+          playerPanel={playerPanel}
+          playlistPanel={playlistPanel}
           roomId={roomId}
         />
 

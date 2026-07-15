@@ -14,9 +14,17 @@ const API_ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
   ROOM_NOT_FOUND: '존재하지 않거나 입장할 수 없는 Room입니다.',
 };
 
-export function getApiErrorMessage(error: unknown): string {
+interface GetApiErrorMessageOptions {
+  codeOverrides?: Partial<Record<ErrorCode, string>>;
+}
+
+export function getApiErrorMessage(
+  error: unknown,
+  { codeOverrides = {} }: GetApiErrorMessageOptions = {},
+): string {
   if (error instanceof ApiClientError) {
-    return API_ERROR_MESSAGES[error.code as ErrorCode] ?? error.message;
+    const code = error.code as ErrorCode;
+    return codeOverrides[code] ?? API_ERROR_MESSAGES[code] ?? error.message;
   }
 
   if (error instanceof Error) {

@@ -30,6 +30,16 @@ describe('getApiErrorMessage', () => {
     expect(getApiErrorMessage(error)).toBe('검색 실패');
   });
 
+  it('호출부가 지정한 코드 문구를 공통 문구보다 우선한다', () => {
+    const error = new ApiClientError({ code: 'AUTH_FORBIDDEN', message: '권한이 없습니다.' }, 403);
+
+    expect(
+      getApiErrorMessage(error, {
+        codeOverrides: { AUTH_FORBIDDEN: 'Host만 재생을 제어할 수 있어요.' },
+      }),
+    ).toBe('Host만 재생을 제어할 수 있어요.');
+  });
+
   it('네트워크 연결 실패를 안내 문구로 변환한다', () => {
     expect(getApiErrorMessage(new Error('Failed to fetch'))).toBe(
       '서버에 연결하지 못했어요. 백엔드 실행 상태를 확인해주세요.',

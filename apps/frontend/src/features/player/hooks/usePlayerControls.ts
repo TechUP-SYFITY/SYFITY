@@ -1,6 +1,8 @@
 // Player 재생 제어 상태와 Socket 명령 실행을 관리한다.
 import { useEffect, useRef, useState, type RefObject } from 'react';
 
+import type { ErrorCode } from '@syfity/shared';
+
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
 
 import { playbackCommands } from '../lib/playbackCommands';
@@ -10,6 +12,10 @@ import type { PlayerController } from '../types/playerTypes';
 export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek';
 
 const SEEK_DEBOUNCE_MS = 200;
+const PLAYER_COMMAND_ERROR_MESSAGE_OVERRIDES = {
+  AUTH_FORBIDDEN: 'Host만 재생을 제어할 수 있어요.',
+  PLAYLIST_ITEM_NOT_FOUND: '재생할 곡을 찾을 수 없어요.',
+} satisfies Partial<Record<ErrorCode, string>>;
 
 interface UsePlayerControlsParams {
   canControlRoom?: boolean;
@@ -76,7 +82,7 @@ export function usePlayerControls({
       setCommandError(
         error instanceof Error && error.message === 'Socket is not connected.'
           ? '서버에 연결하지 못했어요.'
-          : getApiErrorMessage(error),
+          : getApiErrorMessage(error, { codeOverrides: PLAYER_COMMAND_ERROR_MESSAGE_OVERRIDES }),
       );
     } finally {
       pendingCommandRef.current = null;

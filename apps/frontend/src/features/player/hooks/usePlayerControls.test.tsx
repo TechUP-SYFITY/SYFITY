@@ -263,7 +263,7 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.commandError).toBe('이 작업을 할 권한이 없어요.');
+      expect(result.current.commandError).toBe('Host만 재생을 제어할 수 있어요.');
     });
   });
 

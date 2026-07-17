@@ -206,7 +206,7 @@ Syfity는 YouTube를 기반으로 음악을 재생하지만, YouTube 또는 YouT
 
 ---
 
-## 7. MVP 구현 권장 범위
+## 7. 초기 구현 권장 범위
 
 ### 7.1 포함
 
@@ -237,7 +237,7 @@ Syfity는 YouTube를 기반으로 음악을 재생하지만, YouTube 또는 YouT
 - YouTube Music 계정/보관함/플레이리스트 직접 연동
 - Public Room 추천 피드
 - 유료 방
-- 음성 채팅
+- 음성 채팅 (지원하지 않음)
 - AI 음악 추천
 
 ---

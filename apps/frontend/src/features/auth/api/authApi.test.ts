@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { apiClient } from '@/shared/lib/api/apiClient';
+import { isMockingEnabled } from '@/shared/lib/env';
 import { ApiClientError } from '@/shared/types/api';
 
 import { authApi } from './authApi';
@@ -13,7 +14,12 @@ vi.mock('@/shared/lib/api/apiClient', () => ({
   getBaseUrl: () => 'http://localhost:4000/api/v1',
 }));
 
+vi.mock('@/shared/lib/env', () => ({
+  isMockingEnabled: vi.fn(() => false),
+}));
+
 const getMock = vi.mocked(apiClient.get);
+const isMockingEnabledMock = vi.mocked(isMockingEnabled);
 
 const stubLocation = () => {
   Object.defineProperty(window, 'location', {
@@ -25,6 +31,7 @@ const stubLocation = () => {
 describe('authApi', () => {
   beforeEach(() => {
     getMock.mockReset();
+    isMockingEnabledMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -60,5 +67,23 @@ describe('authApi', () => {
     authApi.loginWithGoogle();
 
     expect(window.location.href).toBe('http://localhost:4000/api/v1/auth/google');
+  });
+
+  it('loginWithGoogle이 mock 모드에서는 실제 OAuth 대신 returnUrl로 바로 이동한다', () => {
+    stubLocation();
+    isMockingEnabledMock.mockReturnValue(true);
+
+    authApi.loginWithGoogle('/room/join?code=ABC123');
+
+    expect(window.location.href).toBe('/room/join?code=ABC123');
+  });
+
+  it('loginWithGoogle이 mock 모드이고 returnUrl이 없으면 /home으로 이동한다', () => {
+    stubLocation();
+    isMockingEnabledMock.mockReturnValue(true);
+
+    authApi.loginWithGoogle();
+
+    expect(window.location.href).toBe('/home');
   });
 });

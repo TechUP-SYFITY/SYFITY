@@ -18,7 +18,7 @@ import { RoomStatusBar } from './components/RoomStatusBar';
 export type { RoomMobileTab } from './components/MobileTabs';
 
 interface RoomShellProps {
-  activeMobileTab: RoomMobileTab;
+  activeMobileTab: RoomMobileTab | null;
   currentUserName?: string;
   currentUserProfileImage?: string | null;
   headerActions?: ReactNode;
@@ -39,7 +39,7 @@ interface RoomShellProps {
   onMiniPlayerPreviousTrack: () => void;
   onMiniPlayerSeek: (seekTime: number) => void;
   onMiniPlayerVolumeChange: (volume: number) => void;
-  onMobileTabChange: (tab: RoomMobileTab) => void;
+  onMobileTabChange: (tab: RoomMobileTab | null) => void;
   playbackState: PlaybackState | null;
   playlist: PlaylistItem[];
   playerPanel: ReactNode;

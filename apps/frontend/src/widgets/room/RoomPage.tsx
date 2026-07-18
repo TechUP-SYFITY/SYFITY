@@ -43,8 +43,13 @@ export function RoomPage({ roomId }: RoomPageProps) {
 }
 
 function RoomPageContent({ roomId }: RoomPageProps) {
-  const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab>('playlist');
-  useMobileOverlayHistory(activeMobileTab !== 'playlist', () => setActiveMobileTab('playlist'));
+  const [activeMobileTab, setActiveMobileTab] = useState<RoomMobileTab | null>(null);
+  useMobileOverlayHistory(activeMobileTab !== null, () => setActiveMobileTab(null));
+
+  // 이미 열려있는 탭을 다시 누르면 닫히고, 다른 탭을 누르면 그 탭으로 전환한다.
+  const handleMobileTabChange = (tab: RoomMobileTab | null) => {
+    setActiveMobileTab((current) => (tab !== null && current === tab ? null : tab));
+  };
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
   const [toastFeedback, setToastFeedback] = useState<SearchAddToastFeedback | null>(null);
@@ -161,7 +166,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
         onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
         onMiniPlayerSeek={miniPlayerControls.handleSeek}
         onMiniPlayerVolumeChange={setMiniPlayerVolume}
-        onMobileTabChange={setActiveMobileTab}
+        onMobileTabChange={handleMobileTabChange}
         onlineMemberCount={onlineMemberCount}
         playbackState={miniPlayerPlaybackState}
         playlist={playlist}

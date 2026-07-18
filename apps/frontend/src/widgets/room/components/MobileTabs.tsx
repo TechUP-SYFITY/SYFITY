@@ -11,7 +11,7 @@ export function MobileTabs({
   activeTab,
   onChange,
 }: {
-  activeTab: RoomMobileTab;
+  activeTab: RoomMobileTab | null;
   onChange: (tab: RoomMobileTab) => void;
 }) {
   const tabs: Array<{ id: RoomMobileTab; label: string; icon: LucideIcon }> = [
@@ -21,10 +21,20 @@ export function MobileTabs({
   ];
 
   return (
-    <Tabs value={activeTab} onValueChange={(value) => onChange(value as RoomMobileTab)}>
+    // Radix Tabs.Root의 onValueChange는 controlled value가 그대로면 호출 안 되고,
+    // mousedown/focus 등 여러 내부 경로가 한 제스처 안에서 겹쳐 있어 재탭-닫기 토글과
+    // 타이밍이 어긋나기 쉽다(state가 이미 바뀐 뒤 늦게 도착한 경로가 되돌려버림).
+    // 그래서 onValueChange는 쓰지 않고, 탭당 정확히 한 번만 도는 onClick 하나로
+    // 상태 전이를 전담시킨다. 열림/닫힘 토글 판단은 부모의 functional setState가 한다.
+    <Tabs value={activeTab ?? ''}>
       <TabsList className="grid h-12 grid-cols-3 border-t border-border bg-background">
         {tabs.map((tab) => (
-          <TabsTrigger className="h-12 text-sm" key={tab.id} value={tab.id}>
+          <TabsTrigger
+            className="h-12 text-sm"
+            key={tab.id}
+            onClick={() => onChange(tab.id)}
+            value={tab.id}
+          >
             <tab.icon className="inline-block size-3.5 shrink-0" aria-hidden />
             {tab.label}
           </TabsTrigger>

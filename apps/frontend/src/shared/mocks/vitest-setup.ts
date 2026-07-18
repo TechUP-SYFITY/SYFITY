@@ -18,6 +18,17 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
     }) as MediaQueryList;
 }
 
+// jsdom은 ResizeObserver를 구현하지 않는다. jsdom은 실제 레이아웃 계산을 하지 않으므로
+// 콜백이 실제로 발화할 필요는 없고, observe/disconnect 호출이 에러 없이 통과하기만
+// 하면 되는 무동작 스텁으로 폴리필한다.
+if (typeof window !== 'undefined' && !window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'bypass' });
 });

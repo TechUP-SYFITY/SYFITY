@@ -1,7 +1,15 @@
 import { NextRequest } from 'next/server';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { isMockingEnabled } from '@/shared/lib/env';
 
 import { proxy } from './proxy';
+
+vi.mock('@/shared/lib/env', () => ({
+  isMockingEnabled: vi.fn(() => false),
+}));
+
+const isMockingEnabledMock = vi.mocked(isMockingEnabled);
 
 // exp(초) 기준으로 서명 없이 payload만 있는 더미 JWT를 만든다(proxy는 서명 검증 안 함).
 const makeToken = (expSeconds: number) => {
@@ -18,6 +26,17 @@ const future = Math.floor(Date.now() / 1000) + 3600;
 const past = Math.floor(Date.now() / 1000) - 3600;
 
 describe('proxy', () => {
+  beforeEach(() => {
+    isMockingEnabledMock.mockReturnValue(false);
+  });
+
+  it('mock 모드에서는 토큰 유무와 무관하게 그대로 통과시킨다', () => {
+    isMockingEnabledMock.mockReturnValue(true);
+
+    expect(proxy(req('/home'))).toBeUndefined();
+    expect(proxy(req('/room/abc'))).toBeUndefined();
+  });
+
   it('유효 토큰으로 /login 접근 시 /home으로 바운스', () => {
     const res = proxy(req('/login', makeToken(future)));
     expect(res?.headers.get('location')).toContain('/home');

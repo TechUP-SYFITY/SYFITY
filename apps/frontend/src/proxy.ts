@@ -1,6 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { isMockingEnabled } from '@/shared/lib/env';
+
 export function proxy(request: NextRequest) {
+  // 이 Edge 단계는 실제 access_token 쿠키 존재 여부만으로 판단하므로, mock 로그인처럼
+  // 쿠키 없이 진행하는 흐름은 여기서 전부 걸러진다. mock 모드에서는 이 체크를 건너뛴다.
+  if (isMockingEnabled()) {
+    return;
+  }
+
   const hasToken = request.cookies.has('access_token');
   const { pathname, search, searchParams } = request.nextUrl;
 

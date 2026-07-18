@@ -1,5 +1,6 @@
 'use client';
 
+import { Minus } from 'lucide-react';
 import { useState } from 'react';
 
 import { isMockingEnabled } from '@/shared/lib/env';
@@ -43,14 +44,37 @@ function findLatestMember(
 export function PresenceMockPanel() {
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [simulatedMembers, setSimulatedMembers] = useState<SimulatedMember[]>([]);
+  const [isOpen, setIsOpen] = useState(true);
 
   if (!isMockingEnabled()) {
     return null;
   }
 
+  if (!isOpen) {
+    return (
+      <button
+        className="fixed right-4 bottom-4 z-50 rounded-xl border border-border bg-background/95 px-3 py-2 text-xs font-bold text-muted-foreground shadow-lg"
+        onClick={() => setIsOpen(true)}
+        type="button"
+      >
+        Presence Dev Tools
+      </button>
+    );
+  }
+
   return (
     <div className="fixed right-4 bottom-4 z-50 flex flex-col gap-2 rounded-xl border border-border bg-background/95 p-3 text-xs shadow-lg">
-      <p className="font-bold text-muted-foreground">Presence Dev Tools</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-bold text-muted-foreground">Presence Dev Tools</p>
+        <button
+          aria-label="Presence Dev Tools 접기"
+          className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+          onClick={() => setIsOpen(false)}
+          type="button"
+        >
+          <Minus className="size-3.5" aria-hidden />
+        </button>
+      </div>
       <button
         className="rounded-lg bg-primary/15 px-2 py-1 text-primary"
         onClick={() => {

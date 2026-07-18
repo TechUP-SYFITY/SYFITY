@@ -17,6 +17,20 @@ describe('PresenceMockPanel', () => {
 
   afterEach(cleanup);
 
+  it('접기 버튼을 누르면 다른 UI를 가리지 않도록 패널이 축소되고, 다시 누르면 펼쳐진다', () => {
+    render(<PresenceMockPanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Presence Dev Tools 접기' }));
+
+    expect(
+      screen.queryByRole('button', { name: '가상 멤버 입장 시뮬레이션' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Presence Dev Tools' }));
+
+    expect(screen.getByRole('button', { name: '가상 멤버 입장 시뮬레이션' })).toBeInTheDocument();
+  });
+
   it('가상 게스트 입장 시 presence와 채팅 시스템 이벤트를 함께 주입한다', () => {
     render(<PresenceMockPanel />);
 

@@ -165,8 +165,12 @@ export function PlaylistPanel({
         })}
       </div>
 
+      {/* aside 자신(position: relative) 기준 absolute — fixed로 두면 조상의 overflow-hidden/auto에
+          의해 스크롤 중 클리핑되어 버튼이 스크롤을 따라오지 못하는 것처럼 보인다. 곡 리스트만
+          내부에서 스크롤되고 aside 자체 박스는 움직이지 않으므로, absolute로도 항상 패널
+          우측 하단에 고정된다. */}
       <Button
-        className="fixed right-5 bottom-24 z-30 rounded-2xl shadow-lg xl:hidden"
+        className="absolute right-5 bottom-5 z-30 rounded-2xl shadow-lg xl:hidden"
         type="button"
         disabled={!canControlRoom}
         onClick={handleOpenSearch}

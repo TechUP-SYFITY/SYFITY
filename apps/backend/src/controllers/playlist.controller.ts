@@ -16,11 +16,9 @@ import {
 import type {
   AddPlaylistItemRequest,
   AddPlaylistItemResponse,
-  DeletePlaylistItemResponse,
   GetPlaylistResponse,
   PlaylistItem,
   ReorderPlaylistRequest,
-  ReorderPlaylistResponse,
 } from '@syfity/shared';
 
 import type { PlaylistService } from '../services/playlist.service';
@@ -70,30 +68,26 @@ export class PlaylistController {
     };
   }
 
-  @Patch('reorder')
-  @SuccessResponse(200, 'OK')
+  @Patch()
+  @SuccessResponse(204, 'No Content')
   async reorderPlaylist(
     @Path() roomId: string,
     @Request() req: ExRequest,
     @Body() body: ReorderPlaylistRequest,
-  ): Promise<ReorderPlaylistResponse> {
+  ): Promise<void> {
     const userId = req.user!.id;
     await this.playlistService.reorderPlaylist(roomId, userId, body.items);
-
-    return { success: true, data: { message: 'playlist reordered' } };
   }
 
   @Delete('{itemId}')
-  @SuccessResponse(200, 'OK')
+  @SuccessResponse(204, 'No Content')
   async deleteItem(
     @Path() roomId: string,
     @Path() itemId: string,
     @Request() req: ExRequest,
-  ): Promise<DeletePlaylistItemResponse> {
+  ): Promise<void> {
     const userId = req.user!.id;
     await this.playlistService.deleteItem(roomId, userId, itemId);
-
-    return { success: true, data: { message: 'playlist item deleted' } };
   }
 
   private toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {

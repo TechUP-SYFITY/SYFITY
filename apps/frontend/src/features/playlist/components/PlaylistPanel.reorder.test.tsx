@@ -80,7 +80,7 @@ describe('PlaylistPanel reorder', () => {
     'updates the store when a playlist item is moved down with a %s handle.',
     async (pointerType) => {
       usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
-      vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
+      vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue(undefined);
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -141,7 +141,7 @@ describe('PlaylistPanel reorder', () => {
 
   it('updates the store when a focused drag handle is moved down with keyboard.', async () => {
     usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
-    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'ok' });
+    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue(undefined);
 
     render(
       <QueryClientProvider client={createQueryClient()}>

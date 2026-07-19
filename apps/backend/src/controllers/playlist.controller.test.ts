@@ -102,10 +102,9 @@ describe('PlaylistController', () => {
       ],
     };
 
-    await expect(controller.reorderPlaylist('room-1', makeRequest(), body)).resolves.toEqual({
-      success: true,
-      data: { message: 'playlist reordered' },
-    });
+    await expect(
+      controller.reorderPlaylist('room-1', makeRequest(), body),
+    ).resolves.toBeUndefined();
     expect(playlistService.reorderPlaylist).toHaveBeenCalledWith('room-1', 'user-1', body.items);
   });
 
@@ -115,10 +114,7 @@ describe('PlaylistController', () => {
 
     await expect(
       controller.deleteItem('room-1', 'playlist-item-1', makeRequest()),
-    ).resolves.toEqual({
-      success: true,
-      data: { message: 'playlist item deleted' },
-    });
+    ).resolves.toBeUndefined();
     expect(playlistService.deleteItem).toHaveBeenCalledWith('room-1', 'user-1', 'playlist-item-1');
   });
 

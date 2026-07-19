@@ -12,14 +12,6 @@ export type PlaybackStateRecord = {
   updatedAt: Date;
 };
 
-export type PlaybackStateResult = {
-  videoId: string | null;
-  playlistItemId: string | null;
-  currentTime: number;
-  isPlaying: boolean;
-  updatedAt: string;
-};
-
 export type PlaybackStateUpdateData = {
   videoId: string | null;
   playlistItemId: string | null;

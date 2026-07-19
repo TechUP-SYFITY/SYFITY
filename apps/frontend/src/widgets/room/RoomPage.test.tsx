@@ -4,9 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { JoinRoomResponse, UserProfileResponse } from '@syfity/shared';
+import type { UserProfileResponse } from '@syfity/shared';
 
 import { ToastProvider } from '@/shared/components/ui';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
@@ -41,6 +41,8 @@ vi.mock('@/shared/mocks/PresenceMockPanel', () => ({
   PresenceMockPanel: () => <div data-testid="presence-mock-panel" />,
 }));
 
+let didSeedSnapshot = false;
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -58,6 +60,26 @@ function createWrapper() {
 }
 
 describe('RoomPage', () => {
+  beforeEach(() => {
+    didSeedSnapshot = false;
+    vi.mocked(useRoomLiveConnections).mockImplementation(
+      (_roomId, enabled, _onRoomClosed, onSnapshot) => {
+        if (enabled && !didSeedSnapshot) {
+          didSeedSnapshot = true;
+          onSnapshot?.({
+            roomId: roomFixture.room.id,
+            hostConnection: { status: 'connected' },
+            playbackState: roomFixture.playbackState,
+            playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+            playlist: roomFixture.playlist,
+            members: roomFixture.members,
+            recentChats: roomFixture.chats,
+          });
+        }
+      },
+    );
+  });
+
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -104,34 +126,8 @@ describe('RoomPage', () => {
       roomFixture.room.id,
       true,
       expect.any(Function),
+      expect.any(Function),
     );
-  });
-
-  it('Room 입장 응답의 최신순 recentChats를 오래된순으로 저장한다', async () => {
-    server.use(
-      http.post('*/api/v1/rooms/join', () =>
-        HttpResponse.json({
-          success: true,
-          data: {
-            members: roomFixture.members,
-            playbackState: roomFixture.playbackState,
-            playlist: roomFixture.playlist,
-            recentChats: [...roomFixture.chats].reverse(),
-            room: roomFixture.room,
-          },
-        } satisfies JoinRoomResponse),
-      ),
-    );
-    const Wrapper = createWrapper();
-
-    render(
-      <Wrapper>
-        <RoomPage roomId={roomFixture.room.id} />
-      </Wrapper>,
-    );
-
-    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
-    expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
   });
 
   it('이전 Room 상태가 남아 있어도 URL의 roomId로 연결한다', async () => {
@@ -158,6 +154,7 @@ describe('RoomPage', () => {
     expect(useRoomLiveConnections).toHaveBeenCalledWith(
       roomFixture.room.id,
       true,
+      expect.any(Function),
       expect.any(Function),
     );
   });

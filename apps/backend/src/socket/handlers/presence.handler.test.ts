@@ -188,6 +188,9 @@ describe('registerPresenceHandlers', () => {
     expect(roomService.closeRoom).toHaveBeenCalledWith('room-1', 'user-1');
     expect(roomEmit).toHaveBeenCalledWith('chat:system', {
       id: 'message-system',
+      userId: null,
+      nickname: null,
+      profileImage: null,
       type: 'system',
       message: 'Room이 종료되었습니다.',
       createdAt: '2026-07-01T12:01:00.000Z',

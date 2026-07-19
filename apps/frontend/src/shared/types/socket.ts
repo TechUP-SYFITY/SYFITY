@@ -37,7 +37,8 @@ export interface PlaybackSeekPayload {
 
 export interface PlaybackChangeTrackPayload {
   roomId: string;
-  playlistItemId: string;
+  action: 'select' | 'next' | 'previous';
+  playlistItemId?: string;
 }
 
 export interface PlaybackSyncRequestPayload {
@@ -64,12 +65,20 @@ export interface ChatSendPayload {
   message: string;
 }
 
-export interface ChatSendAckData {
-  id: string;
-  createdAt: string;
+export type ChatSendAckData = ChatMessage;
+
+export interface RoomJoinedPayload {
+  roomId: string;
+  hostConnection: RoomHostConnectionState;
+  playbackState: PlaybackState;
+  playbackPolicy: { repeatMode: 'off'; shuffleEnabled: false };
+  playlist: PlaylistItem[];
+  members: RoomMember[];
+  recentChats: ChatMessage[];
 }
 
 export interface ServerToClientEvents {
+  'room:joined': (payload: RoomJoinedPayload) => void;
   'room:host-disconnected': (payload: RoomHostDisconnectedPayload) => void;
   'room:host-reconnected': (payload: RoomJoinPayload) => void;
   'room:closed': (payload: RoomClosedPayload) => void;
@@ -87,16 +96,7 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  'room:join': (
-    payload: RoomJoinPayload,
-    ack: (
-      response: SocketAck<{
-        hostConnection: RoomHostConnectionState;
-        members: RoomMember[];
-        playbackState: PlaybackState;
-      }>,
-    ) => void,
-  ) => void;
+  'room:join': (payload: RoomJoinPayload, ack: (response: SocketAck) => void) => void;
   'room:leave': (payload: RoomJoinPayload) => void;
   'playback:play': (
     payload: PlaybackCurrentTimePayload,

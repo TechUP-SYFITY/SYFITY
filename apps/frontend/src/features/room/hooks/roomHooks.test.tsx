@@ -8,166 +8,61 @@ import { ApiClientError } from '@/shared/types/api';
 
 import { useJoinRoom, useJoinRoomByCode } from './roomHooks';
 import { roomApi } from '../api/roomApi';
-import type { JoinRoomResponse, RoomResponse } from '../types/roomTypes';
+import type { CreateRoomMembershipResponse, RoomResponse } from '../types/roomTypes';
 
 vi.mock('../api/roomApi', () => ({
   roomApi: {
-    closeRoom: vi.fn(),
+    createRoomMembership: vi.fn(),
     createRoom: vi.fn(),
     getRecentRooms: vi.fn(),
     getRoom: vi.fn(),
-    joinRoom: vi.fn(),
     updateRoom: vi.fn(),
   },
 }));
 
-function createQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
-  });
-}
+const createQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-function createWrapper(queryClient: QueryClient) {
-  return function Wrapper({ children }: { children: ReactNode }) {
+const createWrapper = (queryClient: QueryClient) =>
+  function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
-}
 
 const room = {
   ...roomFixture.room,
   createdAt: '2026-07-01T10:00:00.000Z',
 } satisfies RoomResponse;
 
-const joinedRoom = {
-  members: roomFixture.members,
-  playbackState: {
-    ...roomFixture.playbackState,
-    updatedAt: roomFixture.playbackState.updatedAt ?? '2026-07-01T10:12:00.000Z',
-  },
-  playlist: roomFixture.playlist,
-  recentChats: roomFixture.chats,
-  room: roomFixture.room,
-} satisfies JoinRoomResponse;
+const membership = { room: roomFixture.room } satisfies CreateRoomMembershipResponse;
 
-describe('useJoinRoom', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+describe('Room membership hooks', () => {
+  beforeEach(() => vi.clearAllMocks());
 
-  it('GET으로 inviteCode를 얻은 뒤 POST join을 호출한다', async () => {
-    const calls: string[] = [];
-    vi.mocked(roomApi.getRoom).mockImplementation(async () => {
-      calls.push('getRoom');
-      return room;
-    });
-    vi.mocked(roomApi.joinRoom).mockImplementation(async () => {
-      calls.push('joinRoom');
-      return joinedRoom;
-    });
-    const queryClient = createQueryClient();
-
-    const { result } = renderHook(() => useJoinRoom(roomFixture.room.id), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(calls).toEqual(['getRoom', 'joinRoom']);
-    expect(roomApi.getRoom).toHaveBeenCalledWith(roomFixture.room.id);
-    expect(roomApi.joinRoom).toHaveBeenCalledWith({ inviteCode: roomFixture.room.inviteCode });
-    expect(result.current.data).toBe(joinedRoom);
-  });
-
-  it('GET 단계가 실패하면 POST join을 호출하지 않는다', async () => {
-    const error = new ApiClientError({ code: 'ROOM_NOT_FOUND', message: 'Room not found' }, 404);
-    vi.mocked(roomApi.getRoom).mockRejectedValue(error);
-    const queryClient = createQueryClient();
-
-    const { result } = renderHook(() => useJoinRoom('unknown-room'), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error).toBe(error);
-    expect(roomApi.joinRoom).not.toHaveBeenCalled();
-  });
-
-  it('참여 이력이 없으면 ROOM_ACCESS_DENIED를 그대로 노출한다', async () => {
-    const error = new ApiClientError(
-      { code: 'ROOM_ACCESS_DENIED', message: 'Room access denied' },
-      403,
-    );
-    vi.mocked(roomApi.getRoom).mockRejectedValue(error);
-    const queryClient = createQueryClient();
-
-    const { result } = renderHook(() => useJoinRoom(roomFixture.room.id), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error).toBe(error);
-    expect(roomApi.joinRoom).not.toHaveBeenCalled();
-  });
-
-  it('POST join 단계 실패를 그대로 노출한다', async () => {
-    const error = new ApiClientError({ code: 'ROOM_CLOSED', message: 'Room is closed' }, 403);
+  it('Room id 입장은 invite code를 조회한 뒤 room-membership을 생성한다', async () => {
     vi.mocked(roomApi.getRoom).mockResolvedValue(room);
-    vi.mocked(roomApi.joinRoom).mockRejectedValue(error);
+    vi.mocked(roomApi.createRoomMembership).mockResolvedValue(membership);
     const queryClient = createQueryClient();
 
     const { result } = renderHook(() => useJoinRoom(roomFixture.room.id), {
       wrapper: createWrapper(queryClient),
     });
 
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(roomApi.createRoomMembership).toHaveBeenCalledWith({
+      inviteCode: roomFixture.room.inviteCode,
+    });
+    expect(result.current.data).toEqual(membership);
+  });
+
+  it('초대 코드 입장은 membership API 오류를 그대로 노출한다', async () => {
+    const error = new ApiClientError({ code: 'ROOM_CLOSED', message: 'Room is closed' }, 403);
+    vi.mocked(roomApi.createRoomMembership).mockRejectedValue(error);
+    const queryClient = createQueryClient();
+
+    const { result } = renderHook(() => useJoinRoomByCode(roomFixture.room.inviteCode), {
+      wrapper: createWrapper(queryClient),
+    });
+
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBe(error);
-    expect(roomApi.joinRoom).toHaveBeenCalledWith({ inviteCode: roomFixture.room.inviteCode });
-  });
-});
-
-describe('useJoinRoomByCode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('inviteCode가 있으면 마운트 시 자동으로 POST join을 호출한다', async () => {
-    vi.mocked(roomApi.joinRoom).mockResolvedValue(joinedRoom);
-    const queryClient = createQueryClient();
-
-    const { result } = renderHook(() => useJoinRoomByCode(roomFixture.room.inviteCode), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(roomApi.joinRoom).toHaveBeenCalledWith({ inviteCode: roomFixture.room.inviteCode });
-    expect(result.current.data).toBe(joinedRoom);
-  });
-
-  it('inviteCode가 비어 있으면 join을 호출하지 않는다 (enabled 게이팅)', () => {
-    vi.mocked(roomApi.joinRoom).mockResolvedValue(joinedRoom);
-    const queryClient = createQueryClient();
-
-    const { result } = renderHook(() => useJoinRoomByCode(''), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    expect(result.current.fetchStatus).toBe('idle');
-    expect(roomApi.joinRoom).not.toHaveBeenCalled();
-  });
-
-  it('동일 코드로 refetch하면 join을 다시 호출한다', async () => {
-    vi.mocked(roomApi.joinRoom).mockResolvedValue(joinedRoom);
-    const queryClient = createQueryClient();
-
-    const { result } = renderHook(() => useJoinRoomByCode(roomFixture.room.inviteCode), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(roomApi.joinRoom).toHaveBeenCalledTimes(1);
-
-    await result.current.refetch();
-    expect(roomApi.joinRoom).toHaveBeenCalledTimes(2);
   });
 });

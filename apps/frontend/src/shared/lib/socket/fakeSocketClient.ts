@@ -2,7 +2,7 @@
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
-import type { ChatMessage, PlaybackState, RoomMember } from '@/shared/types/domain';
+import type { ChatMessage, PlaybackState } from '@/shared/types/domain';
 import type {
   ChatSendAckData,
   ChatSendPayload,
@@ -98,19 +98,17 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
 ) {
   switch (event) {
     case 'room:join': {
-      const ack = readAck<{
-        hostConnection: { status: 'connected' };
-        members: RoomMember[];
-        playbackState: PlaybackState;
-      }>(args[1]);
-      ack?.({
-        success: true,
-        data: {
-          hostConnection: { status: 'connected' },
-          members: roomFixture.members,
-          playbackState: ctx.getPlaybackState(),
-        },
+      const ack = readAck(args[1]);
+      ctx.emitLocal('room:joined', {
+        roomId: (args[0] as { roomId: string }).roomId,
+        hostConnection: { status: 'connected' },
+        playbackState: ctx.getPlaybackState(),
+        playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+        playlist: roomFixture.playlist,
+        members: roomFixture.members,
+        recentChats: roomFixture.chats,
       });
+      ack?.({ success: true });
       break;
     }
 
@@ -193,6 +191,13 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
     case 'playback:change-track': {
       const payload = args[0] as PlaybackChangeTrackPayload;
       const ack = readAck(args[1]);
+      if (payload.action !== 'select') {
+        ack?.({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'Only select is supported' },
+        });
+        return;
+      }
       const targetItem = roomFixture.playlist.find((item) => item.id === payload.playlistItemId);
 
       if (targetItem?.status !== 'available') {
@@ -251,7 +256,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
       };
 
       ctx.emitLocal('chat:received', message);
-      ack?.({ success: true, data: { createdAt: message.createdAt, id: message.id } });
+      ack?.({ success: true, data: message });
       break;
     }
   }
@@ -279,6 +284,7 @@ function createSystemMessage(message: string): ChatMessage {
     id: createId('mock-chat-system'),
     message,
     nickname: null,
+    profileImage: null,
     type: 'system',
     userId: null,
   };

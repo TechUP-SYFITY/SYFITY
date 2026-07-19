@@ -4,8 +4,8 @@ import type {
   CreateRoomRequest as SharedCreateRoomRequest,
   CreateRoomResponse as SharedCreateRoomResponse,
   GetRoomResponse as SharedGetRoomResponse,
-  JoinRoomRequest as SharedJoinRoomRequest,
-  JoinRoomResponse as SharedJoinRoomResponse,
+  CreateRoomMembershipRequest as SharedCreateRoomMembershipRequest,
+  CreateRoomMembershipResponse as SharedCreateRoomMembershipResponse,
   RecentRoomsResponse as SharedRecentRoomsResponse,
   UpdateRoomRequest as SharedUpdateRoomRequest,
   UpdateRoomResponse as SharedUpdateRoomResponse,
@@ -24,8 +24,8 @@ export interface RoomInviteInfo {
   inviteCode: string;
   name: string;
 }
-export type JoinRoomRequest = SharedJoinRoomRequest;
-export type JoinRoomResponse = SharedJoinRoomResponse['data'];
+export type CreateRoomMembershipRequest = SharedCreateRoomMembershipRequest;
+export type CreateRoomMembershipResponse = SharedCreateRoomMembershipResponse['data'];
 export type RecentRoomsResponse = SharedRecentRoomsResponse['data'];
 export type RoomResponse = SharedGetRoomResponse['data'];
 export type UpdateRoomRequest = SharedUpdateRoomRequest;

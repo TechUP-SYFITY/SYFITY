@@ -1,9 +1,6 @@
-import type {
-  HostConnectionState,
-  RoomMemberRecord,
-  RoomMemberStatus,
-  RoomRole,
-} from './room';
+import type { ChatMessage, PlaylistItem } from '@syfity/shared';
+
+import type { HostConnectionState, RoomMemberRecord, RoomMemberStatus, RoomRole } from './room';
 
 export type RoomJoinPayload = {
   roomId: string;
@@ -37,7 +34,8 @@ export type PlaybackSeekPayload = {
 
 export type PlaybackChangeTrackPayload = {
   roomId: string;
-  playlistItemId: string;
+  action: 'select' | 'next' | 'previous';
+  playlistItemId?: string;
 };
 
 export type PlaybackErrorPayload = {
@@ -62,16 +60,17 @@ export type SocketAckError = {
 
 export type PlaybackAck = { success: true } | { success: false; error: SocketAckError };
 
-export type RoomJoinAck =
-  | {
-      success: true;
-      data: {
-        hostConnection: HostConnectionState;
-        members: RoomMemberRecord[];
-        playbackState: PlaybackStatePayload;
-      };
-    }
-  | { success: false; error: SocketAckError };
+export type RoomJoinAck = { success: true } | { success: false; error: SocketAckError };
+
+export type RoomJoinedPayload = {
+  roomId: string;
+  hostConnection: HostConnectionState;
+  playbackState: PlaybackStatePayload;
+  playbackPolicy: { repeatMode: 'off'; shuffleEnabled: false };
+  playlist: PlaylistItem[];
+  members: RoomMemberRecord[];
+  recentChats: ChatMessage[];
+};
 
 export type PresenceUpdatePayload = {
   userId: string;
@@ -103,22 +102,7 @@ export type ChatSendPayload = {
 };
 
 export type ChatSendAck =
-  | { success: true; data: { id: string; createdAt: string } }
-  | { success: false; error: SocketAckError };
+  { success: true; data: ChatMessage } | { success: false; error: SocketAckError };
 
-export type ChatReceivedPayload = {
-  id: string;
-  userId: string;
-  nickname: string;
-  profileImage: string | null;
-  type: 'user';
-  message: string;
-  createdAt: string;
-};
-
-export type ChatSystemPayload = {
-  id: string;
-  type: 'system';
-  message: string;
-  createdAt: string;
-};
+export type ChatReceivedPayload = ChatMessage;
+export type ChatSystemPayload = ChatMessage;

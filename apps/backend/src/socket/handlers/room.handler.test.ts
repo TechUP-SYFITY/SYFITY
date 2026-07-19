@@ -113,20 +113,25 @@ function registerRoomHandlers(
   });
 }
 
-function makeSocket(): { socket: Socket; handlers: Record<string, RoomHandlerCallback> } {
+function makeSocket(): {
+  socket: Socket;
+  handlers: Record<string, RoomHandlerCallback>;
+  socketEmit: ReturnType<typeof vi.fn>;
+} {
   const handlers: Record<string, RoomHandlerCallback> = {};
   const on = vi.fn((event: string, callback: RoomHandlerCallback) => {
     handlers[event] = callback;
   });
+  const socketEmit = vi.fn();
   const socketRef = {
     data: { userId: 'user-1' },
-    emit: vi.fn(),
+    emit: socketEmit,
     join: vi.fn(),
     leave: vi.fn(),
     on,
   };
 
-  return { socket: socketRef as unknown as Socket, handlers };
+  return { socket: socketRef as unknown as Socket, handlers, socketEmit };
 }
 
 function makeIo(): {
@@ -163,9 +168,9 @@ describe('registerRoomHandlers', () => {
     loggerError.mockRestore();
   });
 
-  it('room:join 성공 시 Socket Room에 참가하고 presence:update, chat:system, 성공 ack를 보낸다', async () => {
+  it('room:join 성공 시 snapshot을 ack보다 먼저 전송하고 presence:update, chat:system을 보낸다', async () => {
     const { io, roomEmit } = makeIo();
-    const { socket, handlers } = makeSocket();
+    const { socket, handlers, socketEmit } = makeSocket();
     const roomService = makeRoomService();
     const playbackService = makePlaybackService();
 
@@ -177,6 +182,15 @@ describe('registerRoomHandlers', () => {
     expect(playbackService.getPlaybackStateForSocket).toHaveBeenCalledWith('room-1', 'user-1');
     expect(roomService.getRoomSnapshot).toHaveBeenCalledWith('room-1');
     expect(socket.join).toHaveBeenCalledWith('room:room-1');
+    expect(socketEmit).toHaveBeenCalledWith('room:joined', {
+      roomId: 'room-1',
+      hostConnection: { status: 'connected' },
+      playbackState,
+      playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+      playlist: [],
+      members: [member],
+      recentChats: [],
+    });
     expect(io.to).toHaveBeenCalledWith('room:room-1');
     expect(roomEmit).toHaveBeenCalledWith('presence:update', {
       userId: 'user-1',
@@ -199,6 +213,7 @@ describe('registerRoomHandlers', () => {
       createdAt: '2026-07-01T12:01:00.000Z',
     });
     expect(ack).toHaveBeenCalledWith({ success: true });
+    expect(socketEmit.mock.invocationCallOrder[0]).toBeLessThan(ack.mock.invocationCallOrder[0]);
   });
 
   it('room:join에서 이미 online 상태면 시스템 메시지를 생성하지 않는다', async () => {

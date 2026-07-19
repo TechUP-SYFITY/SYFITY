@@ -2,8 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
-import type { ChatMessage, PlaybackState, RoomMember } from '@/shared/types/domain';
-import type { RoomHostConnectionState } from '@/shared/types/socket';
+import type { ChatMessage, PlaybackState } from '@/shared/types/domain';
 
 import { fakeSocketClient, simulateServerEvent } from './fakeSocketClient';
 
@@ -22,28 +21,23 @@ describe('fakeSocketClient', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('acks room join with fixture playback state and members', () => {
+  it('emits room snapshot before acknowledging room join', () => {
     const socket = fakeSocketClient.connect();
-    const ack = vi.fn<
-      (
-        response: SocketAck<{
-          hostConnection: RoomHostConnectionState;
-          members: RoomMember[];
-          playbackState: PlaybackState;
-        }>,
-      ) => void
-    >();
+    const calls: string[] = [];
+    const ack = vi.fn<(response: SocketAck) => void>(() => calls.push('ack'));
+    const joined = vi.fn(() => calls.push('joined'));
+    socket.on('room:joined', joined);
 
     socket.emit('room:join', { roomId: roomFixture.room.id }, ack);
 
-    expect(ack).toHaveBeenCalledWith({
-      success: true,
-      data: {
-        hostConnection: { status: 'connected' },
-        members: roomFixture.members,
-        playbackState: roomFixture.playbackState,
-      },
-    });
+    expect(calls).toEqual(['joined', 'ack']);
+    expect(ack).toHaveBeenCalledWith({ success: true });
+    expect(joined).toHaveBeenCalledWith(
+      expect.objectContaining({
+        playlist: roomFixture.playlist,
+        recentChats: roomFixture.chats,
+      }),
+    );
   });
 
   it('selects the first available item when playback starts without a selected video', () => {
@@ -102,7 +96,7 @@ describe('fakeSocketClient', () => {
 
     socket.emit(
       'playback:change-track',
-      { playlistItemId: 'missing-item', roomId: roomFixture.room.id },
+      { action: 'select', playlistItemId: 'missing-item', roomId: roomFixture.room.id },
       ack,
     );
 
@@ -127,7 +121,7 @@ describe('fakeSocketClient', () => {
 
     socket.emit(
       'playback:change-track',
-      { playlistItemId: unavailableItem.id, roomId: roomFixture.room.id },
+      { action: 'select', playlistItemId: unavailableItem.id, roomId: roomFixture.room.id },
       ack,
     );
 
@@ -155,7 +149,7 @@ describe('fakeSocketClient', () => {
     socket.on('playback:change-track', listener);
     socket.emit(
       'playback:change-track',
-      { playlistItemId: nextItem.id, roomId: roomFixture.room.id },
+      { action: 'select', playlistItemId: nextItem.id, roomId: roomFixture.room.id },
       changeTrackAck,
     );
 

@@ -9,7 +9,6 @@ import type {
   IPlaybackRepository,
   PlaybackErrorResult,
   PlaybackStateRecord,
-  PlaybackStateResult,
   PlaybackStateUpdateData,
 } from '../types/playback';
 import { toPlaylistItem, type IPlaylistRepository } from '../types/playlist';
@@ -80,19 +79,6 @@ export class PlaybackService {
 
     const cached = await this.readCurrentState(roomId);
     return this.toPlaybackStatePayload(cached);
-  }
-
-  async getPlaybackStateForJoin(roomId: string): Promise<PlaybackStateResult> {
-    const record = await this.playbackRepo.findByRoomId(roomId);
-    if (!record) {
-      throw new AppError(
-        500,
-        ERROR_CODES.SERVER_INTERNAL_ERROR,
-        'PlaybackState를 찾을 수 없습니다.',
-      );
-    }
-
-    return this.toPlaybackStateResult(record);
   }
 
   getPlaybackState(roomId: string): Promise<PlaybackStateRecord | null> {
@@ -291,21 +277,6 @@ export class PlaybackService {
       playlistItemId: cached.playlistItemId,
       currentTime,
       isPlaying: cached.isPlaying,
-    };
-  }
-
-  private toPlaybackStateResult(record: PlaybackStateRecord): PlaybackStateResult {
-    const currentTime =
-      record.isPlaying && record.serverStartedAt
-        ? record.baseCurrentTime + (Date.now() - record.serverStartedAt.getTime()) / 1000
-        : record.baseCurrentTime;
-
-    return {
-      videoId: record.videoId,
-      playlistItemId: record.playlistItemId,
-      currentTime,
-      isPlaying: record.isPlaying,
-      updatedAt: record.updatedAt.toISOString(),
     };
   }
 }

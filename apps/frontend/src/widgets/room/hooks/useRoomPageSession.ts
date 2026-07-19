@@ -2,7 +2,9 @@
 
 // Room 입장 응답을 도메인 store에 반영하고, 화면 생명주기에 맞춰 실시간 연결을 관리한다.
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+
+import type { RoomJoinedPayload } from '@/shared/types/socket';
 
 import { useMe } from '@/features/auth/hooks/useAuth';
 import { sortChatMessagesAscending } from '@/features/chat/lib/chatMessageOrder';
@@ -21,6 +23,7 @@ export function useRoomPageSession(roomId: string) {
   const joinRoom = useJoinRoom(roomId);
   const { data: me } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
+  const hasJoinedRoom = useRoomStore((state) => state.hasJoinedRoom && state.room?.id === roomId);
   const room = useRoomStore((state) => state.room);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
   const onlineMemberCount = usePresenceStore(
@@ -39,25 +42,27 @@ export function useRoomPageSession(roomId: string) {
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
   const setMessages = useChatStore((state) => state.setMessages);
 
-  const hasJoinedRoom = joinRoom.isSuccess;
   const handleRoomClosed = useCallback(() => {
     clearPlayback();
     router.replace('/home');
   }, [clearPlayback, router]);
 
-  useRoomLiveConnections(roomId, hasJoinedRoom, handleRoomClosed);
+  const handleSnapshot = useCallback(
+    (snapshot: RoomJoinedPayload) => {
+      if (!joinRoom.data) {
+        return;
+      }
 
-  useEffect(() => {
-    if (!joinRoom.data) {
-      return;
-    }
+      setJoinedRoom(joinRoom.data.room);
+      setMembers(snapshot.members);
+      setPlaylist(snapshot.playlist);
+      setPlaybackState(snapshot.playbackState, 'room-join');
+      setMessages(sortChatMessagesAscending(snapshot.recentChats));
+    },
+    [joinRoom.data, setJoinedRoom, setMembers, setMessages, setPlaybackState, setPlaylist],
+  );
 
-    setJoinedRoom(joinRoom.data.room);
-    setMembers(joinRoom.data.members);
-    setPlaylist(joinRoom.data.playlist);
-    setPlaybackState(joinRoom.data.playbackState, 'room-join');
-    setMessages(sortChatMessagesAscending(joinRoom.data.recentChats));
-  }, [joinRoom.data, setJoinedRoom, setMembers, setMessages, setPlaybackState, setPlaylist]);
+  useRoomLiveConnections(roomId, joinRoom.isSuccess, handleRoomClosed, handleSnapshot);
 
   return {
     hasJoinedRoom,

@@ -35,13 +35,3 @@ export type ReorderPlaylistItem = {
 export type ReorderPlaylistRequest = {
   items: ReorderPlaylistItem[];
 };
-
-export type ReorderPlaylistResponse = {
-  success: true;
-  data: { message: string };
-};
-
-export type DeletePlaylistItemResponse = {
-  success: true;
-  data: { message: string };
-};

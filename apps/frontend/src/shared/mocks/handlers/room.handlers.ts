@@ -1,12 +1,11 @@
 import { http, HttpResponse } from 'msw';
 
 import type {
-  CloseRoomResponse,
+  CreateRoomMembershipRequest,
+  CreateRoomMembershipResponse,
   CreateRoomRequest,
   CreateRoomResponse,
   GetRoomResponse,
-  JoinRoomRequest,
-  JoinRoomResponse,
   RecentRoomsResponse,
   UpdateRoomRequest,
   UpdateRoomResponse,
@@ -53,26 +52,22 @@ export const roomHandlers = [
       },
     } satisfies CreateRoomResponse);
   }),
-  http.post(`${API}/rooms/join`, async ({ request }) => {
-    const body = (await request.json()) as Partial<JoinRoomRequest>;
+  http.post(`${API}/room-memberships`, async ({ request }) => {
+    const body = (await request.json()) as Partial<CreateRoomMembershipRequest>;
 
     if (body.inviteCode !== roomFixture.room.inviteCode) {
       return notFound('ROOM_NOT_FOUND', 'Room not found');
     }
 
-    return HttpResponse.json({
-      success: true,
-      data: {
-        members: roomFixture.members,
-        playbackState: {
-          ...roomFixture.playbackState,
-          updatedAt: roomFixture.playbackState.updatedAt ?? new Date().toISOString(),
+    return HttpResponse.json(
+      {
+        success: true,
+        data: {
+          room: roomFixture.room,
         },
-        playlist: roomFixture.playlist,
-        recentChats: roomFixture.chats,
-        room: roomFixture.room,
-      },
-    } satisfies JoinRoomResponse);
+      } satisfies CreateRoomMembershipResponse,
+      { status: 201 },
+    );
   }),
   http.get(`${API}/rooms/:roomId`, ({ params }) => {
     if (params.roomId !== roomFixture.room.id) {
@@ -94,23 +89,16 @@ export const roomHandlers = [
 
     const body = (await request.json()) as UpdateRoomRequest;
 
+    const isClosed = 'status' in body && body.status === 'closed';
     return HttpResponse.json({
       success: true,
       data: {
         id: roomFixture.room.id,
-        name: body.name,
+        name: 'name' in body ? body.name : roomFixture.room.name,
+        status: isClosed ? 'closed' : 'active',
+        closedAt: isClosed ? new Date().toISOString() : null,
         updatedAt: new Date().toISOString(),
       },
     } satisfies UpdateRoomResponse);
-  }),
-  http.post(`${API}/rooms/:roomId/close`, ({ params }) => {
-    if (params.roomId !== roomFixture.room.id) {
-      return notFound('ROOM_NOT_FOUND', 'Room not found');
-    }
-
-    return HttpResponse.json({
-      success: true,
-      data: { message: 'room closed' },
-    } satisfies CloseRoomResponse);
   }),
 ];

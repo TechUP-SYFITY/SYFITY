@@ -27,9 +27,13 @@ const resolveAck = (response: SocketAck, resolve: () => void, reject: (reason: E
 export const playbackCommands = {
   changeTrack: (roomId: string, playlistItemId: string) =>
     new Promise<void>((resolve, reject) => {
-      getSocket().emit('playback:change-track', { playlistItemId, roomId }, (response) => {
-        resolveAck(response, resolve, reject);
-      });
+      getSocket().emit(
+        'playback:change-track',
+        { action: 'select', playlistItemId, roomId },
+        (response) => {
+          resolveAck(response, resolve, reject);
+        },
+      );
     }),
   pause: (roomId: string, currentTime: number) =>
     new Promise<void>((resolve, reject) => {

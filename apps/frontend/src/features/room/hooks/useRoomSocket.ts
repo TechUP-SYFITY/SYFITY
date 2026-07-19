@@ -4,10 +4,10 @@
 import { useEffect } from 'react';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
-import type { RoomMember } from '@/shared/types/domain';
 import type {
   RoomClosedPayload,
   RoomHostDisconnectedPayload,
+  RoomJoinedPayload,
   RoomJoinPayload,
 } from '@/shared/types/socket';
 
@@ -15,7 +15,7 @@ import { useRoomStore } from '../store/roomStore';
 
 export const useRoomSocket = (
   roomId: string,
-  onRejoined?: (members: RoomMember[]) => void,
+  onSnapshot?: (snapshot: RoomJoinedPayload) => void,
   onRoomClosed?: () => void,
 ) => {
   const markHostDisconnected = useRoomStore((state) => state.markHostDisconnected);
@@ -47,22 +47,23 @@ export const useRoomSocket = (
       markRoomClosed(payload.reason);
       onRoomClosed?.();
     };
+    const handleRoomJoined = (snapshot: RoomJoinedPayload) => {
+      if (snapshot.roomId !== roomId) {
+        return;
+      }
+
+      if (snapshot.hostConnection.status === 'disconnected') {
+        markHostDisconnected(snapshot.hostConnection.waitUntil);
+      } else {
+        markHostReconnected();
+      }
+      setRoomSocketError(null);
+      onSnapshot?.(snapshot);
+    };
     const joinRoom = () => {
       socket.emit('room:join', { roomId }, (response) => {
         if (response.success) {
-          const { hostConnection } = response.data;
-          if (hostConnection.status === 'disconnected') {
-            markHostDisconnected(hostConnection.waitUntil);
-          } else {
-            markHostReconnected();
-          }
           setRoomSocketError(null);
-          const members = response.data?.members;
-
-          if (Array.isArray(members) && members.length > 0) {
-            onRejoined?.(members);
-          }
-
           return;
         }
 
@@ -80,6 +81,7 @@ export const useRoomSocket = (
     };
 
     socket.on('connect', joinRoom);
+    socket.on('room:joined', handleRoomJoined);
     socket.on('room:host-disconnected', handleHostDisconnected);
     socket.on('room:host-reconnected', handleHostReconnected);
     socket.on('room:closed', handleRoomClosed);
@@ -88,6 +90,7 @@ export const useRoomSocket = (
 
     return () => {
       socket.off('connect', joinRoom);
+      socket.off('room:joined', handleRoomJoined);
       socket.off('room:host-disconnected', handleHostDisconnected);
       socket.off('room:host-reconnected', handleHostReconnected);
       socket.off('room:closed', handleRoomClosed);
@@ -98,7 +101,7 @@ export const useRoomSocket = (
     markHostDisconnected,
     markHostReconnected,
     markRoomClosed,
-    onRejoined,
+    onSnapshot,
     onRoomClosed,
     roomId,
     setRoomSocketError,

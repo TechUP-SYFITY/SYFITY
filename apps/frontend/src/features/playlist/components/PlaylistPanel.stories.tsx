@@ -98,9 +98,9 @@ function createPlaylistApiMock(apiOverride: PlaylistApiOverride = {}): PlaylistA
       title: body.youtubeUrl ?? body.videoId ?? 'Added Story Track',
       videoId: body.videoId ?? 'story-added-video',
     }),
-    deletePlaylistItem: async () => ({ message: 'playlist item deleted' }),
+    deletePlaylistItem: async () => undefined,
     getPlaylist: async () => ({ playlist: playlistItems }),
-    reorderPlaylist: async () => ({ message: 'playlist reordered' }),
+    reorderPlaylist: async () => undefined,
     ...apiOverride,
   };
 }

@@ -234,7 +234,7 @@ describe('registerPlaybackHandlers', () => {
         payload: PlaybackChangeTrackPayload,
         ack: PlaybackHandlerAck,
       ) => Promise<void>
-    )({ roomId: 'room-1', playlistItemId: 'playlist-item-1' }, ack);
+    )({ roomId: 'room-1', action: 'select', playlistItemId: 'playlist-item-1' }, ack);
 
     expect(playbackService.pause).toHaveBeenCalledWith('room-1', 'user-1', 30);
     expect(playbackService.seek).toHaveBeenCalledWith('room-1', 'user-1', 45);
@@ -256,7 +256,7 @@ describe('registerPlaybackHandlers', () => {
         payload: Partial<PlaybackChangeTrackPayload>,
         ack: PlaybackHandlerAck,
       ) => Promise<void>
-    )({ roomId: 'room-1' }, ack);
+    )({ roomId: 'room-1', action: 'select' }, ack);
 
     expect(ack).toHaveBeenCalledWith({
       success: false,

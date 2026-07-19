@@ -96,7 +96,15 @@ describe('registerChatHandlers', () => {
     });
     expect(ack).toHaveBeenCalledWith({
       success: true,
-      data: { id: 'message-1', createdAt: '2026-07-01T12:00:00.000Z' },
+      data: {
+        id: 'message-1',
+        userId: 'user-1',
+        nickname: 'Alice',
+        profileImage: 'https://example.com/alice.png',
+        type: 'user',
+        message: 'hello',
+        createdAt: '2026-07-01T12:00:00.000Z',
+      },
     });
   });
 

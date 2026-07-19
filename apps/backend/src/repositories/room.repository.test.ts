@@ -27,6 +27,8 @@ const roomDetail: RoomDetailRecord = {
 const updatedRoom: RoomUpdateRecord = {
   id: 'room-1',
   name: 'Evening Jazz',
+  status: 'active',
+  closedAt: null,
   updatedAt: new Date('2026-07-01T12:30:00.000Z'),
 };
 
@@ -47,7 +49,7 @@ function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionP
   return {
     room: {
       create: vi.fn().mockResolvedValue(room),
-      update: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({ ...updatedRoom, status: 'closed', closedAt: new Date() }),
     },
     roomMember: {
       create: vi.fn().mockResolvedValue({}),
@@ -289,7 +291,7 @@ describe('RoomRepository', () => {
     expect(prisma.room.update).toHaveBeenCalledWith({
       where: { id: 'room-1' },
       data: { name: 'Evening Jazz' },
-      select: { id: true, name: true, updatedAt: true },
+      select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
   });
 
@@ -321,11 +323,16 @@ describe('RoomRepository', () => {
     await expect(repo.findMembership('room-1', 'user-1')).resolves.toBeNull();
   });
 
-  it('멤버십을 upsert한다', async () => {
+  it('신규 멤버십을 upsert하고 true를 반환한다', async () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.upsertMembership('room-1', 'user-1')).resolves.toBeUndefined();
+    await expect(repo.upsertMembership('room-1', 'user-1')).resolves.toBe(true);
+
+    expect(prisma.roomMember.findUnique).toHaveBeenCalledWith({
+      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+      select: { id: true },
+    });
 
     expect(prisma.roomMember.upsert).toHaveBeenCalledWith({
       where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
@@ -497,16 +504,17 @@ describe('RoomRepository', () => {
     await expect(repo.findMemberInfo('room-1', 'user-1')).resolves.toBeNull();
   });
 
-  it('Room을 닫고 left가 아닌 모든 멤버를 left 처리한다', async () => {
+  it('Room을 닫고 갱신된 Room 레코드를 반환하며 left가 아닌 멤버를 left 처리한다', async () => {
     const { prisma, tx } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.closeRoom('room-1')).resolves.toBeUndefined();
+    await expect(repo.closeRoom('room-1')).resolves.toMatchObject({ status: 'closed' });
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.room.update).toHaveBeenCalledWith({
       where: { id: 'room-1' },
       data: { status: 'closed', closedAt: expect.any(Date) },
+      select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
     expect(tx.roomMember.updateMany).toHaveBeenCalledWith({
       where: { roomId: 'room-1', status: { not: 'left' } },

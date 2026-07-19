@@ -138,7 +138,7 @@ export class RoomRepository implements IRoomRepository {
     return this.prisma.room.update({
       where: { id: roomId },
       data: { name },
-      select: { id: true, name: true, updatedAt: true },
+      select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
   }
 
@@ -149,8 +149,12 @@ export class RoomRepository implements IRoomRepository {
     });
   }
 
-  async upsertMembership(roomId: string, userId: string): Promise<void> {
+  async upsertMembership(roomId: string, userId: string): Promise<boolean> {
     const now = new Date();
+    const existing = await this.prisma.roomMember.findUnique({
+      where: { roomId_userId: { roomId, userId } },
+      select: { id: true },
+    });
 
     await this.prisma.roomMember.upsert({
       where: { roomId_userId: { roomId, userId } },
@@ -168,6 +172,8 @@ export class RoomRepository implements IRoomRepository {
         leftAt: null,
       },
     });
+
+    return existing === null;
   }
 
   async findMembers(roomId: string): Promise<RoomMemberRecord[]> {
@@ -246,19 +252,22 @@ export class RoomRepository implements IRoomRepository {
     };
   }
 
-  async closeRoom(roomId: string): Promise<void> {
+  async closeRoom(roomId: string): Promise<RoomUpdateRecord> {
     const now = new Date();
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.room.update({
+    return this.prisma.$transaction(async (tx) => {
+      const room = await tx.room.update({
         where: { id: roomId },
         data: { status: 'closed', closedAt: now },
+        select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
       });
 
       await tx.roomMember.updateMany({
         where: { roomId, status: { not: 'left' } },
         data: { status: 'left', leftAt: now, lastSeenAt: now },
       });
+
+      return room;
     });
   }
 }

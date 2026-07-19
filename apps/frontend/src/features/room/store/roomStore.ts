@@ -8,6 +8,7 @@ import type { RoomClosedReason, RoomDetail } from '@/shared/types/domain';
 import type { HostConnectionState } from '../types/roomTypes';
 
 interface RoomStoreState {
+  hasJoinedRoom: boolean;
   hostConnection: HostConnectionState;
   room: RoomDetail | null;
   roomSocketError: string | null;
@@ -23,10 +24,12 @@ export const useRoomStore = create<RoomStoreState>((set) => ({
   clearRoom: () =>
     set({
       hostConnection: { status: 'connected' },
+      hasJoinedRoom: false,
       room: null,
       roomSocketError: null,
     }),
   hostConnection: { status: 'connected' },
+  hasJoinedRoom: false,
   markHostDisconnected: (waitUntil) =>
     set({ hostConnection: { status: 'disconnected', waitUntil } }),
   markHostReconnected: () => set({ hostConnection: { status: 'connected' } }),
@@ -37,6 +40,7 @@ export const useRoomStore = create<RoomStoreState>((set) => ({
     })),
   room: null,
   roomSocketError: null,
-  setJoinedRoom: (room) => set({ hostConnection: { status: 'connected' }, room }),
+  setJoinedRoom: (room) =>
+    set({ hasJoinedRoom: true, hostConnection: { status: 'connected' }, room }),
   setRoomSocketError: (message) => set({ roomSocketError: message }),
 }));

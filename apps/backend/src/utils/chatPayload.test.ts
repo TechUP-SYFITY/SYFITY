@@ -36,9 +36,9 @@ describe('chatPayload', () => {
     });
   });
 
-  it('nickname이 null이면 빈 문자열로 변환한다', () => {
+  it('nickname이 null이면 null을 유지한다', () => {
     expect(toChatReceivedPayload({ ...userMessage, nickname: null })).toMatchObject({
-      nickname: '',
+      nickname: null,
     });
   });
 
@@ -51,6 +51,9 @@ describe('chatPayload', () => {
   it('system 메시지를 chat:system payload로 변환한다', () => {
     expect(toChatSystemPayload(systemMessage)).toEqual({
       id: 'message-system',
+      userId: null,
+      nickname: null,
+      profileImage: null,
       type: 'system',
       message: 'Alice님이 입장했습니다.',
       createdAt: '2026-07-01T12:01:00.000Z',

@@ -66,9 +66,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
         messages: state.messages.map((message) =>
           message.id === tempId
             ? {
-                ...message,
-                createdAt: data.createdAt,
-                id: data.id,
+                ...data,
               }
             : message,
         ),

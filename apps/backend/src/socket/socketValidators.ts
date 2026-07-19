@@ -19,3 +19,9 @@ export function assertNonEmptyString(value: unknown, field: string): asserts val
     throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, `${field}가 필요합니다.`);
   }
 }
+
+export function assertChangeTrackAction(action: unknown): asserts action is 'select' {
+  if (action !== 'select') {
+    throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, 'action이 올바르지 않습니다.');
+  }
+}

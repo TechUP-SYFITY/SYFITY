@@ -9,7 +9,7 @@ export function toChatReceivedPayload(record: ChatMessageRecord): ChatReceivedPa
   return {
     id: record.id,
     userId: record.userId,
-    nickname: record.nickname ?? '',
+    nickname: record.nickname,
     profileImage: record.profileImage,
     type: 'user',
     message: record.message,
@@ -20,6 +20,9 @@ export function toChatReceivedPayload(record: ChatMessageRecord): ChatReceivedPa
 export function toChatSystemPayload(record: ChatMessageRecord): ChatSystemPayload {
   return {
     id: record.id,
+    userId: null,
+    nickname: null,
+    profileImage: null,
     type: 'system',
     message: record.message,
     createdAt: record.createdAt.toISOString(),

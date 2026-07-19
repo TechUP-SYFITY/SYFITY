@@ -93,6 +93,10 @@ const request = async <T>(
     throw new ApiClientError(error, response.status);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   if (!parsed?.success) {
     throw new ApiClientError(createFallbackError(response.status), response.status);
   }

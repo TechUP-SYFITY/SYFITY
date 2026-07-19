@@ -12,26 +12,22 @@ import {
   Tags,
 } from 'tsoa';
 
-import type {
-  CloseRoomResponse,
-  CreateRoomRequest,
-  CreateRoomResponse,
-  GetRoomResponse,
-  JoinRoomRequest,
-  JoinRoomResponse,
-  RecentRoomsResponse,
-  UpdateRoomRequest,
-  UpdateRoomResponse,
+import {
+  ERROR_CODES,
+  type CreateRoomRequest,
+  type CreateRoomResponse,
+  type GetRoomResponse,
+  type RecentRoomsResponse,
+  type UpdateRoomRequest,
+  type UpdateRoomResponse,
 } from '@syfity/shared';
 
+import { AppError } from '../errors/appError';
 import type { RoomService } from '../services/room.service';
 import type { UserService } from '../services/user.service';
 
 type RoomControllerService = Pick<UserService, 'getRecentRooms'>;
-type RoomControllerRoomService = Pick<
-  RoomService,
-  'createRoom' | 'joinRoom' | 'getRoomInfo' | 'updateRoom' | 'closeRoomAndBroadcast'
->;
+type RoomControllerRoomService = Pick<RoomService, 'createRoom' | 'getRoomInfo' | 'updateRoom'>;
 
 @Route('rooms')
 @Tags('Room')
@@ -83,52 +79,6 @@ export class RoomController {
     };
   }
 
-  @Post('join')
-  @Security('jwt')
-  @SuccessResponse(200, 'OK')
-  async joinRoom(
-    @Request() req: ExRequest,
-    @Body() body: JoinRoomRequest,
-  ): Promise<JoinRoomResponse> {
-    const userId = req.user!.id;
-    const result = await this.roomService.joinRoom(userId, body.inviteCode);
-
-    return {
-      success: true,
-      data: {
-        room: {
-          id: result.room.id,
-          name: result.room.name,
-          status: result.room.status,
-          inviteCode: result.room.inviteCode,
-          hostId: result.room.hostId,
-        },
-        playbackState: result.playbackState,
-        playlist: result.playlist.map((item) => ({
-          id: item.id,
-          videoId: item.videoId,
-          title: item.title,
-          channelTitle: item.channelTitle,
-          thumbnailUrl: item.thumbnailUrl,
-          duration: item.duration,
-          position: item.position,
-          addedBy: item.addedBy,
-          status: item.status,
-        })),
-        members: result.members,
-        recentChats: result.recentChats.map((chat) => ({
-          id: chat.id,
-          userId: chat.userId,
-          nickname: chat.nickname,
-          profileImage: chat.profileImage,
-          type: chat.type,
-          message: chat.message,
-          createdAt: chat.createdAt.toISOString(),
-        })),
-      },
-    };
-  }
-
   @Get('{roomId}')
   @Security('jwt')
   @SuccessResponse(200, 'OK')
@@ -158,25 +108,32 @@ export class RoomController {
     @Body() body: UpdateRoomRequest,
   ): Promise<UpdateRoomResponse> {
     const userId = req.user!.id;
-    const room = await this.roomService.updateRoom(roomId, userId, body.name);
+    const candidate = body as { name?: unknown; status?: unknown };
+    const hasName = typeof candidate.name === 'string';
+    const hasStatus = typeof candidate.status === 'string';
+    if (hasName === hasStatus || (hasStatus && candidate.status !== 'closed')) {
+      throw new AppError(
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+        'name 또는 status: closed 중 하나가 필요합니다.',
+      );
+    }
+
+    const room = await this.roomService.updateRoom(
+      roomId,
+      userId,
+      hasName ? { name: candidate.name as string } : { status: 'closed' },
+    );
 
     return {
       success: true,
       data: {
         id: room.id,
         name: room.name,
+        status: room.status,
+        closedAt: room.closedAt?.toISOString() ?? null,
         updatedAt: room.updatedAt.toISOString(),
       },
     };
-  }
-
-  @Post('{roomId}/close')
-  @Security('jwt')
-  @SuccessResponse(200, 'OK')
-  async closeRoom(@Path() roomId: string, @Request() req: ExRequest): Promise<CloseRoomResponse> {
-    const userId = req.user!.id;
-    await this.roomService.closeRoomAndBroadcast(roomId, userId);
-
-    return { success: true, data: { message: 'room closed' } };
   }
 }

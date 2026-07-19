@@ -214,7 +214,8 @@ describe('RoomController', () => {
   });
 
   it('PATCH /rooms/:roomId는 name과 status 동시 요청을 거부한다', async () => {
-    const controller = new RoomController(makeUserService(), makeRoomService());
+    const roomService = makeRoomService();
+    const controller = new RoomController(makeUserService(), roomService);
 
     await expect(
       controller.updateRoom('room-1', makeRequest(), {
@@ -222,5 +223,16 @@ describe('RoomController', () => {
         status: 'closed',
       } as never),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    expect(roomService.updateRoom).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /rooms/:roomId는 status: active 단독 요청을 거부한다', async () => {
+    const roomService = makeRoomService();
+    const controller = new RoomController(makeUserService(), roomService);
+
+    await expect(
+      controller.updateRoom('room-1', makeRequest(), { status: 'active' } as never),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    expect(roomService.updateRoom).not.toHaveBeenCalled();
   });
 });

@@ -20,6 +20,7 @@ export class RoomMembershipController {
     @Request() req: ExRequest,
     @Body() body: CreateRoomMembershipRequest,
     @Res() created: TsoaResponse<201, CreateRoomMembershipResponse>,
+    @Res() ok: TsoaResponse<200, CreateRoomMembershipResponse>,
   ): Promise<CreateRoomMembershipResponse> {
     const result = await this.roomService.createMembership(req.user!.id, body.inviteCode);
     const response: CreateRoomMembershipResponse = {
@@ -35,6 +36,6 @@ export class RoomMembershipController {
       },
     };
 
-    return result.isNewMembership ? created(201, response) : response;
+    return result.isNewMembership ? created(201, response) : ok(200, response);
   }
 }

@@ -28,6 +28,27 @@ import type { UserService } from '../services/user.service';
 
 type RoomControllerService = Pick<UserService, 'getRecentRooms'>;
 type RoomControllerRoomService = Pick<RoomService, 'createRoom' | 'getRoomInfo' | 'updateRoom'>;
+type RoomUpdateCandidate = { name?: unknown; status?: unknown };
+
+function isRenameRoomRequest(body: RoomUpdateCandidate): body is { name: string } {
+  return typeof body.name === 'string' && body.status === undefined;
+}
+
+function isCloseRoomRequest(body: RoomUpdateCandidate): body is { status: 'closed' } {
+  return body.name === undefined && body.status === 'closed';
+}
+
+function parseRoomUpdateRequest(
+  body: RoomUpdateCandidate,
+): { name: string } | { status: 'closed' } | null {
+  if (isRenameRoomRequest(body)) {
+    return { name: body.name };
+  }
+  if (isCloseRoomRequest(body)) {
+    return { status: 'closed' };
+  }
+  return null;
+}
 
 @Route('rooms')
 @Tags('Room')
@@ -108,10 +129,9 @@ export class RoomController {
     @Body() body: UpdateRoomRequest,
   ): Promise<UpdateRoomResponse> {
     const userId = req.user!.id;
-    const candidate = body as { name?: unknown; status?: unknown };
-    const hasName = typeof candidate.name === 'string';
-    const hasStatus = typeof candidate.status === 'string';
-    if (hasName === hasStatus || (hasStatus && candidate.status !== 'closed')) {
+    const candidate = body as RoomUpdateCandidate;
+    const update = parseRoomUpdateRequest(candidate);
+    if (!update) {
       throw new AppError(
         400,
         ERROR_CODES.VALIDATION_ERROR,
@@ -119,11 +139,7 @@ export class RoomController {
       );
     }
 
-    const room = await this.roomService.updateRoom(
-      roomId,
-      userId,
-      hasName ? { name: candidate.name as string } : { status: 'closed' },
-    );
+    const room = await this.roomService.updateRoom(roomId, userId, update);
 
     return {
       success: true,

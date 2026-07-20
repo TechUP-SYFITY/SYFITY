@@ -35,7 +35,6 @@ function fixture() {
   };
   const playbackService = {
     enqueueIfShuffled: vi.fn().mockResolvedValue(undefined),
-    removeFromQueue: vi.fn(),
     advanceAfterCurrentRemoved: vi.fn().mockResolvedValue(null),
   };
   const service = new PlaylistService(

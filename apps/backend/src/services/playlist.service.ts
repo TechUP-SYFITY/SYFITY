@@ -16,7 +16,7 @@ import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 
 type PlaylistPlaybackService = Pick<
   PlaybackService,
-  'advanceAfterCurrentRemoved' | 'enqueueIfShuffled' | 'removeFromQueue'
+  'advanceAfterCurrentRemoved' | 'enqueueIfShuffled'
 >;
 
 export class PlaylistService {

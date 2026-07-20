@@ -348,17 +348,6 @@ export class PlaybackService {
     });
   }
 
-  async removeFromQueue(roomId: string, itemId: string): Promise<void> {
-    await this.withRoomLock(roomId, async () => {
-      const session = this.sessionStore.get(roomId);
-      this.sessionStore.set(roomId, {
-        ...session,
-        remainingPlaylistItemIds: session.remainingPlaylistItemIds.filter((id) => id !== itemId),
-        playbackHistoryItemIds: session.playbackHistoryItemIds.filter((id) => id !== itemId),
-      });
-    });
-  }
-
   async advanceAfterCurrentRemoved(
     roomId: string,
     itemId: string,

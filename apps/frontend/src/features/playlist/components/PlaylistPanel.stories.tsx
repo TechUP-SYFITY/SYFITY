@@ -56,9 +56,9 @@ const meta = {
     msw: { handlers: [] },
   },
   args: {
-    canAddSong: true,
     canControlRoom: true,
     currentPlaylistItemId: 'story-night-changes',
+    isActiveRoomMember: true,
     roomId,
     isHost: true,
     isReady: true,
@@ -175,9 +175,9 @@ export const MemberView: Story = {
 
 export const HostControlsDisabled: Story = {
   args: {
-    canAddSong: false,
     canControlRoom: false,
     isHost: true,
+    isActiveRoomMember: false,
     isReady: false,
     playlistItems,
   },

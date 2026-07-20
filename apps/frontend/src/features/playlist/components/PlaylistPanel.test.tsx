@@ -56,10 +56,10 @@ function createQueryClient() {
 }
 
 function renderPlaylistPanel(options?: {
-  canAddSong?: boolean;
   canControlRoom?: boolean;
   currentPlaylistItemId?: string;
   currentUserId?: string;
+  isActiveRoomMember?: boolean;
   isHost?: boolean;
   playlistItems?: PlaylistItem[];
   queryClient?: QueryClient;
@@ -69,10 +69,10 @@ function renderPlaylistPanel(options?: {
   render(
     <QueryClientProvider client={queryClient}>
       <PlaylistPanel
-        canAddSong={options?.canAddSong ?? true}
         canControlRoom={options?.canControlRoom ?? true}
         currentPlaylistItemId={options?.currentPlaylistItemId ?? availableItem.id}
         currentUserId={options?.currentUserId}
+        isActiveRoomMember={options?.isActiveRoomMember ?? true}
         playlistItems={options?.playlistItems}
         roomId={roomId}
         isHost={options?.isHost ?? true}
@@ -240,9 +240,9 @@ describe('PlaylistPanel', () => {
     render(
       <QueryClientProvider client={createQueryClient()}>
         <PlaylistPanel
-          canAddSong={false}
           canControlRoom={false}
           currentPlaylistItemId={availableItem.id}
+          isActiveRoomMember={false}
           playlistItems={[availableItem]}
           roomId={roomId}
           isHost
@@ -267,9 +267,9 @@ describe('PlaylistPanel', () => {
     render(
       <QueryClientProvider client={createQueryClient()}>
         <PlaylistPanel
-          canAddSong
           canControlRoom={false}
           currentPlaylistItemId={availableItem.id}
+          isActiveRoomMember
           playlistItems={[availableItem]}
           roomId={roomId}
           isHost={false}

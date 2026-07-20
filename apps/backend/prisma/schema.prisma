@@ -74,7 +74,6 @@ model Room {
   roomMembers   RoomMember[]
   recentRooms   RecentRoom[]
   playlistItems PlaylistItem[]
-  playbackState PlaybackState?
   chatMessages  ChatMessage[]
 
   @@map("rooms")
@@ -126,28 +125,10 @@ model PlaylistItem {
 
   room           Room            @relation(fields: [roomId], references: [id])
   addedByUser    User            @relation(fields: [addedBy], references: [id])
-  playbackStates PlaybackState[]
 
   @@unique([roomId, videoId])
   @@index([roomId, position])
   @@map("playlist_items")
-}
-
-model PlaybackState {
-  id              String    @id @default(uuid()) @db.Uuid
-  roomId          String    @unique @map("room_id") @db.Uuid
-  videoId         String?   @map("video_id")
-  playlistItemId  String?   @map("playlist_item_id") @db.Uuid
-  baseCurrentTime Float     @default(0) @map("base_current_time")
-  isPlaying       Boolean   @default(false) @map("is_playing")
-  serverStartedAt DateTime? @map("server_started_at") @db.Timestamptz
-  serverPausedAt  DateTime? @map("server_paused_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  room         Room          @relation(fields: [roomId], references: [id])
-  playlistItem PlaylistItem? @relation(fields: [playlistItemId], references: [id])
-
-  @@map("playback_states")
 }
 
 model ChatMessage {

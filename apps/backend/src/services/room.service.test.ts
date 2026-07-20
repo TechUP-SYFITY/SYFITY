@@ -53,7 +53,7 @@ const updatedRoom: RoomUpdateRecord = {
   updatedAt: new Date('2026-07-01T12:30:00.000Z'),
 };
 
-type RoomPlaybackServiceMock = Pick<PlaybackService, 'initializeCache' | 'clearCache'>;
+type RoomPlaybackServiceMock = Pick<PlaybackService, 'clearSession'>;
 
 const playlistItem: PlaylistItemRecord = {
   id: 'playlist-item-1',
@@ -123,8 +123,7 @@ function makePlaybackService(
   overrides: Partial<RoomPlaybackServiceMock> = {},
 ): RoomPlaybackServiceMock {
   return {
-    initializeCache: overrides.initializeCache ?? vi.fn(),
-    clearCache: overrides.clearCache ?? vi.fn(),
+    clearSession: overrides.clearSession ?? vi.fn(),
   };
 }
 
@@ -254,7 +253,7 @@ describe('RoomService', () => {
   });
 
   it('3회 모두 중복이면 초대 코드 생성 실패 에러를 던진다', async () => {
-    const { service, roomRepo, playbackService } = makeService({
+    const { service, roomRepo } = makeService({
       roomRepo: {
         existsInviteCode: vi.fn().mockResolvedValue(true),
       },
@@ -266,15 +265,12 @@ describe('RoomService', () => {
     });
     expect(roomRepo.existsInviteCode).toHaveBeenCalledTimes(3);
     expect(roomRepo.createRoom).not.toHaveBeenCalled();
-    expect(playbackService.initializeCache).not.toHaveBeenCalled();
   });
 
-  it('Room 생성 성공 시 PlaybackState 캐시 초기화를 위임한다', async () => {
-    const { service, playbackService } = makeService();
+  it('Room 생성은 인메모리 재생 세션을 미리 만들지 않는다', async () => {
+    const { service } = makeService();
 
     await service.createRoom('user-1', 'Morning Jazz');
-
-    expect(playbackService.initializeCache).toHaveBeenCalledWith('room-1');
   });
 
   it('inviteCode로 Room 멤버십을 만들고 영속 데이터만 반환한다', async () => {
@@ -569,7 +565,7 @@ describe('RoomService', () => {
     await expect(service.leaveRoom('room-1', 'user-1')).resolves.toEqual({ type: 'closed' });
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
-    expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
+    expect(playbackService.clearSession).toHaveBeenCalledWith('room-1');
     expect(roomRepo.updateMemberStatus).not.toHaveBeenCalled();
   });
 
@@ -605,7 +601,7 @@ describe('RoomService', () => {
     });
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
-    expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
+    expect(playbackService.clearSession).toHaveBeenCalledWith('room-1');
   });
 
   it('시스템 메시지를 저장하고 결과를 반환한다', async () => {
@@ -671,7 +667,7 @@ describe('RoomService', () => {
     });
 
     expect(roomRepo.closeRoom).toHaveBeenCalledWith('room-1');
-    expect(playbackService.clearCache).toHaveBeenCalledWith('room-1');
+    expect(playbackService.clearSession).toHaveBeenCalledWith('room-1');
     expect(chatRepo.createMessage).toHaveBeenCalledWith({
       roomId: 'room-1',
       userId: null,

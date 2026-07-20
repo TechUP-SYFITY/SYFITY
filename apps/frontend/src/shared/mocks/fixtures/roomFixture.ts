@@ -113,10 +113,12 @@ export const roomFixture = {
   playbackState: {
     currentTime: 0,
     isPlaying: false,
+    playbackVersion: 0,
     playlistItemId: null,
     updatedAt: '2026-07-01T10:12:00.000Z',
     videoId: null,
   } satisfies PlaybackState,
+  playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
   playlist: [
     {
       addedBy: 'fallback-host',

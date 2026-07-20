@@ -5,7 +5,12 @@ import type { ReactNode } from 'react';
 
 import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
-import type { PlaybackState, PlaylistItem, RoomDetail } from '@/shared/types/domain';
+import type {
+  PlaybackPolicy,
+  PlaybackState,
+  PlaylistItem,
+  RoomDetail,
+} from '@/shared/types/domain';
 
 import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/player/components/MiniPlayer';
 import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
@@ -32,6 +37,8 @@ interface RoomShellProps {
   miniPlayerPendingCommand: MiniPlayerPendingCommand;
   miniPlayerPlayPauseDisabled: boolean;
   miniPlayerPreviousDisabled: boolean;
+  miniPlayerRepeatMode?: PlaybackPolicy['repeatMode'];
+  miniPlayerShuffleEnabled?: boolean;
   miniPlayerVolume: number;
   onlineMemberCount: number;
   onInviteClick?: () => void;
@@ -39,7 +46,9 @@ interface RoomShellProps {
   onMiniPlayerNextTrack: () => void;
   onMiniPlayerPlayPause: () => void;
   onMiniPlayerPreviousTrack: () => void;
+  onMiniPlayerRepeatToggle?: () => void;
   onMiniPlayerSeek: (seekTime: number) => void;
+  onMiniPlayerShuffleToggle?: () => void;
   onMiniPlayerVolumeChange: (volume: number) => void;
   onMobileTabChange: (tab: RoomMobileTab | null) => void;
   playbackState: PlaybackState | null;
@@ -65,13 +74,17 @@ export function RoomShell({
   miniPlayerPendingCommand,
   miniPlayerPlayPauseDisabled,
   miniPlayerPreviousDisabled,
+  miniPlayerRepeatMode = 'off',
+  miniPlayerShuffleEnabled = false,
   miniPlayerVolume,
   onInviteClick,
   onMuteToggle,
   onMiniPlayerNextTrack,
   onMiniPlayerPlayPause,
   onMiniPlayerPreviousTrack,
+  onMiniPlayerRepeatToggle = () => undefined,
   onMiniPlayerSeek,
+  onMiniPlayerShuffleToggle = () => undefined,
   onMiniPlayerVolumeChange,
   onMobileTabChange,
   onlineMemberCount,
@@ -118,12 +131,16 @@ export function RoomShell({
           onNextTrack={onMiniPlayerNextTrack}
           onPlayPause={onMiniPlayerPlayPause}
           onPreviousTrack={onMiniPlayerPreviousTrack}
+          onRepeatToggle={onMiniPlayerRepeatToggle}
           onSeek={onMiniPlayerSeek}
+          onShuffleToggle={onMiniPlayerShuffleToggle}
           onVolumeChange={onMiniPlayerVolumeChange}
           pendingCommand={miniPlayerPendingCommand}
           playbackState={playbackState}
           playPauseDisabled={miniPlayerPlayPauseDisabled}
           previousDisabled={miniPlayerPreviousDisabled}
+          repeatMode={miniPlayerRepeatMode}
+          shuffleEnabled={miniPlayerShuffleEnabled}
           volume={miniPlayerVolume}
         />
       </div>

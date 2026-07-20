@@ -34,6 +34,7 @@ const socket = {
 const playbackState: PlaybackState = {
   currentTime: 24,
   isPlaying: true,
+  playbackVersion: 1,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };

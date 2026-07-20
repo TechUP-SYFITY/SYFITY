@@ -25,6 +25,7 @@ interface MockPlayer {
 const playbackState: PlayerPlaybackState = {
   currentTime: 0,
   isPlaying: false,
+  playbackVersion: 0,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };
@@ -334,6 +335,7 @@ describe('YouTubePlayer', () => {
     const nextPlaybackState: PlayerPlaybackState = {
       currentTime: 30,
       isPlaying: true,
+      playbackVersion: 1,
       playlistItemId: 'playlist-item-2',
       videoId: 'video-2',
     };

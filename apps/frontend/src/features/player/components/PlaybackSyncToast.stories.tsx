@@ -13,6 +13,7 @@ import type { PlaybackSyncStatus } from '../types/playerTypes';
 const playbackState = {
   currentTime: 24,
   isPlaying: true,
+  playbackVersion: 1,
   playlistItemId: 'story-playlist-item',
   videoId: 'story-video',
 };

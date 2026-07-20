@@ -3,6 +3,8 @@
 // Socket playback 이벤트로 갱신되는 현재 재생 상태를 보관한다.
 import { create } from 'zustand';
 
+import type { PlaybackPolicy } from '@/shared/types/domain';
+
 import type {
   PlaybackEventSource,
   PlaybackSyncSource,
@@ -21,6 +23,7 @@ interface PlayerStoreState {
     videoId: string;
   } | null;
   playbackState: PlayerPlaybackState | null;
+  playbackPolicy: PlaybackPolicy | null;
   playbackError: {
     videoId: string;
     errorCode: number;
@@ -31,6 +34,7 @@ interface PlayerStoreState {
   resumeLocalSync: () => void;
   setLocalPlaybackPosition: (videoId: string, currentTime: number) => void;
   setPlaybackError: (videoId: string, errorCode: number) => void;
+  setPlaybackPolicy: (playbackPolicy: PlaybackPolicy) => void;
   setPlaybackSyncError: () => void;
   setPlaybackState: (playbackState: PlayerPlaybackState, source: PlaybackEventSource) => void;
 }
@@ -45,6 +49,7 @@ export const usePlayerStore = create<PlayerStoreState>((set) => ({
       localPlaybackPosition: null,
       playbackError: null,
       playbackState: null,
+      playbackPolicy: null,
       playbackSyncStatus: 'idle',
       playbackSyncSource: null,
     }),
@@ -54,6 +59,7 @@ export const usePlayerStore = create<PlayerStoreState>((set) => ({
   localPlaybackPosition: null,
   playbackError: null,
   playbackState: null,
+  playbackPolicy: null,
   playbackSyncStatus: 'idle',
   playbackSyncSource: null,
   pauseLocalSync: () => set({ isLocalSyncPaused: true }),
@@ -72,19 +78,21 @@ export const usePlayerStore = create<PlayerStoreState>((set) => ({
         videoId,
       },
     }),
+  setPlaybackPolicy: (playbackPolicy) => set({ playbackPolicy }),
   setPlaybackSyncError: () => set({ playbackSyncStatus: 'error' }),
   setPlaybackState: (playbackState, source) =>
     set((state) => {
       let playbackSyncStatus = state.playbackSyncStatus;
 
-      if (source === 'room-join') {
+      if (source === 'room-join' || source === 'reset') {
         playbackSyncStatus = 'idle';
       } else if (source === 'sync-response' && playbackSyncStatus === 'pending') {
         playbackSyncStatus = 'synced';
       }
 
       return {
-        isLocalSyncPaused: source === 'room-join' ? false : state.isLocalSyncPaused,
+        isLocalSyncPaused:
+          source === 'room-join' || source === 'reset' ? false : state.isLocalSyncPaused,
         lastEventSource: source,
         localPlaybackPosition:
           source === 'tick' && state.localPlaybackPosition?.videoId === playbackState.videoId

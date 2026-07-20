@@ -4,7 +4,7 @@
 import { useRef, useState } from 'react';
 
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
-import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from '@/shared/lib/playback';
+import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import { PresenceMockPanel } from '@/shared/mocks/PresenceMockPanel';
 
 import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
@@ -64,6 +64,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     me,
     onlineMemberCount,
     playbackState,
+    playbackPolicy,
     playlist,
     room,
     setVolume: setMiniPlayerVolume,
@@ -78,7 +79,6 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   // 곡 추가와 Member 본인 곡 삭제는 Host 연결 상태와 무관하게 활성 멤버에게 허용된다.
   const isActiveRoomMember = hasJoinedRoom;
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
-  const { nextItem, previousItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
   const currentTime =
     localPlaybackPosition && localPlaybackPosition.videoId === playbackState?.videoId
       ? localPlaybackPosition.currentTime
@@ -91,9 +91,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     hasPlayableTrack: miniPlayerHasPlayableTrack,
     isHost,
     isPlaying: playbackState?.isPlaying ?? false,
-    nextItemId: nextItem?.id,
     playerControllerRef,
-    previousItemId: previousItem?.id,
     roomId,
   });
 
@@ -163,17 +161,21 @@ function RoomPageContent({ roomId }: RoomPageProps) {
         miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
         miniPlayerIsLocalSyncPaused={miniPlayerControls.isLocalSyncPaused}
         miniPlayerIsMuted={miniPlayerIsMuted}
-        miniPlayerNextDisabled={!nextItem}
+        miniPlayerNextDisabled={!miniPlayerHasPlayableTrack}
         miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
         miniPlayerPlayPauseDisabled={miniPlayerControls.playPauseDisabled}
-        miniPlayerPreviousDisabled={!previousItem}
+        miniPlayerPreviousDisabled={!miniPlayerHasPlayableTrack}
+        miniPlayerRepeatMode={playbackPolicy?.repeatMode ?? 'off'}
+        miniPlayerShuffleEnabled={playbackPolicy?.shuffleEnabled ?? false}
         miniPlayerVolume={miniPlayerVolume}
         onInviteClick={() => setIsInviteOpen(true)}
         onMuteToggle={toggleMiniPlayerMute}
         onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
         onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
         onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
+        onMiniPlayerRepeatToggle={miniPlayerControls.handleRepeatToggle}
         onMiniPlayerSeek={miniPlayerControls.handleSeek}
+        onMiniPlayerShuffleToggle={miniPlayerControls.handleShuffleToggle}
         onMiniPlayerVolumeChange={setMiniPlayerVolume}
         onMobileTabChange={handleMobileTabChange}
         onlineMemberCount={onlineMemberCount}
@@ -185,7 +187,6 @@ function RoomPageContent({ roomId }: RoomPageProps) {
             roomId={roomId}
             isHost={isHost}
             playerControllerRef={playerControllerRef}
-            onEnded={miniPlayerControls.handleNextTrack}
             onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
             playlist={playlist}
           />

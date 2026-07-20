@@ -45,6 +45,7 @@ vi.mock('./YouTubePlayer', () => ({
 
 vi.mock('../lib/playbackCommands', () => ({
   playbackCommands: {
+    reportEnded: vi.fn().mockResolvedValue(undefined),
     reportError: vi.fn(),
     requestSync: vi.fn(),
   },
@@ -77,7 +78,6 @@ const playlist: PlaylistItem[] = [
   },
 ];
 
-const onEnded = vi.fn();
 const onPlaybackStateChange = vi.fn();
 
 function renderPlayerPanel(isHost = true, playlistItems = playlist, canControlRoom = isHost) {
@@ -87,7 +87,6 @@ function renderPlayerPanel(isHost = true, playlistItems = playlist, canControlRo
         canControlRoom={canControlRoom}
         roomId={roomId}
         isHost={isHost}
-        onEnded={onEnded}
         onPlaybackStateChange={onPlaybackStateChange}
         playlist={playlistItems}
       />
@@ -100,6 +99,7 @@ function seedPlayback(isPlaying = false, playlistItemId = 'playlist-item-1') {
     {
       currentTime: 12,
       isPlaying,
+      playbackVersion: 1,
       playlistItemId,
       videoId: 'video-1',
     },
@@ -136,7 +136,7 @@ describe('PlayerPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
 
-    expect(onEnded).toHaveBeenCalledTimes(1);
+    expect(playbackCommands.reportEnded).toHaveBeenCalledWith(roomId, 'playlist-item-1', 1);
   });
 
   it('버퍼링 회복 시 자동 동기화 요청을 보낸다', () => {

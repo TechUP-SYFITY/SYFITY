@@ -5,13 +5,18 @@ import { useEffect } from 'react';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { PlaybackState } from '@/shared/types/domain';
-import type { PlaybackErrorBroadcastPayload } from '@/shared/types/socket';
+import type {
+  PlaybackErrorBroadcastPayload,
+  PlaybackResetPayload,
+  PlaybackSettingsPayload,
+} from '@/shared/types/socket';
 
 import { usePlayerStore } from '../store/playerStore';
 
 export const usePlaybackSocket = (enabled: boolean) => {
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
+  const setPlaybackPolicy = usePlayerStore((state) => state.setPlaybackPolicy);
 
   useEffect(() => {
     if (!enabled) {
@@ -29,6 +34,13 @@ export const usePlaybackSocket = (enabled: boolean) => {
     const handlePlaybackError = (payload: PlaybackErrorBroadcastPayload) => {
       setPlaybackError(payload.videoId, payload.errorCode);
     };
+    const handleSettings = (payload: PlaybackSettingsPayload) => {
+      setPlaybackPolicy({ repeatMode: payload.repeatMode, shuffleEnabled: payload.shuffleEnabled });
+    };
+    const handleReset = (payload: PlaybackResetPayload) => {
+      setPlaybackState(payload.playbackState, 'reset');
+      setPlaybackPolicy(payload.playbackPolicy);
+    };
 
     socket.on('playback:play', handlePlay);
     socket.on('playback:pause', handlePause);
@@ -37,6 +49,8 @@ export const usePlaybackSocket = (enabled: boolean) => {
     socket.on('playback:tick', handleTick);
     socket.on('playback:sync-response', handleSyncResponse);
     socket.on('playback:error', handlePlaybackError);
+    socket.on('playback:settings', handleSettings);
+    socket.on('playback:reset', handleReset);
 
     return () => {
       socket.off('playback:play', handlePlay);
@@ -46,6 +60,8 @@ export const usePlaybackSocket = (enabled: boolean) => {
       socket.off('playback:tick', handleTick);
       socket.off('playback:sync-response', handleSyncResponse);
       socket.off('playback:error', handlePlaybackError);
+      socket.off('playback:settings', handleSettings);
+      socket.off('playback:reset', handleReset);
     };
-  }, [enabled, setPlaybackError, setPlaybackState]);
+  }, [enabled, setPlaybackError, setPlaybackPolicy, setPlaybackState]);
 };

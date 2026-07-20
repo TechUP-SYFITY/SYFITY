@@ -11,6 +11,7 @@ import { startPlaybackTick, stopPlaybackTick } from './socket/handlers/tick.hand
 
 import app from './app';
 import { config } from './config';
+import { playbackService } from './ioc';
 import { initSocket } from './socket';
 import { isAllowedOrigin } from './utils/cors';
 
@@ -46,6 +47,7 @@ function shutdown(signal: string): void {
   logger.info(`${signal} 수신, 서버 종료 중...`);
 
   stopPlaybackTick(playbackTickTimer);
+  playbackService.shutdown();
   io.close();
   httpServer.close(() => {
     prisma.$disconnect().finally(() => process.exit(0));

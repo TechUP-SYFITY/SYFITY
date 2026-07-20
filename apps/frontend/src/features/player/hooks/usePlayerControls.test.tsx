@@ -35,7 +35,7 @@ describe('usePlayerControls', () => {
     vi.useRealTimers();
   });
 
-  it('Host가 이전 곡을 요청하면 previousItemId로 곡 변경 명령을 보낸다', async () => {
+  it('Host가 이전 곡을 요청하면 action 기반 곡 변경 명령을 보낸다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -52,7 +52,7 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-0');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'previous');
     });
   });
 
@@ -246,7 +246,7 @@ describe('usePlayerControls', () => {
     expect(callOrder).toEqual(['local-play', 'socket-change-track']);
     expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-0');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'previous');
     });
   });
 
@@ -280,7 +280,7 @@ describe('usePlayerControls', () => {
     expect(callOrder).toEqual(['local-play', 'socket-change-track']);
     expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
@@ -356,7 +356,7 @@ describe('usePlayerControls', () => {
     });
   });
 
-  it('Host가 다음 곡을 요청하면 nextItemId로 곡 변경 명령을 보낸다', async () => {
+  it('Host가 다음 곡을 요청하면 action 기반 곡 변경 명령을 보낸다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -373,11 +373,11 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
-  it('Host의 마지막 곡이 종료되면 0초 pause 명령을 보낸다', async () => {
+  it('Host의 다음 곡 요청은 마지막 곡 여부도 서버에 위임한다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -393,7 +393,7 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 0);
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
@@ -630,7 +630,7 @@ describe('usePlayerControls', () => {
       vi.advanceTimersByTime(200);
     });
 
-    expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+    expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     expect(playbackCommands.seek).not.toHaveBeenCalled();
 
     await act(async () => {

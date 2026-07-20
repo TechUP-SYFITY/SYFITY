@@ -24,6 +24,7 @@ const track: PlaylistItem = {
 const playbackState: PlaybackState = {
   currentTime: 45,
   isPlaying: false,
+  playbackVersion: 0,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };
@@ -41,12 +42,16 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     onNextTrack: vi.fn(),
     onPlayPause: vi.fn(),
     onPreviousTrack: vi.fn(),
+    onRepeatToggle: vi.fn(),
     onSeek: vi.fn(),
+    onShuffleToggle: vi.fn(),
     onVolumeChange: vi.fn(),
     pendingCommand: null,
     playbackState,
     playPauseDisabled: false,
     previousDisabled: false,
+    repeatMode: 'off',
+    shuffleEnabled: false,
     volume: 70,
   };
 

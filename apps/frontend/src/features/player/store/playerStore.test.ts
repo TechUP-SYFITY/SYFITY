@@ -7,6 +7,7 @@ import type { PlayerPlaybackState } from '../types/playerTypes';
 const playbackState: PlayerPlaybackState = {
   currentTime: 10,
   isPlaying: true,
+  playbackVersion: 1,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };

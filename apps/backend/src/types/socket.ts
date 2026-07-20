@@ -12,6 +12,7 @@ export type RoomLeavePayload = {
 };
 
 export type { PlaybackStatePayload } from './playback';
+export type { PlaybackErrorBroadcastPayload } from './playback';
 
 export type PlaybackPlayPayload = {
   roomId: string;
@@ -36,11 +37,6 @@ export type PlaybackChangeTrackPayload = {
 
 export type PlaybackErrorPayload = {
   roomId: string;
-  videoId: string;
-  errorCode: number;
-};
-
-export type PlaybackErrorBroadcastPayload = {
   videoId: string;
   errorCode: number;
 };

@@ -6,6 +6,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CHAT_MAX_MESSAGE_LENGTH } from '../chatConstants';
 import { ChatInputForm } from './ChatInputForm';
 
+vi.mock('./ChatEmojiPicker', () => ({
+  ChatEmojiPicker: ({ onEmojiSelect }: { onEmojiSelect: (emoji: string) => void }) => (
+    <button type="button" onClick={() => onEmojiSelect('😀')}>
+      이모지 추가
+    </button>
+  ),
+}));
+
 describe('ChatInputForm', () => {
   afterEach(() => {
     cleanup();
@@ -97,6 +105,20 @@ describe('ChatInputForm', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(input).toHaveValue('첫 줄\n');
+  });
+
+  it('피커에서 선택한 Unicode 이모지를 현재 커서 위치에 삽입하고 포커스를 유지한다', () => {
+    render(<ChatInputForm onSubmit={vi.fn()} />);
+    const input = screen.getByLabelText('채팅 메시지 입력') as HTMLTextAreaElement;
+
+    fireEvent.change(input, { target: { value: 'hello world' } });
+    input.focus();
+    input.setSelectionRange(5, 5);
+    fireEvent.click(screen.getByRole('button', { name: '이모지 추가' }));
+
+    expect(input).toHaveValue('hello😀 world');
+    expect(input.selectionStart).toBe(7);
+    expect(document.activeElement).toBe(input);
   });
 
   it('서버 전송 에러를 인라인으로 표시한다', () => {

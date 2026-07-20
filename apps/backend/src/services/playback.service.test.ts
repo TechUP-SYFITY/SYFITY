@@ -266,6 +266,47 @@ describe('PlaybackService', () => {
     vi.useRealTimers();
   });
 
+  it('이력이 비어 있으면 3초 미만에도 현재 곡을 처음부터 재생한다', async () => {
+    const { service } = makeService();
+    services.push(service);
+    await service.selectTrack('room-1', 'host', 'item-1');
+
+    await expect(service.previousTrack('room-1', 'host')).resolves.toMatchObject({
+      payload: { playlistItemId: 'item-1', currentTime: 0 },
+    });
+  });
+
+  it('자동 전환한 곡의 직전 곡은 previous 이력에 남는다', async () => {
+    vi.useFakeTimers();
+    const roomEmit = vi.fn();
+    vi.mocked(getIo).mockReturnValue({ to: vi.fn(() => ({ emit: roomEmit })) } as never);
+    const { service } = makeService();
+    services.push(service);
+    await service.play('room-1', 'host', 0);
+    await vi.advanceTimersByTimeAsync(181_000);
+
+    await expect(service.previousTrack('room-1', 'host')).resolves.toMatchObject({
+      payload: { playlistItemId: 'item-1', currentTime: 0 },
+    });
+    vi.useRealTimers();
+  });
+
+  it('unavailable 처리로 건너뛴 곡은 previous 이력에 추가하지 않는다', async () => {
+    const { service, playlistRepo } = makeService();
+    services.push(service);
+    await service.selectTrack('room-1', 'host', 'item-1');
+    await service.selectTrack('room-1', 'host', 'item-2');
+
+    await expect(service.reportError('room-1', 'host', 'video-2', 100)).resolves.toMatchObject({
+      transition: { payload: { playlistItemId: 'item-3' } },
+    });
+    expect(playlistRepo.markUnavailable).toHaveBeenCalledWith('item-2');
+
+    await expect(service.previousTrack('room-1', 'host')).resolves.toMatchObject({
+      payload: { playlistItemId: 'item-1', currentTime: 0 },
+    });
+  });
+
   it('자동 종료 타이머는 곡 길이와 1초 마진 뒤 다음 곡을 한 번 broadcast한다', async () => {
     vi.useFakeTimers();
     const roomEmit = vi.fn();

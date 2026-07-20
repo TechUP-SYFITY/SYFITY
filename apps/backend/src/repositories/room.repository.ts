@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/prisma/client';
+import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type {
   CreateRoomData,
   IRoomRepository,
@@ -18,10 +18,17 @@ export type RoomTransactionPrisma = {
 
 export type RoomRepositoryPrisma = {
   room: Pick<PrismaClient['room'], 'findUnique' | 'update'>;
-  roomMember: Pick<PrismaClient['roomMember'], 'findUnique' | 'findMany' | 'upsert' | 'updateMany'>;
+  roomMember: Pick<
+    PrismaClient['roomMember'],
+    'create' | 'findUnique' | 'findMany' | 'update' | 'updateMany'
+  >;
   recentRoom: Pick<PrismaClient['recentRoom'], 'upsert'>;
   $transaction: <T>(fn: (tx: RoomTransactionPrisma) => Promise<T>) => Promise<T>;
 };
+
+function isUniqueConstraintFailure(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
 
 export class RoomRepository implements IRoomRepository {
   constructor(private readonly prisma: RoomRepositoryPrisma) {}
@@ -151,29 +158,33 @@ export class RoomRepository implements IRoomRepository {
 
   async upsertMembership(roomId: string, userId: string): Promise<boolean> {
     const now = new Date();
-    const existing = await this.prisma.roomMember.findUnique({
-      where: { roomId_userId: { roomId, userId } },
-      select: { id: true },
-    });
+    try {
+      await this.prisma.roomMember.create({
+        data: {
+          roomId,
+          userId,
+          role: 'member',
+          status: 'offline',
+          joinedAt: now,
+          lastSeenAt: now,
+        },
+      });
+      return true;
+    } catch (error) {
+      if (!isUniqueConstraintFailure(error)) {
+        throw error;
+      }
 
-    await this.prisma.roomMember.upsert({
-      where: { roomId_userId: { roomId, userId } },
-      create: {
-        roomId,
-        userId,
-        role: 'member',
-        status: 'offline',
-        joinedAt: now,
-        lastSeenAt: now,
-      },
-      update: {
-        status: 'offline',
-        lastSeenAt: now,
-        leftAt: null,
-      },
-    });
-
-    return existing === null;
+      await this.prisma.roomMember.update({
+        where: { roomId_userId: { roomId, userId } },
+        data: {
+          status: 'offline',
+          lastSeenAt: now,
+          leftAt: null,
+        },
+      });
+      return false;
+    }
   }
 
   async findMembers(roomId: string): Promise<RoomMemberRecord[]> {

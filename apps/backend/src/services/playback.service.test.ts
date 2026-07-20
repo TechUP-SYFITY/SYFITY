@@ -131,6 +131,66 @@ describe('PlaybackService', () => {
     expect(manual.payload.playlistItemId).toBe('item-2');
   });
 
+  it.each(['off', 'all', 'one'] as const)(
+    '수동 next는 셔플 없이 반복 모드 %s에서 마지막 곡을 첫 곡으로 순환한다',
+    async (repeatMode) => {
+      const { service } = makeService();
+      services.push(service);
+      await service.selectTrack('room-1', 'host', 'item-3');
+      await service.updateSettings('room-1', 'host', { repeatMode });
+
+      await expect(service.nextTrack('room-1', 'host')).resolves.toMatchObject({
+        payload: { playlistItemId: 'item-1', isPlaying: true },
+      });
+    },
+  );
+
+  it('수동 next는 셔플 큐를 순서대로 소비한다', async () => {
+    const { service, values } = makeService();
+    services.push(service);
+    await service.play('room-1', 'host', 0);
+    await service.updateSettings('room-1', 'host', { shuffleEnabled: true });
+    const sessionBefore = [...values.values()][0] as { remainingPlaylistItemIds: string[] };
+    const [expectedItemId, ...expectedRemainingQueue] = sessionBefore.remainingPlaylistItemIds;
+
+    await expect(service.nextTrack('room-1', 'host')).resolves.toMatchObject({
+      payload: { playlistItemId: expectedItemId },
+    });
+    const sessionAfter = [...values.values()][0] as { remainingPlaylistItemIds: string[] };
+    expect(sessionAfter.remainingPlaylistItemIds).toEqual(expectedRemainingQueue);
+  });
+
+  it.each(['off', 'all', 'one'] as const)(
+    '수동 next는 셔플 큐 소진 뒤 반복 모드 %s에서 현재 곡을 건너뛴 새 사이클을 만든다',
+    async (repeatMode) => {
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValueOnce(0);
+      const { service, values } = makeService();
+      services.push(service);
+      await service.selectTrack('room-1', 'host', 'item-1');
+      await service.updateSettings('room-1', 'host', { repeatMode, shuffleEnabled: true });
+      await service.nextTrack('room-1', 'host');
+      await service.nextTrack('room-1', 'host');
+      const exhaustedSession = [...values.values()][0] as {
+        playlistItemId: string;
+        remainingPlaylistItemIds: string[];
+        shuffleCycle: number;
+      };
+      expect(exhaustedSession.remainingPlaylistItemIds).toEqual([]);
+
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0);
+      const result = await service.nextTrack('room-1', 'host');
+      const nextSession = [...values.values()][0] as {
+        remainingPlaylistItemIds: string[];
+        shuffleCycle: number;
+      };
+
+      expect(result.payload.playlistItemId).not.toBe(exhaustedSession.playlistItemId);
+      expect(nextSession.shuffleCycle).toBe(2);
+      expect(nextSession.remainingPlaylistItemIds).toHaveLength(1);
+      randomSpy.mockRestore();
+    },
+  );
+
   it('셔플 큐는 현재 곡을 제외한 중복 없는 남은 곡을 만든다', async () => {
     const { service, values } = makeService();
     services.push(service);

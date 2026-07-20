@@ -509,7 +509,11 @@ export class PlaybackService {
         return { itemId: itemId!, remainingQueue, cycle: session.shuffleCycle };
       }
       if (session.repeatMode === 'all' || !options.honorRepeatOne) {
-        const [itemId, ...remainingQueue] = buildShuffleQueue(available.map((item) => item.id));
+        const cycleItems =
+          available.length > 1
+            ? available.filter((item) => item.id !== session.playlistItemId)
+            : available;
+        const [itemId, ...remainingQueue] = buildShuffleQueue(cycleItems.map((item) => item.id));
         return itemId ? { itemId, remainingQueue, cycle: session.shuffleCycle + 1 } : null;
       }
       return null;

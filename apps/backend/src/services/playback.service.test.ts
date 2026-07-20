@@ -202,6 +202,29 @@ describe('PlaybackService', () => {
     expect(session.remainingPlaylistItemIds).not.toContain('item-1');
   });
 
+  it('셔플을 끄면 남은 큐·재생 이력·사이클을 모두 초기화한다', async () => {
+    const { service, values } = makeService();
+    services.push(service);
+    await service.play('room-1', 'host', 0);
+    await service.updateSettings('room-1', 'host', { shuffleEnabled: true });
+    await service.nextTrack('room-1', 'host');
+
+    await service.updateSettings('room-1', 'host', { shuffleEnabled: false });
+
+    const session = [...values.values()][0] as {
+      shuffleEnabled: boolean;
+      remainingPlaylistItemIds: string[];
+      playbackHistoryItemIds: string[];
+      shuffleCycle: number;
+    };
+    expect(session).toMatchObject({
+      shuffleEnabled: false,
+      remainingPlaylistItemIds: [],
+      playbackHistoryItemIds: [],
+      shuffleCycle: 0,
+    });
+  });
+
   it('셔플 중 추가한 곡을 남은 큐에 정확히 한 번 삽입한다', async () => {
     const { service, values } = makeService();
     services.push(service);

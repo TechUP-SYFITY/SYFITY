@@ -22,6 +22,8 @@ import { usePlaylistStore } from '../store/playlistStore';
 interface PlaylistPanelProps {
   canControlRoom: boolean;
   currentPlaylistItemId: string | null;
+  currentUserId?: string;
+  isActiveRoomMember: boolean;
   playlistItems?: PlaylistItem[];
   roomId: string;
   isHost: boolean;
@@ -33,6 +35,8 @@ interface PlaylistPanelProps {
 export function PlaylistPanel({
   canControlRoom,
   currentPlaylistItemId,
+  currentUserId,
+  isActiveRoomMember,
   playlistItems,
   roomId,
   isHost,
@@ -65,7 +69,7 @@ export function PlaylistPanel({
   };
 
   const handleOpenSearch = () => {
-    if (!canControlRoom) {
+    if (!isActiveRoomMember) {
       return;
     }
 
@@ -106,8 +110,18 @@ export function PlaylistPanel({
     playlist: visiblePlaylist,
   });
 
+  const canDeleteItem = (item: PlaylistItem) => {
+    if (isHost) {
+      return canControlRoom;
+    }
+
+    return isActiveRoomMember && item.addedBy === currentUserId;
+  };
+
   const handleDelete = (itemId: string) => {
-    if (!canControlRoom) {
+    const item = visiblePlaylist.find((candidate) => candidate.id === itemId);
+
+    if (!item || !canDeleteItem(item)) {
       return;
     }
 
@@ -118,7 +132,7 @@ export function PlaylistPanel({
   return (
     <aside className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border bg-background">
       <PlaylistPanelHeader
-        disabled={!canControlRoom}
+        disabled={!isActiveRoomMember}
         isBackgroundFetching={isBackgroundFetching}
         itemCount={visiblePlaylist.length}
         onAddClick={handleOpenSearch}
@@ -135,7 +149,10 @@ export function PlaylistPanel({
           />
         ) : null}
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
-          <PlaylistEmptyState isReady={isReady && canControlRoom} onAddClick={handleOpenSearch} />
+          <PlaylistEmptyState
+            isReady={isReady && isActiveRoomMember}
+            onAddClick={handleOpenSearch}
+          />
         ) : null}
         {visiblePlaylist.map((item) => {
           const isCurrent = item.id === currentPlaylistItemId;
@@ -144,12 +161,14 @@ export function PlaylistPanel({
             <PlaylistItemRow
               key={item.id}
               isCurrent={isCurrent}
+              isDeleteEnabled={canDeleteItem(item)}
               isDeletePending={deletePlaylistItem.isPending}
               isDragging={draggingItemId === item.id}
               isFocused={focusedActionItemId === item.id}
               isHost={isHost}
-              isControlEnabled={canControlRoom}
+              isOwnItem={item.addedBy === currentUserId}
               isReady={isReady}
+              isReorderEnabled={canControlRoom}
               item={item}
               onBlurWithin={(event) => handleRowBlur(event, item.id)}
               onDelete={handleDelete}
@@ -172,7 +191,7 @@ export function PlaylistPanel({
       <Button
         className="absolute right-5 bottom-5 z-30 rounded-2xl shadow-lg xl:hidden"
         type="button"
-        disabled={!canControlRoom}
+        disabled={!isActiveRoomMember}
         onClick={handleOpenSearch}
       >
         <Plus className="size-4" aria-hidden />곡 추가

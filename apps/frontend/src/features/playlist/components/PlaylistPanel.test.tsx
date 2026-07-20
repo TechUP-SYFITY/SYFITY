@@ -58,6 +58,8 @@ function createQueryClient() {
 function renderPlaylistPanel(options?: {
   canControlRoom?: boolean;
   currentPlaylistItemId?: string;
+  currentUserId?: string;
+  isActiveRoomMember?: boolean;
   isHost?: boolean;
   playlistItems?: PlaylistItem[];
   queryClient?: QueryClient;
@@ -69,6 +71,8 @@ function renderPlaylistPanel(options?: {
       <PlaylistPanel
         canControlRoom={options?.canControlRoom ?? true}
         currentPlaylistItemId={options?.currentPlaylistItemId ?? availableItem.id}
+        currentUserId={options?.currentUserId}
+        isActiveRoomMember={options?.isActiveRoomMember ?? true}
         playlistItems={options?.playlistItems}
         roomId={roomId}
         isHost={options?.isHost ?? true}
@@ -238,6 +242,7 @@ describe('PlaylistPanel', () => {
         <PlaylistPanel
           canControlRoom={false}
           currentPlaylistItemId={availableItem.id}
+          isActiveRoomMember={false}
           playlistItems={[availableItem]}
           roomId={roomId}
           isHost
@@ -254,6 +259,64 @@ describe('PlaylistPanel', () => {
     screen
       .getAllByRole('button', { name: /곡 추가|추가/ })
       .forEach((button) => expect(button).toBeDisabled());
+  });
+
+  it('Member는 Room 조작 권한이 없어도 곡을 추가할 수 있다', () => {
+    const onOpenSearch = vi.fn();
+
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <PlaylistPanel
+          canControlRoom={false}
+          currentPlaylistItemId={availableItem.id}
+          isActiveRoomMember
+          playlistItems={[availableItem]}
+          roomId={roomId}
+          isHost={false}
+          isReady
+          onOpenSearch={onOpenSearch}
+        />
+      </QueryClientProvider>,
+    );
+
+    screen
+      .getAllByRole('button', { name: /곡 추가|추가/ })
+      .forEach((button) => expect(button).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+    expect(onOpenSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it('Member는 자신이 추가한 곡을 삭제할 수 있다', async () => {
+    vi.mocked(playlistApi.deletePlaylistItem).mockResolvedValue(undefined);
+
+    renderPlaylistPanel({
+      canControlRoom: false,
+      currentUserId: availableItem.addedBy,
+      isHost: false,
+      playlistItems: [availableItem],
+    });
+
+    fireEvent.focus(screen.getByTestId(`playlist-row-${availableItem.id}`));
+    fireEvent.click(screen.getByRole('button', { name: 'Song One 삭제' }));
+
+    await waitFor(() => {
+      expect(playlistApi.deletePlaylistItem).toHaveBeenCalledWith(roomId, availableItem.id);
+    });
+  });
+
+  it('Member는 다른 사람이 추가한 곡의 삭제 버튼을 볼 수 없다', () => {
+    renderPlaylistPanel({
+      canControlRoom: false,
+      currentUserId: 'someone-else',
+      isHost: false,
+      playlistItems: [availableItem],
+    });
+
+    fireEvent.focus(screen.getByTestId(`playlist-row-${availableItem.id}`));
+
+    expect(screen.queryByRole('button', { name: 'Song One 삭제' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Song One 순서 변경' })).not.toBeInTheDocument();
   });
 });
 

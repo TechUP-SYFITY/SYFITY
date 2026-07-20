@@ -87,6 +87,7 @@ describe('PlaylistPanel reorder', () => {
           <PlaylistPanel
             canControlRoom
             currentPlaylistItemId={firstItem.id}
+            isActiveRoomMember
             playlistItems={[firstItem, secondItem]}
             roomId={roomId}
             isHost
@@ -148,6 +149,7 @@ describe('PlaylistPanel reorder', () => {
         <PlaylistPanel
           canControlRoom
           currentPlaylistItemId={firstItem.id}
+          isActiveRoomMember
           playlistItems={[firstItem, secondItem]}
           roomId={roomId}
           isHost

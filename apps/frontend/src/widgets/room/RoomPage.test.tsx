@@ -188,6 +188,39 @@ describe('RoomPage', () => {
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
   });
 
+  it('Host 재접속 중에도 Member는 곡을 추가하고 본인 곡을 삭제할 수 있다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            email: 'jimin@example.com',
+            id: 'fallback-member-1',
+            nickname: '지민',
+            profileImage: null,
+          },
+        } satisfies UserProfileResponse),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+
+    act(() => {
+      useRoomStore.getState().markHostDisconnected('2099-01-01T00:00:00.000Z');
+    });
+
+    expect(screen.getByRole('button', { name: '추가' })).toBeEnabled();
+    fireEvent.focus(screen.getByTestId('playlist-row-fallback-dynamite'));
+    expect(screen.getByRole('button', { name: 'Dynamite 삭제' })).toBeEnabled();
+  });
+
   it('Host 연결 상태에 따라 안내와 제어 권한을 전환한다', async () => {
     const Wrapper = createWrapper();
 

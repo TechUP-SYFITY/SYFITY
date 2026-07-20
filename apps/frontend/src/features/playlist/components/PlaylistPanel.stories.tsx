@@ -58,6 +58,7 @@ const meta = {
   args: {
     canControlRoom: true,
     currentPlaylistItemId: 'story-night-changes',
+    isActiveRoomMember: true,
     roomId,
     isHost: true,
     isReady: true,
@@ -165,12 +166,18 @@ export const MemberView: Story = {
     isHost: false,
   },
   decorators: [withPlaylistStoryFrame()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByRole('button', { name: '곡 추가' })).toBeEnabled();
+  },
 };
 
 export const HostControlsDisabled: Story = {
   args: {
     canControlRoom: false,
     isHost: true,
+    isActiveRoomMember: false,
     isReady: false,
     playlistItems,
   },

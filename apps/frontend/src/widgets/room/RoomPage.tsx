@@ -73,7 +73,10 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   const addSearchResult = useAddPlaylistItem(roomId);
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
-  const canControlRoom = isHost && hostConnection.status === 'connected';
+  const isRoomConnectionStable = hostConnection.status === 'connected';
+  const canControlRoom = isHost && isRoomConnectionStable;
+  // 곡 추가와 Member 본인 곡 삭제는 Host 연결 상태와 무관하게 활성 멤버에게 허용된다.
+  const isActiveRoomMember = hasJoinedRoom;
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const { nextItem, previousItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
   const currentTime =
@@ -191,6 +194,8 @@ function RoomPageContent({ roomId }: RoomPageProps) {
           <PlaylistPanel
             canControlRoom={canControlRoom}
             currentPlaylistItemId={currentTrack?.id ?? null}
+            currentUserId={me?.id}
+            isActiveRoomMember={isActiveRoomMember}
             roomId={roomId}
             isHost={isHost}
             isReady={hasJoinedRoom}

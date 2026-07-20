@@ -82,12 +82,10 @@ function makePlaybackService(
   overrides: Partial<RoomHandlerPlaybackService> = {},
 ): RoomHandlerPlaybackService {
   return {
-    getSnapshotForSocket: vi
-      .fn()
-      .mockResolvedValue({
-        playbackState,
-        playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
-      }),
+    getSnapshotForSocket: vi.fn().mockResolvedValue({
+      playbackState,
+      playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+    }),
     ...overrides,
   };
 }
@@ -220,6 +218,25 @@ describe('registerRoomHandlers', () => {
     });
     expect(ack).toHaveBeenCalledWith({ success: true });
     expect(socketEmit.mock.invocationCallOrder[0]).toBeLessThan(ack.mock.invocationCallOrder[0]);
+  });
+
+  it('room:joined에 세션의 비기본 재생 정책을 그대로 담는다', async () => {
+    const { io } = makeIo();
+    const { socket, handlers, socketEmit } = makeSocket();
+    const playbackService = makePlaybackService({
+      getSnapshotForSocket: vi.fn().mockResolvedValue({
+        playbackState,
+        playbackPolicy: { repeatMode: 'all', shuffleEnabled: true },
+      }),
+    });
+
+    registerRoomHandlers(io, socket, { roomService: makeRoomService(), playbackService });
+    await getJoinHandler(handlers)({ roomId: 'room-1' }, vi.fn());
+
+    expect(socketEmit).toHaveBeenCalledWith(
+      'room:joined',
+      expect.objectContaining({ playbackPolicy: { repeatMode: 'all', shuffleEnabled: true } }),
+    );
   });
 
   it('room:join에서 이미 online 상태면 시스템 메시지를 생성하지 않는다', async () => {

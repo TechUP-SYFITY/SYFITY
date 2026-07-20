@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PlaybackService } from './playback.service';
 import type { ICache } from '../lib/cache/cache.interface';
+import { getIo } from '../lib/io';
 import { PlaybackSessionStore } from '../lib/playback/playback-session.store';
 import type { PlaylistItemRecord } from '../types/playlist';
+
+vi.mock('../lib/io', () => ({ getIo: vi.fn() }));
 
 const playlist: PlaylistItemRecord[] = [
   {
@@ -130,5 +133,58 @@ describe('PlaybackService', () => {
     services.push(service);
     await service.play('room-1', 'host', 0);
     await expect(service.reportEnded('room-1', 'host', 'item-1', 0)).resolves.toBeNull();
+  });
+
+  it('3초 미만이고 이력이 있으면 이전 곡으로 이동하고, 3초 이상이면 현재 곡을 재시작한다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-20T00:00:00.000Z'));
+    const { service } = makeService();
+    services.push(service);
+    await service.play('room-1', 'host', 0);
+    await service.nextTrack('room-1', 'host');
+
+    await expect(service.previousTrack('room-1', 'host')).resolves.toMatchObject({
+      payload: { playlistItemId: 'item-1', currentTime: 0 },
+    });
+
+    await service.nextTrack('room-1', 'host');
+    vi.setSystemTime(new Date('2026-07-20T00:00:04.000Z'));
+    await expect(service.previousTrack('room-1', 'host')).resolves.toMatchObject({
+      payload: { playlistItemId: 'item-2', currentTime: 0 },
+    });
+    vi.useRealTimers();
+  });
+
+  it('자동 종료 타이머는 곡 길이와 1초 마진 뒤 다음 곡을 한 번 broadcast한다', async () => {
+    vi.useFakeTimers();
+    const roomEmit = vi.fn();
+    vi.mocked(getIo).mockReturnValue({ to: vi.fn(() => ({ emit: roomEmit })) } as never);
+    const { service } = makeService();
+    services.push(service);
+    await service.play('room-1', 'host', 0);
+
+    await vi.advanceTimersByTimeAsync(181_000);
+
+    expect(roomEmit).toHaveBeenCalledWith(
+      'playback:change-track',
+      expect.objectContaining({ playlistItemId: 'item-2', playbackVersion: 2 }),
+    );
+    vi.useRealTimers();
+  });
+
+  it('종료 보고가 먼저 전환하면 stale 자동 종료 타이머는 다시 broadcast하지 않는다', async () => {
+    vi.useFakeTimers();
+    const roomEmit = vi.fn();
+    vi.mocked(getIo).mockReturnValue({ to: vi.fn(() => ({ emit: roomEmit })) } as never);
+    const { service } = makeService();
+    services.push(service);
+    const first = await service.play('room-1', 'host', 0);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await service.reportEnded('room-1', 'host', 'item-1', first.payload.playbackVersion);
+
+    await vi.advanceTimersByTimeAsync(180_000);
+
+    expect(roomEmit).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });

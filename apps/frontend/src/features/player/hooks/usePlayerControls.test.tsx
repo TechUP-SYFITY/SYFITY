@@ -15,6 +15,7 @@ vi.mock('../lib/playbackCommands', () => ({
     play: vi.fn(),
     requestSync: vi.fn(),
     seek: vi.fn(),
+    updateSettings: vi.fn(),
   },
 }));
 
@@ -28,6 +29,7 @@ describe('usePlayerControls', () => {
     vi.mocked(playbackCommands.pause).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.play).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.seek).mockResolvedValue(undefined);
+    vi.mocked(playbackCommands.updateSettings).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -53,6 +55,35 @@ describe('usePlayerControls', () => {
 
     await waitFor(() => {
       expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'previous');
+    });
+  });
+
+  it('반복과 셔플 토글을 현재 정책 기준으로 서버에 요청한다', async () => {
+    usePlayerStore.getState().setPlaybackPolicy({ repeatMode: 'all', shuffleEnabled: false });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 0,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleRepeatToggle();
+    });
+    await waitFor(() => {
+      expect(playbackCommands.updateSettings).toHaveBeenCalledWith(roomId, { repeatMode: 'one' });
+    });
+
+    act(() => {
+      result.current.handleShuffleToggle();
+    });
+    await waitFor(() => {
+      expect(playbackCommands.updateSettings).toHaveBeenCalledWith(roomId, {
+        shuffleEnabled: true,
+      });
     });
   });
 

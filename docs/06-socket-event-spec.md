@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                 |
 | --------- | ------------------------------------------------------------------------------------ |
 | 문서명    | Syfity Socket Event Spec                                                             |
-| 버전      | v2.0                                                                                 |
-| 상태      | 인메모리 재생 세션, 반복·셔플, Room 종료·추방 정책으로 재구성                        |
+| 버전      | v2.1                                                                                 |
+| 상태      | Member 로컬 재개 동기화 흐름을 반영한 재생·Room 이벤트 계약                          |
 | 작성 목적 | Syfity Socket.IO 이벤트 계약 정의                                                    |
 | 기반 문서 | `01-prd.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `05-api-spec.md` |
 
@@ -62,19 +62,19 @@ Host disconnect   → 1분 내 재접속 시 복귀 / 미복귀 시 Room closed
 
 ### C→S
 
-| 이벤트                     | ack | 설명                            |
-| -------------------------- | --- | ------------------------------- |
-| `room:join`                | O   | Socket Room 입장·snapshot 요청  |
-| `room:leave`               | X   | 명시적 퇴장                     |
-| `playback:play`            | O   | 재생 요청 (Host)                |
-| `playback:pause`           | O   | 일시정지 요청 (Host)            |
-| `playback:seek`            | O   | seek 요청 (Host)                |
-| `playback:change-track`    | O   | 직접 선택·다음·이전 요청 (Host) |
-| `playback:update-settings` | O   | 반복·셔플 설정 변경 (Host)      |
-| `playback:ended`           | O   | Host Player 종료 감지 알림      |
-| `playback:error`           | O   | Host Player 재생 실패 알림      |
-| `playback:sync-request`    | X   | 버퍼링 뒤 최신 재생 상태 요청   |
-| `chat:send`                | O   | 채팅 전송                       |
+| 이벤트                     | ack | 설명                                                        |
+| -------------------------- | --- | ----------------------------------------------------------- |
+| `room:join`                | O   | Socket Room 입장·snapshot 요청                              |
+| `room:leave`               | X   | 명시적 퇴장                                                 |
+| `playback:play`            | O   | 재생 요청 (Host)                                            |
+| `playback:pause`           | O   | 일시정지 요청 (Host)                                        |
+| `playback:seek`            | O   | seek 요청 (Host)                                            |
+| `playback:change-track`    | O   | 직접 선택·다음·이전 요청 (Host)                             |
+| `playback:update-settings` | O   | 반복·셔플 설정 변경 (Host)                                  |
+| `playback:ended`           | O   | Host Player 종료 감지 알림                                  |
+| `playback:error`           | O   | Host Player 재생 실패 알림                                  |
+| `playback:sync-request`    | X   | 버퍼링·광고 뒤 또는 Member 로컬 재개 시 최신 재생 상태 요청 |
+| `chat:send`                | O   | 채팅 전송                                                   |
 
 Playlist 추가·삭제·순서 변경·개인 Playlist 불러오기는 REST API 처리 뒤 `playlist:updated`로 전파한다.
 
@@ -303,7 +303,7 @@ Host Player가 `ENDED` 상태를 감지하면 보낸다.
 
 재생 중인 active Room에서 서버가 10초마다 `playback:tick`을 전파한다. Client는 Player 오차가 2초 이상일 때만 seek한다.
 
-버퍼링 또는 광고 뒤 Player가 재생 가능해지면 ack 없이 아래 요청을 보낸다.
+버퍼링 또는 광고 뒤 Player가 재생 가능해지거나, Member가 로컬 재생 동기화를 재개할 때 ack 없이 아래 요청을 보낸다. Member의 로컬 정지·재개는 Room 전체 재생 상태를 변경하지 않으며, 요청 Socket만 최신 상태를 받아 다시 동기화한다.
 
 ```ts
 // C→S

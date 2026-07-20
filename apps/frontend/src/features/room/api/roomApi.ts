@@ -4,8 +4,8 @@ import { apiClient } from '@/shared/lib/api/apiClient';
 import type {
   CreateRoomRequest,
   CreateRoomResponse,
-  JoinRoomRequest,
-  JoinRoomResponse,
+  CreateRoomMembershipRequest,
+  CreateRoomMembershipResponse,
   RecentRoomsResponse,
   RoomResponse,
   UpdateRoomRequest,
@@ -13,11 +13,11 @@ import type {
 } from '../types/roomTypes';
 
 export const roomApi = {
-  closeRoom: (roomId: string) => apiClient.post<{ message: string }>(`/rooms/${roomId}/close`),
+  createRoomMembership: (body: CreateRoomMembershipRequest) =>
+    apiClient.post<CreateRoomMembershipResponse>('/room-memberships', body),
   createRoom: (body: CreateRoomRequest) => apiClient.post<CreateRoomResponse>('/rooms', body),
   getRecentRooms: () => apiClient.get<RecentRoomsResponse>('/rooms/recent'),
   getRoom: (roomId: string) => apiClient.get<RoomResponse>(`/rooms/${roomId}`),
-  joinRoom: (body: JoinRoomRequest) => apiClient.post<JoinRoomResponse>('/rooms/join', body),
   updateRoom: (roomId: string, body: UpdateRoomRequest) =>
     apiClient.patch<UpdateRoomResponse>(`/rooms/${roomId}`, body),
 };

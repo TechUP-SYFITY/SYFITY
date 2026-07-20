@@ -12,11 +12,12 @@ import type { ChatMessageRecord, IChatRepository } from '../types/chat';
 import type { IPlaylistRepository } from '../types/playlist';
 import type {
   IRoomRepository,
-  JoinRoomResult,
+  CreateMembershipResult,
   LeaveRoomResult,
   RoomDetailRecord,
   RoomMemberRecord,
   RoomRecord,
+  RoomSnapshotResult,
   RoomUpdateRecord,
 } from '../types/room';
 import type { RoomClosedPayload } from '../types/socket';
@@ -32,10 +33,7 @@ export class RoomService {
     private readonly cache: ICache,
     private readonly playlistRepo: Pick<IPlaylistRepository, 'getPlaylist'>,
     private readonly chatRepo: Pick<IChatRepository, 'findLatestChats' | 'createMessage'>,
-    private readonly playbackService: Pick<
-      PlaybackService,
-      'getPlaybackStateForJoin' | 'initializeCache' | 'clearCache'
-    >,
+    private readonly playbackService: Pick<PlaybackService, 'initializeCache' | 'clearCache'>,
   ) {}
 
   async createRoom(userId: string, name: string): Promise<RoomRecord> {
@@ -48,7 +46,7 @@ export class RoomService {
     return room;
   }
 
-  async joinRoom(userId: string, inviteCode: string): Promise<JoinRoomResult> {
+  async createMembership(userId: string, inviteCode: string): Promise<CreateMembershipResult> {
     const room = await this.roomRepo.findRoomByInviteCode(inviteCode);
     if (!room) {
       throw new AppError(404, ERROR_CODES.ROOM_NOT_FOUND, '존재하지 않는 Room입니다.');
@@ -60,23 +58,20 @@ export class RoomService {
       throw new AppError(403, ERROR_CODES.ROOM_INACTIVE, '비활성화된 Room입니다.');
     }
 
-    await this.roomRepo.upsertMembership(room.id, userId);
+    const isNewMembership = await this.roomRepo.upsertMembership(room.id, userId);
     await this.roomRepo.upsertRecentRoom(userId, room.id);
 
-    const [playbackState, playlist, members, recentChats] = await Promise.all([
-      this.playbackService.getPlaybackStateForJoin(room.id),
-      this.playlistRepo.getPlaylist(room.id),
-      this.roomRepo.findMembers(room.id),
-      this.chatRepo.findLatestChats(room.id, RECENT_CHAT_LIMIT),
+    return { room, isNewMembership };
+  }
+
+  async getRoomSnapshot(roomId: string): Promise<RoomSnapshotResult> {
+    const [playlist, members, recentChats] = await Promise.all([
+      this.playlistRepo.getPlaylist(roomId),
+      this.roomRepo.findMembers(roomId),
+      this.chatRepo.findLatestChats(roomId, RECENT_CHAT_LIMIT),
     ]);
 
-    return {
-      room,
-      playbackState,
-      playlist,
-      members,
-      recentChats,
-    };
+    return { playlist, members, recentChats };
   }
 
   async getRoomInfo(roomId: string, userId: string): Promise<RoomDetailRecord> {
@@ -93,7 +88,11 @@ export class RoomService {
     return room;
   }
 
-  async updateRoom(roomId: string, userId: string, name: string): Promise<RoomUpdateRecord> {
+  async updateRoom(
+    roomId: string,
+    userId: string,
+    body: { name: string } | { status: 'closed' },
+  ): Promise<RoomUpdateRecord> {
     const room = await this.roomRepo.findRoomById(roomId);
     if (!room) {
       throw new AppError(404, ERROR_CODES.ROOM_NOT_FOUND, '존재하지 않는 Room입니다.');
@@ -102,7 +101,11 @@ export class RoomService {
       throw new AppError(403, ERROR_CODES.AUTH_FORBIDDEN, 'Host만 Room 정보를 수정할 수 있습니다.');
     }
 
-    return this.roomRepo.updateRoomName(roomId, name);
+    if ('status' in body) {
+      return this.closeRoomAndBroadcast(roomId, userId);
+    }
+
+    return this.roomRepo.updateRoomName(roomId, body.name);
   }
 
   async setMemberOnline(
@@ -144,16 +147,16 @@ export class RoomService {
     return { type: 'left', member };
   }
 
-  async closeRoom(roomId: string, userId: string): Promise<RoomDetailRecord> {
+  async closeRoom(roomId: string, userId: string): Promise<RoomUpdateRecord> {
     const room = await assertActiveRoomMember(this.roomRepo, roomId, userId);
     if (room.hostId !== userId) {
       throw new AppError(403, ERROR_CODES.AUTH_FORBIDDEN, 'Host만 Room을 종료할 수 있습니다.');
     }
 
-    await this.roomRepo.closeRoom(roomId);
+    const closedRoom = await this.roomRepo.closeRoom(roomId);
     this.playbackService.clearCache(roomId);
 
-    return room;
+    return closedRoom;
   }
 
   async createSystemMessage(roomId: string, message: string): Promise<ChatMessageRecord | null> {
@@ -171,9 +174,9 @@ export class RoomService {
     }
   }
 
-  async closeRoomAndBroadcast(roomId: string, userId: string): Promise<void> {
+  async closeRoomAndBroadcast(roomId: string, userId: string): Promise<RoomUpdateRecord> {
     const io = getIo();
-    await this.closeRoom(roomId, userId);
+    const room = await this.closeRoom(roomId, userId);
 
     const systemMessage = await this.createSystemMessage(roomId, 'Room이 종료되었습니다.');
     if (systemMessage) {
@@ -183,6 +186,7 @@ export class RoomService {
     const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
     broadcastToRoom(roomId, 'room:closed', payload);
     io.socketsLeave(`room:${roomId}`);
+    return room;
   }
 
   private async generateUniqueInviteCode(): Promise<string> {

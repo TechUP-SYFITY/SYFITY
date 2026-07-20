@@ -98,19 +98,28 @@ describe('chatStore', () => {
     expect(useChatStore.getState().messages).toEqual([olderMessage, firstMessage, secondMessage]);
   });
 
-  it('reconcileOptimisticMessage는 ack가 먼저 온 경우 tempId 메시지의 id와 createdAt을 패치한다', () => {
+  it('reconcileOptimisticMessage는 ack의 서버 메시지 전체로 tempId 메시지를 교체한다', () => {
     useChatStore.getState().setMessages([optimisticMessage]);
 
     useChatStore.getState().reconcileOptimisticMessage('temp-chat-1', {
       createdAt: '2026-07-01T10:15:00.000Z',
       id: 'chat-3',
+      userId: 'user-3',
+      nickname: '마스킹된 사용자',
+      profileImage: null,
+      type: 'user',
+      message: '***',
     });
 
     expect(useChatStore.getState().messages).toEqual([
       {
-        ...optimisticMessage,
         createdAt: '2026-07-01T10:15:00.000Z',
         id: 'chat-3',
+        userId: 'user-3',
+        nickname: '마스킹된 사용자',
+        profileImage: null,
+        type: 'user',
+        message: '***',
       },
     ]);
   });
@@ -126,6 +135,11 @@ describe('chatStore', () => {
     useChatStore.getState().reconcileOptimisticMessage('temp-chat-1', {
       createdAt: receivedMessage.createdAt,
       id: receivedMessage.id,
+      userId: receivedMessage.userId,
+      nickname: receivedMessage.nickname,
+      profileImage: receivedMessage.profileImage,
+      type: receivedMessage.type,
+      message: receivedMessage.message,
     });
 
     expect(useChatStore.getState().messages).toEqual([receivedMessage]);

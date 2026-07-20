@@ -304,6 +304,11 @@ describe('chatHooks', () => {
         data: {
           createdAt: '2026-07-01T10:15:00.000Z',
           id: 'chat-2',
+          userId: 'user-1',
+          nickname: '민지',
+          profileImage: 'https://example.com/me.jpg',
+          type: 'user',
+          message: '안녕하세요',
         },
       });
     });

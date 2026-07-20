@@ -315,18 +315,6 @@ describe('PlaybackService', () => {
     });
   });
 
-  it('join용 조회는 DB 원본에서 updatedAt 포함 결과를 반환한다', async () => {
-    const { service } = makeFixture();
-
-    await expect(service.getPlaybackStateForJoin('room-1')).resolves.toEqual({
-      videoId: 'video-1',
-      playlistItemId: 'playlist-item-1',
-      currentTime: 30,
-      isPlaying: false,
-      updatedAt: '2026-07-01T12:00:10.000Z',
-    });
-  });
-
   it('play는 선택된 트랙이 있으면 상태를 재생 중으로 갱신한다', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-01T12:10:00.000Z'));

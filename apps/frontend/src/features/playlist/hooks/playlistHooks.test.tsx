@@ -99,9 +99,7 @@ describe('playlistHooks', () => {
   it('곡 삭제 성공 시 삭제된 곡을 store와 query cache에서 제거한다', async () => {
     const queryClient = createQueryClient();
     seedPlaylist(queryClient, [firstItem, secondItem]);
-    vi.mocked(playlistApi.deletePlaylistItem).mockResolvedValue({
-      message: 'playlist item deleted',
-    });
+    vi.mocked(playlistApi.deletePlaylistItem).mockResolvedValue(undefined);
     const { result } = renderHook(() => useDeletePlaylistItem(roomId), {
       wrapper: createWrapper(queryClient),
     });
@@ -133,7 +131,7 @@ describe('playlistHooks', () => {
   it('순서 변경 성공 시 store와 query cache에 새 순서를 반영한다', async () => {
     const queryClient = createQueryClient();
     seedPlaylist(queryClient, [firstItem, secondItem]);
-    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue({ message: 'playlist reordered' });
+    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue(undefined);
     const { result } = renderHook(() => useReorderPlaylist(roomId), {
       wrapper: createWrapper(queryClient),
     });

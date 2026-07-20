@@ -12,10 +12,10 @@ export const playlistApi = {
   addPlaylistItem: (roomId: string, body: AddPlaylistItemRequest) =>
     apiClient.post<AddPlaylistItemResponse>(`/rooms/${roomId}/playlist`, body),
   deletePlaylistItem: (roomId: string, itemId: string) =>
-    apiClient.delete<{ message: string }>(`/rooms/${roomId}/playlist/${itemId}`),
+    apiClient.delete<void>(`/rooms/${roomId}/playlist/${itemId}`),
   getPlaylist: (roomId: string) => apiClient.get<PlaylistResponse>(`/rooms/${roomId}/playlist`),
   reorderPlaylist: (roomId: string, body: ReorderPlaylistRequest) =>
-    apiClient.patch<{ message: string }>(`/rooms/${roomId}/playlist/reorder`, body),
+    apiClient.patch<void>(`/rooms/${roomId}/playlist`, body),
 };
 
 export type PlaylistApi = typeof playlistApi;

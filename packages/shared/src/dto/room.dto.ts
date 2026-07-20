@@ -1,5 +1,3 @@
-import type { PlaylistItem } from './playlist.dto';
-
 export type CreateRoomRequest = {
   /**
    * @minLength 1
@@ -19,11 +17,11 @@ export type CreateRoomResponse = {
   };
 };
 
-export type JoinRoomRequest = {
+export type CreateRoomMembershipRequest = {
   inviteCode: string;
 };
 
-export type JoinRoomResponse = {
+export type CreateRoomMembershipResponse = {
   success: true;
   data: {
     room: {
@@ -33,31 +31,6 @@ export type JoinRoomResponse = {
       inviteCode: string;
       hostId: string;
     };
-    playbackState: {
-      videoId: string | null;
-      playlistItemId: string | null;
-      currentTime: number;
-      isPlaying: boolean;
-      updatedAt: string;
-    };
-    playlist: PlaylistItem[];
-    members: Array<{
-      id: string;
-      userId: string;
-      nickname: string;
-      profileImage: string | null;
-      role: 'host' | 'member' | 'guest';
-      status: 'online' | 'offline' | 'left';
-    }>;
-    recentChats: Array<{
-      id: string;
-      userId: string | null;
-      nickname: string | null;
-      profileImage: string | null;
-      type: 'user' | 'system';
-      message: string;
-      createdAt: string;
-    }>;
   };
 };
 
@@ -73,26 +46,23 @@ export type GetRoomResponse = {
   };
 };
 
-export type UpdateRoomRequest = {
-  /**
-   * @minLength 1
-   * @maxLength 50
-   */
-  name: string;
-};
+export type UpdateRoomRequest =
+  | {
+      /**
+       * @minLength 1
+       * @maxLength 50
+       */
+      name: string;
+    }
+  | { status: 'closed' };
 
 export type UpdateRoomResponse = {
   success: true;
   data: {
     id: string;
     name: string;
+    status: 'active' | 'inactive' | 'closed';
+    closedAt: string | null;
     updatedAt: string;
-  };
-};
-
-export type CloseRoomResponse = {
-  success: true;
-  data: {
-    message: string;
   };
 };

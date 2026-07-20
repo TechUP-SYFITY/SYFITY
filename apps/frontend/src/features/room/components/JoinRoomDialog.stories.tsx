@@ -47,7 +47,7 @@ function createPendingPromise<T>() {
 
 function createRoomApiMock(apiOverride: RoomApiOverride = {}): RoomApi {
   return {
-    closeRoom: async () => ({ message: 'room closed' }),
+    createRoomMembership: async () => ({ room: joinedRoomData.room }),
     createRoom: async () => ({
       id: 'story-room',
       name: 'Chill Night',
@@ -57,10 +57,11 @@ function createRoomApiMock(apiOverride: RoomApiOverride = {}): RoomApi {
     }),
     getRecentRooms: async () => ({ rooms: [] }),
     getRoom: async () => joinedRoomData.room,
-    joinRoom: async () => joinedRoomData,
     updateRoom: async () => ({
       id: 'story-room',
       name: 'Chill Night',
+      status: 'active',
+      closedAt: null,
       updatedAt: new Date().toISOString(),
     }),
     ...apiOverride,
@@ -114,7 +115,7 @@ export const LinkFilled: Story = {
 export const Loading: Story = {
   args: {
     roomApiClient: createRoomApiMock({
-      joinRoom: () => createPendingPromise(),
+      createRoomMembership: () => createPendingPromise(),
     }),
   },
   play: async ({ canvasElement }) => {
@@ -127,7 +128,7 @@ export const Loading: Story = {
 export const InvalidCode: Story = {
   args: {
     roomApiClient: createRoomApiMock({
-      joinRoom: async () => {
+      createRoomMembership: async () => {
         throw new ApiClientError({ code: 'ROOM_NOT_FOUND', message: 'invalid invite code' }, 404);
       },
     }),
@@ -144,7 +145,7 @@ export const InvalidCode: Story = {
 export const ClosedRoom: Story = {
   args: {
     roomApiClient: createRoomApiMock({
-      joinRoom: async () => {
+      createRoomMembership: async () => {
         throw new ApiClientError({ code: 'ROOM_CLOSED', message: 'room closed' }, 403);
       },
     }),
@@ -159,7 +160,7 @@ export const ClosedRoom: Story = {
 export const InactiveRoom: Story = {
   args: {
     roomApiClient: createRoomApiMock({
-      joinRoom: async () => {
+      createRoomMembership: async () => {
         throw new ApiClientError({ code: 'ROOM_INACTIVE', message: 'room inactive' }, 403);
       },
     }),

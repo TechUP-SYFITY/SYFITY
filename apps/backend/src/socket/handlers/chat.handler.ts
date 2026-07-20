@@ -43,7 +43,7 @@ export function registerChatHandlers(
         const record = await chatService.sendMessage({ roomId, userId, message });
         io.to(`room:${roomId}`).emit('chat:received', toChatReceivedPayload(record));
 
-        ack({ success: true, data: { id: record.id, createdAt: record.createdAt.toISOString() } });
+        ack({ success: true, data: toChatReceivedPayload(record) });
       } catch (err) {
         logger.error(
           { err, userId: socket.data.userId, roomId: payload?.roomId },

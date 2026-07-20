@@ -102,6 +102,10 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     return <RoomErrorState error={joinRoom.error} roomId={roomId} />;
   }
 
+  if (!hasJoinedRoom) {
+    return <RoomLoadingState />;
+  }
+
   const handleOpenSearch = () => {
     addSearchResult.reset();
     setIsSearchPanelOpen(true);

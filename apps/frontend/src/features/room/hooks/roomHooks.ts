@@ -42,7 +42,7 @@ export const useJoinRoom = (roomId: string) =>
     queryFn: async () => {
       const room = await roomApi.getRoom(roomId);
 
-      return roomApi.joinRoom({ inviteCode: room.inviteCode });
+      return roomApi.createRoomMembership({ inviteCode: room.inviteCode });
     },
     queryKey: roomQueryKeys.join(roomId),
     retry: false,
@@ -57,7 +57,7 @@ export const useJoinRoom = (roomId: string) =>
 export const useJoinRoomByCode = (inviteCode: string, api: RoomApi = roomApi) =>
   useQuery({
     enabled: inviteCode.length > 0,
-    queryFn: () => api.joinRoom({ inviteCode }),
+    queryFn: () => api.createRoomMembership({ inviteCode }),
     queryKey: roomQueryKeys.joinByCode(inviteCode),
     retry: false,
     gcTime: 0,
@@ -77,7 +77,7 @@ export const useCloseRoom = (roomId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => roomApi.closeRoom(roomId),
+    mutationFn: () => roomApi.updateRoom(roomId, { status: 'closed' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.all }),
   });
 };

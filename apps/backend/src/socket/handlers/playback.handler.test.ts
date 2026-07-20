@@ -234,7 +234,7 @@ describe('registerPlaybackHandlers', () => {
         payload: PlaybackChangeTrackPayload,
         ack: PlaybackHandlerAck,
       ) => Promise<void>
-    )({ roomId: 'room-1', playlistItemId: 'playlist-item-1' }, ack);
+    )({ roomId: 'room-1', action: 'select', playlistItemId: 'playlist-item-1' }, ack);
 
     expect(playbackService.pause).toHaveBeenCalledWith('room-1', 'user-1', 30);
     expect(playbackService.seek).toHaveBeenCalledWith('room-1', 'user-1', 45);
@@ -256,7 +256,7 @@ describe('registerPlaybackHandlers', () => {
         payload: Partial<PlaybackChangeTrackPayload>,
         ack: PlaybackHandlerAck,
       ) => Promise<void>
-    )({ roomId: 'room-1' }, ack);
+    )({ roomId: 'room-1', action: 'select' }, ack);
 
     expect(ack).toHaveBeenCalledWith({
       success: false,
@@ -265,6 +265,31 @@ describe('registerPlaybackHandlers', () => {
     expect(playbackService.changeTrack).not.toHaveBeenCalled();
     expect(io.to).not.toHaveBeenCalled();
   });
+
+  it.each(['next', 'previous'] as const)(
+    'playback:change-track에서 action=%s는 VALIDATION_ERROR ack를 반환한다',
+    async (action) => {
+      const { io } = makeIo();
+      const { socket, handlers } = makeSocket();
+      const playbackService = makePlaybackService();
+
+      registerPlaybackHandlers(io, socket, { playbackService });
+      const ack = vi.fn();
+      await (
+        handlers['playback:change-track'] as (
+          payload: PlaybackChangeTrackPayload,
+          ack: PlaybackHandlerAck,
+        ) => Promise<void>
+      )({ roomId: 'room-1', action, playlistItemId: 'playlist-item-1' }, ack);
+
+      expect(ack).toHaveBeenCalledWith({
+        success: false,
+        error: { code: ERROR_CODES.VALIDATION_ERROR, message: 'action이 올바르지 않습니다.' },
+      });
+      expect(playbackService.changeTrack).not.toHaveBeenCalled();
+      expect(io.to).not.toHaveBeenCalled();
+    },
+  );
 
   it('playback:error는 실패 이벤트만 broadcast하고 playlist가 없으면 playlist:updated를 보내지 않는다', async () => {
     const { io, roomEmit } = makeIo();

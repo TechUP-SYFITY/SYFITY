@@ -13,7 +13,12 @@ import type {
   PlaybackSyncRequestPayload,
 } from '../../types/socket';
 import { toSocketAckError } from '../socketError';
-import { assertFiniteNumber, assertNonEmptyString, assertRoomId } from '../socketValidators';
+import {
+  assertChangeTrackAction,
+  assertFiniteNumber,
+  assertNonEmptyString,
+  assertRoomId,
+} from '../socketValidators';
 
 type PlaybackHandlerService = Pick<
   PlaybackService,
@@ -118,6 +123,7 @@ export function registerPlaybackHandlers(
     ) => {
       try {
         assertRoomId(payload?.roomId);
+        assertChangeTrackAction(payload?.action);
         assertNonEmptyString(payload?.playlistItemId, 'playlistItemId');
         const { roomId, playlistItemId } = payload;
         const userId = socket.data.userId;

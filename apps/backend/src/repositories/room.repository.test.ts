@@ -5,6 +5,7 @@ import {
   type RoomRepositoryPrisma,
   type RoomTransactionPrisma,
 } from './room.repository';
+import { Prisma } from '../generated/prisma/client';
 import type { RoomDetailRecord, RoomRecord, RoomUpdateRecord } from '../types/room';
 
 const createdRoom: RoomRecord = {
@@ -27,8 +28,15 @@ const roomDetail: RoomDetailRecord = {
 const updatedRoom: RoomUpdateRecord = {
   id: 'room-1',
   name: 'Evening Jazz',
+  status: 'active',
+  closedAt: null,
   updatedAt: new Date('2026-07-01T12:30:00.000Z'),
 };
+
+const uniqueConstraintError = new Prisma.PrismaClientKnownRequestError(
+  'Unique constraint failed on the fields: (`room_id`,`user_id`)',
+  { code: 'P2002', clientVersion: 'test' },
+);
 
 type RoomMembershipResult = {
   role: 'host' | 'member' | 'guest';
@@ -47,7 +55,7 @@ function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionP
   return {
     room: {
       create: vi.fn().mockResolvedValue(room),
-      update: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({ ...updatedRoom, status: 'closed', closedAt: new Date() }),
     },
     roomMember: {
       create: vi.fn().mockResolvedValue({}),
@@ -67,6 +75,7 @@ function makePrisma(
     membersResult?: RoomMemberRow[];
     roomUpdateResult?: RoomUpdateRecord;
     roomUpdateError?: Error;
+    membershipCreateError?: Error;
     tx?: RoomTransactionPrisma;
   } = {},
 ): { prisma: RoomRepositoryPrisma; tx: RoomTransactionPrisma } {
@@ -86,6 +95,9 @@ function makePrisma(
         update: roomUpdate,
       },
       roomMember: {
+        create: overrides.membershipCreateError
+          ? vi.fn().mockRejectedValue(overrides.membershipCreateError)
+          : vi.fn().mockResolvedValue({}),
         findUnique: vi
           .fn()
           .mockResolvedValue(
@@ -94,7 +106,7 @@ function makePrisma(
               : (overrides.membershipResult ?? null),
           ),
         findMany: vi.fn().mockResolvedValue(overrides.membersResult ?? []),
-        upsert: vi.fn().mockResolvedValue({}),
+        update: vi.fn().mockResolvedValue({}),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       recentRoom: {
@@ -289,7 +301,7 @@ describe('RoomRepository', () => {
     expect(prisma.room.update).toHaveBeenCalledWith({
       where: { id: 'room-1' },
       data: { name: 'Evening Jazz' },
-      select: { id: true, name: true, updatedAt: true },
+      select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
   });
 
@@ -321,15 +333,14 @@ describe('RoomRepository', () => {
     await expect(repo.findMembership('room-1', 'user-1')).resolves.toBeNull();
   });
 
-  it('멤버십을 upsert한다', async () => {
+  it('신규 멤버십을 생성하고 true를 반환한다', async () => {
     const { prisma } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.upsertMembership('room-1', 'user-1')).resolves.toBeUndefined();
+    await expect(repo.upsertMembership('room-1', 'user-1')).resolves.toBe(true);
 
-    expect(prisma.roomMember.upsert).toHaveBeenCalledWith({
-      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
-      create: {
+    expect(prisma.roomMember.create).toHaveBeenCalledWith({
+      data: {
         roomId: 'room-1',
         userId: 'user-1',
         role: 'member',
@@ -337,7 +348,19 @@ describe('RoomRepository', () => {
         joinedAt: expect.any(Date),
         lastSeenAt: expect.any(Date),
       },
-      update: {
+    });
+    expect(prisma.roomMember.update).not.toHaveBeenCalled();
+  });
+
+  it('기존 멤버십이면 unique 충돌 후 복원하고 false를 반환한다', async () => {
+    const { prisma } = makePrisma({ membershipCreateError: uniqueConstraintError });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.upsertMembership('room-1', 'user-1')).resolves.toBe(false);
+
+    expect(prisma.roomMember.update).toHaveBeenCalledWith({
+      where: { roomId_userId: { roomId: 'room-1', userId: 'user-1' } },
+      data: {
         status: 'offline',
         lastSeenAt: expect.any(Date),
         leftAt: null,
@@ -497,16 +520,17 @@ describe('RoomRepository', () => {
     await expect(repo.findMemberInfo('room-1', 'user-1')).resolves.toBeNull();
   });
 
-  it('Room을 닫고 left가 아닌 모든 멤버를 left 처리한다', async () => {
+  it('Room을 닫고 갱신된 Room 레코드를 반환하며 left가 아닌 멤버를 left 처리한다', async () => {
     const { prisma, tx } = makePrisma();
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.closeRoom('room-1')).resolves.toBeUndefined();
+    await expect(repo.closeRoom('room-1')).resolves.toMatchObject({ status: 'closed' });
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.room.update).toHaveBeenCalledWith({
       where: { id: 'room-1' },
       data: { status: 'closed', closedAt: expect.any(Date) },
+      select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
     expect(tx.roomMember.updateMany).toHaveBeenCalledWith({
       where: { roomId: 'room-1', status: { not: 'left' } },

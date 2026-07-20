@@ -27,6 +27,7 @@ export type PlaylistItemLookupRecord = {
   id: string;
   roomId: string;
   videoId: string;
+  duration: number;
   position: number;
   addedBy: string;
   status: 'available' | 'unavailable';

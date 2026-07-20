@@ -143,6 +143,7 @@ export class PlaylistRepository implements IPlaylistRepository {
         id: true,
         roomId: true,
         videoId: true,
+        duration: true,
         position: true,
         addedBy: true,
         status: true,

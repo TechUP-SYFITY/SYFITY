@@ -70,6 +70,7 @@ function makeService() {
               id: found.id,
               roomId: 'room-1',
               videoId: found.videoId,
+              duration: found.duration,
               position: found.position,
               addedBy: found.addedBy,
               status: found.status,
@@ -82,7 +83,7 @@ function makeService() {
   const service = new PlaybackService(roomRepo, playlistRepo, new PlaybackSessionStore(cache), {
     getVideoDetails: vi.fn().mockResolvedValue([]),
   });
-  return { service, values };
+  return { service, values, playlistRepo };
 }
 
 describe('PlaybackService', () => {
@@ -90,7 +91,7 @@ describe('PlaybackService', () => {
   afterEach(() => services.splice(0).forEach((service) => service.shutdown()));
 
   it('DB 없이 기본 세션에서 첫 곡 재생과 버전 증가를 처리한다', async () => {
-    const { service } = makeService();
+    const { service, playlistRepo } = makeService();
     services.push(service);
     const result = await service.play('room-1', 'host', 0);
     expect(result.broadcastEvent).toBe('playback:change-track');
@@ -99,6 +100,19 @@ describe('PlaybackService', () => {
       isPlaying: true,
       playbackVersion: 1,
     });
+    expect(playlistRepo.getPlaylist).toHaveBeenCalledTimes(1);
+  });
+
+  it('이미 조회한 곡 정보로 전환하면 Playlist를 다시 조회하지 않는다', async () => {
+    const { service, playlistRepo } = makeService();
+    services.push(service);
+    await service.selectTrack('room-1', 'host', 'item-2');
+    expect(playlistRepo.getPlaylist).not.toHaveBeenCalled();
+
+    await service.play('room-1', 'host', 0);
+    playlistRepo.getPlaylist.mockClear();
+    await service.nextTrack('room-1', 'host');
+    expect(playlistRepo.getPlaylist).toHaveBeenCalledTimes(1);
   });
 
   it('한 곡 반복은 자동 종료에서 같은 곡을 반복하지만 수동 next는 다음 곡으로 이동한다', async () => {

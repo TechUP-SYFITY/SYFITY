@@ -181,6 +181,7 @@ export class PlaybackService {
           playbackHistoryItemIds: history,
         },
         'playback:change-track',
+        item.duration,
       );
     });
   }
@@ -225,6 +226,7 @@ export class PlaybackService {
           session,
           { baseCurrentTime: 0 },
           'playback:change-track',
+          playlist.find((item) => item.id === session.playlistItemId)?.duration,
         );
       }
       return this.applyTransition(
@@ -241,6 +243,7 @@ export class PlaybackService {
           ),
         },
         'playback:change-track',
+        previous.duration,
       );
     });
   }
@@ -417,6 +420,7 @@ export class PlaybackService {
     session: PlaybackSession,
     patch: Partial<PlaybackSession>,
     broadcastEvent: PlaybackTransitionResult['broadcastEvent'],
+    trackDuration?: number,
   ): Promise<PlaybackTransitionResult> {
     const isPlaying = patch.isPlaying ?? session.isPlaying;
     const now = new Date().toISOString();
@@ -431,7 +435,7 @@ export class PlaybackService {
     this.sessionStore.set(roomId, next);
     if (next.isPlaying && next.playlistItemId) {
       this.playingRoomIds.add(roomId);
-      const duration = await this.getTrackDuration(roomId, next.playlistItemId);
+      const duration = trackDuration ?? (await this.getTrackDuration(roomId, next.playlistItemId));
       this.scheduleAutoAdvance(roomId, next, duration);
     } else {
       this.playingRoomIds.delete(roomId);
@@ -466,6 +470,7 @@ export class PlaybackService {
         playbackHistoryItemIds: history,
       },
       broadcastEvent,
+      item.duration,
     );
   }
 

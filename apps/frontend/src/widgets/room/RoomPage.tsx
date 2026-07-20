@@ -75,8 +75,8 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
   const isRoomConnectionStable = hostConnection.status === 'connected';
   const canControlRoom = isHost && isRoomConnectionStable;
-  // 곡 추가는 Host 연결 상태와 무관하게 활성 멤버 모두에게 허용된다 (docs/05-api-spec.md 6.2 참고).
-  const canAddSong = hasJoinedRoom;
+  // 곡 추가와 Member 본인 곡 삭제는 Host 연결 상태와 무관하게 활성 멤버에게 허용된다.
+  const isActiveRoomMember = hasJoinedRoom;
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   const { nextItem, previousItem } = getAdjacentPlayablePlaylistItems(playlist, currentTrack);
   const currentTime =
@@ -192,10 +192,10 @@ function RoomPageContent({ roomId }: RoomPageProps) {
         }
         playlistPanel={
           <PlaylistPanel
-            canAddSong={canAddSong}
             canControlRoom={canControlRoom}
             currentPlaylistItemId={currentTrack?.id ?? null}
             currentUserId={me?.id}
+            isActiveRoomMember={isActiveRoomMember}
             roomId={roomId}
             isHost={isHost}
             isReady={hasJoinedRoom}

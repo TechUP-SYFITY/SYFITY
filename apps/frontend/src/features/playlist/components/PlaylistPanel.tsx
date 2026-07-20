@@ -20,10 +20,10 @@ import { usePlaylistReorderInteraction } from '../hooks/usePlaylistReorderIntera
 import { usePlaylistStore } from '../store/playlistStore';
 
 interface PlaylistPanelProps {
-  canAddSong: boolean;
   canControlRoom: boolean;
   currentPlaylistItemId: string | null;
   currentUserId?: string;
+  isActiveRoomMember: boolean;
   playlistItems?: PlaylistItem[];
   roomId: string;
   isHost: boolean;
@@ -33,10 +33,10 @@ interface PlaylistPanelProps {
 }
 
 export function PlaylistPanel({
-  canAddSong,
   canControlRoom,
   currentPlaylistItemId,
   currentUserId,
+  isActiveRoomMember,
   playlistItems,
   roomId,
   isHost,
@@ -69,7 +69,7 @@ export function PlaylistPanel({
   };
 
   const handleOpenSearch = () => {
-    if (!canAddSong) {
+    if (!isActiveRoomMember) {
       return;
     }
 
@@ -115,7 +115,7 @@ export function PlaylistPanel({
       return canControlRoom;
     }
 
-    return canAddSong && item.addedBy === currentUserId;
+    return isActiveRoomMember && item.addedBy === currentUserId;
   };
 
   const handleDelete = (itemId: string) => {
@@ -132,7 +132,7 @@ export function PlaylistPanel({
   return (
     <aside className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border bg-background">
       <PlaylistPanelHeader
-        disabled={!canAddSong}
+        disabled={!isActiveRoomMember}
         isBackgroundFetching={isBackgroundFetching}
         itemCount={visiblePlaylist.length}
         onAddClick={handleOpenSearch}
@@ -149,7 +149,10 @@ export function PlaylistPanel({
           />
         ) : null}
         {!isInitialLoading && !isPlaylistError && visiblePlaylist.length === 0 ? (
-          <PlaylistEmptyState isReady={isReady && canAddSong} onAddClick={handleOpenSearch} />
+          <PlaylistEmptyState
+            isReady={isReady && isActiveRoomMember}
+            onAddClick={handleOpenSearch}
+          />
         ) : null}
         {visiblePlaylist.map((item) => {
           const isCurrent = item.id === currentPlaylistItemId;
@@ -188,7 +191,7 @@ export function PlaylistPanel({
       <Button
         className="absolute right-5 bottom-5 z-30 rounded-2xl shadow-lg xl:hidden"
         type="button"
-        disabled={!canAddSong}
+        disabled={!isActiveRoomMember}
         onClick={handleOpenSearch}
       >
         <Plus className="size-4" aria-hidden />곡 추가

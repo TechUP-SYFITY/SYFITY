@@ -56,8 +56,10 @@ function createQueryClient() {
 }
 
 function renderPlaylistPanel(options?: {
+  canAddSong?: boolean;
   canControlRoom?: boolean;
   currentPlaylistItemId?: string;
+  currentUserId?: string;
   isHost?: boolean;
   playlistItems?: PlaylistItem[];
   queryClient?: QueryClient;
@@ -67,8 +69,10 @@ function renderPlaylistPanel(options?: {
   render(
     <QueryClientProvider client={queryClient}>
       <PlaylistPanel
+        canAddSong={options?.canAddSong ?? true}
         canControlRoom={options?.canControlRoom ?? true}
         currentPlaylistItemId={options?.currentPlaylistItemId ?? availableItem.id}
+        currentUserId={options?.currentUserId}
         playlistItems={options?.playlistItems}
         roomId={roomId}
         isHost={options?.isHost ?? true}
@@ -236,6 +240,7 @@ describe('PlaylistPanel', () => {
     render(
       <QueryClientProvider client={createQueryClient()}>
         <PlaylistPanel
+          canAddSong={false}
           canControlRoom={false}
           currentPlaylistItemId={availableItem.id}
           playlistItems={[availableItem]}

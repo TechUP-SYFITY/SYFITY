@@ -85,6 +85,7 @@ describe('PlaylistPanel reorder', () => {
       render(
         <QueryClientProvider client={createQueryClient()}>
           <PlaylistPanel
+            canAddSong
             canControlRoom
             currentPlaylistItemId={firstItem.id}
             playlistItems={[firstItem, secondItem]}
@@ -146,6 +147,7 @@ describe('PlaylistPanel reorder', () => {
     render(
       <QueryClientProvider client={createQueryClient()}>
         <PlaylistPanel
+          canAddSong
           canControlRoom
           currentPlaylistItemId={firstItem.id}
           playlistItems={[firstItem, secondItem]}

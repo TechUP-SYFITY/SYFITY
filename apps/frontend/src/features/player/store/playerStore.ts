@@ -5,13 +5,16 @@ import { create } from 'zustand';
 
 import type {
   PlaybackEventSource,
+  PlaybackSyncSource,
   PlaybackSyncStatus,
   PlayerPlaybackState,
 } from '../types/playerTypes';
 
 interface PlayerStoreState {
-  beginPlaybackSync: () => void;
+  beginPlaybackSync: (source?: PlaybackSyncSource) => void;
   clearPlaybackSync: () => void;
+  clearPlayback: () => void;
+  isLocalSyncPaused: boolean;
   lastEventSource: PlaybackEventSource | null;
   localPlaybackPosition: {
     currentTime: number;
@@ -23,28 +26,38 @@ interface PlayerStoreState {
     errorCode: number;
   } | null;
   playbackSyncStatus: PlaybackSyncStatus;
+  playbackSyncSource: PlaybackSyncSource | null;
+  pauseLocalSync: () => void;
+  resumeLocalSync: () => void;
   setLocalPlaybackPosition: (videoId: string, currentTime: number) => void;
   setPlaybackError: (videoId: string, errorCode: number) => void;
+  setPlaybackSyncError: () => void;
   setPlaybackState: (playbackState: PlayerPlaybackState, source: PlaybackEventSource) => void;
-  clearPlayback: () => void;
 }
 
 export const usePlayerStore = create<PlayerStoreState>((set) => ({
-  beginPlaybackSync: () => set({ playbackSyncStatus: 'pending' }),
+  beginPlaybackSync: (source = 'auto') =>
+    set({ playbackSyncSource: source, playbackSyncStatus: 'pending' }),
   clearPlayback: () =>
     set({
+      isLocalSyncPaused: false,
       lastEventSource: null,
       localPlaybackPosition: null,
       playbackError: null,
       playbackState: null,
       playbackSyncStatus: 'idle',
+      playbackSyncSource: null,
     }),
-  clearPlaybackSync: () => set({ playbackSyncStatus: 'idle' }),
+  clearPlaybackSync: () => set({ playbackSyncStatus: 'idle', playbackSyncSource: null }),
+  isLocalSyncPaused: false,
   lastEventSource: null,
   localPlaybackPosition: null,
   playbackError: null,
   playbackState: null,
   playbackSyncStatus: 'idle',
+  playbackSyncSource: null,
+  pauseLocalSync: () => set({ isLocalSyncPaused: true }),
+  resumeLocalSync: () => set({ isLocalSyncPaused: false }),
   setLocalPlaybackPosition: (videoId, currentTime) =>
     set({
       localPlaybackPosition: {
@@ -59,6 +72,7 @@ export const usePlayerStore = create<PlayerStoreState>((set) => ({
         videoId,
       },
     }),
+  setPlaybackSyncError: () => set({ playbackSyncStatus: 'error' }),
   setPlaybackState: (playbackState, source) =>
     set((state) => {
       let playbackSyncStatus = state.playbackSyncStatus;
@@ -70,6 +84,7 @@ export const usePlayerStore = create<PlayerStoreState>((set) => ({
       }
 
       return {
+        isLocalSyncPaused: source === 'room-join' ? false : state.isLocalSyncPaused,
         lastEventSource: source,
         localPlaybackPosition:
           source === 'tick' && state.localPlaybackPosition?.videoId === playbackState.videoId

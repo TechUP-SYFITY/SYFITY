@@ -34,6 +34,7 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     controlDisabled: false,
     currentTrack: track,
     isHost: true,
+    isLocalSyncPaused: false,
     isMuted: false,
     nextDisabled: false,
     onMuteToggle: vi.fn(),
@@ -44,6 +45,7 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     onVolumeChange: vi.fn(),
     pendingCommand: null,
     playbackState,
+    playPauseDisabled: false,
     previousDisabled: false,
     volume: 70,
   };
@@ -97,7 +99,7 @@ describe('MiniPlayer', () => {
     expect(onNextTrack).toHaveBeenCalledTimes(1);
   });
 
-  it('Member이거나 곡 이동 대상이 없으면 제어 버튼을 비활성화한다', () => {
+  it('Member는 재생 제어를 사용하고 곡 이동만 비활성화한다', () => {
     renderMiniPlayer({
       controlDisabled: true,
       isHost: false,
@@ -105,15 +107,46 @@ describe('MiniPlayer', () => {
       previousDisabled: true,
     });
 
-    expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '이전 곡' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '다음 곡' })).toBeDisabled();
-    expect(screen.getByText('Host만 재생을 제어할 수 있어요')).toBeInTheDocument();
+    expect(screen.getByText('Host만 곡 이동을 제어할 수 있어요')).toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: '재생 위치 조절' })).not.toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: '재생 진행률' })).toHaveAttribute(
       'aria-valuenow',
       '45',
     );
+  });
+
+  it('로컬 동기화를 중지한 Member에게 재생 버튼을 표시하고 클릭을 전달한다', () => {
+    const onPlayPause = vi.fn();
+
+    renderMiniPlayer({
+      isHost: false,
+      isLocalSyncPaused: true,
+      onPlayPause,
+      playbackState: { ...playbackState, isPlaying: true },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '재생' }));
+
+    expect(onPlayPause).toHaveBeenCalledOnce();
+    expect(screen.getByText('눌러서 재생')).toBeInTheDocument();
+  });
+
+  it('곡 이동과 재생 제어에 역할별 스크린리더 힌트를 연결한다', () => {
+    renderMiniPlayer({ isHost: false, playbackState: { ...playbackState, isPlaying: true } });
+
+    expect(screen.getByRole('button', { name: '이전 곡' })).toHaveAttribute(
+      'aria-describedby',
+      'mini-player-track-hint',
+    );
+    expect(screen.getByRole('button', { name: '일시정지' })).toHaveAttribute(
+      'aria-describedby',
+      'mini-player-play-pause-hint',
+    );
+    expect(screen.getByText('Host만 곡 이동을 제어할 수 있어요')).toBeInTheDocument();
+    expect(screen.getByText('눌러서 일시정지')).toBeInTheDocument();
   });
 
   it('Host가 진행 슬라이더를 변경하면 seek 값을 전달한다', () => {

@@ -27,6 +27,7 @@ interface MiniPlayerProps {
   controlDisabled: boolean;
   currentTrack: PlaylistItem | undefined;
   isHost: boolean;
+  isLocalSyncPaused: boolean;
   isMuted: boolean;
   nextDisabled: boolean;
   onMuteToggle: () => void;
@@ -37,6 +38,7 @@ interface MiniPlayerProps {
   onVolumeChange: (volume: number) => void;
   pendingCommand: MiniPlayerPendingCommand;
   playbackState: PlaybackState | null;
+  playPauseDisabled: boolean;
   previousDisabled: boolean;
   volume: number;
 }
@@ -46,6 +48,7 @@ export function MiniPlayer({
   controlDisabled,
   currentTrack,
   isHost,
+  isLocalSyncPaused,
   isMuted,
   nextDisabled,
   onMuteToggle,
@@ -56,16 +59,22 @@ export function MiniPlayer({
   onVolumeChange,
   pendingCommand,
   playbackState,
+  playPauseDisabled,
   previousDisabled,
   volume,
 }: MiniPlayerProps) {
   const duration = currentTrack?.duration ?? 0;
   const currentTime = getBoundedCurrentTime(playbackState?.currentTime ?? 0, duration);
-  const isPlaying = playbackState?.isPlaying ?? false;
+  const isPlaying = !isHost && isLocalSyncPaused ? false : (playbackState?.isPlaying ?? false);
   const progressPercent = getProgressPercent(currentTime, duration);
   const playPauseLabel = isPlaying ? '일시정지' : '재생';
-  const controlHint = getControlHint({ controlDisabled, currentTrack, isHost });
-  const playPauseDisabled = controlDisabled;
+  const trackHint = getTrackControlHint({ controlDisabled, currentTrack, isHost });
+  const playPauseHint = getPlayPauseControlHint({
+    currentTrack,
+    isHost,
+    isPlaying,
+    playPauseDisabled,
+  });
   const previousControlDisabled = controlDisabled || previousDisabled;
   const nextControlDisabled = controlDisabled || nextDisabled;
   const seekDisabled = controlDisabled || duration <= 0;
@@ -111,7 +120,7 @@ export function MiniPlayer({
             className={getIconButtonClass(previousControlDisabled)}
             type="button"
             aria-label="이전 곡"
-            aria-describedby="mini-player-control-hint"
+            aria-describedby="mini-player-track-hint"
             disabled={previousControlDisabled}
             onClick={onPreviousTrack}
           >
@@ -124,7 +133,7 @@ export function MiniPlayer({
             )}
             type="button"
             aria-label={playPauseLabel}
-            aria-describedby="mini-player-control-hint"
+            aria-describedby="mini-player-play-pause-hint"
             disabled={playPauseDisabled}
             onClick={onPlayPause}
           >
@@ -138,7 +147,7 @@ export function MiniPlayer({
             className={getIconButtonClass(nextControlDisabled)}
             type="button"
             aria-label="다음 곡"
-            aria-describedby="mini-player-control-hint"
+            aria-describedby="mini-player-track-hint"
             disabled={nextControlDisabled}
             onClick={onNextTrack}
           >
@@ -190,8 +199,11 @@ export function MiniPlayer({
           </div>
           <span>{formatDuration(duration)}</span>
         </div>
-        <p id="mini-player-control-hint" className="sr-only">
-          {controlHint}
+        <p id="mini-player-track-hint" className="sr-only">
+          {trackHint}
+        </p>
+        <p id="mini-player-play-pause-hint" className="sr-only">
+          {playPauseHint}
         </p>
         {commandError ? (
           <p className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs text-destructive shadow-lg">
@@ -245,7 +257,7 @@ function getIconButtonClass(disabled: boolean) {
   );
 }
 
-function getControlHint({
+function getTrackControlHint({
   controlDisabled,
   currentTrack,
   isHost,
@@ -255,7 +267,7 @@ function getControlHint({
   isHost: boolean;
 }) {
   if (!isHost) {
-    return 'Host만 재생을 제어할 수 있어요';
+    return 'Host만 곡 이동을 제어할 수 있어요';
   }
 
   if (!currentTrack) {
@@ -263,6 +275,36 @@ function getControlHint({
   }
 
   if (controlDisabled) {
+    return '재생 제어를 사용할 수 없어요';
+  }
+
+  return 'Host 제어 가능';
+}
+
+function getPlayPauseControlHint({
+  currentTrack,
+  isHost,
+  isPlaying,
+  playPauseDisabled,
+}: {
+  currentTrack: PlaylistItem | undefined;
+  isHost: boolean;
+  isPlaying: boolean;
+  playPauseDisabled: boolean;
+}) {
+  if (!currentTrack) {
+    return '재생 가능한 곡이 없어요';
+  }
+
+  if (!isHost) {
+    if (playPauseDisabled) {
+      return '재생 제어를 사용할 수 없어요';
+    }
+
+    return isPlaying ? '눌러서 일시정지' : '눌러서 재생';
+  }
+
+  if (playPauseDisabled) {
     return '재생 제어를 사용할 수 없어요';
   }
 

@@ -4,7 +4,9 @@ import type { PlaybackState } from '@/shared/types/domain';
 export type PlaybackEventSource =
   'play' | 'pause' | 'seek' | 'change-track' | 'tick' | 'sync-response' | 'room-join';
 
-export type PlaybackSyncStatus = 'idle' | 'pending' | 'synced';
+export type PlaybackSyncStatus = 'idle' | 'pending' | 'synced' | 'error';
+
+export type PlaybackSyncSource = 'auto' | 'manual';
 
 export type PlayerController = {
   pause(): void;

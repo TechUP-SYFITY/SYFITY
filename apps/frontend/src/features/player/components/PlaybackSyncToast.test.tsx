@@ -52,6 +52,33 @@ describe('PlaybackSyncToast', () => {
     expect(screen.getByText('현재 재생 위치로 동기화됐어요.')).toBeInTheDocument();
   });
 
+  it('수동 동기화 요청 중에는 Member 재개 문구를 표시한다', () => {
+    usePlayerStore.getState().beginPlaybackSync('manual');
+
+    renderPlaybackSyncToast();
+
+    expect(screen.getByText('최신 재생 위치로 동기화하는 중이에요')).toBeInTheDocument();
+    expect(
+      screen.queryByText('광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('수동 동기화 실패 시 오류 토스트를 표시하고 닫을 수 있다', () => {
+    usePlayerStore.getState().beginPlaybackSync('manual');
+    usePlayerStore.getState().setPlaybackSyncError();
+
+    renderPlaybackSyncToast();
+
+    expect(screen.getByText('동기화에 실패했어요. 다시 눌러 시도해주세요')).toBeInTheDocument();
+    expect(
+      screen.getByText('동기화에 실패했어요. 다시 눌러 시도해주세요').closest('[data-state]'),
+    ).toHaveClass('text-destructive');
+
+    fireEvent.click(screen.getByRole('button', { name: '동기화 알림 닫기' }));
+
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
+  });
+
   it('닫기 버튼으로 피드백 상태를 초기화한다', () => {
     usePlayerStore.getState().beginPlaybackSync();
     renderPlaybackSyncToast();

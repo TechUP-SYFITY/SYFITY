@@ -104,6 +104,22 @@ describe('YouTubePlayer', () => {
     expect(players[0]?.unMute).toHaveBeenCalled();
   });
 
+  it('YouTube IFrame의 네이티브 재생 컨트롤을 숨긴다', async () => {
+    render(
+      <YouTubePlayer
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(playerOptions?.playerVars?.controls).toBe(0);
+    });
+  });
+
   it('player ready 시 즉시 재생 제어기를 등록하고 unmount 시 해제한다', async () => {
     const playerControllerRef = { current: null as null | { pause(): void; play(): void } };
     const { unmount } = render(
@@ -253,6 +269,63 @@ describe('YouTubePlayer', () => {
     await waitFor(() => {
       expect(players[0]).toBeDefined();
     });
+    expect(usePlayerStore.getState().localPlaybackPosition).toBeNull();
+  });
+
+  it('로컬 동기화가 중지되면 최신 서버 상태를 IFrame에 적용하지 않는다', async () => {
+    const { rerender } = render(
+      <YouTubePlayer
+        playbackState={playbackState}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players[0]).toBeDefined();
+    });
+    usePlayerStore.getState().pauseLocalSync();
+
+    rerender(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, currentTime: 42, isPlaying: true, videoId: 'video-2' }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    expect(players[0]?.loadVideoById).not.toHaveBeenCalled();
+    expect(players[0]?.seekTo).not.toHaveBeenCalled();
+    expect(players[0]?.playVideo).not.toHaveBeenCalled();
+  });
+
+  it('로컬 동기화가 중지되면 재생 중이어도 현재 시간을 폴링하지 않는다', async () => {
+    vi.useFakeTimers();
+    mockCurrentTime = 42;
+    usePlayerStore.getState().pauseLocalSync();
+
+    render(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
     expect(usePlayerStore.getState().localPlaybackPosition).toBeNull();
   });
 

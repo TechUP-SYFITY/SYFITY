@@ -45,6 +45,9 @@ function withSyncStatus(syncStatus: PlaybackSyncStatus) {
       if (syncStatus === 'synced') {
         usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
       }
+      if (syncStatus === 'error') {
+        usePlayerStore.getState().setPlaybackSyncError();
+      }
 
       return () => {
         usePlayerStore.getState().clearPlayback();
@@ -73,4 +76,24 @@ export const Synced: Story = {
 
     await expect(page.findByText('현재 재생 위치로 동기화됐어요.')).resolves.toBeInTheDocument();
   },
+};
+
+export const ManualPending: Story = {
+  decorators: [
+    (Story) => {
+      useEffect(() => {
+        usePlayerStore.getState().beginPlaybackSync('manual');
+
+        return () => {
+          usePlayerStore.getState().clearPlayback();
+        };
+      }, []);
+
+      return <Story />;
+    },
+  ],
+};
+
+export const Error: Story = {
+  decorators: [withSyncStatus('error')],
 };

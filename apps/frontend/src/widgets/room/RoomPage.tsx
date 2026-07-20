@@ -158,9 +158,11 @@ function RoomPageContent({ roomId }: RoomPageProps) {
         isHost={isHost}
         miniPlayerCommandError={miniPlayerControls.commandError}
         miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
+        miniPlayerIsLocalSyncPaused={miniPlayerControls.isLocalSyncPaused}
         miniPlayerIsMuted={miniPlayerIsMuted}
         miniPlayerNextDisabled={!nextItem}
         miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
+        miniPlayerPlayPauseDisabled={miniPlayerControls.playPauseDisabled}
         miniPlayerPreviousDisabled={!previousItem}
         miniPlayerVolume={miniPlayerVolume}
         onInviteClick={() => setIsInviteOpen(true)}

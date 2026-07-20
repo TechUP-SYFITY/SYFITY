@@ -69,4 +69,55 @@ describe('usePlayerStore', () => {
 
     expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
   });
+
+  it('로컬 동기화를 중지하고 재개한다', () => {
+    usePlayerStore.getState().pauseLocalSync();
+
+    expect(usePlayerStore.getState().isLocalSyncPaused).toBe(true);
+
+    usePlayerStore.getState().resumeLocalSync();
+
+    expect(usePlayerStore.getState().isLocalSyncPaused).toBe(false);
+  });
+
+  it('수동 동기화 요청 출처와 오류 상태를 보관한다', () => {
+    usePlayerStore.getState().beginPlaybackSync('manual');
+
+    expect(usePlayerStore.getState()).toMatchObject({
+      playbackSyncSource: 'manual',
+      playbackSyncStatus: 'pending',
+    });
+
+    usePlayerStore.getState().setPlaybackSyncError();
+
+    expect(usePlayerStore.getState()).toMatchObject({
+      playbackSyncSource: 'manual',
+      playbackSyncStatus: 'error',
+    });
+  });
+
+  it('인자 없는 동기화 요청은 자동 출처를 사용하고 초기화 시 출처를 지운다', () => {
+    usePlayerStore.getState().beginPlaybackSync();
+
+    expect(usePlayerStore.getState().playbackSyncSource).toBe('auto');
+
+    usePlayerStore.getState().clearPlaybackSync();
+
+    expect(usePlayerStore.getState()).toMatchObject({
+      playbackSyncSource: null,
+      playbackSyncStatus: 'idle',
+    });
+  });
+
+  it('Room 재입장과 이탈 시 로컬 동기화 중지 상태를 초기화한다', () => {
+    usePlayerStore.getState().pauseLocalSync();
+    usePlayerStore.getState().setPlaybackState(playbackState, 'room-join');
+
+    expect(usePlayerStore.getState().isLocalSyncPaused).toBe(false);
+
+    usePlayerStore.getState().pauseLocalSync();
+    usePlayerStore.getState().clearPlayback();
+
+    expect(usePlayerStore.getState().isLocalSyncPaused).toBe(false);
+  });
 });

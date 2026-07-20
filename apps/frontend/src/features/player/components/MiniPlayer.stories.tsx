@@ -34,6 +34,7 @@ const meta = {
     controlDisabled: false,
     currentTrack: track,
     isHost: true,
+    isLocalSyncPaused: false,
     isMuted: false,
     nextDisabled: false,
     onMuteToggle: fn(),
@@ -44,6 +45,7 @@ const meta = {
     onVolumeChange: fn(),
     pendingCommand: null,
     playbackState,
+    playPauseDisabled: false,
     previousDisabled: false,
     volume: 70,
   },
@@ -75,7 +77,15 @@ export const MemberView: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByRole('button', { name: '재생' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: '재생' })).toBeEnabled();
+  },
+};
+
+export const MemberLocalSyncPaused: Story = {
+  args: {
+    isHost: false,
+    isLocalSyncPaused: true,
+    playbackState: { ...playbackState, isPlaying: true },
   },
 };
 

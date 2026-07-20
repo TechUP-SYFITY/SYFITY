@@ -202,6 +202,43 @@ describe('PlaybackService', () => {
     expect(session.remainingPlaylistItemIds).not.toContain('item-1');
   });
 
+  it('셔플 중 추가한 곡을 남은 큐에 정확히 한 번 삽입한다', async () => {
+    const { service, values } = makeService();
+    services.push(service);
+    await service.play('room-1', 'host', 0);
+    await service.updateSettings('room-1', 'host', { shuffleEnabled: true });
+
+    await service.enqueueIfShuffled('room-1', 'item-4');
+
+    const session = [...values.values()][0] as {
+      playlistItemId: string;
+      remainingPlaylistItemIds: string[];
+    };
+    expect(session.playlistItemId).toBe('item-1');
+    expect(session.remainingPlaylistItemIds).toContain('item-4');
+    expect(session.remainingPlaylistItemIds.filter((id) => id === 'item-4')).toHaveLength(1);
+  });
+
+  it('현재 곡이 아닌 삭제 대상은 셔플 큐와 재생 이력에서 모두 제거한다', async () => {
+    const { service, values } = makeService();
+    services.push(service);
+    await service.selectTrack('room-1', 'host', 'item-1');
+    await service.selectTrack('room-1', 'host', 'item-2');
+    await service.selectTrack('room-1', 'host', 'item-3');
+    await service.updateSettings('room-1', 'host', { shuffleEnabled: true });
+
+    await expect(service.advanceAfterCurrentRemoved('room-1', 'item-2')).resolves.toBeNull();
+
+    const session = [...values.values()][0] as {
+      playlistItemId: string;
+      remainingPlaylistItemIds: string[];
+      playbackHistoryItemIds: string[];
+    };
+    expect(session.playlistItemId).toBe('item-3');
+    expect(session.remainingPlaylistItemIds).not.toContain('item-2');
+    expect(session.playbackHistoryItemIds).not.toContain('item-2');
+  });
+
   it('stale ended 보고는 전환하지 않는다', async () => {
     const { service } = makeService();
     services.push(service);

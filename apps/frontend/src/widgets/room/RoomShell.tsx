@@ -26,9 +26,11 @@ interface RoomShellProps {
   isHost: boolean;
   miniPlayerCommandError: string | null;
   miniPlayerControlDisabled: boolean;
+  miniPlayerIsLocalSyncPaused: boolean;
   miniPlayerIsMuted: boolean;
   miniPlayerNextDisabled: boolean;
   miniPlayerPendingCommand: MiniPlayerPendingCommand;
+  miniPlayerPlayPauseDisabled: boolean;
   miniPlayerPreviousDisabled: boolean;
   miniPlayerVolume: number;
   onlineMemberCount: number;
@@ -57,9 +59,11 @@ export function RoomShell({
   isHost,
   miniPlayerCommandError,
   miniPlayerControlDisabled,
+  miniPlayerIsLocalSyncPaused,
   miniPlayerIsMuted,
   miniPlayerNextDisabled,
   miniPlayerPendingCommand,
+  miniPlayerPlayPauseDisabled,
   miniPlayerPreviousDisabled,
   miniPlayerVolume,
   onInviteClick,
@@ -107,6 +111,7 @@ export function RoomShell({
           controlDisabled={miniPlayerControlDisabled}
           currentTrack={currentTrack}
           isHost={isHost}
+          isLocalSyncPaused={miniPlayerIsLocalSyncPaused}
           isMuted={miniPlayerIsMuted}
           nextDisabled={miniPlayerNextDisabled}
           onMuteToggle={onMuteToggle}
@@ -117,6 +122,7 @@ export function RoomShell({
           onVolumeChange={onMiniPlayerVolumeChange}
           pendingCommand={miniPlayerPendingCommand}
           playbackState={playbackState}
+          playPauseDisabled={miniPlayerPlayPauseDisabled}
           previousDisabled={miniPlayerPreviousDisabled}
           volume={miniPlayerVolume}
         />

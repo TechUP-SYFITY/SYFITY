@@ -183,7 +183,7 @@ describe('RoomPage', () => {
 
     expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
     expect(screen.getByText('호스트 제어')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '재생' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
   });

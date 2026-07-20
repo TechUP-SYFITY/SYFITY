@@ -435,6 +435,103 @@ describe('usePlayerControls', () => {
     expect(playbackCommands.pause).not.toHaveBeenCalled();
     expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
     expect(usePlayerStore.getState().playbackSyncStatus).toBe('pending');
+    expect(usePlayerStore.getState().playbackSyncSource).toBe('auto');
+  });
+
+  it('Member가 재생을 중지하면 로컬 Player만 일시정지한다', () => {
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(),
+      },
+    };
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: false,
+        isPlaying: true,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlayPause();
+    });
+
+    expect(playerControllerRef.current.pause).toHaveBeenCalledOnce();
+    expect(playbackCommands.pause).not.toHaveBeenCalled();
+    expect(usePlayerStore.getState().isLocalSyncPaused).toBe(true);
+  });
+
+  it('로컬 동기화를 중지한 Member가 재생하면 수동 동기화를 요청한다', () => {
+    usePlayerStore.getState().pauseLocalSync();
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: false,
+        isPlaying: true,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlayPause();
+    });
+
+    expect(playbackCommands.requestSync).toHaveBeenCalledWith(roomId);
+    expect(usePlayerStore.getState()).toMatchObject({
+      isLocalSyncPaused: false,
+      playbackSyncSource: 'manual',
+      playbackSyncStatus: 'pending',
+    });
+  });
+
+  it('Member의 수동 동기화 요청 실패 시 중지 상태와 오류 피드백을 유지한다', () => {
+    usePlayerStore.getState().pauseLocalSync();
+    vi.mocked(playbackCommands.requestSync).mockImplementation(() => {
+      throw new Error('Socket is not connected.');
+    });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: false,
+        isPlaying: true,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlayPause();
+    });
+
+    expect(usePlayerStore.getState()).toMatchObject({
+      isLocalSyncPaused: true,
+      playbackSyncSource: 'manual',
+      playbackSyncStatus: 'error',
+    });
+  });
+
+  it('로컬 동기화가 중지된 Member의 IFrame 상태 변경은 무시한다', () => {
+    usePlayerStore.getState().pauseLocalSync();
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: false,
+        isPlaying: true,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handlePlaybackStateChange(false, 42);
+    });
+
+    expect(playbackCommands.requestSync).not.toHaveBeenCalled();
   });
 
   it('Host 역할이지만 Room 제어가 잠기면 재생 명령과 Member 동기화 요청을 보내지 않는다', () => {

@@ -42,9 +42,11 @@ describe('RoomShell', () => {
         isHost
         miniPlayerCommandError={null}
         miniPlayerControlDisabled={false}
+        miniPlayerIsLocalSyncPaused={false}
         miniPlayerIsMuted={false}
         miniPlayerNextDisabled
         miniPlayerPendingCommand={null}
+        miniPlayerPlayPauseDisabled={false}
         miniPlayerPreviousDisabled
         miniPlayerVolume={70}
         onMiniPlayerNextTrack={vi.fn()}
@@ -77,9 +79,11 @@ describe('RoomShell', () => {
         isHost={false}
         miniPlayerCommandError={null}
         miniPlayerControlDisabled
+        miniPlayerIsLocalSyncPaused={false}
         miniPlayerIsMuted={false}
         miniPlayerNextDisabled
         miniPlayerPendingCommand={null}
+        miniPlayerPlayPauseDisabled={false}
         miniPlayerPreviousDisabled
         miniPlayerVolume={70}
         onMiniPlayerNextTrack={vi.fn()}

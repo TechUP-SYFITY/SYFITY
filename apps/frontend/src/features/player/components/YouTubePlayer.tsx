@@ -73,15 +73,21 @@ export function YouTubePlayer({
   const onErrorRef = useRef(onError);
   const onPlaybackStateChangeRef = useRef(onPlaybackStateChange);
   const playbackStateRef = useRef(playbackState);
+  const isLocalSyncPausedRef = useRef(false);
   const previousPlayerStateRef = useRef<number | null>(null);
   const suppressNextPausedSyncRef = useRef(false);
   const setLocalPlaybackPosition = usePlayerStore((state) => state.setLocalPlaybackPosition);
+  const isLocalSyncPaused = usePlayerStore((state) => state.isLocalSyncPaused);
   const isMuted = usePlayerVolumeStore((state) => state.isMuted);
   const volume = usePlayerVolumeStore((state) => state.volume);
 
   useEffect(() => {
     playbackStateRef.current = playbackState;
   }, [playbackState]);
+
+  useEffect(() => {
+    isLocalSyncPausedRef.current = isLocalSyncPaused;
+  }, [isLocalSyncPaused]);
 
   useEffect(() => {
     onBufferingRecoveredRef.current = onBufferingRecovered;
@@ -112,13 +118,15 @@ export function YouTubePlayer({
               playerControllerRef.current = controller;
             }
             applyPlayerVolume(event.target, usePlayerVolumeStore.getState());
-            applyPlaybackState(
-              event.target,
-              playbackStateRef.current,
-              loadedVideoIdRef,
-              previousPlayerStateRef,
-              suppressNextPausedSyncRef,
-            );
+            if (!isLocalSyncPausedRef.current) {
+              applyPlaybackState(
+                event.target,
+                playbackStateRef.current,
+                loadedVideoIdRef,
+                previousPlayerStateRef,
+                suppressNextPausedSyncRef,
+              );
+            }
           },
           onStateChange: (event) => {
             const previousState = previousPlayerStateRef.current;
@@ -164,6 +172,7 @@ export function YouTubePlayer({
         },
         height: '100%',
         playerVars: {
+          controls: 0,
           modestbranding: 1,
           playsinline: 1,
           rel: 0,
@@ -198,7 +207,7 @@ export function YouTubePlayer({
   useEffect(() => {
     const player = playerRef.current;
 
-    if (!player || !isPlayerReadyRef.current) {
+    if (!player || !isPlayerReadyRef.current || isLocalSyncPaused) {
       return;
     }
 
@@ -209,12 +218,12 @@ export function YouTubePlayer({
       previousPlayerStateRef,
       suppressNextPausedSyncRef,
     );
-  }, [playbackState]);
+  }, [isLocalSyncPaused, playbackState]);
 
   useEffect(() => {
     const videoId = playbackState?.videoId;
 
-    if (!videoId || !playbackState.isPlaying) {
+    if (!videoId || !playbackState.isPlaying || isLocalSyncPaused) {
       return undefined;
     }
 
@@ -234,7 +243,12 @@ export function YouTubePlayer({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [playbackState?.isPlaying, playbackState?.videoId, setLocalPlaybackPosition]);
+  }, [
+    isLocalSyncPaused,
+    playbackState?.isPlaying,
+    playbackState?.videoId,
+    setLocalPlaybackPosition,
+  ]);
 
   return (
     <div className="aspect-video w-full bg-black">

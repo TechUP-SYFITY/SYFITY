@@ -46,7 +46,13 @@ export function usePlayerControls({
   const [commandError, setCommandError] = useState<string | null>(null);
   const beginPlaybackSync = usePlayerStore((state) => state.beginPlaybackSync);
   const clearPlaybackSync = usePlayerStore((state) => state.clearPlaybackSync);
+  const isLocalSyncPaused = usePlayerStore((state) => state.isLocalSyncPaused);
+  const pauseLocalSync = usePlayerStore((state) => state.pauseLocalSync);
+  const resumeLocalSync = usePlayerStore((state) => state.resumeLocalSync);
+  const setPlaybackSyncError = usePlayerStore((state) => state.setPlaybackSyncError);
   const controlDisabled = !canControlRoom || !hasPlayableTrack || Boolean(pendingCommand);
+  const playPauseDisabled =
+    !hasPlayableTrack || Boolean(pendingCommand) || (isHost && !canControlRoom);
 
   useEffect(
     () => () => {
@@ -92,6 +98,24 @@ export function usePlayerControls({
 
   function handlePlayPause() {
     if (!hasPlayableTrack) {
+      return;
+    }
+
+    if (!isHost) {
+      if (isLocalSyncPaused) {
+        resumeLocalSync();
+        beginPlaybackSync('manual');
+        try {
+          playbackCommands.requestSync(roomId);
+        } catch {
+          pauseLocalSync();
+          setPlaybackSyncError();
+        }
+        return;
+      }
+
+      pauseLocalSync();
+      playerControllerRef?.current?.pause();
       return;
     }
 
@@ -142,6 +166,10 @@ export function usePlayerControls({
     }
 
     if (!isHost) {
+      if (isLocalSyncPaused) {
+        return;
+      }
+
       beginPlaybackSync();
       try {
         playbackCommands.requestSync(roomId);
@@ -192,5 +220,7 @@ export function usePlayerControls({
     handlePreviousTrack,
     handleSeek,
     pendingCommand,
+    isLocalSyncPaused,
+    playPauseDisabled,
   };
 }

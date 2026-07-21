@@ -9,6 +9,7 @@ import { ApiClientError } from '@/shared/types/api';
 
 import {
   useCloseRoom,
+  useCreateRoom,
   useJoinRoom,
   useJoinRoomByCode,
   useLeaveRoom,
@@ -95,6 +96,28 @@ describe('Room membership hooks', () => {
     expect(roomApi.getMyRooms).toHaveBeenCalledTimes(1);
     expect(result.current.data).toEqual(myRooms);
     expect(queryClient.getQueryData(['rooms', 'mine'])).toEqual(myRooms);
+  });
+
+  it('Room 생성 성공 후 내 Room과 최근 Room 쿼리를 갱신한다', async () => {
+    vi.mocked(roomApi.createRoom).mockResolvedValue({
+      createdAt: '2026-07-21T08:00:00.000Z',
+      id: 'new-room',
+      inviteCode: 'ABC123',
+      name: '새 Room',
+      status: 'active',
+    });
+    const queryClient = createQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useCreateRoom(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ name: '새 Room' });
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
   });
 
   it('초대 코드 입장은 membership API 오류를 그대로 노출한다', async () => {

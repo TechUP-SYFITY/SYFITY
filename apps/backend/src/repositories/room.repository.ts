@@ -2,7 +2,9 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type {
   CreateRoomData,
   IRoomRepository,
+  KickedMemberRecord,
   RoomDetailRecord,
+  RoomMemberLookupRecord,
   RoomMemberRecord,
   RoomMemberStatus,
   RoomMembershipRecord,
@@ -19,7 +21,7 @@ export type RoomRepositoryPrisma = {
   room: Pick<PrismaClient['room'], 'findUnique' | 'update'>;
   roomMember: Pick<
     PrismaClient['roomMember'],
-    'create' | 'findUnique' | 'findMany' | 'update' | 'updateMany'
+    'create' | 'findFirst' | 'findUnique' | 'findMany' | 'update' | 'updateMany'
   >;
   recentRoom: Pick<PrismaClient['recentRoom'], 'upsert'>;
   $transaction: <T>(fn: (tx: RoomTransactionPrisma) => Promise<T>) => Promise<T>;
@@ -176,7 +178,7 @@ export class RoomRepository implements IRoomRepository {
 
   async findMembers(roomId: string): Promise<RoomMemberRecord[]> {
     const rows = await this.prisma.roomMember.findMany({
-      where: { roomId, status: { not: 'left' } },
+      where: { roomId, status: { notIn: ['left', 'kicked'] } },
       select: {
         id: true,
         userId: true,
@@ -192,7 +194,71 @@ export class RoomRepository implements IRoomRepository {
       nickname: row.user.nickname,
       profileImage: row.user.profileImage,
       role: row.role,
+      status: row.status as RoomMemberRecord['status'],
+    }));
+  }
+
+  async findMemberById(roomId: string, memberId: string): Promise<RoomMemberLookupRecord | null> {
+    const row = await this.prisma.roomMember.findFirst({
+      where: { id: memberId, roomId },
+      select: {
+        id: true,
+        userId: true,
+        role: true,
+        status: true,
+        user: { select: { nickname: true, profileImage: true } },
+      },
+    });
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      userId: row.userId,
+      nickname: row.user.nickname,
+      profileImage: row.user.profileImage,
+      role: row.role,
       status: row.status,
+    };
+  }
+
+  async updateMemberStatusByMemberId(
+    roomId: string,
+    memberId: string,
+    status: RoomMemberStatus,
+    fromStatuses: RoomMemberStatus[],
+  ): Promise<boolean> {
+    const now = new Date();
+    const result = await this.prisma.roomMember.updateMany({
+      where: { id: memberId, roomId, status: { in: fromStatuses } },
+      data: {
+        status,
+        lastSeenAt: now,
+        ...(status === 'left' ? { leftAt: now } : {}),
+      },
+    });
+
+    return result.count > 0;
+  }
+
+  async findKickedMembers(roomId: string): Promise<KickedMemberRecord[]> {
+    const rows = await this.prisma.roomMember.findMany({
+      where: { roomId, status: 'kicked' },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        userId: true,
+        updatedAt: true,
+        user: { select: { nickname: true, profileImage: true } },
+      },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      nickname: row.user.nickname,
+      profileImage: row.user.profileImage,
+      kickedAt: row.updatedAt,
     }));
   }
 
@@ -246,7 +312,7 @@ export class RoomRepository implements IRoomRepository {
       nickname: row.user.nickname,
       profileImage: row.user.profileImage,
       role: row.role,
-      status: row.status,
+      status: row.status as RoomMemberRecord['status'],
     };
   }
 
@@ -261,7 +327,7 @@ export class RoomRepository implements IRoomRepository {
       });
 
       await tx.roomMember.updateMany({
-        where: { roomId, status: { not: 'left' } },
+        where: { roomId, status: { notIn: ['left', 'kicked'] } },
         data: { status: 'left', leftAt: now, lastSeenAt: now },
       });
 

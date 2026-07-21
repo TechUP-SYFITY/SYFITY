@@ -25,7 +25,10 @@ export class UserRepository implements IUserRepository {
     const records = await this.prisma.recentRoom.findMany({
       where: {
         userId,
-        room: { status: 'active' },
+        room: {
+          status: 'active',
+          roomMembers: { none: { userId, status: 'kicked' } },
+        },
       },
       select: {
         lastJoinedAt: true,

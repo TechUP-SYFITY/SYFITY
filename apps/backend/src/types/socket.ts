@@ -1,7 +1,7 @@
 import type { ChatMessage, PlaylistItem } from '@syfity/shared';
 
 import type { PlaybackPolicyPayload, PlaybackStatePayload, RepeatMode } from './playback';
-import type { HostConnectionState, RoomMemberRecord, RoomMemberStatus, RoomRole } from './room';
+import type { HostConnectionState, RoomMemberRecord, RoomRole } from './room';
 
 export type RoomJoinPayload = {
   roomId: string;
@@ -90,7 +90,12 @@ export type PresenceUpdatePayload = {
   nickname: string;
   profileImage: string | null;
   role: RoomRole;
-  status: RoomMemberStatus;
+  status: 'online' | 'offline' | 'left';
+};
+
+export type RoomKickedPayload = {
+  roomId: string;
+  message: 'Host에 의해 Room에서 추방되었습니다.';
 };
 
 export type RoomClosedReason = 'host-left' | 'host-timeout' | 'host-closed';

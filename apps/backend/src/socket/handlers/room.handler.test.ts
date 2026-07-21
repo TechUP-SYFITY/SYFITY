@@ -393,14 +393,14 @@ describe('registerRoomHandlers', () => {
     expect(roomEmit).not.toHaveBeenCalled();
   });
 
-  it('room:join service AppError는 ack error로 반환하고 브로드캐스트하지 않는다', async () => {
+  it('room:join의 kicked AppError는 ROOM_MEMBER_KICKED ack 오류로 반환하고 브로드캐스트하지 않는다', async () => {
     const { io } = makeIo();
     const { socket, handlers } = makeSocket();
     const roomService = makeRoomService({
       setMemberOnline: vi
         .fn()
         .mockRejectedValue(
-          new AppError(403, ERROR_CODES.ROOM_ACCESS_DENIED, 'Room 참여자만 접근할 수 있습니다.'),
+          new AppError(403, ERROR_CODES.ROOM_MEMBER_KICKED, 'Host에 의해 추방된 사용자입니다.'),
         ),
     });
 
@@ -411,8 +411,8 @@ describe('registerRoomHandlers', () => {
     expect(ack).toHaveBeenCalledWith({
       success: false,
       error: {
-        code: ERROR_CODES.ROOM_ACCESS_DENIED,
-        message: 'Room 참여자만 접근할 수 있습니다.',
+        code: ERROR_CODES.ROOM_MEMBER_KICKED,
+        message: 'Host에 의해 추방된 사용자입니다.',
       },
     });
     expect(socket.join).not.toHaveBeenCalled();

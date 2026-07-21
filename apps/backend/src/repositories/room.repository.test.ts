@@ -40,14 +40,14 @@ const uniqueConstraintError = new Prisma.PrismaClientKnownRequestError(
 
 type RoomMembershipResult = {
   role: 'host' | 'member' | 'guest';
-  status: 'online' | 'offline' | 'left';
+  status: 'online' | 'offline' | 'left' | 'kicked';
 };
 
 type RoomMemberRow = {
   id: string;
   userId: string;
   role: 'host' | 'member' | 'guest';
-  status: 'online' | 'offline' | 'left';
+  status: 'online' | 'offline' | 'left' | 'kicked';
   user: { nickname: string; profileImage: string | null };
 };
 
@@ -69,6 +69,7 @@ function makePrisma(
     findUniqueResult?: { id: string } | RoomDetailRecord | null;
     membershipResult?: RoomMembershipResult | null;
     memberInfoResult?: RoomMemberRow | null;
+    memberByIdResult?: RoomMemberRow | null;
     membersResult?: RoomMemberRow[];
     roomUpdateResult?: RoomUpdateRecord;
     roomUpdateError?: Error;
@@ -102,6 +103,9 @@ function makePrisma(
               ? overrides.memberInfoResult
               : (overrides.membershipResult ?? null),
           ),
+        findFirst: vi
+          .fn()
+          .mockResolvedValue('memberByIdResult' in overrides ? overrides.memberByIdResult : null),
         findMany: vi.fn().mockResolvedValue(overrides.membersResult ?? []),
         update: vi.fn().mockResolvedValue({}),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -354,7 +358,7 @@ describe('RoomRepository', () => {
     });
   });
 
-  it('left 상태를 제외하고 멤버 목록을 조회한다', async () => {
+  it('left와 kicked 상태를 제외하고 멤버 목록을 조회한다', async () => {
     const { prisma } = makePrisma({
       membersResult: [
         {
@@ -380,12 +384,93 @@ describe('RoomRepository', () => {
     ]);
 
     expect(prisma.roomMember.findMany).toHaveBeenCalledWith({
-      where: { roomId: 'room-1', status: { not: 'left' } },
+      where: { roomId: 'room-1', status: { notIn: ['left', 'kicked'] } },
       select: {
         id: true,
         userId: true,
         role: true,
         status: true,
+        user: { select: { nickname: true, profileImage: true } },
+      },
+    });
+  });
+
+  it('ID로 Room 내 멤버를 조회한다', async () => {
+    const memberById = {
+      id: 'member-2',
+      userId: 'user-2',
+      role: 'member' as const,
+      status: 'kicked' as const,
+      user: { nickname: 'Bob', profileImage: null },
+    };
+    const { prisma } = makePrisma({ memberByIdResult: memberById });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.findMemberById('room-1', 'member-2')).resolves.toEqual({
+      id: 'member-2',
+      userId: 'user-2',
+      nickname: 'Bob',
+      profileImage: null,
+      role: 'member',
+      status: 'kicked',
+    });
+    expect(prisma.roomMember.findFirst).toHaveBeenCalledWith({
+      where: { id: 'member-2', roomId: 'room-1' },
+      select: {
+        id: true,
+        userId: true,
+        role: true,
+        status: true,
+        user: { select: { nickname: true, profileImage: true } },
+      },
+    });
+  });
+
+  it('memberId 기준 상태 전이는 허용된 이전 상태에서만 갱신한다', async () => {
+    const { prisma } = makePrisma();
+    const repo = new RoomRepository(prisma);
+
+    await expect(
+      repo.updateMemberStatusByMemberId('room-1', 'member-2', 'kicked', ['online', 'offline']),
+    ).resolves.toBe(true);
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { id: 'member-2', roomId: 'room-1', status: { in: ['online', 'offline'] } },
+      data: { status: 'kicked', lastSeenAt: expect.any(Date) },
+    });
+  });
+
+  it('추방 멤버를 추방 시각 내림차순으로 조회한다', async () => {
+    const kickedAt = new Date('2026-07-01T13:00:00.000Z');
+    const { prisma } = makePrisma({
+      membersResult: [
+        {
+          id: 'member-2',
+          userId: 'user-2',
+          role: 'member',
+          status: 'kicked',
+          user: { nickname: 'Bob', profileImage: null },
+          updatedAt: kickedAt,
+        } as RoomMemberRow,
+      ],
+    });
+    const repo = new RoomRepository(prisma);
+
+    await expect(repo.findKickedMembers('room-1')).resolves.toEqual([
+      {
+        id: 'member-2',
+        userId: 'user-2',
+        nickname: 'Bob',
+        profileImage: null,
+        kickedAt,
+      },
+    ]);
+    expect(prisma.roomMember.findMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', status: 'kicked' },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        userId: true,
+        updatedAt: true,
         user: { select: { nickname: true, profileImage: true } },
       },
     });
@@ -506,7 +591,7 @@ describe('RoomRepository', () => {
     await expect(repo.findMemberInfo('room-1', 'user-1')).resolves.toBeNull();
   });
 
-  it('Room을 닫고 갱신된 Room 레코드를 반환하며 left가 아닌 멤버를 left 처리한다', async () => {
+  it('Room을 닫고 갱신된 Room 레코드를 반환하며 kicked를 제외한 멤버를 left 처리한다', async () => {
     const { prisma, tx } = makePrisma();
     const repo = new RoomRepository(prisma);
 
@@ -519,7 +604,7 @@ describe('RoomRepository', () => {
       select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
     expect(tx.roomMember.updateMany).toHaveBeenCalledWith({
-      where: { roomId: 'room-1', status: { not: 'left' } },
+      where: { roomId: 'room-1', status: { notIn: ['left', 'kicked'] } },
       data: {
         status: 'left',
         leftAt: expect.any(Date),

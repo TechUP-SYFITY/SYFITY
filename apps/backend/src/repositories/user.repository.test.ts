@@ -98,7 +98,10 @@ describe('UserRepository', () => {
     expect(prisma.recentRoom.findMany).toHaveBeenCalledWith({
       where: {
         userId: 'user-id',
-        room: { status: 'active' },
+        room: {
+          status: 'active',
+          roomMembers: { none: { userId: 'user-id', status: 'kicked' } },
+        },
       },
       select: {
         lastJoinedAt: true,

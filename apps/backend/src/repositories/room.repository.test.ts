@@ -606,7 +606,7 @@ describe('RoomRepository', () => {
     await expect(repo.findMemberInfo('room-1', 'user-1')).resolves.toBeNull();
   });
 
-  it('Room을 닫고 갱신된 Room 레코드를 반환하며 kicked를 제외한 멤버를 left 처리한다', async () => {
+  it('Room을 닫고 갱신된 Room 레코드를 반환하며 참여 이력을 유지한다', async () => {
     const { prisma, tx } = makePrisma();
     const repo = new RoomRepository(prisma);
 
@@ -618,13 +618,6 @@ describe('RoomRepository', () => {
       data: { status: 'closed', closedAt: expect.any(Date) },
       select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
-    expect(tx.roomMember.updateMany).toHaveBeenCalledWith({
-      where: { roomId: 'room-1', status: { notIn: ['left', 'kicked'] } },
-      data: {
-        status: 'left',
-        leftAt: expect.any(Date),
-        lastSeenAt: expect.any(Date),
-      },
-    });
+    expect(tx.roomMember.updateMany).not.toHaveBeenCalled();
   });
 });

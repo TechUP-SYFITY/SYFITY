@@ -15,6 +15,21 @@ describe('serviceWorker', () => {
     Reflect.deleteProperty(navigator, 'userAgent');
   });
 
+  it('MSW가 활성화된 환경에서는 PWA Service Worker를 등록하지 않는다', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_API_MOCKING', 'enabled');
+    const register = vi.fn();
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { addEventListener: vi.fn(), register },
+    });
+
+    registerServiceWorker(vi.fn());
+
+    expect(isServiceWorkerRegistrationEnabled()).toBe(false);
+    expect(register).not.toHaveBeenCalled();
+  });
+
   it('프로덕션이 아니면 Service Worker를 등록하지 않는다', () => {
     vi.stubEnv('NODE_ENV', 'development');
     const register = vi.fn();

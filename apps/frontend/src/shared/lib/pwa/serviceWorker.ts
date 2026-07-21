@@ -8,6 +8,7 @@ export interface BeforeInstallPromptEvent extends Event {
 export function isServiceWorkerRegistrationEnabled(): boolean {
   return (
     process.env.NODE_ENV === 'production' &&
+    process.env.NEXT_PUBLIC_API_MOCKING !== 'enabled' &&
     typeof navigator !== 'undefined' &&
     'serviceWorker' in navigator
   );

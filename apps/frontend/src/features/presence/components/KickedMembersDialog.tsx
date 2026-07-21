@@ -26,6 +26,27 @@ interface KickedMembersDialogProps {
   roomId: string;
 }
 
+const kickedAtFormatter = new Intl.DateTimeFormat('ko-KR', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+function formatKickedAt(kickedAt: string) {
+  const date = new Date(kickedAt);
+
+  return Number.isNaN(date.getTime()) ? null : kickedAtFormatter.format(date);
+}
+
+function KickedAt({ kickedAt }: { kickedAt: string }) {
+  const formattedKickedAt = formatKickedAt(kickedAt);
+
+  return formattedKickedAt ? (
+    <time dateTime={kickedAt}>{formattedKickedAt}</time>
+  ) : (
+    <>추방 시간 알 수 없음</>
+  );
+}
+
 export function KickedMembersDialog({
   onOpenChange,
   onRequestUnkick,
@@ -91,7 +112,9 @@ export function KickedMembersDialog({
                     <p className="truncate text-sm font-semibold text-white/85">
                       {member.nickname}
                     </p>
-                    <p className="text-xs text-white/35">추방됨</p>
+                    <p className="text-xs text-white/35">
+                      <KickedAt kickedAt={member.kickedAt} />
+                    </p>
                   </div>
                   <Button
                     aria-label={`${member.nickname} 추방 해제`}

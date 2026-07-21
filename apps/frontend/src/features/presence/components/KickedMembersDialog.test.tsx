@@ -79,10 +79,25 @@ describe('KickedMembersDialog', () => {
   it('추방된 멤버를 표시하고 해제 대상을 전달한다', async () => {
     vi.mocked(roomMemberApi.getKickedMembers).mockResolvedValue({ members: [member] });
     const onRequestUnkick = renderDialog();
+    const kickedAt = new Intl.DateTimeFormat('ko-KR', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(member.kickedAt));
 
+    expect(await screen.findByText(kickedAt)).toHaveAttribute('datetime', member.kickedAt);
     fireEvent.click(await screen.findByRole('button', { name: '지민 추방 해제' }));
 
     expect(onRequestUnkick).toHaveBeenCalledWith(member);
+  });
+
+  it('추방 시각이 잘못된 경우 안전한 대체 문구를 표시한다', async () => {
+    vi.mocked(roomMemberApi.getKickedMembers).mockResolvedValue({
+      members: [{ ...member, kickedAt: 'invalid-date' }],
+    });
+
+    renderDialog();
+
+    expect(await screen.findByText('추방 시간 알 수 없음')).toBeInTheDocument();
   });
 
   it('조회 실패를 안내하고 다시 시도할 수 있다', async () => {

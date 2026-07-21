@@ -66,7 +66,6 @@ model Room {
   visibility     RoomVisibility
   inviteCode     String         @unique @map("invite_code") @db.VarChar(8)
   status         RoomStatus     @default(active)
-  lastActivityAt DateTime       @map("last_activity_at") @db.Timestamptz
   closedAt       DateTime?      @map("closed_at") @db.Timestamptz
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
@@ -77,6 +76,8 @@ model Room {
   playlistItems PlaylistItem[]
   chatMessages  ChatMessage[]
 
+  @@index([hostId, status, updatedAt(sort: Desc)])
+  @@index([closedAt])
   @@map("rooms")
 }
 

@@ -325,6 +325,33 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '나가기' })).toBeDisabled();
   });
 
+  it('사용자 정보 조회가 실패하면 역할을 추정하지 않고 Home으로 이동한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: { code: 'AUTH_FORBIDDEN', message: '사용자 정보를 조회할 수 없습니다.' },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(
+      await screen.findByText('사용자 정보를 확인할 수 없어 Home으로 이동합니다.'),
+    ).toBeVisible();
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+    expect(socket.emit).not.toHaveBeenCalledWith('room:leave', { roomId: roomFixture.room.id });
+  });
+
   it('Host는 REST 종료 후 room:closed 이벤트를 기다리되 응답이 없으면 Home으로 이동한다', async () => {
     const updateRoom = vi.fn();
     server.use(

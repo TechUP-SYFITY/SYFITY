@@ -23,7 +23,7 @@ export function useRoomPageSession(roomId: string) {
   const router = useRouter();
   const { pushToast } = useToast();
   const joinRoom = useJoinRoom(roomId);
-  const { data: me } = useMe();
+  const { data: me, isError: isMeError } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
   const hasJoinedRoom = useRoomStore((state) => state.hasJoinedRoom && state.room?.id === roomId);
   const room = useRoomStore((state) => state.room);
@@ -100,6 +100,7 @@ export function useRoomPageSession(roomId: string) {
     hasJoinedRoom,
     hostConnection,
     isMuted,
+    isMeError,
     joinRoom,
     localPlaybackPosition,
     me,

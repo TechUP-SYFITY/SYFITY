@@ -63,6 +63,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     hasJoinedRoom,
     hostConnection,
     exitRoom,
+    isMeError,
     isMuted: miniPlayerIsMuted,
     joinRoom,
     localPlaybackPosition,
@@ -104,6 +105,19 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   });
   const roomExitError = closeRoom.isError ? getApiErrorMessage(closeRoom.error) : undefined;
   const isRoomClosing = closeRoom.isPending || closeRoom.isSuccess;
+
+  useEffect(() => {
+    if (!isMeError || !hasJoinedRoom) {
+      return;
+    }
+
+    pushToast({
+      id: 'room-user-error',
+      title: '사용자 정보를 확인할 수 없어 Home으로 이동합니다.',
+      variant: 'error',
+    });
+    exitRoom();
+  }, [exitRoom, hasJoinedRoom, isMeError, pushToast]);
 
   useEffect(() => {
     if (!closeRoom.isSuccess || !hasJoinedRoom) {

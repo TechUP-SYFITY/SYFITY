@@ -17,7 +17,7 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative shrink-0">
+    <div className="shrink-0">
       <Button
         variant="ghost"
         size="icon"
@@ -30,9 +30,11 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
         <SmilePlus className="h-4 w-4" aria-hidden />
       </Button>
       {isOpen ? (
-        <div className="absolute bottom-9 left-0 z-50">
+        <div className="absolute right-0 bottom-[calc(100%+0.5rem)] z-50 h-[min(300px,calc(100dvh-12rem))] w-full max-w-[350px]">
           <EmojiPicker
             emojiStyle={EmojiStyle.NATIVE}
+            height="100%"
+            width="100%"
             onEmojiClick={(emojiData) => {
               onEmojiSelect(emojiData.emoji);
               setIsOpen(false);

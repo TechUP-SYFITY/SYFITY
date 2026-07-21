@@ -19,6 +19,12 @@ describe('ChatInputForm', () => {
     cleanup();
   });
 
+  it('이모지 피커의 위치 기준이 되도록 입력 폼을 배치한다', () => {
+    render(<ChatInputForm onSubmit={vi.fn()} />);
+
+    expect(screen.getByLabelText('채팅 메시지 입력').closest('form')).toHaveClass('relative');
+  });
+
   it('공백만 제출하면 onSubmit을 호출하지 않고 에러를 표시하지 않는다', () => {
     const onSubmit = vi.fn();
     render(<ChatInputForm onSubmit={onSubmit} />);

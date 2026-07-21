@@ -103,7 +103,7 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
   };
 
   return (
-    <form className="min-w-0 flex-1" onSubmit={handleSubmit}>
+    <form className="relative min-w-0 flex-1" onSubmit={handleSubmit}>
       <div
         className={cn(
           `flex min-h-11 min-w-0 items-end rounded-2xl border bg-input px-3 py-1.5 transition-colors`,

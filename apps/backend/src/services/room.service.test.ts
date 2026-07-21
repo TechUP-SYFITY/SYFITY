@@ -533,6 +533,21 @@ describe('RoomService', () => {
     expect(roomRepo.findKickedMembers).toHaveBeenCalledWith('room-1');
   });
 
+  it('Host가 아닌 사용자의 멤버 추방과 추방 해제를 AUTH_FORBIDDEN으로 거부한다', async () => {
+    const { service, roomRepo } = makeService();
+
+    await expect(service.kickMember('room-1', 'user-2', 'member-2')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+    });
+    await expect(service.unkickMember('room-1', 'user-2', 'member-2')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+    });
+    expect(roomRepo.findMemberById).not.toHaveBeenCalled();
+    expect(roomRepo.updateMemberStatusByMemberId).not.toHaveBeenCalled();
+  });
+
   it('Host가 멤버를 추방하면 대상 Socket을 해제하고 presence:update를 전파한다', async () => {
     const target: RoomMemberLookupRecord = {
       id: 'member-2',

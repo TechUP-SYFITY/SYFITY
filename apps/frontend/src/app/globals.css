@@ -1,8 +1,83 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-.chat-emoji-picker .epr-category-nav {
+.chat-emoji-picker .EmojiPickerReact {
+  --epr-bg-color: var(--surface);
+  --epr-picker-border-color: var(--border);
+  --epr-highlight-color: var(--primary);
+  --epr-text-color: var(--muted-foreground);
+  --epr-hover-bg-color: rgba(255, 255, 255, 0.08);
+  --epr-focus-bg-color: rgba(114, 244, 164, 0.15);
+  --epr-search-input-bg-color: var(--input);
+  --epr-search-input-bg-color-active: rgba(255, 255, 255, 0.08);
+  --epr-search-input-text-color: var(--foreground);
+  --epr-search-input-placeholder-color: var(--muted-foreground);
+  --epr-search-border-color: var(--border);
+  --epr-search-border-color-active: var(--primary);
+  --epr-emoji-hover-color: var(--epr-hover-bg-color);
+  --epr-category-label-height: 0px;
+  --epr-picker-border-radius: var(--radius-lg);
+  --epr-search-input-border-radius: var(--radius-md);
+  --epr-header-padding: 12px;
+  --epr-horizontal-padding: 12px;
+
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.55),
+    0 0 32px rgba(114, 244, 164, 0.08);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.chat-emoji-picker .epr-category-nav,
+.chat-emoji-picker .epr-emoji-category-label {
   display: none;
+}
+
+.chat-emoji-picker .epr-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-emoji-picker .epr-search-container input {
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.chat-emoji-picker .epr-search-container input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(114, 244, 164, 0.18);
+}
+
+.chat-emoji-picker button.epr-emoji {
+  border-radius: var(--radius-md);
+}
+
+.chat-emoji-picker button.epr-emoji:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.chat-emoji-picker .epr-body {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  scrollbar-width: thin;
+}
+
+.chat-emoji-picker .epr-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-emoji-picker .epr-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-emoji-picker .epr-body::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 @custom-variant dark (&:is(.dark *));

@@ -1,6 +1,6 @@
 'use client';
 
-import { Categories, EmojiStyle } from 'emoji-picker-react';
+import { Categories, EmojiStyle, Theme } from 'emoji-picker-react';
 import { SmilePlus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
@@ -49,6 +49,7 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
             emojiVersion="12.1"
             height="100%"
             previewConfig={{ showPreview: false }}
+            theme={Theme.DARK}
             width="100%"
             onEmojiClick={(emojiData) => {
               onEmojiSelect(emojiData.emoji);

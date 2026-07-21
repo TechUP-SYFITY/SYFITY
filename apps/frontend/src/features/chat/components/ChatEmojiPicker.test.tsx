@@ -12,6 +12,7 @@ vi.mock('emoji-picker-react', () => ({
     height,
     onEmojiClick,
     previewConfig,
+    theme,
     width,
   }: {
     categories?: string[];
@@ -19,6 +20,7 @@ vi.mock('emoji-picker-react', () => ({
     height?: number | string;
     onEmojiClick: (emojiData: { emoji: string }) => void;
     previewConfig?: { showPreview?: boolean };
+    theme?: string;
     width?: number | string;
   }) => (
     <button
@@ -26,6 +28,7 @@ vi.mock('emoji-picker-react', () => ({
       data-emoji-version={emojiVersion}
       data-height={height}
       data-show-preview={previewConfig?.showPreview}
+      data-theme={theme}
       data-width={width}
       type="button"
       onClick={() => onEmojiClick({ emoji: '😀' })}
@@ -46,6 +49,7 @@ vi.mock('emoji-picker-react', () => ({
     TRAVEL_PLACES: 'travel_places',
   },
   EmojiStyle: { NATIVE: 'native' },
+  Theme: { DARK: 'dark' },
 }));
 
 describe('ChatEmojiPicker', () => {
@@ -107,5 +111,14 @@ describe('ChatEmojiPicker', () => {
 
     expect(picker).not.toHaveAttribute('data-categories', expect.stringContaining('flags'));
     expect(picker).toHaveAttribute('data-categories', expect.stringContaining('symbols'));
+  });
+
+  it('Syfity 다크 테마를 사용한다', async () => {
+    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
+
+    expect(picker).toHaveAttribute('data-theme', 'dark');
   });
 });

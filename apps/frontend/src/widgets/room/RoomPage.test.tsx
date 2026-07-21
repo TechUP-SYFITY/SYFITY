@@ -302,6 +302,28 @@ describe('RoomPage', () => {
     expect(routerReplace).toHaveBeenCalledWith('/home');
   });
 
+  it('사용자 정보가 확인되기 전에는 Room 퇴장 액션을 실행할 수 없다', async () => {
+    server.use(
+      http.get(
+        '*/api/v1/me',
+        () =>
+          new Promise<HttpResponse<UserProfileResponse>>(() => {
+            // 사용자 응답을 대기 상태로 유지해 Room 입장과 인증 조회의 경합을 재현한다.
+          }),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '나가기' })).toBeDisabled();
+  });
+
   it('Host는 확인 후 REST로 Room 종료를 요청하고 room:closed 이벤트를 기다린다', async () => {
     const updateRoom = vi.fn();
     server.use(

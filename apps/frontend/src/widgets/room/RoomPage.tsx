@@ -233,7 +233,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
         room={room}
         roomAction={
           <RoomExitAction
-            disabled={!room}
+            disabled={!room || me === undefined}
             errorMessage={roomExitError}
             isPending={isRoomClosing}
             role={isHost ? 'host' : 'member'}

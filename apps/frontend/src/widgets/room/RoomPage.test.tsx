@@ -121,6 +121,7 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getByTestId('presence-mock-panel')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
     expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
     expect(useRoomLiveConnections).toHaveBeenCalledWith(
       roomFixture.room.id,
@@ -186,6 +187,7 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: '추방 관리' })).not.toBeInTheDocument();
   });
 
   it('Host 재접속 중에도 Member는 곡을 추가하고 본인 곡을 삭제할 수 있다', async () => {

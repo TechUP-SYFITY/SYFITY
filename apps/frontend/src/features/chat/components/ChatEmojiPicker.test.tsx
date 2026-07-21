@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatEmojiPicker } from './ChatEmojiPicker';
@@ -124,6 +124,59 @@ describe('ChatEmojiPicker', () => {
     expect(picker.parentElement?.parentElement).toBe(document.body);
     expect(picker).toHaveAttribute('data-width', '100%');
     expect(picker).toHaveAttribute('data-height', '100%');
+  });
+
+  it('연속 스크롤에서 위치 계산을 프레임당 한 번만 예약한다', async () => {
+    const frameCallbacks: FrameRequestCallback[] = [];
+    const requestAnimationFrame = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frameCallbacks.push(callback);
+        return frameCallbacks.length;
+      });
+    const getBoundingClientRect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({
+        bottom: 500,
+        height: 46,
+        left: 100,
+        right: 450,
+        top: 454,
+        width: 350,
+        x: 100,
+        y: 454,
+        toJSON: () => ({}),
+      });
+    const addEventListener = vi.spyOn(window, 'addEventListener');
+
+    render(
+      <form>
+        <ChatEmojiPicker onEmojiSelect={vi.fn()} />
+      </form>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    await screen.findByRole('button', { name: '피커 이모지 선택' });
+    const initialFrameCount = requestAnimationFrame.mock.calls.length;
+    const initialPositionCount = getBoundingClientRect.mock.calls.length;
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(initialFrameCount + 1);
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(initialPositionCount);
+    expect(addEventListener).toHaveBeenCalledWith('scroll', expect.any(Function), {
+      capture: true,
+      passive: true,
+    });
+
+    act(() => {
+      frameCallbacks.at(-1)?.(0);
+    });
+
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(initialPositionCount + 1);
   });
 
   it('Unicode 12.1 이하의 이모지만 표시한다', async () => {

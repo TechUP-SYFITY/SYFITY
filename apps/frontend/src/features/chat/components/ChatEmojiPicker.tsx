@@ -64,6 +64,10 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
   useLayoutEffect(() => {
     if (!isOpen) return;
 
+    let animationFrameId: number | null = null;
+    const passiveListenerOptions = { passive: true } as const;
+    const windowScrollListenerOptions = { capture: true, passive: true } as const;
+
     const updatePickerPosition = () => {
       const container = containerRef.current;
       const anchor = container?.closest('form') ?? container;
@@ -73,17 +77,38 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
       setPickerPosition(getPickerPosition(anchor.getBoundingClientRect()));
     };
 
+    const schedulePickerPositionUpdate = () => {
+      if (animationFrameId !== null) return;
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null;
+        updatePickerPosition();
+      });
+    };
+
     updatePickerPosition();
-    window.addEventListener('resize', updatePickerPosition);
-    window.addEventListener('scroll', updatePickerPosition, true);
-    window.visualViewport?.addEventListener('resize', updatePickerPosition);
-    window.visualViewport?.addEventListener('scroll', updatePickerPosition);
+    window.addEventListener('resize', schedulePickerPositionUpdate);
+    window.addEventListener('scroll', schedulePickerPositionUpdate, windowScrollListenerOptions);
+    window.visualViewport?.addEventListener('resize', schedulePickerPositionUpdate);
+    window.visualViewport?.addEventListener(
+      'scroll',
+      schedulePickerPositionUpdate,
+      passiveListenerOptions,
+    );
 
     return () => {
-      window.removeEventListener('resize', updatePickerPosition);
-      window.removeEventListener('scroll', updatePickerPosition, true);
-      window.visualViewport?.removeEventListener('resize', updatePickerPosition);
-      window.visualViewport?.removeEventListener('scroll', updatePickerPosition);
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
+      window.removeEventListener('resize', schedulePickerPositionUpdate);
+      window.removeEventListener(
+        'scroll',
+        schedulePickerPositionUpdate,
+        windowScrollListenerOptions,
+      );
+      window.visualViewport?.removeEventListener('resize', schedulePickerPositionUpdate);
+      window.visualViewport?.removeEventListener('scroll', schedulePickerPositionUpdate);
     };
   }, [isOpen]);
 

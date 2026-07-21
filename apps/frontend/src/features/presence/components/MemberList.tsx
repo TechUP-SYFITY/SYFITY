@@ -104,14 +104,33 @@ function MemberGroup({
       <div className="space-y-1.5">
         {members.map((member) => {
           const managementMember = activeMemberByUserId.get(member.userId);
-          const canManageMember =
-            canManage &&
-            member.role !== 'host' &&
-            member.userId !== currentUserId &&
-            managementMember !== undefined;
+          const isEligibleTarget =
+            canManage && member.role !== 'host' && member.userId !== currentUserId;
           const row = <MemberRow isMuted={isMuted} member={member} />;
 
-          return canManageMember ? (
+          if (!isEligibleTarget) {
+            return <MemberRow isMuted={isMuted} key={member.userId} member={member} />;
+          }
+
+          if (!managementMember) {
+            return (
+              <button
+                aria-label={
+                  isRosterPending
+                    ? '멤버 관리 정보를 불러오는 중이에요'
+                    : '멤버 관리 정보를 불러오지 못했어요'
+                }
+                className="w-full rounded-2xl text-left opacity-70"
+                disabled
+                key={member.userId}
+                type="button"
+              >
+                {row}
+              </button>
+            );
+          }
+
+          return (
             <MemberActionMenu
               disabled={isRosterPending}
               key={member.userId}
@@ -120,8 +139,6 @@ function MemberGroup({
             >
               {row}
             </MemberActionMenu>
-          ) : (
-            <MemberRow isMuted={isMuted} key={member.userId} member={member} />
           );
         })}
       </div>

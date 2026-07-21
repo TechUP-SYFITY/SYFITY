@@ -101,5 +101,21 @@ describe('MemberList management', () => {
     );
     expect(screen.getByText('Host')).toBeInTheDocument();
     expect(screen.getByText('지민')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '멤버 관리 정보를 불러오지 못했어요' }),
+    ).toBeDisabled();
+  });
+
+  it('관리 메타데이터를 불러오는 동안 대상 행을 비활성 관리 버튼으로 유지한다', () => {
+    vi.mocked(roomMemberApi.getActiveMembers).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+
+    renderList(true);
+
+    expect(
+      screen.getByRole('button', { name: '멤버 관리 정보를 불러오는 중이에요' }),
+    ).toBeDisabled();
+    expect(screen.getByText('지민')).toBeInTheDocument();
   });
 });

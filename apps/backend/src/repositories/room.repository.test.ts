@@ -439,6 +439,21 @@ describe('RoomRepository', () => {
     });
   });
 
+  it('memberId 기준 상태 전이는 이전 상태가 일치하지 않으면 false를 반환한다', async () => {
+    const { prisma } = makePrisma();
+    prisma.roomMember.updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const repo = new RoomRepository(prisma);
+
+    await expect(
+      repo.updateMemberStatusByMemberId('room-1', 'member-2', 'kicked', ['online', 'offline']),
+    ).resolves.toBe(false);
+
+    expect(prisma.roomMember.updateMany).toHaveBeenCalledWith({
+      where: { id: 'member-2', roomId: 'room-1', status: { in: ['online', 'offline'] } },
+      data: { status: 'kicked', lastSeenAt: expect.any(Date) },
+    });
+  });
+
   it('추방 멤버를 추방 시각 내림차순으로 조회한다', async () => {
     const kickedAt = new Date('2026-07-01T13:00:00.000Z');
     const { prisma } = makePrisma({

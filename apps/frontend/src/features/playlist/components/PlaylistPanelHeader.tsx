@@ -1,13 +1,15 @@
-// Playlist 패널 제목과 곡 추가 버튼을 표시한다.
-import { ListMusic, Plus } from 'lucide-react';
+// Playlist 패널 제목과 곡 추가/불러오기 컨트롤을 표시한다.
+import { ListMusic } from 'lucide-react';
 
-import { Button } from '@/shared/components/ui';
+import { PlaylistAddMenu } from './PlaylistAddMenu';
 
 interface PlaylistPanelHeaderProps {
   disabled: boolean;
   isBackgroundFetching: boolean;
   itemCount: number;
   onAddClick: () => void;
+  showImport?: boolean;
+  onImportClick?: () => void;
 }
 
 export function PlaylistPanelHeader({
@@ -15,6 +17,8 @@ export function PlaylistPanelHeader({
   isBackgroundFetching,
   itemCount,
   onAddClick,
+  showImport = false,
+  onImportClick,
 }: PlaylistPanelHeaderProps) {
   return (
     <div className="hidden h-12 items-center justify-between border-b border-border px-4 xl:flex">
@@ -28,17 +32,13 @@ export function PlaylistPanelHeader({
           </span>
         ) : null}
       </h2>
-      <Button
-        variant="primary-soft"
-        size="sm"
-        className="rounded-2xl"
-        type="button"
+      <PlaylistAddMenu
+        variant="header"
         disabled={disabled}
-        onClick={onAddClick}
-      >
-        <Plus className="size-3" aria-hidden />
-        추가
-      </Button>
+        showImport={showImport}
+        onAddSearch={onAddClick}
+        onImport={onImportClick}
+      />
     </div>
   );
 }

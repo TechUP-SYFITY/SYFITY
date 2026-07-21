@@ -3,10 +3,11 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { SocketClient, SyfitySocket } from '@/shared/lib/socket/types';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { ApiClientError } from '@/shared/types/api';
 
-import { useCloseRoom, useJoinRoom, useJoinRoomByCode } from './roomHooks';
+import { useCloseRoom, useJoinRoom, useJoinRoomByCode, useLeaveRoom } from './roomHooks';
 import { roomApi } from '../api/roomApi';
 import type { CreateRoomMembershipResponse, RoomResponse } from '../types/roomTypes';
 
@@ -131,5 +132,29 @@ describe('Room membership hooks', () => {
     });
 
     expect(roomApi.updateRoom).toHaveBeenCalledWith(roomFixture.room.id, { status: 'closed' });
+  });
+
+  it('연결된 Socket으로 Member의 명시적 퇴장을 전송한다', () => {
+    const emit = vi.fn();
+    const socket = {
+      connected: true,
+      emit,
+    } as unknown as SyfitySocket;
+    const client = {
+      get: vi.fn(() => socket),
+    } as unknown as SocketClient;
+    const { result } = renderHook(() => useLeaveRoom(roomFixture.room.id, client));
+
+    expect(result.current()).toBe(true);
+    expect(emit).toHaveBeenCalledWith('room:leave', { roomId: roomFixture.room.id });
+  });
+
+  it('Socket이 연결되지 않으면 Member 퇴장을 전송하지 않는다', () => {
+    const client = {
+      get: vi.fn(() => null),
+    } as unknown as SocketClient;
+    const { result } = renderHook(() => useLeaveRoom(roomFixture.room.id, client));
+
+    expect(result.current()).toBe(false);
   });
 });

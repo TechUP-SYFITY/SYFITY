@@ -54,7 +54,21 @@ export type UpdateRoomRequest =
        */
       name: string;
     }
-  | { status: 'closed' };
+  | { status: 'closed' }
+  | { status: 'active' };
+
+export type GetMyRoomsResponse = {
+  success: true;
+  data: {
+    rooms: Array<{
+      id: string;
+      name: string;
+      status: 'active' | 'closed';
+      closedAt: string | null;
+      updatedAt: string;
+    }>;
+  };
+};
 
 export type UpdateRoomResponse = {
   success: true;

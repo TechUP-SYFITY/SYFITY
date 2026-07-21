@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { ERROR_CODES } from '@syfity/shared';
+
 import { PlaylistService } from './playlist.service';
 
 vi.mock('../socket/broadcast', () => ({ broadcastToRoom: vi.fn() }));
@@ -18,7 +20,7 @@ const item = {
   addedAt: new Date(),
 };
 
-function fixture() {
+function fixture(status: 'active' | 'closed' | 'inactive' = 'active') {
   const playlistRepo = {
     getPlaylist: vi.fn().mockResolvedValue([item]),
     addItem: vi.fn().mockResolvedValue(item),
@@ -29,9 +31,8 @@ function fixture() {
     reorderItems: vi.fn(),
   };
   const roomRepo = {
-    findRoomById: vi.fn().mockResolvedValue({ id: 'room-1', hostId: 'host', status: 'active' }),
+    findRoomById: vi.fn().mockResolvedValue({ id: 'room-1', hostId: 'host', status }),
     findMembership: vi.fn().mockResolvedValue({ role: 'host', status: 'online' }),
-    touchLastActivity: vi.fn().mockResolvedValue(undefined),
   };
   const playbackService = {
     enqueueIfShuffled: vi.fn().mockResolvedValue(undefined),
@@ -59,4 +60,19 @@ describe('PlaylistService playback integration', () => {
     expect(playbackService.advanceAfterCurrentRemoved).toHaveBeenCalledWith('room-1', 'item-1');
     expect(playlistRepo.deleteItem).toHaveBeenCalledWith('item-1');
   });
+
+  it.each(['closed', 'inactive'] as const)(
+    '%s Room Playlist 변경은 ROOM_NOT_ACTIVE를 반환한다',
+    async (status) => {
+      const { service, playlistRepo } = fixture(status);
+
+      await expect(service.addItem('room-1', 'host', { videoId: 'video-1' })).rejects.toMatchObject(
+        {
+          status: 409,
+          code: ERROR_CODES.ROOM_NOT_ACTIVE,
+        },
+      );
+      expect(playlistRepo.addItem).not.toHaveBeenCalled();
+    },
+  );
 });

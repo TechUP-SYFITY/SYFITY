@@ -15,6 +15,7 @@ export type RoomDetailRecord = {
   hostId: string;
   status: 'active' | 'inactive' | 'closed';
   inviteCode: string;
+  closedAt: Date | null;
   createdAt: Date;
 };
 
@@ -25,6 +26,16 @@ export type RoomUpdateRecord = {
   closedAt: Date | null;
   updatedAt: Date;
 };
+
+export type RoomMineRecord = {
+  id: string;
+  name: string;
+  status: 'active' | 'closed';
+  closedAt: Date | null;
+  updatedAt: Date;
+};
+
+export type InactivateStaleRoomsResult = { inactivatedCount: number };
 
 export type CreateRoomData = {
   name: string;
@@ -88,7 +99,7 @@ export interface IRoomRepository {
   existsRoom(roomId: string): Promise<boolean>;
   findRoomById(roomId: string): Promise<RoomDetailRecord | null>;
   findRoomByInviteCode(inviteCode: string): Promise<RoomDetailRecord | null>;
-  touchLastActivity(roomId: string): Promise<void>;
+  findRoomsByHostId(hostId: string): Promise<RoomMineRecord[]>;
   findMembership(roomId: string, userId: string): Promise<RoomMembershipRecord | null>;
   upsertMembership(roomId: string, userId: string): Promise<boolean>;
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
@@ -109,5 +120,8 @@ export interface IRoomRepository {
   ): Promise<boolean>;
   findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
   closeRoom(roomId: string): Promise<RoomUpdateRecord>;
+  recoverRoom(roomId: string): Promise<RoomUpdateRecord>;
+  deactivateRoom(roomId: string): Promise<void>;
+  inactivateStaleRooms(): Promise<number>;
   updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord>;
 }

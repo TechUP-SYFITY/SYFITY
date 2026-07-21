@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ERROR_CODES } from '@syfity/shared';
+
 import { PlaybackService } from './playback.service';
 import type { ICache } from '../lib/cache/cache.interface';
 import { getIo } from '../lib/io';
@@ -47,7 +49,7 @@ const playlist: PlaylistItemRecord[] = [
   },
 ];
 
-function makeService() {
+function makeService(roomStatus: 'active' | 'closed' | 'inactive' = 'active') {
   const values = new Map<string, unknown>();
   const cache: ICache = {
     get: <T>(key: string) => values.get(key) as T | undefined,
@@ -56,9 +58,8 @@ function makeService() {
     has: vi.fn((key) => values.has(key)),
   };
   const roomRepo = {
-    findRoomById: vi.fn().mockResolvedValue({ id: 'room-1', hostId: 'host', status: 'active' }),
+    findRoomById: vi.fn().mockResolvedValue({ id: 'room-1', hostId: 'host', status: roomStatus }),
     findMembership: vi.fn().mockResolvedValue({ role: 'host', status: 'online' }),
-    touchLastActivity: vi.fn().mockResolvedValue(undefined),
   };
   const playlistRepo = {
     getPlaylist: vi.fn().mockResolvedValue(playlist),
@@ -102,6 +103,20 @@ describe('PlaybackService', () => {
     });
     expect(playlistRepo.getPlaylist).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['closed', 'inactive'] as const)(
+    '%s Room 재생 제어는 ROOM_NOT_ACTIVE를 반환한다',
+    async (status) => {
+      const { service, playlistRepo } = makeService(status);
+      services.push(service);
+
+      await expect(service.play('room-1', 'host', 0)).rejects.toMatchObject({
+        status: 409,
+        code: ERROR_CODES.ROOM_NOT_ACTIVE,
+      });
+      expect(playlistRepo.getPlaylist).not.toHaveBeenCalled();
+    },
+  );
 
   it('이미 조회한 곡 정보로 전환하면 Playlist를 다시 조회하지 않는다', async () => {
     const { service, playlistRepo } = makeService();

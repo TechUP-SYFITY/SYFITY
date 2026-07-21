@@ -8,6 +8,7 @@ import type {
   RoomMemberRecord,
   RoomMemberStatus,
   RoomMembershipRecord,
+  RoomMineRecord,
   RoomRecord,
   RoomUpdateRecord,
 } from '../types/room';
@@ -15,10 +16,11 @@ import type {
 export type RoomTransactionPrisma = {
   room: Pick<PrismaClient['room'], 'create' | 'update'>;
   roomMember: Pick<PrismaClient['roomMember'], 'create' | 'updateMany'>;
+  playlistItem: Pick<PrismaClient['playlistItem'], 'deleteMany'>;
 };
 
 export type RoomRepositoryPrisma = {
-  room: Pick<PrismaClient['room'], 'findUnique' | 'update'>;
+  room: Pick<PrismaClient['room'], 'findMany' | 'findUnique' | 'update' | 'updateMany'>;
   roomMember: Pick<
     PrismaClient['roomMember'],
     'create' | 'findFirst' | 'findUnique' | 'findMany' | 'update' | 'updateMany'
@@ -62,7 +64,6 @@ export class RoomRepository implements IRoomRepository {
           visibility: 'private',
           inviteCode: data.inviteCode,
           status: 'active',
-          lastActivityAt: now,
         },
         select: {
           id: true,
@@ -104,6 +105,7 @@ export class RoomRepository implements IRoomRepository {
         hostId: true,
         status: true,
         inviteCode: true,
+        closedAt: true,
         createdAt: true,
       },
     });
@@ -118,16 +120,22 @@ export class RoomRepository implements IRoomRepository {
         hostId: true,
         status: true,
         inviteCode: true,
+        closedAt: true,
         createdAt: true,
       },
     });
   }
 
-  async touchLastActivity(roomId: string): Promise<void> {
-    await this.prisma.room.update({
-      where: { id: roomId },
-      data: { lastActivityAt: new Date() },
+  async findRoomsByHostId(hostId: string): Promise<RoomMineRecord[]> {
+    const rooms = await this.prisma.room.findMany({
+      where: { hostId, status: { in: ['active', 'closed'] } },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
+    return rooms.map((room) => ({
+      ...room,
+      status: room.status === 'active' ? 'active' : 'closed',
+    }));
   }
 
   async updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord> {
@@ -328,5 +336,29 @@ export class RoomRepository implements IRoomRepository {
 
       return room;
     });
+  }
+
+  async recoverRoom(roomId: string): Promise<RoomUpdateRecord> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.playlistItem.deleteMany({ where: { roomId } });
+      return tx.room.update({
+        where: { id: roomId },
+        data: { status: 'active', closedAt: null },
+        select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
+      });
+    });
+  }
+
+  async deactivateRoom(roomId: string): Promise<void> {
+    await this.prisma.room.update({ where: { id: roomId }, data: { status: 'inactive' } });
+  }
+
+  async inactivateStaleRooms(): Promise<number> {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const result = await this.prisma.room.updateMany({
+      where: { status: 'closed', closedAt: { lte: cutoff } },
+      data: { status: 'inactive' },
+    });
+    return result.count;
   }
 }

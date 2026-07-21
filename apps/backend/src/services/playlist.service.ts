@@ -22,10 +22,7 @@ type PlaylistPlaybackService = Pick<
 export class PlaylistService {
   constructor(
     private readonly playlistRepo: IPlaylistRepository,
-    private readonly roomRepo: Pick<
-      IRoomRepository,
-      'findRoomById' | 'touchLastActivity' | 'findMembership'
-    >,
+    private readonly roomRepo: Pick<IRoomRepository, 'findRoomById' | 'findMembership'>,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
     private readonly playbackService: PlaylistPlaybackService,
   ) {}
@@ -79,7 +76,6 @@ export class PlaylistService {
       throw error;
     }
 
-    await this.roomRepo.touchLastActivity(roomId);
     await this.playbackService.enqueueIfShuffled(roomId, item.id);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
@@ -115,8 +111,6 @@ export class PlaylistService {
     }
 
     await this.playlistRepo.reorderItems(items);
-    await this.roomRepo.touchLastActivity(roomId);
-
     const playlist = await this.playlistRepo.getPlaylist(roomId);
     broadcastToRoom(roomId, 'playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
@@ -143,8 +137,6 @@ export class PlaylistService {
     const transition = await this.playbackService.advanceAfterCurrentRemoved(roomId, itemId);
 
     await this.playlistRepo.deleteItem(itemId);
-    await this.roomRepo.touchLastActivity(roomId);
-
     const updatedPlaylist = await this.playlistRepo.getPlaylist(roomId);
 
     if (transition) {

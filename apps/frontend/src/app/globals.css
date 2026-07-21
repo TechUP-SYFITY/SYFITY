@@ -15,7 +15,10 @@
   --epr-search-border-color: var(--border);
   --epr-search-border-color-active: var(--primary);
   --epr-emoji-hover-color: var(--epr-hover-bg-color);
-  --epr-category-label-height: 0px;
+  --epr-category-label-bg-color: rgba(17, 17, 19, 0.92);
+  --epr-category-label-text-color: var(--muted-foreground);
+  --epr-category-label-height: 32px;
+  --epr-category-label-padding: 0 12px;
   --epr-picker-border-radius: var(--radius-lg);
   --epr-search-input-border-radius: var(--radius-md);
   --epr-header-padding: 12px;
@@ -30,9 +33,15 @@
   font-family: var(--font-sans);
 }
 
-.chat-emoji-picker .epr-category-nav,
-.chat-emoji-picker .epr-emoji-category-label {
+.chat-emoji-picker .epr-category-nav {
   display: none;
+}
+
+.chat-emoji-picker .epr-emoji-category-label {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .chat-emoji-picker .epr-header {

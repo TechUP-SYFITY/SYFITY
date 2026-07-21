@@ -12,6 +12,7 @@ vi.mock('emoji-picker-react', () => ({
     height,
     onEmojiClick,
     previewConfig,
+    skinTonesDisabled,
     theme,
     width,
   }: {
@@ -20,6 +21,7 @@ vi.mock('emoji-picker-react', () => ({
     height?: number | string;
     onEmojiClick: (emojiData: { emoji: string }) => void;
     previewConfig?: { showPreview?: boolean };
+    skinTonesDisabled?: boolean;
     theme?: string;
     width?: number | string;
   }) => (
@@ -28,6 +30,7 @@ vi.mock('emoji-picker-react', () => ({
       data-emoji-version={emojiVersion}
       data-height={height}
       data-show-preview={previewConfig?.showPreview}
+      data-skin-tones-disabled={skinTonesDisabled}
       data-theme={theme}
       data-width={width}
       type="button"
@@ -120,5 +123,14 @@ describe('ChatEmojiPicker', () => {
     const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
 
     expect(picker).toHaveAttribute('data-theme', 'dark');
+  });
+
+  it('피부색 선택 기능을 비활성화한다', async () => {
+    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
+
+    expect(picker).toHaveAttribute('data-skin-tones-disabled', 'true');
   });
 });

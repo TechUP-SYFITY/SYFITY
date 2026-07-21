@@ -49,6 +49,7 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
             emojiVersion="12.1"
             height="100%"
             previewConfig={{ showPreview: false }}
+            skinTonesDisabled
             theme={Theme.DARK}
             width="100%"
             onEmojiClick={(emojiData) => {

@@ -44,6 +44,8 @@ export function PwaInstallPrompt() {
       try {
         await deferredPrompt.prompt();
         await deferredPrompt.userChoice;
+      } catch {
+        // 이미 소비된 설치 프롬프트 등 브라우저 측 거부는 배너를 닫는 것으로 충분하다.
       } finally {
         setDeferredPrompt(null);
       }

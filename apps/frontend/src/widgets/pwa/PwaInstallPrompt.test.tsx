@@ -83,6 +83,20 @@ describe('PwaInstallPrompt', () => {
     await waitFor(() => expect(usePwaStore.getState().deferredPrompt).toBeNull());
   });
 
+  it('설치 프롬프트가 거부돼도 배너 상태를 정리한다', async () => {
+    const { event, prompt } = createDeferredPrompt();
+    Object.assign(event, {
+      userChoice: Promise.reject(new Error('설치 프롬프트가 이미 소비되었습니다.')),
+    });
+    usePwaStore.setState({ deferredPrompt: event });
+
+    render(<PwaInstallPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: '설치' }));
+
+    await waitFor(() => expect(prompt).toHaveBeenCalledOnce());
+    await waitFor(() => expect(usePwaStore.getState().deferredPrompt).toBeNull());
+  });
+
   it('iOS Safari에는 홈 화면 추가 절차를 안내한다', () => {
     isIOSSafari.mockReturnValue(true);
 

@@ -122,6 +122,7 @@ export class PersonalPlaylistService {
     const currentIdSet = new Set(currentItems.map((item) => item.id));
     const requestIdSet = new Set(items.map((item) => item.id));
     const isSameSet =
+      items.length === currentItems.length &&
       requestIdSet.size === currentIdSet.size &&
       [...requestIdSet].every((itemId) => currentIdSet.has(itemId));
     if (!isSameSet) {

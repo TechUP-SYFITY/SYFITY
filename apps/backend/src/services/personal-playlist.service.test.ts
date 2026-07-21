@@ -153,6 +153,16 @@ describe('PersonalPlaylistService', () => {
     await expect(
       service.reorderItems('playlist-1', 'user-1', [
         { id: 'item-1', position: 0 },
+        { id: 'item-1', position: 1 },
+        { id: 'item-2', position: 2 },
+      ]),
+    ).rejects.toMatchObject({ status: 404, code: ERROR_CODES.PERSONAL_PLAYLIST_ITEM_NOT_FOUND });
+    expect(repository.reorderItems).not.toHaveBeenCalled();
+
+    repository.getItems.mockResolvedValueOnce([item, { ...item, id: 'item-2' }]);
+    await expect(
+      service.reorderItems('playlist-1', 'user-1', [
+        { id: 'item-1', position: 0 },
         { id: 'item-2', position: 2 },
       ]),
     ).rejects.toMatchObject({ status: 400, code: ERROR_CODES.VALIDATION_ERROR });

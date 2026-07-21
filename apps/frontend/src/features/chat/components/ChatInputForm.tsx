@@ -94,10 +94,13 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
 
     if (nextValue.length > CHAT_MAX_MESSAGE_LENGTH) {
       setLocalError(maxLengthError);
-      pendingCursorPositionRef.current = selectionStart;
+      pendingCursorPositionRef.current = null;
+      textarea?.focus();
+      textarea?.setSelectionRange(selectionStart, selectionEnd);
       return;
     }
 
+    setLocalError(null);
     pendingCursorPositionRef.current = selectionStart + emoji.length;
     setValue(nextValue);
   };

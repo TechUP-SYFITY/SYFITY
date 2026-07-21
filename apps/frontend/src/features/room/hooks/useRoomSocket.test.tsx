@@ -43,6 +43,26 @@ describe('useRoomSocket', () => {
     expect(emit).not.toHaveBeenCalled();
   });
 
+  it('unmount에서는 명시적 room:leave 이벤트를 보내지 않는다', () => {
+    const { unmount } = renderHook(() => useRoomSocket('room-1'));
+    emit.mockClear();
+
+    unmount();
+
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it('callback 변경으로 effect가 다시 실행돼도 room:leave를 보내지 않는다', () => {
+    const { rerender } = renderHook(({ onSnapshot }) => useRoomSocket('room-1', onSnapshot), {
+      initialProps: { onSnapshot: vi.fn() },
+    });
+    emit.mockClear();
+
+    rerender({ onSnapshot: vi.fn() });
+
+    expect(emit).not.toHaveBeenCalledWith('room:leave', { roomId: 'room-1' });
+  });
+
   it('room:joined snapshot으로 Host 상태와 상위 시딩 callback을 갱신한다', () => {
     const onSnapshot = vi.fn();
     renderHook(() => useRoomSocket('room-1', onSnapshot));

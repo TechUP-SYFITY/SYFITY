@@ -95,7 +95,6 @@ export const useRoomSocket = (
       socket.off('room:host-reconnected', handleHostReconnected);
       socket.off('room:closed', handleRoomClosed);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      socket.emit('room:leave', { roomId });
     };
   }, [
     markHostDisconnected,

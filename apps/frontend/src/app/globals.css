@@ -150,6 +150,27 @@
   }
 }
 
+@utility mini-player-volume-control {
+  & .mini-player-volume-range {
+    transform: scaleX(0.5) scaleY(1);
+    transform-origin: left center;
+    transition-property: transform;
+    transition-duration: 250ms;
+    transition-timing-function: ease-out;
+  }
+
+  &:hover .mini-player-volume-range,
+  &:has(:focus-visible) .mini-player-volume-range {
+    transform: scaleX(1) scaleY(2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & .mini-player-volume-range {
+      transition-duration: 0ms;
+    }
+  }
+}
+
 @utility scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;

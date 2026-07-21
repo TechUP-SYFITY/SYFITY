@@ -1,5 +1,6 @@
 // 미니 플레이어의 Host, Member, 비활성, 명령 실패 상태를 Storybook에서 확인한다.
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { useState } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
@@ -71,6 +72,30 @@ export const HostPaused: Story = {
 export const HostPlaying: Story = {
   args: {
     playbackState: { ...playbackState, isPlaying: true },
+  },
+};
+
+export const LongTrackTitle: Story = {
+  args: {
+    currentTrack: {
+      ...track,
+      channelTitle: 'A Channel Name That Also Needs More Room',
+      title: 'A Much Longer Track Title That Uses the Space Freed by Removing the Heart Button',
+    },
+  },
+  render: function LongTrackTitleRender(args) {
+    const [volume, setVolume] = useState(args.volume);
+
+    return (
+      <MiniPlayer
+        {...args}
+        volume={volume}
+        onVolumeChange={(nextVolume) => {
+          setVolume(nextVolume);
+          args.onVolumeChange(nextVolume);
+        }}
+      />
+    );
   },
 };
 

@@ -204,6 +204,22 @@ describe('MiniPlayer', () => {
     expect(onVolumeChange).toHaveBeenCalledWith(35);
   });
 
+  it('볼륨 컨트롤을 hover와 focus 진입 시 확장 가능한 그룹으로 표시한다', () => {
+    renderMiniPlayer();
+
+    expect(screen.getByRole('group', { name: '볼륨' })).toHaveClass('mini-player-volume-control');
+    expect(screen.getByRole('slider', { name: '볼륨 조절' })).toHaveClass(
+      'mini-player-volume-range',
+    );
+  });
+
+  it('비활성 좋아요 버튼을 제거하고 곡 정보에 남은 너비를 사용한다', () => {
+    renderMiniPlayer();
+
+    expect(screen.queryByRole('button', { name: '좋아요 기능 준비 중' })).not.toBeInTheDocument();
+    expect(screen.getByText(track.title).parentElement).toHaveClass('flex-1');
+  });
+
   it('음소거 버튼을 누르면 주입된 핸들러를 호출한다', () => {
     const onMuteToggle = vi.fn();
 

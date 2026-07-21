@@ -5,9 +5,9 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v1.8                                                                                  |
-| 상태      | Presence 서비스 추가                                                                  |
-| 작성 목적 | Syfity MVP 백엔드 구조 정의                                                           |
+| 버전      | v2.0                                                                                  |
+| 상태      | 인메모리 재생 세션, Room 수명 주기, 개인 Playlist·추방 처리 구조로 재구성             |
+| 작성 목적 | Syfity 백엔드 구조 정의                                                               |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
 ---
@@ -21,7 +21,7 @@
 | 실시간 통신   | Socket.IO             |                                                           |
 | ORM           | Prisma                | 마이그레이션 + 타입 자동 생성                             |
 | DB            | Supabase (PostgreSQL) |                                                           |
-| 캐시          | node-cache            | ICache 인터페이스로 추상화, Redis 교체 가능 (현재 미구현) |
+| 캐시          | node-cache            | ICache 인터페이스로 추상화. 타이머·검색·재생 세션 관리    |
 | 로깅          | pino                  | 구조화 로깅. 개발 환경은 pino-pretty로 포맷               |
 | 인증          | JWT                   | httpOnly 쿠키, Refresh Token Rotation                     |
 | Google OAuth  | google-auth-library   | OAuth2Client로 인증 URL 생성, 토큰 교환, 사용자 정보 조회 |
@@ -47,22 +47,29 @@ apps/backend/
       routes.gen.ts     → 자동 생성된 Express 라우터
       swagger.json      → 자동 생성된 OpenAPI 스펙
 
-    controllers/        → tsoa 데코레이터 + Service 주입
+    controllers/        → public tsoa Controller와 내부 Controller의 Service 주입
       auth.controller.ts
       chat.controller.ts
       health.controller.ts
+      personal-playlist.controller.ts
       playlist.controller.ts
+      room-lifecycle.controller.ts → 내부 정리 API 응답 처리 (tsoa 미사용)
       room.controller.ts
       search.controller.ts
       user.controller.ts
+
+    routes/             → tsoa 밖의 내부 전용 Router
+      internal.routes.ts → GitHub Actions Room 수명 주기 API
 
     services/           → 비즈니스 로직, Repository 호출
       auth.service.ts
       chat.service.ts
       health.service.ts
-      playback.service.ts  → Socket 핸들러에서 호출
+      playback.service.ts  → 인메모리 재생 세션·자동 전환·Socket 핸들러에서 호출
+      personal-playlist.service.ts
       playlist.service.ts
       presence.service.ts  → Socket 핸들러에서 호출, 연결 해제 유예 타이머 관리
+      room-lifecycle.service.ts → 만료 보정·inactive 전환
       room.service.ts
       search.service.ts    → YouTube API 직접 호출 (Repository 없음)
       user.service.ts
@@ -70,7 +77,7 @@ apps/backend/
     repositories/       → Prisma 직접 호출, DB 접근 전담
       auth.repository.ts
       chat.repository.ts
-      playback.repository.ts
+      personal-playlist.repository.ts
       playlist.repository.ts
       room.repository.ts
       user.repository.ts
@@ -95,6 +102,7 @@ apps/backend/
 
     middlewares/        → Express 미들웨어
       error.middleware.ts → 전역 에러 응답 미들웨어
+      cron-auth.middleware.ts → Authorization Bearer CRON_SECRET 검증
 
     lib/                → 공통 유틸
       prisma.ts         → PrismaClient 싱글턴
@@ -103,12 +111,14 @@ apps/backend/
       cache/
         cache.interface.ts → ICache 인터페이스 정의
         cacheKeys.ts        → 캐시 키/TTL 상수
-        node-cache.store.ts → node-cache 구현체 (MVP, 현재 유일한 구현체)
+        node-cache.store.ts → node-cache 구현체 (현재 유일한 구현체)
         index.ts
+      playback/
+        playback-session.store.ts → PlaybackState·반복·셔플·큐·이력 인메모리 관리
       youtube/
         youtube.client.ts
 
-    types/              → 도메인별 백엔드 타입 (auth/cache/chat/health/playback/playlist/room/search/socket/user)
+    types/              → 도메인별 백엔드 타입 (auth/cache/chat/health/playback/personal-playlist/playlist/room/search/socket/user)
       express.d.ts      → Request 객체 확장 (user 정보 등)
       socket-data.d.ts  → Socket.data 확장 (userId, email)
 
@@ -322,6 +332,24 @@ export function expressAuthentication(
 }
 ```
 
+### 인메모리 재생 세션
+
+`PlaybackSessionStore`는 `ICache`를 감싸 Room별 `playback:{roomId}` 세션을 관리한다. 세션에는 현재 곡, 기준 시각, 재생 여부, `playbackVersion`, 반복·셔플 설정, 남은 셔플 큐, 재생 이력이 포함된다.
+
+```ts
+export class PlaybackService {
+  constructor(
+    private readonly playlistRepo: IPlaylistRepository,
+    private readonly sessionStore: PlaybackSessionStore,
+  ) {}
+}
+```
+
+- `playback.repository.ts`는 두지 않는다. 재생 상태와 재생 이력은 DB에 저장하지 않는다.
+- `PlaylistRepository`는 재생 가능한 곡 검증·자동 다음 곡 선택에 필요한 영속 Playlist만 제공한다.
+- `PlaybackService`는 Room별 자동 종료 타이머를 등록·취소하고, `playback:ended`와 타이머가 경합할 때 세션의 `playbackVersion`과 Room 단위 직렬화로 한 번만 전환한다.
+- cache miss·서버 재시작은 기본 일시정지 세션으로 처리한다. 재시작 뒤 기존 세션·타이머를 복구하지 않는다.
+
 **app.ts — 생성된 라우터 등록**
 
 ```ts
@@ -336,6 +364,9 @@ const swaggerDocument = require('./generated/swagger.json');
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+// GitHub Actions 전용. tsoa Swagger·생성 라우터에 포함하지 않음.
+app.use('/api/v1/internal', createInternalRouter(roomLifecycleController));
+
 // tsoa 생성 라우터
 RegisterRoutes(app);
 
@@ -343,7 +374,7 @@ RegisterRoutes(app);
 app.use(
   (err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (err instanceof ValidateError) {
-      res.status(422).json({
+      res.status(400).json({
         success: false,
         error: { code: 'VALIDATION_ERROR', message: err.message },
       });
@@ -356,13 +387,24 @@ app.use(
 app.use(errorHandler);
 ```
 
+### 내부 Room 수명 주기 Router
+
+`POST /api/v1/internal/rooms/inactivate-stale`는 GitHub Actions만 호출한다. 공개 API와 분리해 tsoa Swagger에 노출하지 않지만, 내부에서도 같은 레이어 구조를 따른다.
+
+```text
+internal.routes.ts → cronAuth → RoomLifecycleController
+                  → RoomLifecycleService → RoomRepository
+```
+
+`cronAuth`는 `Authorization: Bearer <CRON_SECRET>`를 비교하고, 실패 시 `AUTH_FORBIDDEN`을 반환한다. `RoomLifecycleService`는 closed 후 30일 지난 Room을 inactive로 전환한다. Home의 `내 Room` 조회와 recover 요청 전 보정도 같은 Service 메서드를 호출해 스케줄 실행 지연을 보완한다.
+
 **예외: search**
 
 `search`는 DB 접근 없이 YouTube API만 호출한다. `search.service.ts`가 `lib/youtube/youtube.client.ts`를 직접 호출하며, Repository 레이어가 없다.
 
 **playback**
 
-재생 제어는 Socket 이벤트로만 처리하므로 REST 레이어(Router/Controller)가 없다. 단, PlaybackState의 DB 저장/조회가 필요하므로 `playback.service.ts`와 `playback.repository.ts`는 존재한다. Socket 핸들러에서 Service를 호출하는 구조다.
+재생 제어는 Socket 이벤트로만 처리하므로 REST Controller·Repository가 없다. Socket Handler가 `PlaybackService`를 호출하고, Service는 `PlaybackSessionStore`와 `PlaylistRepository`를 사용한다.
 
 ### 에러 처리 흐름
 
@@ -370,7 +412,7 @@ app.use(errorHandler);
 Repository → throw AppError
 Service    → throw AppError (catch 없음)
 Controller → throw AppError (catch 없음, tsoa가 자동으로 에러 핸들러로 전달)
-ValidateError 핸들러 → 422 응답 (tsoa 요청 유효성 검사 실패)
+ValidateError 핸들러 → 400 응답 (tsoa 요청 유효성 검사 실패)
 전역 에러 미들웨어 → AppError 코드 기반 응답 반환
 ```
 
@@ -392,11 +434,16 @@ export function requireEnv(name: string): string {
   return value;
 }
 
+const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
+
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: process.env.PORT ?? '4000',
-  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:3000',
+  clientUrl,
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
+  vercelPreviewOriginPattern: process.env.VERCEL_PREVIEW_ORIGIN_PATTERN,
+  // 별도 환경변수 없이 CLIENT_URL의 hostname을 인증 쿠키 Domain으로 재사용한다.
+  cookieDomain: new URL(clientUrl).hostname,
   jwt: {
     accessSecret: requireEnv('JWT_ACCESS_SECRET'),
     refreshSecret: requireEnv('JWT_REFRESH_SECRET'),
@@ -416,6 +463,9 @@ export const config = {
   db: {
     url: requireEnv('DATABASE_URL'),
   },
+  cron: {
+    secret: requireEnv('CRON_SECRET'),
+  },
 };
 ```
 
@@ -433,6 +483,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { setIo } from './lib/io';
 import { prisma } from './lib/prisma';
+import { playbackService } from './ioc';
 import { startPlaybackTick, stopPlaybackTick } from './socket/handlers/tick.handler';
 import app from './app';
 import { initSocket } from './socket';
@@ -452,6 +503,7 @@ function shutdown(signal: string): void {
   isShuttingDown = true;
 
   stopPlaybackTick(playbackTickTimer);
+  playbackService.shutdown(); // Room별 자동 다음 곡 타이머 정리
   io.close();
   httpServer.close(() => {
     prisma.$disconnect().finally(() => process.exit(0));
@@ -491,7 +543,7 @@ export function initSocket(io: Server): void {
 }
 ```
 
-`tick.handler.ts`의 `startPlaybackTick(io)`는 `initSocket`이 아니라 `server.ts`에서 별도로 호출한다 — 개별 소켓 연결과 무관하게 10초 주기로 재생 중인 모든 Room에 `playback:tick`을 broadcast하는 전역 타이머이기 때문이다.
+`tick.handler.ts`의 `startPlaybackTick(io)`는 `initSocket`이 아니라 `server.ts`에서 별도로 호출한다. `PlaybackSessionStore`가 추적하는 재생 중인 인메모리 세션만 순회해 10초마다 `playback:tick`을 broadcast한다. 서버 재시작 뒤에는 활성 세션이 없으므로 tick을 보내지 않는다.
 
 ### Socket 에러 처리
 
@@ -527,9 +579,9 @@ import type { RoomService } from '../../services/room.service';
 
 type RoomHandlerService = Pick<
   RoomService,
-  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+  'setMemberOnline' | 'leaveRoom' | 'getRoomJoinSnapshot' | 'createSystemMessage'
 >;
-type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
+type RoomHandlerPlaybackService = Pick<PlaybackService, 'getOrCreateSnapshot' | 'resetSession'>;
 type RoomHandlerPresenceService = Pick<
   PresenceService,
   'cancelMemberOfflineTimer' | 'cancelHostCloseTimer'
@@ -554,16 +606,23 @@ export function registerRoomHandlers(
 
   socket.on('room:join', async (payload, ack) => {
     // roomService로 참여 상태 갱신(원자적 조건부 UPDATE로 wasOnline 판단),
-    // presenceService로 대기 중인 유예 타이머 취소, playbackService로 재생 상태 조회 후 ack 응답.
+    // presenceService로 대기 중인 유예 타이머 취소 및 현재 Host 연결 상태 조회,
+    // playbackService로 인메모리 재생 snapshot 조회 또는 기본 세션 생성,
+    // Room 영속 snapshot과 합쳐 room:joined를 해당 Socket에 emit 후 ack 성공 응답.
     // wasOnline이 false일 때만 입장 시스템 메시지 broadcast.
   });
 
   socket.on('room:leave', async (payload) => {
+    // Host는 즉시 closed, Member는 left 처리.
     // roomService.leaveRoom 결과가 'closed' | 'left' | 'noop' 중 하나.
     // 'noop'(이미 나간 상태로 중복 emit)이면 broadcast/시스템 메시지 없이 종료.
   });
 }
 ```
+
+`playback.handler.ts`는 `playback:play`, `pause`, `seek`, `change-track`, `update-settings`, `ended`, `error`, `sync-request`를 등록하고 모두 `PlaybackService`로 위임한다. `tick.handler.ts`는 상태를 변경하지 않고 현재 세션의 역산값만 전파한다.
+
+Room REST Service는 `lib/io.ts`의 `getIo()`를 통해 close·추방 결과를 Socket에 전파한다. Close는 `room:closed` 전송 뒤 Room Socket을 해제하고, 추방은 대상에게 `room:kicked`을 보낸 뒤 대상의 모든 Room Socket을 해제한다. 이 Socket 전파는 DB 상태 변경이 성공한 뒤에만 실행한다.
 
 ---
 
@@ -750,6 +809,7 @@ declare namespace Express {
 PORT=4000
 CLIENT_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000
+VERCEL_PREVIEW_ORIGIN_PATTERN=
 
 # JWT
 JWT_ACCESS_SECRET=
@@ -757,6 +817,9 @@ JWT_REFRESH_SECRET=
 
 # Supabase
 DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
+
+# GitHub Actions Room 수명 주기 호출 인증
+CRON_SECRET=
 
 # YouTube
 YOUTUBE_API_KEY=
@@ -771,16 +834,18 @@ GOOGLE_CALLBACK_URL=http://localhost:4000/api/v1/auth/google/callback
 
 Render Blueprint는 민감값을 `sync: false`로 선언하고, 실제 값은 Render 대시보드에서 직접 입력한다.
 
-| 키                                          | 운영 값 기준                                                                                                                                                                                                         |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                  | `production`                                                                                                                                                                                                         |
-| `NODE_VERSION`                              | `22`                                                                                                                                                                                                                 |
-| `CLIENT_URL`                                | T21에서 확정되는 FE 프로덕션 URL. T20 시점에는 임시값을 입력하고 T21 완료 후 `https://{domain}`으로 갱신                                                                                                             |
-| `ALLOWED_ORIGINS`                           | 프로덕션 origin을 쉼표로 구분해 명시. `cors.ts`는 `*.vercel.app` 같은 와일드카드를 허용하지 않고 이 목록과 정확히 일치하는 origin만 허용한다 — Vercel Preview를 쓰려면 실제 preview origin을 이 목록에 추가해야 한다 |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                                                                                                                                    |
-| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                                                                                                                                  |
-| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                                                                                                                              |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                                                                                                                              |
-| `GOOGLE_CALLBACK_URL`                       | `https://api.{domain}/api/v1/auth/google/callback`                                                                                                                                                                   |
+| 키                                          | 운영 값 기준                                                                                                                                                                                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                                                                                                                                                                                                        |
+| `NODE_VERSION`                              | `22`                                                                                                                                                                                                                                |
+| `CLIENT_URL`                                | `https://syfity.site`. hostname(`syfity.site`)이 인증 쿠키 Domain으로도 재사용되어 `api.syfity.site`와 `syfity.site` 양쪽에서 쿠키가 공유된다                                                                                       |
+| `ALLOWED_ORIGINS`                           | 프로덕션 origin을 쉼표로 구분해 명시. 운영 값은 `https://syfity.site`이며, 이 목록은 정확 일치로만 허용한다                                                                                                                         |
+| `VERCEL_PREVIEW_ORIGIN_PATTERN`             | 선택값. 특정 Vercel 프로젝트/팀 Preview URL만 매칭하는 `^`/`$` 앵커 포함 정규식. 예: `^https://syfity-frontend-[a-z0-9-]+-techup-syfity\\.vercel\\.app$`. 미설정, 앵커 누락 또는 잘못된 정규식이면 Preview origin을 허용하지 않는다 |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`  | 운영 전용 랜덤 문자열. 로컬 `.env` 값 재사용 금지                                                                                                                                                                                   |
+| `DATABASE_URL`                              | Supabase Session Pooler 연결 문자열                                                                                                                                                                                                 |
+| `CRON_SECRET`                               | GitHub Actions Secret과 동일한 내부 Room 수명 주기 호출용 랜덤 값                                                                                                                                                                   |
+| `YOUTUBE_API_KEY`                           | 운영용 또는 기존 YouTube Data API v3 키                                                                                                                                                                                             |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | GCP OAuth 클라이언트 값                                                                                                                                                                                                             |
+| `GOOGLE_CALLBACK_URL`                       | `https://api.syfity.site/api/v1/auth/google/callback`                                                                                                                                                                               |
 
 `PORT`는 Render web service가 자동 주입하므로 고정하지 않는다. Supabase Direct Connection은 IPv6 전용일 수 있어 Render에서는 Session Pooler 사용을 기본값으로 둔다.

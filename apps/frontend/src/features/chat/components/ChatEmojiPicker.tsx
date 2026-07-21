@@ -1,5 +1,6 @@
 'use client';
 
+import { EmojiStyle } from 'emoji-picker-react';
 import { SmilePlus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
@@ -31,7 +32,7 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
       {isOpen ? (
         <div className="absolute bottom-9 left-0 z-50">
           <EmojiPicker
-            emojiStyle="native"
+            emojiStyle={EmojiStyle.NATIVE}
             onEmojiClick={(emojiData) => {
               onEmojiSelect(emojiData.emoji);
               setIsOpen(false);

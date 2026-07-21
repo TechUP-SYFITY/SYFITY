@@ -6,12 +6,24 @@ import { useId, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
 
 const inputVariants = cva(
-  'w-full rounded-lg border bg-input px-4 text-foreground outline-none transition-colors placeholder:text-white/50 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+  `
+    w-full rounded-lg border bg-input px-4 text-foreground transition-colors
+    outline-none
+    placeholder:text-white/50
+    focus-visible:ring-2
+    disabled:cursor-not-allowed disabled:opacity-50
+  `,
   {
     variants: {
       state: {
-        default: 'border-border focus-visible:border-ring/50 focus-visible:ring-ring',
-        error: 'border-destructive focus-visible:ring-destructive',
+        default: `
+          border-border
+          focus-visible:border-ring/50 focus-visible:ring-ring
+        `,
+        error: `
+          border-destructive
+          focus-visible:ring-destructive
+        `,
       },
       size: {
         md: 'h-11 text-sm',
@@ -94,7 +106,7 @@ export function Input({
 
       {hasBottom && (
         <div id={`${inputId}-desc`} className="flex items-center justify-between gap-2 px-1">
-          <span className={cn('text-xs', hasError ? 'text-destructive' : 'text-muted-foreground')}>
+          <span className={cn('text-xs', hasError ? 'text-destructive' : `text-muted-foreground`)}>
             {bottomText}
           </span>
           {showCount && (

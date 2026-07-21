@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/prisma/client';
+import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type {
   CreateRoomData,
   IRoomRepository,
@@ -13,15 +13,21 @@ import type {
 export type RoomTransactionPrisma = {
   room: Pick<PrismaClient['room'], 'create' | 'update'>;
   roomMember: Pick<PrismaClient['roomMember'], 'create' | 'updateMany'>;
-  playbackState: Pick<PrismaClient['playbackState'], 'create'>;
 };
 
 export type RoomRepositoryPrisma = {
   room: Pick<PrismaClient['room'], 'findUnique' | 'update'>;
-  roomMember: Pick<PrismaClient['roomMember'], 'findUnique' | 'findMany' | 'upsert' | 'updateMany'>;
+  roomMember: Pick<
+    PrismaClient['roomMember'],
+    'create' | 'findUnique' | 'findMany' | 'update' | 'updateMany'
+  >;
   recentRoom: Pick<PrismaClient['recentRoom'], 'upsert'>;
   $transaction: <T>(fn: (tx: RoomTransactionPrisma) => Promise<T>) => Promise<T>;
 };
+
+function isUniqueConstraintFailure(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
 
 export class RoomRepository implements IRoomRepository {
   constructor(private readonly prisma: RoomRepositoryPrisma) {}
@@ -72,18 +78,6 @@ export class RoomRepository implements IRoomRepository {
           role: 'host',
           status: 'offline',
           joinedAt: now,
-        },
-      });
-
-      await tx.playbackState.create({
-        data: {
-          roomId: created.id,
-          videoId: null,
-          playlistItemId: null,
-          baseCurrentTime: 0,
-          isPlaying: false,
-          serverStartedAt: null,
-          serverPausedAt: null,
         },
       });
 
@@ -138,7 +132,7 @@ export class RoomRepository implements IRoomRepository {
     return this.prisma.room.update({
       where: { id: roomId },
       data: { name },
-      select: { id: true, name: true, updatedAt: true },
+      select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
   }
 
@@ -149,25 +143,35 @@ export class RoomRepository implements IRoomRepository {
     });
   }
 
-  async upsertMembership(roomId: string, userId: string): Promise<void> {
+  async upsertMembership(roomId: string, userId: string): Promise<boolean> {
     const now = new Date();
+    try {
+      await this.prisma.roomMember.create({
+        data: {
+          roomId,
+          userId,
+          role: 'member',
+          status: 'offline',
+          joinedAt: now,
+          lastSeenAt: now,
+        },
+      });
+      return true;
+    } catch (error) {
+      if (!isUniqueConstraintFailure(error)) {
+        throw error;
+      }
 
-    await this.prisma.roomMember.upsert({
-      where: { roomId_userId: { roomId, userId } },
-      create: {
-        roomId,
-        userId,
-        role: 'member',
-        status: 'offline',
-        joinedAt: now,
-        lastSeenAt: now,
-      },
-      update: {
-        status: 'offline',
-        lastSeenAt: now,
-        leftAt: null,
-      },
-    });
+      await this.prisma.roomMember.update({
+        where: { roomId_userId: { roomId, userId } },
+        data: {
+          status: 'offline',
+          lastSeenAt: now,
+          leftAt: null,
+        },
+      });
+      return false;
+    }
   }
 
   async findMembers(roomId: string): Promise<RoomMemberRecord[]> {
@@ -246,19 +250,22 @@ export class RoomRepository implements IRoomRepository {
     };
   }
 
-  async closeRoom(roomId: string): Promise<void> {
+  async closeRoom(roomId: string): Promise<RoomUpdateRecord> {
     const now = new Date();
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.room.update({
+    return this.prisma.$transaction(async (tx) => {
+      const room = await tx.room.update({
         where: { id: roomId },
         data: { status: 'closed', closedAt: now },
+        select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
       });
 
       await tx.roomMember.updateMany({
         where: { roomId, status: { not: 'left' } },
         data: { status: 'left', leftAt: now, lastSeenAt: now },
       });
+
+      return room;
     });
   }
 }

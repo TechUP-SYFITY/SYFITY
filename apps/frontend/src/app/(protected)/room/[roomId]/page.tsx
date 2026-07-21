@@ -1,5 +1,5 @@
 // Room URL 파라미터를 Client 화면에 전달한다.
-import { RoomPageClient } from './RoomPageClient';
+import { RoomPage as RoomPageWidget } from '@/widgets/room/RoomPage';
 
 interface RoomPageProps {
   params: Promise<{
@@ -7,8 +7,8 @@ interface RoomPageProps {
   }>;
 }
 
-export default async function RoomPage({ params }: RoomPageProps) {
+export default async function RoomPageRoute({ params }: RoomPageProps) {
   const { roomId } = await params;
 
-  return <RoomPageClient roomId={roomId} />;
+  return <RoomPageWidget roomId={roomId} />;
 }

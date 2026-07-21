@@ -1,5 +1,4 @@
 import type { ChatRecord } from './chat';
-import type { PlaybackStateResult } from './playback';
 import type { PlaylistItemRecord } from './playlist';
 
 export type RoomRecord = {
@@ -22,6 +21,8 @@ export type RoomDetailRecord = {
 export type RoomUpdateRecord = {
   id: string;
   name: string;
+  status: 'active' | 'inactive' | 'closed';
+  closedAt: Date | null;
   updatedAt: Date;
 };
 
@@ -33,6 +34,8 @@ export type CreateRoomData = {
 
 export type RoomRole = 'host' | 'member' | 'guest';
 export type RoomMemberStatus = 'online' | 'offline' | 'left';
+export type HostConnectionState =
+  { status: 'connected' } | { status: 'disconnected'; waitUntil: string };
 
 export type RoomMembershipRecord = {
   role: RoomRole;
@@ -48,9 +51,12 @@ export type RoomMemberRecord = {
   status: RoomMemberStatus;
 };
 
-export type JoinRoomResult = {
+export type CreateMembershipResult = {
   room: RoomDetailRecord;
-  playbackState: PlaybackStateResult;
+  isNewMembership: boolean;
+};
+
+export type RoomSnapshotResult = {
   playlist: PlaylistItemRecord[];
   members: RoomMemberRecord[];
   recentChats: ChatRecord[];
@@ -67,7 +73,7 @@ export interface IRoomRepository {
   findRoomByInviteCode(inviteCode: string): Promise<RoomDetailRecord | null>;
   touchLastActivity(roomId: string): Promise<void>;
   findMembership(roomId: string, userId: string): Promise<RoomMembershipRecord | null>;
-  upsertMembership(roomId: string, userId: string): Promise<void>;
+  upsertMembership(roomId: string, userId: string): Promise<boolean>;
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
   upsertRecentRoom(userId: string, roomId: string): Promise<void>;
   updateMemberStatus(
@@ -77,6 +83,6 @@ export interface IRoomRepository {
     fromStatuses: RoomMemberStatus[],
   ): Promise<boolean>;
   findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
-  closeRoom(roomId: string): Promise<void>;
+  closeRoom(roomId: string): Promise<RoomUpdateRecord>;
   updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord>;
 }

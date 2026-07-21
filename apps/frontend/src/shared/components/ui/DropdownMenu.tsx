@@ -20,7 +20,7 @@ export function DropdownMenuContent({
         sideOffset={sideOffset}
         align={align}
         className={cn(
-          'z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-popover/98 text-foreground shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur-xl data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+          `z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-popover/98 text-foreground shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur-xl data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95`,
           className,
         )}
         {...props}
@@ -42,12 +42,21 @@ export function DropdownMenuLabel({
 }
 
 const itemVariants = cva(
-  'flex h-11 cursor-pointer items-center gap-3 px-4 text-sm font-semibold outline-none transition-colors data-[highlighted]:bg-white/5 data-[disabled]:pointer-events-none data-[disabled]:text-white/25 [&_svg]:size-4',
+  `
+    flex h-11 cursor-pointer items-center gap-3 px-4 text-sm font-semibold
+    transition-colors outline-none
+    data-disabled:pointer-events-none data-disabled:text-white/25
+    data-highlighted:bg-white/5
+    [&_svg]:size-4
+  `,
   {
     variants: {
       variant: {
         default: 'text-white/85',
-        destructive: 'text-destructive data-[highlighted]:bg-destructive/10',
+        destructive: `
+          text-destructive
+          data-highlighted:bg-destructive/10
+        `,
       },
     },
     defaultVariants: { variant: 'default' },

@@ -4,7 +4,7 @@ import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
 import type { ChatMessage, PlaybackState } from '@/shared/types/domain';
 
-import { fakeSocketClient } from './fakeSocketClient';
+import { fakeSocketClient, simulateServerEvent } from './fakeSocketClient';
 
 describe('fakeSocketClient', () => {
   afterEach(() => {
@@ -21,16 +21,23 @@ describe('fakeSocketClient', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('acks room join with fixture playback state', () => {
+  it('emits room snapshot before acknowledging room join', () => {
     const socket = fakeSocketClient.connect();
-    const ack = vi.fn<(response: SocketAck<{ playbackState: PlaybackState }>) => void>();
+    const calls: string[] = [];
+    const ack = vi.fn<(response: SocketAck) => void>(() => calls.push('ack'));
+    const joined = vi.fn(() => calls.push('joined'));
+    socket.on('room:joined', joined);
 
     socket.emit('room:join', { roomId: roomFixture.room.id }, ack);
 
-    expect(ack).toHaveBeenCalledWith({
-      success: true,
-      data: { playbackState: roomFixture.playbackState },
-    });
+    expect(calls).toEqual(['joined', 'ack']);
+    expect(ack).toHaveBeenCalledWith({ success: true });
+    expect(joined).toHaveBeenCalledWith(
+      expect.objectContaining({
+        playlist: roomFixture.playlist,
+        recentChats: roomFixture.chats,
+      }),
+    );
   });
 
   it('selects the first available item when playback starts without a selected video', () => {
@@ -89,7 +96,7 @@ describe('fakeSocketClient', () => {
 
     socket.emit(
       'playback:change-track',
-      { playlistItemId: 'missing-item', roomId: roomFixture.room.id },
+      { action: 'select', playlistItemId: 'missing-item', roomId: roomFixture.room.id },
       ack,
     );
 
@@ -114,7 +121,7 @@ describe('fakeSocketClient', () => {
 
     socket.emit(
       'playback:change-track',
-      { playlistItemId: unavailableItem.id, roomId: roomFixture.room.id },
+      { action: 'select', playlistItemId: unavailableItem.id, roomId: roomFixture.room.id },
       ack,
     );
 
@@ -142,7 +149,7 @@ describe('fakeSocketClient', () => {
     socket.on('playback:change-track', listener);
     socket.emit(
       'playback:change-track',
-      { playlistItemId: nextItem.id, roomId: roomFixture.room.id },
+      { action: 'select', playlistItemId: nextItem.id, roomId: roomFixture.room.id },
       changeTrackAck,
     );
 
@@ -155,6 +162,31 @@ describe('fakeSocketClient', () => {
         videoId: nextItem.videoId,
       }),
     );
+  });
+
+  it('supports next action and broadcasts changed playback policy', () => {
+    const socket = fakeSocketClient.connect();
+    const stateListener = vi.fn<(payload: PlaybackState) => void>();
+    const settingsListener = vi.fn();
+    socket.on('playback:change-track', stateListener);
+    socket.on('playback:settings', settingsListener);
+
+    socket.emit('playback:play', { currentTime: 0, roomId: roomFixture.room.id }, vi.fn());
+    socket.emit('playback:change-track', { action: 'next', roomId: roomFixture.room.id }, vi.fn());
+    socket.emit(
+      'playback:update-settings',
+      { roomId: roomFixture.room.id, repeatMode: 'all', shuffleEnabled: true },
+      vi.fn(),
+    );
+
+    expect(stateListener).toHaveBeenLastCalledWith(
+      expect.objectContaining({ playbackVersion: expect.any(Number) as number }),
+    );
+    expect(settingsListener).toHaveBeenCalledWith({
+      playbackVersion: expect.any(Number) as number,
+      repeatMode: 'all',
+      shuffleEnabled: true,
+    });
   });
 
   it('emits chat received before acking chat send', () => {
@@ -184,5 +216,51 @@ describe('fakeSocketClient', () => {
         type: 'user',
       }),
     );
+  });
+
+  it('does nothing when a server event is simulated without a connection', () => {
+    expect(() =>
+      simulateServerEvent('presence:update', {
+        nickname: '새 멤버',
+        profileImage: null,
+        role: 'member',
+        status: 'online',
+        userId: 'new-member',
+      }),
+    ).not.toThrow();
+  });
+
+  it('delivers simulated server events while connected', () => {
+    const socket = fakeSocketClient.connect();
+    const listener = vi.fn();
+    const payload = {
+      nickname: '새 멤버',
+      profileImage: null,
+      role: 'member' as const,
+      status: 'online' as const,
+      userId: 'new-member',
+    };
+
+    socket.on('presence:update', listener);
+    simulateServerEvent('presence:update', payload);
+
+    expect(listener).toHaveBeenCalledWith(payload);
+  });
+
+  it('stops delivering simulated server events after disconnecting', () => {
+    const socket = fakeSocketClient.connect();
+    const listener = vi.fn();
+
+    socket.on('presence:update', listener);
+    fakeSocketClient.disconnect();
+    simulateServerEvent('presence:update', {
+      nickname: '새 멤버',
+      profileImage: null,
+      role: 'member',
+      status: 'online',
+      userId: 'new-member',
+    });
+
+    expect(listener).not.toHaveBeenCalled();
   });
 });

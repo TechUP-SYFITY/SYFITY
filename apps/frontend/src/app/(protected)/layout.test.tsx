@@ -17,7 +17,15 @@ vi.mock('next/navigation', () => ({
   redirect: redirectMock,
 }));
 
+vi.mock('@/shared/lib/env', () => ({
+  isMockingEnabled: vi.fn(() => false),
+}));
+
+import { isMockingEnabled } from '@/shared/lib/env';
+
 import ProtectedLayout from './layout';
+
+const isMockingEnabledMock = vi.mocked(isMockingEnabled);
 
 const res = (status: number, body?: unknown) =>
   ({
@@ -37,6 +45,7 @@ describe('ProtectedLayout auth boundary', () => {
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     redirectMock.mockClear();
+    isMockingEnabledMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -79,5 +88,15 @@ describe('ProtectedLayout auth boundary', () => {
 
     await expect(renderLayout()).resolves.toBeTruthy();
     expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it('mock 모드에서는 실제 백엔드 세션 체크를 건너뛰고 바로 children을 렌더링한다', async () => {
+    isMockingEnabledMock.mockReturnValue(true);
+
+    const result = await renderLayout();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
+    expect((result as { props: { children: ReactNode } }).props.children).toBe('PROTECTED');
   });
 });

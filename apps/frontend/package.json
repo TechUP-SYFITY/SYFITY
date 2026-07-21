@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "pnpm --filter @syfity/shared build",
+    "prebuild": "pnpm --filter @syfity/shared build",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -55,6 +57,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint-config-next": "16.2.9",
     "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-better-tailwindcss": "^4.6.1",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-storybook": "^10.4.6",

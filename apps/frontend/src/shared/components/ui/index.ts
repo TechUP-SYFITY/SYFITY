@@ -8,3 +8,6 @@ export * from './DropdownMenu';
 export * from './Input';
 export * from './Tabs';
 export * from './Toast';
+
+export * from './ErrorPageShell';
+export * from './ErrorState';

@@ -2,13 +2,12 @@ import { OAuth2Client } from 'google-auth-library';
 import type { IocContainer } from 'tsoa';
 
 import { cache } from './lib/cache';
-import { getIo } from './lib/io';
+import { PlaybackSessionStore } from './lib/playback/playback-session.store';
 import { prisma } from './lib/prisma';
 import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
-import { PlaybackRepository } from './repositories/playback.repository';
 import { PlaylistRepository } from './repositories/playlist.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
@@ -27,6 +26,7 @@ import { AuthController } from './controllers/auth.controller';
 import { ChatController } from './controllers/chat.controller';
 import { HealthController } from './controllers/health.controller';
 import { PlaylistController } from './controllers/playlist.controller';
+import { RoomMembershipController } from './controllers/room-membership.controller';
 import { RoomController } from './controllers/room.controller';
 import { SearchController } from './controllers/search.controller';
 import { UserController } from './controllers/user.controller';
@@ -55,13 +55,12 @@ const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
 const playlistRepository = new PlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
-const playbackRepository = new PlaybackRepository(prisma);
+const playbackSessionStore = new PlaybackSessionStore(cache);
 const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
 export const playbackService = new PlaybackService(
-  playbackRepository,
   roomRepository,
   playlistRepository,
-  cache,
+  playbackSessionStore,
   playlistYoutubeClient,
 );
 export const presenceService = new PresenceService(roomRepository, cache);
@@ -73,28 +72,22 @@ export const roomService = new RoomService(
   chatRepository,
   playbackService,
 );
-let playlistService: PlaylistService | null = null;
-
-function getPlaylistService(): PlaylistService {
-  playlistService ??= new PlaylistService(
-    playlistRepository,
-    roomRepository,
-    playlistYoutubeClient,
-    getIo(),
-    playbackService,
-  );
-
-  return playlistService;
-}
+export const playlistService = new PlaylistService(
+  playlistRepository,
+  roomRepository,
+  playlistYoutubeClient,
+  playbackService,
+);
 
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
+register(RoomMembershipController, () => new RoomMembershipController(roomService));
 register(ChatController, () => new ChatController(chatService));
 register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);
   return new SearchController(new SearchService(youtubeClient, cache));
 });
-register(PlaylistController, () => new PlaylistController(getPlaylistService()));
+register(PlaylistController, () => new PlaylistController(playlistService));
 
 export const iocContainer: IocContainer = {
   get<T>(controller: new (...args: never[]) => T): T {

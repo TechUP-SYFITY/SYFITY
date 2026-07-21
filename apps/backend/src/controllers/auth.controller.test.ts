@@ -111,8 +111,9 @@ describe('AuthController', () => {
     });
   });
 
-  it('production 환경에서는 secure none 쿠키를 설정한다', async () => {
+  it('production 환경에서는 secure none 쿠키에 CLIENT_URL hostname을 domain으로 설정한다', async () => {
     vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('CLIENT_URL', 'https://syfity.site');
     const { AuthController } = await import('./auth.controller');
     const authService = makeAuthService();
     const controller = new AuthController(authService);
@@ -126,8 +127,25 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: 'syfity.site',
       maxAge: 60 * 60 * 1000,
     });
+    expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'refresh-token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      domain: 'syfity.site',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: '/api/v1/auth/refresh',
+    });
+  });
+
+  it('CLIENT_URL이 URL 형식이 아니면 명확한 설정 오류를 발생시킨다', async () => {
+    vi.stubEnv('CLIENT_URL', 'syfity.site');
+
+    await expect(import('./auth.controller')).rejects.toThrow(
+      'CLIENT_URL이 올바른 URL 형식이 아닙니다.',
+    );
   });
 
   it('콜백 실패 시 clientUrl 에러 쿼리로 리다이렉트하고 에러를 로깅한다', async () => {
@@ -178,8 +196,26 @@ describe('AuthController', () => {
       data: { message: 'logged out' },
     });
     expect(authService.logout).toHaveBeenCalledWith('user-id');
-    expect(req.res!.clearCookie).toHaveBeenCalledWith('access_token');
+    expect(req.res!.clearCookie).toHaveBeenCalledWith('access_token', { domain: undefined });
     expect(req.res!.clearCookie).toHaveBeenCalledWith('refresh_token', {
+      domain: undefined,
+      path: '/api/v1/auth/refresh',
+    });
+  });
+
+  it('production 환경에서는 로그아웃 시 CLIENT_URL hostname으로 쿠키를 삭제한다', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('CLIENT_URL', 'https://syfity.site');
+    const { AuthController } = await import('./auth.controller');
+    const authService = makeAuthService();
+    const controller = new AuthController(authService);
+    const req = makeRequest();
+
+    await controller.logout(req);
+
+    expect(req.res!.clearCookie).toHaveBeenCalledWith('access_token', { domain: 'syfity.site' });
+    expect(req.res!.clearCookie).toHaveBeenCalledWith('refresh_token', {
+      domain: 'syfity.site',
       path: '/api/v1/auth/refresh',
     });
   });
@@ -236,8 +272,9 @@ describe('AuthController', () => {
     });
   });
 
-  it('refresh 성공 시 production 쿠키 옵션을 적용한다', async () => {
+  it('refresh 성공 시 production 쿠키 옵션과 CLIENT_URL hostname domain을 적용한다', async () => {
     vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('CLIENT_URL', 'https://syfity.site');
     const { AuthController } = await import('./auth.controller');
     const authService = makeAuthService();
     const controller = new AuthController(authService);
@@ -249,12 +286,14 @@ describe('AuthController', () => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: 'syfity.site',
       maxAge: 60 * 60 * 1000,
     });
     expect(req.res!.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: 'syfity.site',
       maxAge: 30 * 24 * 60 * 60 * 1000,
       path: '/api/v1/auth/refresh',
     });

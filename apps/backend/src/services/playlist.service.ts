@@ -1,30 +1,22 @@
-import { ERROR_CODES, type AddPlaylistItemRequest, type PlaylistItem } from '@syfity/shared';
+import { ERROR_CODES, type AddPlaylistItemRequest } from '@syfity/shared';
 
 import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
 import type { IYouTubeClient } from '../lib/youtube/youtube.client';
+import { broadcastToRoom } from '../socket/broadcast';
 import {
   toPlaylistItem,
   type IPlaylistRepository,
+  PlaylistDuplicateVideoError,
   type PlaylistItemRecord,
   type ReorderPlaylistItemInput,
 } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
-import type { PlaybackStatePayload } from '../types/socket';
 import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
-
-type PlaylistRoomEmitter = {
-  emit(event: 'playlist:updated', payload: { playlist: PlaylistItem[] }): boolean;
-  emit(event: 'playback:change-track' | 'playback:pause', payload: PlaybackStatePayload): boolean;
-};
-
-export type PlaylistSocketServer = {
-  to(room: string): PlaylistRoomEmitter;
-};
 
 type PlaylistPlaybackService = Pick<
   PlaybackService,
-  'getPlaybackState' | 'setTrack' | 'resetPlayback'
+  'advanceAfterCurrentRemoved' | 'enqueueIfShuffled'
 >;
 
 export class PlaylistService {
@@ -35,7 +27,6 @@ export class PlaylistService {
       'findRoomById' | 'touchLastActivity' | 'findMembership'
     >,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
-    private readonly io: PlaylistSocketServer,
     private readonly playbackService: PlaylistPlaybackService,
   ) {}
 
@@ -53,6 +44,11 @@ export class PlaylistService {
     await assertActiveRoomMember(this.roomRepo, roomId, userId);
 
     const videoId = this.resolveVideoId(request);
+    const existingItem = await this.playlistRepo.findItemByRoomAndVideoId(roomId, videoId);
+    if (existingItem) {
+      throw this.createDuplicateVideoError();
+    }
+
     const [video] = await this.youtubeClient.getVideoDetails([videoId]);
     if (!video || video.duration === 0) {
       throw new AppError(400, ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE, '재생할 수 없는 영상입니다.');
@@ -65,20 +61,29 @@ export class PlaylistService {
       );
     }
 
-    const item = await this.playlistRepo.addItem({
-      roomId,
-      videoId: video.videoId,
-      title: video.title,
-      channelTitle: video.channelTitle,
-      thumbnailUrl: video.thumbnailUrl,
-      duration: video.duration,
-      addedBy: userId,
-    });
+    let item: PlaylistItemRecord;
+    try {
+      item = await this.playlistRepo.addItem({
+        roomId,
+        videoId: video.videoId,
+        title: video.title,
+        channelTitle: video.channelTitle,
+        thumbnailUrl: video.thumbnailUrl,
+        duration: video.duration,
+        addedBy: userId,
+      });
+    } catch (error) {
+      if (error instanceof PlaylistDuplicateVideoError) {
+        throw this.createDuplicateVideoError();
+      }
+      throw error;
+    }
 
     await this.roomRepo.touchLastActivity(roomId);
+    await this.playbackService.enqueueIfShuffled(roomId, item.id);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
     });
 
@@ -113,7 +118,7 @@ export class PlaylistService {
     await this.roomRepo.touchLastActivity(roomId);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: playlist.map(toPlaylistItem),
     });
   }
@@ -135,49 +140,17 @@ export class PlaylistService {
       );
     }
 
-    const playbackState = await this.playbackService.getPlaybackState(roomId);
-    if (!playbackState) {
-      throw new AppError(
-        500,
-        ERROR_CODES.SERVER_INTERNAL_ERROR,
-        'PlaybackState를 찾을 수 없습니다.',
-      );
-    }
-
-    const isCurrentTrack = playbackState.playlistItemId === itemId;
-    let statePayload: PlaybackStatePayload | null = null;
-    let broadcastEvent: 'playback:change-track' | 'playback:pause' | null = null;
-
-    // playback_states(FK로 이 곡을 참조 중)를 먼저 옮기고 나서 playlist_items를 지운다.
-    // 순서를 바꾸면 참조가 남아있는 채로 삭제를 시도해 FK 제약에 걸린다.
-    // 두 단계가 하나의 트랜잭션은 아니라서(PlaybackService/PlaylistRepository가 별도 Repository),
-    // 중간에 실패하면 재생 상태는 이미 넘어갔는데 곡은 아직 안 지워진 채로 남을 수 있다 —
-    // 사용자가 삭제를 재시도하면 해소되는 낮은 위험으로 판단해 트랜잭션 통합은 보류했다.
-    if (isCurrentTrack) {
-      const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
-      const nextItem =
-        currentPlaylist.find(
-          (candidate) => candidate.position > item.position && candidate.status === 'available',
-        ) ?? null;
-
-      if (nextItem) {
-        statePayload = await this.playbackService.setTrack(roomId, nextItem.videoId, nextItem.id);
-        broadcastEvent = 'playback:change-track';
-      } else {
-        statePayload = await this.playbackService.resetPlayback(roomId);
-        broadcastEvent = 'playback:pause';
-      }
-    }
+    const transition = await this.playbackService.advanceAfterCurrentRemoved(roomId, itemId);
 
     await this.playlistRepo.deleteItem(itemId);
     await this.roomRepo.touchLastActivity(roomId);
 
     const updatedPlaylist = await this.playlistRepo.getPlaylist(roomId);
 
-    if (broadcastEvent && statePayload) {
-      this.io.to(`room:${roomId}`).emit(broadcastEvent, statePayload);
+    if (transition) {
+      broadcastToRoom(roomId, transition.broadcastEvent, transition.payload);
     }
-    this.io.to(`room:${roomId}`).emit('playlist:updated', {
+    broadcastToRoom(roomId, 'playlist:updated', {
       playlist: updatedPlaylist.map(toPlaylistItem),
     });
   }
@@ -199,6 +172,14 @@ export class PlaylistService {
     return videoId;
   }
 
+  private createDuplicateVideoError(): AppError {
+    return new AppError(
+      409,
+      ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
+      '이미 플레이리스트에 추가된 곡입니다.',
+    );
+  }
+
   private parseVideoId(url: string): string | null {
     let parsed: URL;
     try {
@@ -211,7 +192,11 @@ export class PlaylistService {
       return this.nonEmpty(parsed.pathname.split('/')[1]);
     }
 
-    if (parsed.hostname !== 'youtube.com' && parsed.hostname !== 'www.youtube.com') {
+    if (
+      parsed.hostname !== 'youtube.com' &&
+      parsed.hostname !== 'www.youtube.com' &&
+      parsed.hostname !== 'music.youtube.com'
+    ) {
       return null;
     }
 

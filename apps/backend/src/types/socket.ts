@@ -1,4 +1,7 @@
-import type { RoomMemberStatus, RoomRole } from './room';
+import type { ChatMessage, PlaylistItem } from '@syfity/shared';
+
+import type { PlaybackPolicyPayload, PlaybackStatePayload, RepeatMode } from './playback';
+import type { HostConnectionState, RoomMemberRecord, RoomMemberStatus, RoomRole } from './room';
 
 export type RoomJoinPayload = {
   roomId: string;
@@ -8,12 +11,8 @@ export type RoomLeavePayload = {
   roomId: string;
 };
 
-export type PlaybackStatePayload = {
-  currentTime: number;
-  isPlaying: boolean;
-  videoId: string | null;
-  playlistItemId: string | null;
-};
+export type { PlaybackStatePayload } from './playback';
+export type { PlaybackErrorBroadcastPayload } from './playback';
 
 export type PlaybackPlayPayload = {
   roomId: string;
@@ -32,7 +31,8 @@ export type PlaybackSeekPayload = {
 
 export type PlaybackChangeTrackPayload = {
   roomId: string;
-  playlistItemId: string;
+  action: 'select' | 'next' | 'previous';
+  playlistItemId?: string;
 };
 
 export type PlaybackErrorPayload = {
@@ -41,9 +41,25 @@ export type PlaybackErrorPayload = {
   errorCode: number;
 };
 
-export type PlaybackErrorBroadcastPayload = {
-  videoId: string;
-  errorCode: number;
+export type PlaybackUpdateSettingsPayload = {
+  roomId: string;
+  repeatMode?: RepeatMode;
+  shuffleEnabled?: boolean;
+};
+
+export type PlaybackSettingsPayload = PlaybackPolicyPayload & { playbackVersion: number };
+
+export type PlaybackEndedPayload = {
+  roomId: string;
+  playlistItemId: string;
+  playbackVersion: number;
+};
+
+export type PlaybackResetPayload = {
+  roomId: string;
+  reason: 'cache-reset';
+  playbackState: PlaybackStatePayload;
+  playbackPolicy: PlaybackPolicyPayload;
 };
 
 export type PlaybackSyncRequestPayload = {
@@ -57,9 +73,17 @@ export type SocketAckError = {
 
 export type PlaybackAck = { success: true } | { success: false; error: SocketAckError };
 
-export type RoomJoinAck =
-  | { success: true; data: { playbackState: PlaybackStatePayload } }
-  | { success: false; error: SocketAckError };
+export type RoomJoinAck = { success: true } | { success: false; error: SocketAckError };
+
+export type RoomJoinedPayload = {
+  roomId: string;
+  hostConnection: HostConnectionState;
+  playbackState: PlaybackStatePayload;
+  playbackPolicy: PlaybackPolicyPayload;
+  playlist: PlaylistItem[];
+  members: RoomMemberRecord[];
+  recentChats: ChatMessage[];
+};
 
 export type PresenceUpdatePayload = {
   userId: string;
@@ -91,22 +115,7 @@ export type ChatSendPayload = {
 };
 
 export type ChatSendAck =
-  | { success: true; data: { id: string; createdAt: string } }
-  | { success: false; error: SocketAckError };
+  { success: true; data: ChatMessage } | { success: false; error: SocketAckError };
 
-export type ChatReceivedPayload = {
-  id: string;
-  userId: string;
-  nickname: string;
-  profileImage: string | null;
-  type: 'user';
-  message: string;
-  createdAt: string;
-};
-
-export type ChatSystemPayload = {
-  id: string;
-  type: 'system';
-  message: string;
-  createdAt: string;
-};
+export type ChatReceivedPayload = ChatMessage;
+export type ChatSystemPayload = ChatMessage;

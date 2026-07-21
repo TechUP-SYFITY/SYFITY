@@ -5,9 +5,9 @@
 | 항목        | 내용                                                |
 | ----------- | --------------------------------------------------- |
 | 문서명      | Syfity Design System                                |
-| 버전        | v1.0                                                |
-| 상태        | 초안                                                |
-| 작성 목적   | Syfity MVP 디자인 토큰 및 공통 컴포넌트 규칙 정의   |
+| 버전        | v2.0                                                |
+| 상태        | Room 운영·재생 설정·PWA 안내 컴포넌트 규칙 반영     |
+| 작성 목적   | Syfity 디자인 토큰 및 공통 컴포넌트 규칙 정의       |
 | 기반 문서   | `07-frontend-architecture.md`, `09-ui-ux-flow.md`   |
 | 디자인 원본 | Figma `syfity-design` › `0.Foundations` 페이지      |
 | 기술 기반   | Tailwind CSS + shadcn/ui (Radix UI), 다크 모드 중심 |
@@ -165,7 +165,7 @@ linear-gradient(135deg, #72F4A4 0%, #885CF6 100%)
 
 ### 5.1 스페이싱 스케일 (4px 기반)
 
-허용 값: **4 · 8 · 12 · 16 · 24 · 32 · 48 · 64px**
+일반 컴포넌트 스페이싱 허용 값: **4 · 8 · 12 · 16 · 24 · 32 · 48 · 64px**
 
 | 토큰(Tailwind) | 값   | 용도                      |
 | -------------- | ---- | ------------------------- |
@@ -178,7 +178,7 @@ linear-gradient(135deg, #72F4A4 0%, #885CF6 100%)
 | 12             | 48px | 큰 여백                   |
 | 16             | 64px | 최상위 여백               |
 
-> ❌ 금지 값: 10 · 14 · 18 · 20 · 28 · 36 · 40px — 스케일 일관성을 위해 사용하지 않는다.
+> ❌ 금지 값: 10 · 14 · 18 · 20 · 28 · 36 · 40px — 스케일 일관성을 위해 사용하지 않는다. 단, Figma Foundations에 지정된 **모바일 콘텐츠 컨테이너 좌우 패딩 20px(`px-5`)**은 레이아웃 예외로 허용한다.
 
 ### 5.2 반지름 (Radius)
 
@@ -211,7 +211,7 @@ linear-gradient(135deg, #72F4A4 0%, #885CF6 100%)
 | Mobile         | ~767px     | `px-5` (20px) |
 
 ```html
-<div class="max-w-300 mx-auto px-5 md:px-6 lg:px-8">…</div>
+<div class="mx-auto max-w-300 px-5 md:px-6 lg:px-8">…</div>
 ```
 
 ### 5.5 Room 화면 레이아웃 규격
@@ -232,7 +232,11 @@ Room 화면은 전체 폭을 사용하며 고정 폭 사이드 패널 + 가변 �
 
 ## 6. 컴포넌트
 
-shadcn/ui 컴포넌트를 기반으로 Syfity 토큰을 적용한다. 컴포넌트는 `shared/components`에 위치하고 Storybook으로 문서화한다.
+shadcn/ui 컴포넌트를 기반으로 Syfity 토큰을 적용한다.
+
+- Button, Input, Dialog 같은 범용 UI는 `shared/components`에 둔다.
+- 도메인 UI는 `features/{domain}/components`에 두고, 여러 feature를 조합하는 화면 UI는 `widgets`에 둔다.
+- Storybook은 공통 컴포넌트를 우선 문서화한다.
 
 ### 6.1 기본 컴포넌트
 
@@ -243,7 +247,7 @@ shadcn/ui 컴포넌트를 기반으로 Syfity 토큰을 적용한다. 컴포넌�
 | Card / Panel  | default                                   | bg `rgba(17,17,19,0.8)`, border `rgba(255,255,255,0.09)`, radius 16px, 카드 그림자         |
 | Badge         | default / success / warning / muted       | Room 상태, Host 표시                                                                       |
 | Avatar        | image / fallback(이니셜)                  | full radius                                                                                |
-| Dialog(Modal) | default                                   | 카드 스타일 + 헤더 아이콘 배지                                                             |
+| Dialog(Modal) | default                                   | 카드 스타일 + 헤더 아이콘 배지. Room 종료·추방·inactive 전환 확인에 사용                   |
 | Toast         | success / error / info                    | 시맨틱 색상                                                                                |
 | Tabs          | default                                   | 모바일 Room 화면 전환                                                                      |
 | Skeleton      | -                                         | 로딩 상태                                                                                  |
@@ -252,20 +256,25 @@ shadcn/ui 컴포넌트를 기반으로 Syfity 토큰을 적용한다. 컴포넌�
 
 ### 6.2 도메인 컴포넌트
 
-| 컴포넌트        | 소속 feature | 설명                                |
-| --------------- | ------------ | ----------------------------------- |
-| SyfityLogo      | shared       | 그라데이션 마크 + "Syfity" 워드마크 |
-| MiniPlayer      | player       | 하단 고정 재생 바 (h-20)            |
-| PlayerCard      | player       | 현재 곡 영상·정보·컨트롤            |
-| PlaybackControl | player       | 재생/정지/Seek (Host 전용 노출)     |
-| PlaylistPanel   | playlist     | 곡 목록 패널 (w-320)                |
-| PlaylistItem    | playlist     | 곡 카드(썸네일·제목·채널·삭제)      |
-| SearchResult    | search       | YouTube 검색 결과 항목              |
-| ChatPanel       | chat         | 채팅 패널 (w-320)                   |
-| ChatMessage     | chat         | 사용자/시스템 메시지 구분           |
-| MembersPanel    | presence     | 참여자 목록 패널 (w-280)            |
-| RoomCard        | room         | Home 최근 Room 카드                 |
-| InviteBox       | room         | 초대 코드·링크 표시 + 복사 버튼     |
+| 컴포넌트          | 소속 feature | 설명                                                    |
+| ----------------- | ------------ | ------------------------------------------------------- |
+| SyfityLogo        | shared       | 그라데이션 마크 + "Syfity" 워드마크                     |
+| MiniPlayer        | player       | 하단 고정 재생 바 (h-20), Host 전용 반복·셔플 버튼 포함 |
+| PlayerCard        | player       | 현재 곡 영상·정보·컨트롤                                |
+| PlaybackControl   | player       | 재생/정지/Seek (Host 전용 노출)                         |
+| PlaylistPanel     | playlist     | 곡 목록 패널 (w-320)                                    |
+| PlaylistItem      | playlist     | 곡 카드(썸네일·제목·채널·삭제)                          |
+| SearchResult      | search       | YouTube 검색 결과 항목                                  |
+| ChatPanel         | chat         | 채팅 패널 (w-320)                                       |
+| ChatMessage       | chat         | 사용자/시스템 메시지 구분                               |
+| EmojiPickerButton | chat         | 표준 Unicode 이모지 선택·커서 위치 삽입                 |
+| MembersPanel      | presence     | 참여자 목록 패널 (w-280)                                |
+| MemberActions     | presence     | Host 전용 Member 추방 메뉴·확인 진입                    |
+| KickedMemberList  | presence     | Host 전용 추방 목록·추방 해제                           |
+| RoomCard          | room         | Home 최근 Room·내 Room(active/closed) 카드              |
+| InviteBox         | room         | 초대 코드·링크 표시 + 복사 버튼                         |
+| PwaInstallPrompt  | widgets/pwa  | 지원 브라우저 설치·iOS 홈 화면 추가 안내                |
+| PwaUpdateNotice   | widgets/pwa  | 새 버전 적용 선택 안내                                  |
 
 ### 6.3 상태 표현 규칙
 
@@ -309,7 +318,7 @@ shadcn/ui 컴포넌트를 기반으로 Syfity 토큰을 적용한다. 컴포넌�
 
 ## 9. 다크/라이트 테마 대응
 
-- MVP는 다크 모드를 기본이자 유일 테마로 제공한다. (`#09090B` 배경 기준)
+- 다크 모드를 기본이자 현재 제공 테마로 사용한다. (`#09090B` 배경 기준)
 - 시맨틱 색상 스케일에는 Light 단계 값이 정의되어 있어 향후 라이트 테마 확장이 가능하다.
 - 테마는 `:root`(다크) 기준으로 정의하고, 확장 시 `.light` 클래스로 오버라이드하는 구조를 준비한다.
 

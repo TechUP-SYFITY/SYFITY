@@ -1,11 +1,13 @@
+import { DriverAdapterError } from '@prisma/driver-adapter-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PlaylistRepository, type PlaylistRepositoryPrisma } from './playlist.repository';
 import { Prisma } from '../generated/prisma/client';
-import type {
-  AddPlaylistItemData,
-  PlaylistItemLookupRecord,
-  PlaylistItemRecord,
+import {
+  PlaylistDuplicateVideoError,
+  type AddPlaylistItemData,
+  type PlaylistItemLookupRecord,
+  type PlaylistItemRecord,
 } from '../types/playlist';
 
 const playlistItem: PlaylistItemRecord = {
@@ -36,12 +38,25 @@ const writeConflictError = new Prisma.PrismaClientKnownRequestError(
   { code: 'P2034', clientVersion: 'test' },
 );
 
+const uniqueConstraintError = new Prisma.PrismaClientKnownRequestError(
+  'Unique constraint failed on the fields: (`room_id`,`video_id`)',
+  { code: 'P2002', clientVersion: 'test' },
+);
+
+// @prisma/adapter-pg(driver adapter) 경로에서 실제로 발생하는 write conflict 형태.
+// P2034로 변환되지 않고 DriverAdapterError(cause.kind === 'TransactionWriteConflict')로 전달된다.
+const driverAdapterWriteConflictError = new DriverAdapterError({
+  kind: 'TransactionWriteConflict',
+  originalCode: '40001',
+  originalMessage: 'could not serialize access due to read/write dependencies among transactions',
+});
+
 function makePrisma(
   overrides: {
     findManyResult?: PlaylistItemRecord[];
     maxPosition?: number | null;
     createResult?: PlaylistItemRecord;
-    findUniqueResult?: PlaylistItemLookupRecord | null;
+    findUniqueResult?: PlaylistItemLookupRecord | PlaylistItemRecord | null;
     transaction?: PlaylistRepositoryPrisma['$transaction'];
   } = {},
 ): PlaylistRepositoryPrisma {
@@ -168,6 +183,19 @@ describe('PlaylistRepository', () => {
     expect(transaction).toHaveBeenCalledTimes(2);
   });
 
+  it('동시 추가로 인한 write conflict(DriverAdapterError)는 재시도 후 성공한다', async () => {
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(driverAdapterWriteConflictError)
+      .mockResolvedValueOnce(playlistItem);
+    const prisma = makePrisma({ transaction });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.addItem(addItemData)).resolves.toEqual(playlistItem);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
+
   it('write conflict(P2034)가 재시도 횟수를 초과하면 에러를 던진다', async () => {
     const transaction = vi.fn().mockRejectedValue(writeConflictError);
     const prisma = makePrisma({ transaction });
@@ -189,11 +217,43 @@ describe('PlaylistRepository', () => {
     expect(transaction).toHaveBeenCalledTimes(1);
   });
 
+  it('동일 Room videoId unique 제약 충돌은 중복 곡 오류로 변환한다', async () => {
+    const transaction = vi.fn().mockRejectedValue(uniqueConstraintError);
+    const repo = new PlaylistRepository(makePrisma({ transaction }));
+
+    await expect(repo.addItem(addItemData)).rejects.toBeInstanceOf(PlaylistDuplicateVideoError);
+    expect(transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('Room과 videoId로 기존 플레이리스트 곡을 조회한다', async () => {
+    const prisma = makePrisma({ findUniqueResult: playlistItem });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.findItemByRoomAndVideoId('room-1', 'video-1')).resolves.toEqual(playlistItem);
+
+    expect(prisma.playlistItem.findUnique).toHaveBeenCalledWith({
+      where: { roomId_videoId: { roomId: 'room-1', videoId: 'video-1' } },
+      select: {
+        id: true,
+        videoId: true,
+        title: true,
+        channelTitle: true,
+        thumbnailUrl: true,
+        duration: true,
+        position: true,
+        addedBy: true,
+        status: true,
+        addedAt: true,
+      },
+    });
+  });
+
   it('ID로 플레이리스트 항목 조회에 필요한 필드를 조회한다', async () => {
     const item: PlaylistItemLookupRecord = {
       id: 'playlist-item-1',
       roomId: 'room-1',
       videoId: 'video-1',
+      duration: 180,
       position: 1,
       addedBy: 'user-1',
       status: 'available',
@@ -209,6 +269,7 @@ describe('PlaylistRepository', () => {
         id: true,
         roomId: true,
         videoId: true,
+        duration: true,
         position: true,
         addedBy: true,
         status: true,

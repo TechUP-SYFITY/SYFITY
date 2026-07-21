@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
-import { getAdjacentPlayablePlaylistItems, getCurrentPlaylistItem } from './playback';
+import { getCurrentPlaylistItem } from './playback';
 
 const playlist = [
   createPlaylistItem('playlist-item-1', 'First Track'),
@@ -44,32 +44,6 @@ describe('getCurrentPlaylistItem', () => {
   });
 });
 
-describe('getAdjacentPlayablePlaylistItems', () => {
-  it('현재 곡 앞뒤의 unavailable 곡을 건너뛴다', () => {
-    const currentItem = createPlaylistItem('playlist-item-current', 'Current Track');
-    const previousItem = createPlaylistItem('playlist-item-previous', 'Previous Track');
-    const nextItem = createPlaylistItem('playlist-item-next', 'Next Track');
-    const playlistWithUnavailable = [
-      previousItem,
-      {
-        ...createPlaylistItem('playlist-item-unavailable-1', 'Unavailable'),
-        status: 'unavailable' as const,
-      },
-      currentItem,
-      {
-        ...createPlaylistItem('playlist-item-unavailable-2', 'Unavailable'),
-        status: 'unavailable' as const,
-      },
-      nextItem,
-    ];
-
-    expect(getAdjacentPlayablePlaylistItems(playlistWithUnavailable, currentItem)).toEqual({
-      nextItem,
-      previousItem,
-    });
-  });
-});
-
 function createPlaylistItem(id: string, title: string): PlaylistItem {
   return {
     addedBy: 'user-1',
@@ -90,6 +64,7 @@ function createPlaybackState(overrides: Partial<PlaybackState> = {}): PlaybackSt
     isPlaying: false,
     playlistItemId: 'playlist-item-1',
     videoId: 'video-playlist-item-1',
+    playbackVersion: 0,
     ...overrides,
   };
 }

@@ -5,20 +5,21 @@
 | 항목      | 내용                                                                   |
 | --------- | ---------------------------------------------------------------------- |
 | 문서명    | Syfity Database Design                                                 |
-| 버전      | v1.0                                                                   |
-| 상태      | 초안                                                                   |
-| 작성 목적 | Syfity MVP 데이터베이스 스키마 설계 정의                               |
+| 버전      | v2.0                                                                   |
+| 상태      | Room 수명 주기와 개인 Playlist 중심의 영속 스키마로 재구성             |
+| 작성 목적 | Syfity 전체 기능의 PostgreSQL·Prisma 스키마 설계 정의                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md` |
 
 ---
 
 ## 2. 설계 원칙
 
-1. 모든 테이블은 `id`를 UUID로 사용한다.
-2. 데이터는 물리 삭제하지 않고 상태값으로 관리한다. (예외: `playlist_items` — 4.5절 참고)
-3. 상태값 컬럼은 PostgreSQL enum 타입으로 정의한다. Prisma schema에서도 enum으로 선언하여 TypeScript 타입과 연결한다.
-4. Timestamp 컬럼은 `TIMESTAMPTZ`로 저장한다. 애플리케이션에서는 ISO 8601 문자열로 직렬화한다.
-5. 스키마 변경은 반드시 Prisma migrate로 관리한다. Supabase 대시보드 직접 수정은 금지한다.
+1. 모든 기본 키는 UUID를 사용한다.
+2. Room, 참여 이력, 채팅은 물리 삭제하지 않고 상태로 보존한다. 사용자가 명시적으로 삭제한 Room Playlist·개인 Playlist와 그 곡은 예외로 hard delete한다.
+3. 상태값은 PostgreSQL enum과 Prisma enum으로 함께 선언한다.
+4. 시각은 `TIMESTAMPTZ`로 저장하고 API에서는 ISO 8601 문자열로 직렬화한다.
+5. 현재 곡, 재생 위치, 반복·셔플, 셔플 큐, 재생 이력은 인메모리 재생 세션으로 관리한다. DB는 Room의 영속 데이터만 저장한다.
+6. 스키마 변경은 Prisma migration으로만 적용한다. Supabase 대시보드에서 직접 수정하지 않는다.
 
 ---
 
@@ -42,7 +43,6 @@ erDiagram
         RoomVisibility visibility
         string invite_code UK
         RoomStatus status
-        timestamptz last_activity_at
         timestamptz closed_at
         timestamptz created_at
         timestamptz updated_at
@@ -57,6 +57,7 @@ erDiagram
         timestamptz joined_at
         timestamptz last_seen_at
         timestamptz left_at
+        timestamptz updated_at
     }
 
     recent_rooms {
@@ -70,26 +71,10 @@ erDiagram
         uuid id PK
         uuid room_id FK
         string video_id
-        string title
-        string channel_title
-        string thumbnail_url
-        int duration
         int position
         uuid added_by FK
         PlaylistItemStatus status
         timestamptz added_at
-    }
-
-    playback_states {
-        uuid id PK
-        uuid room_id FK "UK"
-        string video_id
-        uuid playlist_item_id FK
-        float base_current_time
-        boolean is_playing
-        timestamptz server_started_at
-        timestamptz server_paused_at
-        timestamptz updated_at
     }
 
     chat_messages {
@@ -101,17 +86,34 @@ erDiagram
         timestamptz created_at
     }
 
-    users ||--o{ rooms : "host_id"
-    users ||--o{ room_members : "user_id"
-    users ||--o{ recent_rooms : "user_id"
-    users ||--o{ playlist_items : "added_by"
-    users ||--o{ chat_messages : "user_id"
-    rooms ||--o{ room_members : "room_id"
-    rooms ||--o{ recent_rooms : "room_id"
-    rooms ||--o{ playlist_items : "room_id"
-    rooms ||--|| playback_states : "room_id"
-    rooms ||--o{ chat_messages : "room_id"
-    playlist_items ||--o{ playback_states : "playlist_item_id"
+    personal_playlists {
+        uuid id PK
+        uuid owner_id FK
+        string name
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    personal_playlist_items {
+        uuid id PK
+        uuid personal_playlist_id FK
+        string video_id
+        int position
+        PlaylistItemStatus status
+        timestamptz added_at
+    }
+
+    users ||--o{ rooms : host_id
+    users ||--o{ room_members : user_id
+    users ||--o{ recent_rooms : user_id
+    users ||--o{ playlist_items : added_by
+    users ||--o{ chat_messages : user_id
+    users ||--o{ personal_playlists : owner_id
+    rooms ||--o{ room_members : room_id
+    rooms ||--o{ recent_rooms : room_id
+    rooms ||--o{ playlist_items : room_id
+    rooms ||--o{ chat_messages : room_id
+    personal_playlists ||--o{ personal_playlist_items : personal_playlist_id
 ```
 
 ---
@@ -120,224 +122,118 @@ erDiagram
 
 ### 4.1 users
 
-Google OAuth로 생성되며, 닉네임과 프로필 이미지는 Google 계정에서 가져온다.
+Google OAuth로 생성되는 사용자 계정이다.
 
-| 컬럼          | 타입        | 제약         | 설명                        |
-| ------------- | ----------- | ------------ | --------------------------- |
-| id            | UUID        | PK           | 사용자 고유 식별자          |
-| email         | VARCHAR     | UK, NOT NULL | Google 계정 이메일          |
-| nickname      | VARCHAR     | NOT NULL     | 표시 이름 (Google 계정명)   |
-| profile_image | VARCHAR     | NULLABLE     | 프로필 이미지 URL           |
-| refresh_token | VARCHAR     | NULLABLE     | Refresh Token (로그아웃 시) |
-| created_at    | TIMESTAMPTZ | NOT NULL     | 계정 생성 시각              |
-| updated_at    | TIMESTAMPTZ | NOT NULL     | 마지막 정보 수정 시각       |
-
----
+| 컬럼                   | 타입        | 제약         | 설명                 |
+| ---------------------- | ----------- | ------------ | -------------------- |
+| id                     | UUID        | PK           | 사용자 식별자        |
+| email                  | VARCHAR     | UK, NOT NULL | Google 계정 이메일   |
+| nickname               | VARCHAR     | NOT NULL     | 표시 이름            |
+| profile_image          | VARCHAR     | NULLABLE     | 프로필 이미지 URL    |
+| refresh_token          | VARCHAR     | NULLABLE     | Google Refresh Token |
+| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각       |
 
 ### 4.2 rooms
 
-Room 정보를 저장한다. 삭제하지 않고 `status`로 상태를 관리한다.
+Room은 삭제하지 않고 상태로 관리한다.
 
-| 컬럼             | 타입                 | 제약         | 설명                                          |
-| ---------------- | -------------------- | ------------ | --------------------------------------------- |
-| id               | UUID                 | PK           | Room 고유 식별자                              |
-| name             | VARCHAR              | NOT NULL     | Room 이름                                     |
-| host_id          | UUID                 | FK, NOT NULL | 현재 Host 사용자 ID                           |
-| visibility       | ENUM(RoomVisibility) | NOT NULL     | `private` \| `public`                         |
-| invite_code      | VARCHAR(8)           | UK, NOT NULL | 초대 코드. Hex 6자리, 8자리로 확장 가능       |
-| status           | ENUM(RoomStatus)     | NOT NULL     | `active` \| `inactive` \| `closed`            |
-| last_activity_at | TIMESTAMPTZ          | NOT NULL     | 마지막 활동 시각 (30일 초과 시 inactive 처리) |
-| closed_at        | TIMESTAMPTZ          | NULLABLE     | Room 종료 시각                                |
-| created_at       | TIMESTAMPTZ          | NOT NULL     | Room 생성 시각                                |
-| updated_at       | TIMESTAMPTZ          | NOT NULL     | 마지막 수정 시각                              |
+| 컬럼                   | 타입                 | 제약         | 설명                                            |
+| ---------------------- | -------------------- | ------------ | ----------------------------------------------- |
+| id                     | UUID                 | PK           | Room 식별자                                     |
+| name                   | VARCHAR              | NOT NULL     | Room 이름                                       |
+| host_id                | UUID                 | FK, NOT NULL | 생성자이자 Host                                 |
+| visibility             | ENUM(RoomVisibility) | NOT NULL     | 현재는 `private`만 생성. `public`은 확장 예약값 |
+| invite_code            | VARCHAR(8)           | UK, NOT NULL | 초대 코드                                       |
+| status                 | ENUM(RoomStatus)     | NOT NULL     | `active` \| `closed` \| `inactive`              |
+| closed_at              | TIMESTAMPTZ          | NULLABLE     | closed 전환 시각. active 복구 시 NULL           |
+| created_at, updated_at | TIMESTAMPTZ          | NOT NULL     | 생성·수정 시각                                  |
 
-**status 정의**
+**상태 전환과 보존 정책**
 
-| 값       | 설명                                          |
-| -------- | --------------------------------------------- |
-| active   | 입장 및 재생 가능한 Room                      |
-| inactive | 마지막 활동 후 30일 이상 지나 비활성화된 Room |
-| closed   | Host가 종료했거나 Host 미복귀로 닫힌 Room     |
+```text
+active → closed → active
+                 → inactive
+```
 
-**last_activity_at 갱신 기준**
+- active에서 Host 명시적 Close 또는 Host 재접속 타임아웃으로 closed가 되면 `closed_at`을 기록한다.
+- closed 상태에서 Host 복구 시 `closed_at`을 NULL로 되돌린다.
+- Host 명시적 전환 또는 `closed_at` 후 30일 경과 시 inactive가 된다. inactive는 복구하지 않는다.
+- `last_activity_at`은 inactive 판단에 사용하지 않으므로 두지 않는다.
 
-다음 이벤트 발생 시 `last_activity_at`을 갱신한다.
+**인덱스**
 
-- 참여자 입장/퇴장
-- 채팅 메시지 전송
-- 플레이리스트 곡 추가/삭제/순서 변경
-- 재생 제어 이벤트 (play, pause, seek, change-track)
-
----
+- `(host_id, status, updated_at DESC)` — Home의 `내 Room` 목록
+- `(closed_at) WHERE status = 'closed'` — 일일 만료 처리와 Home 조회 보정
 
 ### 4.3 room_members
 
-Room 참여자 정보를 저장한다. 퇴장하거나 재입장해도 레코드를 새로 삽입하지 않고 기존 레코드를 업데이트한다.
+한 사용자는 Room당 하나의 참여 이력만 가진다. 재입장은 기존 행을 갱신한다.
 
-| 컬럼         | 타입                   | 제약         | 설명                            |
-| ------------ | ---------------------- | ------------ | ------------------------------- |
-| id           | UUID                   | PK           | 참여자 레코드 고유 식별자       |
-| room_id      | UUID                   | FK, NOT NULL | 소속 Room ID                    |
-| user_id      | UUID                   | FK, NOT NULL | 사용자 ID                       |
-| role         | ENUM(RoomRole)         | NOT NULL     | `host` \| `member` \| `guest`   |
-| status       | ENUM(RoomMemberStatus) | NOT NULL     | `online` \| `offline` \| `left` |
-| joined_at    | TIMESTAMPTZ            | NOT NULL     | 최초 입장 시각                  |
-| last_seen_at | TIMESTAMPTZ            | NULLABLE     | 마지막 접속 확인 시각           |
-| left_at      | TIMESTAMPTZ            | NULLABLE     | 퇴장 시각                       |
+| 컬럼             | 타입                   | 제약         | 설명                                                  |
+| ---------------- | ---------------------- | ------------ | ----------------------------------------------------- |
+| id               | UUID                   | PK           | 참여 이력 식별자                                      |
+| room_id, user_id | UUID                   | FK, NOT NULL | Room·사용자                                           |
+| role             | ENUM(RoomRole)         | NOT NULL     | `host` \| `member` \| `guest` (`guest`는 확장 예약값) |
+| status           | ENUM(RoomMemberStatus) | NOT NULL     | `online` \| `offline` \| `left` \| `kicked`           |
+| joined_at        | TIMESTAMPTZ            | NOT NULL     | 최초 입장 시각                                        |
+| last_seen_at     | TIMESTAMPTZ            | NULLABLE     | 마지막 Socket 접속 확인 시각                          |
+| left_at          | TIMESTAMPTZ            | NULLABLE     | 일반 퇴장 시각                                        |
+| updated_at       | TIMESTAMPTZ            | NOT NULL     | 상태 변경 시각                                        |
 
-**인덱스**
-
-- `(room_id, user_id)` UNIQUE → 동일 Room에 같은 사용자 중복 레코드 방지. 재입장 시 기존 레코드 업데이트
-
-**재입장 처리 정책**
-
-- 재입장 시 `status`, `last_seen_at`만 업데이트한다.
-- `joined_at`은 최초 입장 시각으로 유지한다.
-
----
+- `(room_id, user_id)` UNIQUE로 중복 참여 이력을 막는다.
+- `(room_id, status)` 인덱스로 참여자 목록과 Host 전용 추방 목록을 조회한다.
+- `kicked` 사용자는 초대 코드·링크·최근 Room·`room:join`으로 재입장할 수 없다. 추방 해제 시 `left`로 바꾼다.
 
 ### 4.4 recent_rooms
 
-사용자가 최근 참여한 Room 목록을 저장한다. 재입장할 때마다 `last_joined_at`을 갱신한다.
+최근 Room 재입장 목록이다. `(user_id, room_id)`를 UNIQUE로 두고 입장 때 `last_joined_at`을 upsert한다.
 
-| 컬럼           | 타입        | 제약         | 설명               |
-| -------------- | ----------- | ------------ | ------------------ |
-| id             | UUID        | PK           | 레코드 고유 식별자 |
-| user_id        | UUID        | FK, NOT NULL | 사용자 ID          |
-| room_id        | UUID        | FK, NOT NULL | Room ID            |
-| last_joined_at | TIMESTAMPTZ | NOT NULL     | 마지막 입장 시각   |
-
-**인덱스**
-
-- `(user_id, room_id)` UNIQUE → 사용자별 Room 중복 방지
-- `(user_id, last_joined_at DESC)` → 최근 Room 목록 정렬 쿼리 최적화
-
-**upsert 정책**
-
-- Room 입장 시 `(user_id, room_id)` 기준으로 upsert 처리한다.
-- 최초 입장이면 INSERT, 재입장이면 `last_joined_at`만 UPDATE한다.
-
-```sql
-INSERT INTO recent_rooms (user_id, room_id, last_joined_at)
-VALUES (:userId, :roomId, NOW())
-ON CONFLICT (user_id, room_id)
-DO UPDATE SET last_joined_at = NOW();
-```
-
-**조회 정책**
-
-- `active` 상태인 Room만 표시한다.
-- `inactive`, `closed` Room은 표시하지 않는다.
-- `last_joined_at` 내림차순 정렬로 반환한다.
-
----
+- `(user_id, last_joined_at DESC)` 인덱스로 정렬한다.
+- active Room이면서 현재 `room_members.status`가 `kicked`가 아닌 경우만 표시한다.
+- closed·inactive Room은 이 목록에 보이지 않는다. Host의 `내 Room` 목록은 `rooms.host_id`로 active·closed 상태만 별도 조회한다.
 
 ### 4.5 playlist_items
 
-Room의 공동 플레이리스트 항목을 저장한다.
+Room 공동 Playlist 항목이다. 영상 메타데이터(`video_id`, `title`, `channel_title`, `thumbnail_url`, `duration`), `position`, `added_by`, `status`, `added_at`을 저장한다.
 
-| 컬럼          | 타입                     | 제약         | 설명                                                                  |
-| ------------- | ------------------------ | ------------ | --------------------------------------------------------------------- |
-| id            | UUID                     | PK           | 항목 고유 식별자                                                      |
-| room_id       | UUID                     | FK, NOT NULL | 소속 Room ID                                                          |
-| video_id      | VARCHAR                  | NOT NULL     | YouTube videoId                                                       |
-| title         | VARCHAR                  | NOT NULL     | 영상 제목                                                             |
-| channel_title | VARCHAR                  | NOT NULL     | 채널명                                                                |
-| thumbnail_url | VARCHAR                  | NOT NULL     | 썸네일 URL                                                            |
-| duration      | INTEGER                  | NOT NULL     | 재생 시간 (초 단위. YouTube API 응답 PT3M30S → 210으로 변환하여 저장) |
-| position      | INTEGER                  | NOT NULL     | 재생 순서 (1부터 시작)                                                |
-| added_by      | UUID                     | FK, NOT NULL | 추가한 사용자 ID                                                      |
-| status        | ENUM(PlaylistItemStatus) | NOT NULL     | `available` \| `unavailable`                                          |
-| added_at      | TIMESTAMPTZ              | NOT NULL     | 추가 시각                                                             |
+- `(room_id, position)` 인덱스로 표시 순서를 조회한다.
+- 같은 Room의 동일 `video_id` 중복은 허용하지 않는다. `(room_id, video_id)` UNIQUE로 보장한다.
+- 곡 삭제는 hard delete다. 현재 곡이면 서버가 인메모리 재생 세션에서 다음 상태를 먼저 결정한 뒤 삭제한다.
+- 인메모리 재생 세션의 셔플 큐·이력에서도 해당 항목을 제거한다.
 
-**인덱스**
+### 4.6 chat_messages
 
-- `(room_id, position)` → 플레이리스트 순서 조회 최적화
+Room 채팅과 시스템 메시지다. `user_id`는 시스템 메시지에서 NULL이고, `type`은 `user` 또는 `system`이다. 표준 Unicode 이모지도 `message` TEXT에 그대로 저장한다.
 
-**순서 변경 정책**
+- `(room_id, created_at DESC, id DESC)` 인덱스로 복합 커서 페이지네이션을 수행한다.
+- 최초 입장 시 최근 50개, 과거 조회 시 `(created_at, id)` 복합 커서를 사용한다.
 
-- `position`은 1부터 시작하는 정수로 관리한다.
-- Host가 순서 변경 시 영향받는 항목의 `position`을 트랜잭션으로 일괄 업데이트한다.
+### 4.7 personal_playlists
 
-**삭제 정책 (설계 원칙 #2 예외)**
+사용자 소유의 개인 Playlist다.
 
-- 곡 삭제(`DELETE /rooms/:roomId/playlist/:itemId`)는 물리 삭제(hard delete)한다.
-- `status`(available/unavailable)는 "삭제 여부"가 아니라 "재생 가능 여부"를 나타내는 별개의 의미로 이미 쓰이고 있어(`unavailable`인 곡도 목록엔 계속 노출됨), 삭제에 재사용할 수 없다. 삭제까지 상태값으로 관리하려면 `status`에 별도 값을 추가하거나 `deleted_at` 컬럼을 새로 두는 스키마 변경이 필요하다.
-- 삭제 대상 곡이 현재 재생 중(`playback_states.playlist_item_id`)이면, 삭제 전에 `playback_states`를 다음 곡(또는 재생 초기화)으로 먼저 갱신해 FK 참조를 해제한다 — 순서가 바뀌면 FK 제약 위반이 날 수 있으므로 반드시 참조 해제 → 삭제 순서를 지켜야 한다.
-- soft delete 전환은 삭제 취소·최근 삭제 목록 같은 기능이 실제로 필요해지는 시점에 재검토한다.
+| 컬럼                   | 타입        | 제약         | 설명                 |
+| ---------------------- | ----------- | ------------ | -------------------- |
+| id                     | UUID        | PK           | 개인 Playlist 식별자 |
+| owner_id               | UUID        | FK, NOT NULL | 작성자               |
+| name                   | VARCHAR     | NOT NULL     | Playlist 이름        |
+| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각       |
 
----
+- `(owner_id, updated_at DESC)` 인덱스로 내 Playlist 목록을 조회한다.
+- 작성자만 조회·수정·삭제할 수 있다.
+- 삭제는 hard delete이며, `personal_playlist_items` 외래 키의 `ON DELETE CASCADE`로 항목도 같은 트랜잭션에서 삭제한다. 보존 기간이나 cleanup cron은 필요하지 않다.
 
-### 4.6 playback_states
+### 4.8 personal_playlist_items
 
-Room의 현재 재생 상태를 저장한다. Room당 1개 레코드를 유지하며, Room 생성 시 함께 생성한다.
+개인 Playlist의 곡이다. Room Playlist와 같은 영상 메타데이터와 `position`, `status`, `added_at`을 저장한다.
 
-| 컬럼              | 타입        | 제약             | 설명                                 |
-| ----------------- | ----------- | ---------------- | ------------------------------------ |
-| id                | UUID        | PK               | 레코드 고유 식별자                   |
-| room_id           | UUID        | FK, UK, NOT NULL | Room ID (Room당 1개)                 |
-| video_id          | VARCHAR     | NULLABLE         | 현재 재생 중인 YouTube videoId       |
-| playlist_item_id  | UUID        | FK, NULLABLE     | 현재 재생 중인 playlist_items ID     |
-| base_current_time | FLOAT       | NOT NULL         | 재생 시작/재개 시점의 영상 위치 (초) |
-| is_playing        | BOOLEAN     | NOT NULL         | 재생 중 여부                         |
-| server_started_at | TIMESTAMPTZ | NULLABLE         | 재생 시작/재개된 서버 시각           |
-| server_paused_at  | TIMESTAMPTZ | NULLABLE         | 일시정지된 서버 시각                 |
-| updated_at        | TIMESTAMPTZ | NOT NULL         | 마지막 갱신 시각                     |
-
-**Room 생성 시 초기값**
-
-```ts
-{
-  video_id: null,
-  playlist_item_id: null,
-  base_current_time: 0,
-  is_playing: false,
-  server_started_at: null,
-  server_paused_at: null,
-}
-```
-
-**currentTime 역산 (서버)**
-
-```ts
-// 재생 중일 때
-const currentTime = base_current_time + (Date.now() - new Date(server_started_at).getTime()) / 1000;
-
-// 일시정지 중일 때
-const currentTime = base_current_time;
-```
+- `(personal_playlist_id, video_id)` UNIQUE로 개인 Playlist 안의 중복 곡을 막는다.
+- `(personal_playlist_id, position)` UNIQUE로 정렬 순서를 보장한다.
+- 개별 곡 삭제는 hard delete다. Room으로 불러오기는 이 테이블을 읽어 Room Playlist 끝에 일회성 복사한다.
 
 ---
 
-### 4.7 chat_messages
-
-Room의 채팅 메시지를 저장한다. 시스템 메시지도 동일 테이블에서 관리한다.
-
-| 컬럼       | 타입                  | 제약         | 설명                                    |
-| ---------- | --------------------- | ------------ | --------------------------------------- |
-| id         | UUID                  | PK           | 메시지 고유 식별자                      |
-| room_id    | UUID                  | FK, NOT NULL | 소속 Room ID                            |
-| user_id    | UUID                  | FK, NULLABLE | 작성자 사용자 ID (시스템 메시지는 NULL) |
-| type       | ENUM(ChatMessageType) | NOT NULL     | `user` \| `system`                      |
-| message    | TEXT                  | NOT NULL     | 메시지 내용                             |
-| created_at | TIMESTAMPTZ           | NOT NULL     | 작성 시각                               |
-
-**인덱스**
-
-- `(room_id, created_at DESC, id DESC)` → 복합 커서 기반 페이지네이션 최적화
-
-**채팅 로드 정책**
-
-- 최초 입장 시 최근 50개를 로드한다.
-- 위로 스크롤 시 `(created_at, id)` 복합 커서 기준으로 이전 50개를 추가 로드한다.
-- `created_at`이 같은 메시지가 여러 개일 경우 `id`로 추가 정렬하여 중복/누락을 방지한다.
-- 최신 메시지가 아래에 표시되며, 위로 스크롤할수록 과거 메시지가 로드된다.
-
----
-
-## 5. 타입 정의 요약
-
-DB에서 enum 타입으로 정의하며, Prisma schema에서도 동일하게 enum으로 선언한다.
+## 5. enum 정의
 
 ```prisma
 enum RoomVisibility {
@@ -347,8 +243,8 @@ enum RoomVisibility {
 
 enum RoomStatus {
   active
-  inactive
   closed
+  inactive
 }
 
 enum RoomRole {
@@ -361,6 +257,7 @@ enum RoomMemberStatus {
   online
   offline
   left
+  kicked
 }
 
 enum PlaylistItemStatus {
@@ -374,66 +271,54 @@ enum ChatMessageType {
 }
 ```
 
+`public`과 `guest`는 향후 공개 Room·비로그인 참여 확장을 위한 예약값이다. 현재 생성·입장 정책에서는 `private`, `host`, `member`만 허용한다.
+
 ---
 
 ## 6. 주요 쿼리 패턴
 
-### 최근 Room 목록 조회
+### 6.1 최근 Room 목록
 
 ```sql
 SELECT rr.*, r.name, r.status, r.invite_code
 FROM recent_rooms rr
-JOIN rooms r ON rr.room_id = r.id
+JOIN rooms r ON r.id = rr.room_id
+JOIN room_members rm ON rm.room_id = r.id AND rm.user_id = rr.user_id
 WHERE rr.user_id = :userId
   AND r.status = 'active'
+  AND rm.status <> 'kicked'
 ORDER BY rr.last_joined_at DESC;
 ```
 
-### Room 입장 시 초기 데이터 조회
+### 6.2 Host의 내 Room 목록
 
 ```sql
--- PlaybackState
-SELECT * FROM playback_states
-WHERE room_id = :roomId;
-
--- Playlist (순서대로)
-SELECT * FROM playlist_items
-WHERE room_id = :roomId
-ORDER BY position ASC;
-
--- 온라인 참여자 목록
-SELECT rm.*, u.nickname, u.profile_image
-FROM room_members rm
-JOIN users u ON rm.user_id = u.id
-WHERE rm.room_id = :roomId
-  AND rm.status = 'online';
-
--- 최근 채팅 메시지 (최근 50개, FE에서 역순 표시)
-SELECT cm.*, u.nickname, u.profile_image
-FROM chat_messages cm
-LEFT JOIN users u ON cm.user_id = u.id
-WHERE cm.room_id = :roomId
-ORDER BY cm.created_at DESC
-LIMIT 50;
+SELECT id, name, status, closed_at, updated_at
+FROM rooms
+WHERE host_id = :hostId
+  AND status IN ('active', 'closed')
+ORDER BY updated_at DESC;
 ```
 
-### 채팅 이전 메시지 로드 (복합 커서 기반)
+### 6.3 Closed Room inactive 전환
 
-```sql
-SELECT cm.*, u.nickname, u.profile_image
-FROM chat_messages cm
-LEFT JOIN users u ON cm.user_id = u.id
-WHERE cm.room_id = :roomId
-  AND (cm.created_at, cm.id) < (:cursorTime, :cursorId)
-ORDER BY cm.created_at DESC, cm.id DESC
-LIMIT 50;
-```
-
-### inactive 처리 배치 (하루 1회)
+GitHub Actions의 일일 내부 API와 Host의 Home 조회·복구 시 보정 로직이 같은 서비스 메서드를 호출한다.
 
 ```sql
 UPDATE rooms
 SET status = 'inactive', updated_at = NOW()
-WHERE status = 'active'
-  AND last_activity_at < NOW() - INTERVAL '30 days';
+WHERE status = 'closed'
+  AND closed_at <= NOW() - INTERVAL '30 days';
 ```
+
+### 6.4 Room 복구 초기화
+
+하나의 DB 트랜잭션에서 다음을 수행한다.
+
+1. Room이 Host 소유의 `closed` 상태인지와 30일 만료 여부를 확인한다.
+2. Room Playlist를 삭제한다.
+3. Room을 `active`로, `closed_at`을 NULL로 갱신한다.
+
+DB 트랜잭션이 성공한 뒤 해당 Room의 인메모리 재생 세션을 제거한다. 다음 입장 또는 Host 재생 제어 시 기본값의 새 세션을 만든다.
+
+채팅, Member 참여 이력, `kicked` 상태, 최근 Room 이력은 삭제하지 않는다.

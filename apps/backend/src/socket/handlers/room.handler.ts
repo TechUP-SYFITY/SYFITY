@@ -13,6 +13,7 @@ import type {
   PresenceUpdatePayload,
   RoomClosedPayload,
   RoomJoinAck,
+  RoomJoinedPayload,
   RoomJoinPayload,
   RoomLeavePayload,
 } from '../../types/socket';
@@ -22,12 +23,12 @@ import { assertRoomId } from '../socketValidators';
 
 type RoomHandlerService = Pick<
   RoomService,
-  'setMemberOnline' | 'leaveRoom' | 'createSystemMessage'
+  'setMemberOnline' | 'getRoomSnapshot' | 'leaveRoom' | 'createSystemMessage'
 >;
-type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
+type RoomHandlerPlaybackService = Pick<PlaybackService, 'getSnapshotForSocket'>;
 type RoomHandlerPresenceService = Pick<
   PresenceService,
-  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer'
+  'cancelMemberOfflineTimer' | 'cancelHostCloseTimer' | 'getHostConnectionState'
 >;
 
 type RoomHandlerDeps = {
@@ -59,9 +60,32 @@ export function registerRoomHandlers(
         presenceService.cancelMemberOfflineTimer(roomId, userId);
         const hostReconnected =
           member.role === 'host' && presenceService.cancelHostCloseTimer(roomId);
-        const playbackState = await playbackService.getPlaybackStateForSocket(roomId, userId);
+        const hostConnection = presenceService.getHostConnectionState(roomId);
+        const [playbackSnapshot, snapshot] = await Promise.all([
+          playbackService.getSnapshotForSocket(roomId, userId),
+          roomService.getRoomSnapshot(roomId),
+        ]);
 
         socket.join(`room:${roomId}`);
+
+        const roomJoinedPayload: RoomJoinedPayload = {
+          roomId,
+          hostConnection,
+          playbackState: playbackSnapshot.playbackState,
+          playbackPolicy: playbackSnapshot.playbackPolicy,
+          playlist: snapshot.playlist,
+          members: snapshot.members,
+          recentChats: snapshot.recentChats.map((chat) => ({
+            id: chat.id,
+            userId: chat.userId,
+            nickname: chat.nickname,
+            profileImage: chat.profileImage,
+            type: chat.type,
+            message: chat.message,
+            createdAt: chat.createdAt.toISOString(),
+          })),
+        };
+        socket.emit('room:joined', roomJoinedPayload);
 
         if (hostReconnected) {
           io.to(`room:${roomId}`).emit('room:host-reconnected', { roomId });
@@ -86,7 +110,7 @@ export function registerRoomHandlers(
           }
         }
 
-        ack({ success: true, data: { playbackState } });
+        ack({ success: true });
       } catch (err) {
         logger.error(
           { err, roomId: payload?.roomId, userId: socket.data.userId },

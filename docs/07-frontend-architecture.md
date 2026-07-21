@@ -5,9 +5,9 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Frontend Architecture                                                          |
-| 버전      | v1.1                                                                                  |
-| 상태      | `widgets` 레이어 채택 사례 반영                                                       |
-| 작성 목적 | Syfity MVP 프론트엔드 구조 정의                                                       |
+| 버전      | v2.0                                                                                  |
+| 상태      | Room 세션·개인 Playlist·PWA 전역 UI 구조 정합화                                       |
+| 작성 목적 | Syfity 프론트엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
 ---
@@ -26,7 +26,7 @@
 | 폼                  | React Hook Form + Zod    |                                          |
 | YouTube Player      | @types/youtube           | IFrame Player API 타입                   |
 | 단위 테스트         | Vitest + Testing Library |                                          |
-| E2E 테스트          | Playwright               | WebSocket 네이티브 지원                  |
+| E2E 테스트          | Playwright               | 로컬 FE·BE·Docker DB 기반 핵심 흐름 검증 |
 | 컴포넌트 문서화     | Storybook                | 디자인 시스템 컴포넌트 확인용            |
 | 패키지 매니저       | pnpm                     | 모노레포 workspace                       |
 
@@ -50,23 +50,29 @@ apps/frontend/
           join/
             page.tsx          → 초대 링크 진입점 (/room/join?code=ABC123)
           [roomId]/
-            page.tsx          → Room Page
-            layout.tsx        → Room 레이아웃 (Socket 연결/해제)
-      page.tsx                → Landing Page (로그인)
+            page.tsx          → roomId를 Room widget에 전달
+      manifest.ts             → Web App Manifest
+      offline/
+        page.tsx              → 오프라인 안내 화면
+      page.tsx                → Landing widget 렌더링
       layout.tsx              → Root 레이아웃
       proxy.ts                → Route 보호 (쿠키 존재 여부 체크)
 
     features/                 → 기능 단위 모듈 (FSD features + entities 통합)
-      auth/
-      room/
-      player/
-      playlist/
-      chat/
-      presence/
-      search/
+      auth/                   → 인증 도메인
+      room/                   → Room REST·입장·상태 도메인
+      player/                 → 재생 제어·상태 도메인
+      playlist/               → 재생목록 도메인
+      personal-playlist/      → 나만의 Playlist CRUD·Room 불러오기 도메인
+      chat/                   → 채팅 도메인
+      presence/               → 참여자 상태 도메인
+      search/                 → YouTube 검색 도메인
 
     widgets/                  → 여러 feature를 조합하는 복합 UI
-      room/                   → Room Page 조립 UI (RoomShell, PC/모바일 레이아웃)
+      landing/                → Landing 화면 조립 UI
+      home/                   → Home 화면 조립 UI
+      room/                   → Room Page·세션 조립 UI (RoomShell, 반응형 레이아웃)
+      pwa/                    → 설치·업데이트 안내 전역 UI
 
     shared/                   → 공통 모듈
       components/             → 공통 UI 컴포넌트 (디자인 시스템 문서 참조)
@@ -75,6 +81,7 @@ apps/frontend/
         api/                  → apiClient.ts (fetch wrapper)
         socket/               → socketClient.ts (Socket.IO singleton)
         query/                → queryClient.ts (TanStack Query 설정)
+        pwa/                  → Service Worker 등록·업데이트 감지 순수 로직
       types/                  → 공통 타입 (shared 패키지에서 import)
 ```
 
@@ -89,24 +96,28 @@ apps/frontend/
   store/      → Zustand store
   components/ → feature 전용 컴포넌트
   types/      → feature 전용 타입
+  lib/        → feature 전용 순수 로직
+  constants/  → feature 전용 상수
 ```
 
 ### feature별 slice 구성
 
-| feature  | api | hooks | store | components | types |
-| -------- | --- | ----- | ----- | ---------- | ----- |
-| auth     | O   | O     | X     | X          | O     |
-| room     | O   | O     | O     | O          | O     |
-| player   | X   | O     | O     | O          | O     |
-| playlist | O   | O     | O     | O          | O     |
-| chat     | O   | O     | O     | O          | O     |
-| presence | X   | O     | O     | O          | O     |
-| search   | O   | O     | X     | O          | O     |
+| feature           | api | hooks | store | components | types | lib/constants |
+| ----------------- | --- | ----- | ----- | ---------- | ----- | ------------- |
+| auth              | O   | O     | X     | O          | X     | X             |
+| room              | O   | O     | O     | O          | O     | X             |
+| player            | X   | O     | O     | O          | O     | O             |
+| playlist          | O   | O     | O     | O          | O     | X             |
+| personal-playlist | O   | O     | X     | O          | O     | X             |
+| chat              | O   | O     | O     | O          | X     | O             |
+| presence          | O   | O     | O     | O          | O     | X             |
+| search            | O   | O     | X     | O          | X     | X             |
 
 - `auth` store X → 사용자 정보는 TanStack Query (`useMe`)로 관리
 - `player` api X → 재생 제어는 Socket 이벤트로 처리
-- `presence` api X → 참여자 상태는 Socket 이벤트로만 관리
+- `presence` → 현재 참여자 표시는 Socket 이벤트로 관리하고, Host의 추방 목록 조회·추방·해제는 REST API로 관리
 - `search` store X → 검색 결과는 TanStack Query로 캐싱
+- `personal-playlist` store X → 목록·상세는 TanStack Query로 관리하고, 불러오기 결과 UI는 컴포넌트 로컬 상태로 관리
 
 ### 레이어 규칙
 
@@ -119,19 +130,19 @@ app → widgets → features → shared
 - `shared`에서 `features`/`widgets` import 금지
 - `features`에서 `widgets` import 금지
 - `features` 간 직접 import 금지 (공통 로직은 `shared`로 이동)
-- `widgets`는 여러 feature를 조합하는 UI만 담당하고 feature의 상태 소유권을 가져가지 않음
+- `widgets`는 화면 흐름을 조합하며, 여러 feature를 연결하는 페이지 단위 상태·효과를 둘 수 있음
 
 **app (page / layout)**
 
-- 컴포넌트 조합만 담당
-- 비즈니스 로직, 데이터 페칭 없음
+- 라우트, params, layout, 오류 경계만 담당
+- feature/widget의 데이터 페칭·클라이언트 상태를 직접 소유하지 않음
 - Server Component 기본
 
 **widgets**
 
-- 여러 feature 컴포넌트를 조합하는 복합 UI 담당
-- 데이터와 이벤트 핸들러는 app 또는 feature 훅에서 주입받음
-- feature 내부 상태나 API/Socket 계약을 직접 소유하지 않음
+- 여러 feature 컴포넌트와 훅을 조합하는 화면 단위 UI 담당
+- 페이지 진입·이탈에 결합된 데이터 초기화, 여러 feature를 잇는 Socket 연결, 화면 전용 로컬 상태를 소유할 수 있음
+- 도메인 API·store·Socket 이벤트의 구현은 feature에 둠
 
 **features / hooks**
 
@@ -154,13 +165,14 @@ app → widgets → features → shared
 
 ## 4. 페이지 구조
 
-| 경로             | 페이지         | 인증 필요 | 설명                                           |
-| ---------------- | -------------- | --------- | ---------------------------------------------- |
-| `/`              | Landing        | X         | 서비스 소개, Google 로그인 버튼                |
-| `/auth/callback` | OAuth Callback | X         | Google OAuth 콜백 처리, JWT 발급 후 리다이렉트 |
-| `/home`          | Home           | O         | Room 생성, 초대 코드 입력, 최근 Room 목록      |
-| `/room/join`     | Room Join      | O         | 초대 링크 진입점 (`?code=ABC123`)              |
-| `/room/[roomId]` | Room           | O         | 음악 감상, Playlist, Chat, Presence            |
+| 경로             | 페이지         | 인증 필요 | 설명                                              |
+| ---------------- | -------------- | --------- | ------------------------------------------------- |
+| `/`              | Landing        | X         | 서비스 소개, Google 로그인 버튼                   |
+| `/auth/callback` | OAuth Callback | X         | Google OAuth 콜백 처리, JWT 발급 후 리다이렉트    |
+| `/home`          | Home           | O         | Room 생성, 초대 코드 입력, 최근 Room·내 Room 관리 |
+| `/room/join`     | Room Join      | O         | 초대 링크 진입점 (`?code=ABC123`)                 |
+| `/room/[roomId]` | Room           | O         | 음악 감상, Playlist, Chat, Presence               |
+| `/offline`       | Offline        | X         | 네트워크 연결 필요 안내                           |
 
 ---
 
@@ -206,12 +218,12 @@ export default async function ProtectedLayout({ children }) {
 
 ## 6. 상태 관리 전략
 
-| 상태 유형      | 관리 방식      | 대상 데이터                                    |
-| -------------- | -------------- | ---------------------------------------------- |
-| Server State   | TanStack Query | 최근 Room 목록, 사용자 정보, YouTube 검색 결과 |
-| Realtime State | Zustand        | PlaybackState, Playlist, Chat, Presence        |
-| Client State   | Zustand 우선   | 여러 컴포넌트가 공유하는 UI 상태 (모달, 탭 등) |
-| Local State    | React useState | 단일 컴포넌트 내부 상태 (input 값, hover 등)   |
+| 상태 유형      | 관리 방식      | 대상 데이터                                                     |
+| -------------- | -------------- | --------------------------------------------------------------- |
+| Server State   | TanStack Query | 최근 Room·내 Room·개인 Playlist, 사용자 정보, YouTube 검색 결과 |
+| Realtime State | Zustand        | 인메모리 PlaybackState snapshot, Playlist, Chat, Presence       |
+| Client State   | Zustand 우선   | 여러 컴포넌트가 공유하는 UI 상태 (모달, 탭 등)                  |
+| Local State    | React useState | 단일 컴포넌트 내부 상태 (input 값, hover 등)                    |
 
 ### Zustand store 구조 원칙
 
@@ -232,7 +244,11 @@ REST API 호출을 추상화한다. 401 감지 시 `/auth/refresh`를 자동으�
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
+type ApiSuccess<T> = { success: true; data: T };
+type ApiFailure = { success: false; error: { code: string; message: string } };
+type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+async function request<T>(url: string, options?: RequestInit, hasRetried = false): Promise<T> {
   const response = await fetch(`${BASE_URL}${url}`, {
     ...options,
     credentials: 'include',
@@ -242,38 +258,44 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     },
   });
 
-  if (response.status === 401) {
-    const error = await response.json();
+  if (response.status === 204) {
+    return undefined as T;
+  }
 
-    if (error.code === 'AUTH_UNAUTHORIZED' || error.code === 'AUTH_TOKEN_EXPIRED') {
-      // Access Token 없음/만료 → refresh 시도
+  const payload = (await response.json()) as ApiResponse<T>;
+
+  if (response.status === 401 && !payload.success) {
+    const { code } = payload.error;
+
+    if ((code === 'AUTH_UNAUTHORIZED' || code === 'AUTH_TOKEN_EXPIRED') && !hasRetried) {
       const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (!refreshRes.ok) {
-        // refresh 실패 → 바로 에러 throw (무한 루프 방지)
-        throw error;
+        const refreshPayload = (await refreshRes.json()) as ApiFailure;
+        if (refreshPayload.error.code === 'AUTH_REFRESH_EXPIRED') {
+          window.location.href = '/login?reauth=1';
+        }
+        throw refreshPayload.error;
       }
 
-      // refresh 성공 → 원래 요청 재시도
-      return request<T>(url, options);
+      return request<T>(url, options, true);
     }
 
-    if (error.code === 'AUTH_REFRESH_EXPIRED') {
-      // Refresh Token 만료 → 로그아웃 후 Landing으로 이동
-      window.location.href = '/';
-      throw new Error('AUTH_REFRESH_EXPIRED');
+    if (hasRetried) {
+      window.location.href = '/login?reauth=1';
     }
   }
 
   if (!response.ok) {
-    const error = await response.json();
-    throw error;
+    if (!payload.success) throw payload.error;
+    throw new Error(`HTTP ${response.status}`);
   }
 
-  return response.json();
+  if (!payload.success) throw payload.error;
+  return payload.data;
 }
 
 export const apiClient = {
@@ -294,9 +316,12 @@ export const apiClient = {
 // features/room/api/roomApi.ts
 export const roomApi = {
   createRoom: (name: string) => apiClient.post('/rooms', { name }),
-  joinRoom: (body: { inviteCode?: string; roomId?: string }) => apiClient.post('/rooms/join', body),
+  joinRoom: (inviteCode: string) => apiClient.post('/room-memberships', { inviteCode }),
   getRecentRooms: () => apiClient.get('/rooms/recent'),
-  closeRoom: (roomId: string) => apiClient.post(`/rooms/${roomId}/close`),
+  getMyRooms: () => apiClient.get('/rooms/mine'),
+  updateRoom: (roomId: string, body: { name?: string; status?: 'active' | 'closed' }) =>
+    apiClient.patch(`/rooms/${roomId}`, body),
+  deleteRoom: (roomId: string) => apiClient.delete(`/rooms/${roomId}`),
 };
 ```
 
@@ -315,9 +340,9 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL!;
 let socket: Socket | null = null;
 
 export const socketClient = {
-  connect: () => {
+  getOrCreate: () => {
     if (!socket) {
-      socket = io(SOCKET_URL, { withCredentials: true });
+      socket = io(SOCKET_URL, { withCredentials: true, autoConnect: false });
     }
     return socket;
   },
@@ -329,62 +354,66 @@ export const socketClient = {
 };
 ```
 
-### Socket 연결/해제 시점
+### Room 세션 연결/해제 시점
 
-layout은 Server Component로 유지하고, Socket 연결/해제는 별도 Client Component(`RoomSocketProvider`)에서 담당한다. `RoomSocketProvider`는 Socket 연결/해제만 처리하며, `room:join` 이벤트 전송은 REST 완료 후 별도 훅에서 처리한다.
+라우트의 `page.tsx`는 `roomId`만 Room widget에 전달한다. `widgets/room/RoomSessionProvider`는 feature store의 공개 액션을 조합해 Socket 세션을 관리한다. `room:joined` 구독을 먼저 등록하고 Socket 연결·`room:join`을 실행해 snapshot 유실을 막는다.
+
+- 초대 코드 진입은 Room Join 화면에서 `POST /room-memberships` 성공 뒤 Room 경로로 이동한다.
+- 최근 Room·내 Room의 직접 진입은 기존 참여 이력을 사용해 Socket `room:join`만 실행한다.
+- 페이지 unmount는 Socket 연결만 해제한다. `room:leave`는 자동 전송하지 않는다.
+- `room:leave`는 사용자가 명시적으로 나가기 버튼을 누를 때만 전송한다. Host의 명시적 나가기는 즉시 Room Close이므로, 일반 라우트 이탈과 구분해야 한다.
 
 ```ts
-// features/room/components/RoomSocketProvider.tsx
+// widgets/room/RoomSessionProvider.tsx
 'use client';
 
-export function RoomSocketProvider({ children }: { children: React.ReactNode }) {
+export function RoomSessionProvider({ roomId, children }) {
   useEffect(() => {
-    socketClient.connect();
+    const socket = socketClient.getOrCreate();
+
+    const handleJoined = (snapshot) => {
+      // Player·Playlist·Chat·Presence store 공개 액션에 snapshot 반영
+    };
+    const handleClosed = () => {
+      // Room 상태 정리 후 Home 이동
+    };
+    const handleKicked = () => {
+      // 추방 안내 후 Home 이동
+    };
+    const handlePlaybackReset = (payload) => {
+      // 기본 재생 상태로 Player store 초기화
+    };
+
+    socket.on('room:joined', handleJoined);
+    socket.on('room:closed', handleClosed);
+    socket.on('room:kicked', handleKicked);
+    socket.on('playback:reset', handlePlaybackReset);
+    socket.connect();
+    socket.emit('room:join', { roomId });
+
     return () => {
+      socket.off('room:joined', handleJoined);
+      socket.off('room:closed', handleClosed);
+      socket.off('room:kicked', handleKicked);
+      socket.off('playback:reset', handlePlaybackReset);
       socketClient.disconnect();
     };
-  }, []);
+  }, [roomId]);
 
   return <>{children}</>;
 }
 ```
 
 ```ts
-// src/app/(protected)/room/[roomId]/layout.tsx (Server Component)
-export default function RoomLayout({ children }) {
-  return (
-    <RoomSocketProvider>
-      {children}
-    </RoomSocketProvider>
-  );
-}
-```
-
-### room:join 이벤트 전송
-
-`room:join` Socket 이벤트는 `POST /rooms/join` REST 완료 후 별도 훅에서 전송한다. REST와 Socket의 순서를 보장하기 위해 훅 단위로 분리한다.
-
-```ts
-// features/room/hooks/useRoomSocket.ts
-'use client';
-
-export function useRoomSocket(roomId: string) {
-  useEffect(() => {
-    const socket = socketClient.get();
-    if (!socket) return;
-
-    socket.emit('room:join', { roomId });
-
-    return () => {
-      socket.emit('room:leave', { roomId });
-    };
-  }, [roomId]);
+// widgets/room/RoomPage.tsx
+export function RoomPage({ roomId }) {
+  return <RoomSessionProvider roomId={roomId}>{/* Room page UI */}</RoomSessionProvider>;
 }
 ```
 
 ### Socket 이벤트 구독
 
-Socket 이벤트 구독은 각 feature의 hook에서 `useEffect`로 처리한다. store 초기화 시점에 구독하면 Socket이 아직 `null`일 수 있으므로 반드시 hook에서 구독한다.
+`RoomSessionProvider`는 Room 전체 snapshot과 전역 종료 이벤트를 처리한다. 각 feature hook은 자신이 소유한 이후 이벤트만 구독한다. store 초기화 시점에 구독하면 Socket이 아직 `null`일 수 있으므로 반드시 hook에서 구독한다.
 
 ```ts
 // features/player/hooks/usePlaybackSocket.ts
@@ -392,7 +421,7 @@ Socket 이벤트 구독은 각 feature의 hook에서 `useEffect`로 처리한다
 
 export function usePlaybackSocket() {
   useEffect(() => {
-    const socket = socketClient.get();
+    const socket = socketClient.getOrCreate();
     if (!socket) return;
 
     socket.on('playback:tick', (data) => {
@@ -408,7 +437,28 @@ export function usePlaybackSocket() {
 
 ---
 
-## 9. TanStack Query 설정
+## 9. PWA 전역 구성
+
+PWA는 제품 도메인 feature가 아니라 앱 전역 UI와 공통 브라우저 로직으로 구성한다.
+
+```text
+widgets/pwa/
+  PwaProvider.tsx        → Service Worker 등록·브라우저 이벤트 구독
+  PwaInstallPrompt.tsx   → 지원 브라우저 설치 안내
+  PwaUpdateNotice.tsx    → 새 버전 적용 안내
+
+shared/lib/pwa/
+  serviceWorker.ts       → 등록·업데이트 감지 순수 로직
+```
+
+- `app/layout.tsx`에서 `PwaProvider`를 한 번 마운트한다.
+- `app/manifest.ts`는 Manifest와 설치 아이콘을 제공하고, `app/offline/page.tsx`는 네트워크 연결 필요 안내를 제공한다.
+- Service Worker는 정적 에셋·기본 앱 껍데기·오프라인 화면만 캐시한다. API·Socket·YouTube·사용자별 Room 데이터는 네트워크로만 처리한다.
+- `PwaUpdateNotice`는 업데이트 가능 상태만 알린다. active Room을 자동 새로고침하지 않으며 사용자가 적용을 선택한다.
+
+---
+
+## 10. TanStack Query 설정
 
 ```ts
 // shared/lib/query/queryClient.ts
@@ -428,7 +478,7 @@ export const queryClient = new QueryClient({
 
 ---
 
-## 10. 에러 처리 전략
+## 11. 에러 처리 전략
 
 ### 전역 처리 (공통 레이어에서 처리)
 
@@ -442,22 +492,39 @@ export const queryClient = new QueryClient({
 
 ### 로컬 처리 (각 feature에서 처리)
 
-| 에러                                                        | 처리 방식                                  |
-| ----------------------------------------------------------- | ------------------------------------------ |
-| `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ROOM_INACTIVE`            | 페이지 단위 에러 UI                        |
-| `ROOM_ACCESS_DENIED`                                        | Toast + Home 리다이렉트                    |
-| `PLAYLIST_INVALID_URL`, `PLAYLIST_VIDEO_UNAVAILABLE`        | Toast                                      |
-| `SERVER_YOUTUBE_API_ERROR`, `SERVER_YOUTUBE_QUOTA_EXCEEDED` | Toast                                      |
-| `playback:error`                                            | Room 내 에러 UI + Host에게 다음 곡 이동 UI |
-| 채팅 전송 실패                                              | Toast + optimistic update 롤백             |
-| 검색 실패                                                   | 검색 영역 에러 UI                          |
+| 에러                                                                | 처리 방식                                             |
+| ------------------------------------------------------------------- | ----------------------------------------------------- |
+| `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ROOM_INACTIVE`, `ROOM_NOT_ACTIVE` | 페이지 단위 에러 UI                                   |
+| `ROOM_ACCESS_DENIED`, `ROOM_MEMBER_KICKED`                          | Toast + Home 리다이렉트                               |
+| `ROOM_RECOVERY_EXPIRED`                                             | 더 이상 사용할 수 없는 Room 안내 후 내 Room 목록 갱신 |
+| `PLAYLIST_INVALID_URL`, `PLAYLIST_VIDEO_UNAVAILABLE`                | Toast                                                 |
+| `SERVER_YOUTUBE_API_ERROR`, `SERVER_YOUTUBE_QUOTA_EXCEEDED`         | Toast                                                 |
+| `room:kicked`                                                       | 추방 안내 + Socket 해제 + Home 이동                   |
+| `room:closed`                                                       | 종료 안내 + Socket 해제 + Home 이동                   |
+| `playback:reset`                                                    | Player·반복·셔플 UI 기본값으로 초기화                 |
+| `playback:error`                                                    | Room 내 재생 불가 안내                                |
+| 채팅 전송 성공                                                      | ack의 최종 `ChatMessage`로 임시 메시지 교체           |
+| 채팅 전송 실패                                                      | Toast + optimistic update 롤백                        |
+| 검색 실패                                                           | 검색 영역 에러 UI                                     |
 
 ---
 
-## 11. 환경변수
+## 12. 환경변수
 
 ```
 # apps/frontend/.env.local
 NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
 ```
+
+### 12.1 운영(Vercel) 환경변수 설정
+
+Vercel의 Production과 Preview 환경에는 아래 값을 모두 설정한다. Preview도 별도 스테이징 BE 없이 운영 BE를 사용하므로, 테스트에서 생성한 Room·채팅 데이터가 운영 DB에 반영될 수 있다.
+
+| 변수                      | Production                       | Preview                          |
+| ------------------------- | -------------------------------- | -------------------------------- |
+| `NEXT_PUBLIC_API_URL`     | `https://api.syfity.site/api/v1` | `https://api.syfity.site/api/v1` |
+| `NEXT_PUBLIC_SOCKET_URL`  | `https://api.syfity.site`        | `https://api.syfity.site`        |
+| `NEXT_PUBLIC_API_MOCKING` | `disabled`                       | `disabled`                       |
+
+Vercel 프로젝트의 Root Directory는 `apps/frontend`로 지정하고, Build Step에서 root directory 밖의 파일을 포함하는 옵션을 활성화한다. `prebuild` 훅은 `@syfity/shared`의 런타임 산출물을 먼저 생성한다.

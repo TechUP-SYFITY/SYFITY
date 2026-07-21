@@ -3,10 +3,8 @@ import { http, HttpResponse } from 'msw';
 import type {
   AddPlaylistItemRequest,
   AddPlaylistItemResponse,
-  DeletePlaylistItemResponse,
   GetPlaylistResponse,
   ReorderPlaylistRequest,
-  ReorderPlaylistResponse,
 } from '@syfity/shared';
 
 import type { ApiFailureResponse } from '@/shared/types/api';
@@ -77,12 +75,9 @@ export const playlistHandlers = [
 
     playlist = playlist.filter((item) => item.id !== itemId);
 
-    return HttpResponse.json({
-      success: true,
-      data: { message: 'playlist item deleted' },
-    } satisfies DeletePlaylistItemResponse);
+    return new HttpResponse(null, { status: 204 });
   }),
-  http.patch(`${API}/rooms/:roomId/playlist/reorder`, async ({ params, request }) => {
+  http.patch(`${API}/rooms/:roomId/playlist`, async ({ params, request }) => {
     if (!isFixtureRoom(params.roomId)) {
       return notFound('ROOM_NOT_FOUND', 'Room not found');
     }
@@ -97,10 +92,7 @@ export const playlistHandlers = [
       }))
       .sort((a, b) => a.position - b.position);
 
-    return HttpResponse.json({
-      success: true,
-      data: { message: 'playlist reordered' },
-    } satisfies ReorderPlaylistResponse);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];
 

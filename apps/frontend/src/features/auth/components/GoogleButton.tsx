@@ -53,7 +53,7 @@ export function GoogleButton({ returnUrl, className }: GoogleButtonProps) {
         // Google 다크 규격(불변): 배경 #131314 / 테두리 #8E918F 1px / 글자 #E3E3E3, 14/20, medium weight.
         // 라벨이 한글이라 Roboto(라틴 전용, 한글 글리프 없음) 대신 앱 폰트 Pretendard를 상속해 사용한다.
         // Google은 텍스트 현지화를 허용하므로 규격 위반 아님. 색·테두리·컬러 G 로고는 고정.
-        'flex w-full cursor-pointer items-center justify-center rounded-2xl border border-[#8E918F] bg-[#131314] py-3.5 text-sm leading-5 font-medium text-[#E3E3E3] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.2)] transition-colors outline-none hover:bg-gray-800/40 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70',
+        `flex w-full cursor-pointer items-center justify-center rounded-2xl border border-[#8E918F] bg-[#131314] py-3.5 text-sm/5 font-medium text-[#E3E3E3] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.2)] transition-colors outline-none hover:bg-gray-800/40 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70`,
         // 패딩: 로고 앞 12 / 로고 뒤 10(gap) / 텍스트 뒤 12
         'gap-2.5 px-3',
         className,

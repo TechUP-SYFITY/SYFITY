@@ -17,10 +17,7 @@ export interface ApiFailureResponse {
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiFailureResponse;
 
 export type SocketAck<T = undefined> =
-  | {
-      success: true;
-      data?: T;
-    }
+  | ({ success: true } & ([T] extends [undefined] ? { data?: undefined } : { data: T }))
   | ApiFailureResponse;
 
 export class ApiClientError extends Error {

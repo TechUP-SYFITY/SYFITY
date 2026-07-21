@@ -11,6 +11,7 @@ vi.mock('emoji-picker-react', () => ({
       피커 이모지 선택
     </button>
   ),
+  EmojiStyle: { NATIVE: 'native' },
 }));
 
 describe('ChatEmojiPicker', () => {

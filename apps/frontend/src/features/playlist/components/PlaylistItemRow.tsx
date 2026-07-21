@@ -10,11 +10,14 @@ import { PlaylistArtwork } from './PlaylistArtwork';
 
 interface PlaylistItemRowProps {
   isCurrent: boolean;
+  isDeleteEnabled: boolean;
   isDeletePending: boolean;
   isDragging: boolean;
   isFocused: boolean;
   isHost: boolean;
+  isOwnItem: boolean;
   isReady: boolean;
+  isReorderEnabled: boolean;
   item: PlaylistItem;
   onBlurWithin: (event: React.FocusEvent<HTMLDivElement>) => void;
   onDelete: (itemId: string) => void;
@@ -29,11 +32,14 @@ interface PlaylistItemRowProps {
 
 export function PlaylistItemRow({
   isCurrent,
+  isDeleteEnabled,
   isDeletePending,
   isDragging,
   isFocused,
   isHost,
+  isOwnItem,
   isReady,
+  isReorderEnabled,
   item,
   onBlurWithin,
   onDelete,
@@ -46,6 +52,8 @@ export function PlaylistItemRow({
   onPreventMouseFocus,
 }: PlaylistItemRowProps) {
   const isUnavailable = item.status === 'unavailable';
+  // Host는 모든 곡을, Member는 자신이 추가한 곡만 삭제할 수 있다 (docs/05-api-spec.md 6.3).
+  const hasRowActions = isHost || isOwnItem;
   const actionVisibilityClass = isFocused
     ? 'flex opacity-100'
     : 'hidden xl:flex xl:opacity-0 xl:group-hover:opacity-100';
@@ -55,14 +63,14 @@ export function PlaylistItemRow({
       data-testid={`playlist-row-${item.id}`}
       data-playlist-item-id={item.id}
       className={cn(
-        'group min-w-0 overflow-hidden border-b border-border px-4 py-3 transition',
+        `group min-w-0 overflow-hidden border-b border-border px-4 py-3 transition`,
         isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20',
         isDragging && 'opacity-60',
       )}
       onBlurCapture={onBlurWithin}
       onClick={onFocusWithin}
       onFocusCapture={onFocusWithin}
-      tabIndex={isHost ? 0 : undefined}
+      tabIndex={hasRowActions ? 0 : undefined}
     >
       <div className="flex min-h-10 min-w-0 items-center gap-3">
         <PlaylistArtwork item={item} />
@@ -75,7 +83,7 @@ export function PlaylistItemRow({
           >
             {item.title}
             {isUnavailable ? (
-              <CircleAlert className="ml-1 inline-block h-3 w-3 text-destructive" aria-hidden />
+              <CircleAlert className="ml-1 inline-block size-3 text-destructive" aria-hidden />
             ) : null}
           </p>
           <p className={cn('mt-1 truncate text-xs', getMetaColorClass(isUnavailable))}>
@@ -88,54 +96,58 @@ export function PlaylistItemRow({
           data-testid={`playlist-actions-${item.id}`}
           className={cn(
             'shrink-0 items-center gap-2 transition',
-            isHost ? actionVisibilityClass : 'hidden',
+            hasRowActions ? actionVisibilityClass : 'hidden',
           )}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'h-10 w-10 cursor-grab touch-none rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted active:cursor-grabbing xl:h-8 xl:w-8',
-              !isReady && 'cursor-not-allowed',
-            )}
-            disabled={!isReady}
-            draggable={false}
-            type="button"
-            data-testid={`playlist-drag-handle-${item.id}`}
-            aria-label={`${item.title} 순서 변경`}
-            onKeyDown={(event) => {
-              if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
-                return;
-              }
+          {isHost ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                `size-10 cursor-grab touch-none rounded-full border-0 bg-transparent text-muted-foreground hover:bg-muted active:cursor-grabbing xl:size-8`,
+                !isReady && 'cursor-not-allowed',
+              )}
+              disabled={!isReady || !isReorderEnabled}
+              draggable={false}
+              type="button"
+              data-testid={`playlist-drag-handle-${item.id}`}
+              aria-label={`${item.title} 순서 변경`}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+                  return;
+                }
 
-              event.preventDefault();
-              onDragHandleKeyDown(item.id, event.key === 'ArrowUp' ? -1 : 1);
-            }}
-            onPointerCancel={onDragHandlePointerCancel}
-            onPointerDown={(event) => {
-              onPreventMouseFocus(event);
-              onDragHandlePointerDown(item.id, event);
-            }}
-            onPointerMove={onDragHandlePointerMove}
-            onPointerUp={onDragHandlePointerUp}
-          >
-            <GripVertical className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full border-0 bg-destructive/10 text-destructive hover:bg-destructive/15 xl:h-8 xl:w-8 xl:bg-transparent xl:text-destructive/70 xl:hover:bg-destructive/10"
-            disabled={!isReady || isDeletePending}
-            type="button"
-            aria-label={`${item.title} 삭제`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(item.id);
-            }}
-            onPointerDown={onPreventMouseFocus}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </Button>
+                event.preventDefault();
+                onDragHandleKeyDown(item.id, event.key === 'ArrowUp' ? -1 : 1);
+              }}
+              onPointerCancel={onDragHandlePointerCancel}
+              onPointerDown={(event) => {
+                onPreventMouseFocus(event);
+                onDragHandlePointerDown(item.id, event);
+              }}
+              onPointerMove={onDragHandlePointerMove}
+              onPointerUp={onDragHandlePointerUp}
+            >
+              <GripVertical className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+          {hasRowActions ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-10 rounded-full border-0 bg-destructive/10 text-destructive hover:bg-destructive/15 xl:size-8 xl:bg-transparent xl:text-destructive/70 xl:hover:bg-destructive/10"
+              disabled={!isReady || !isDeleteEnabled || isDeletePending}
+              type="button"
+              aria-label={`${item.title} 삭제`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete(item.id);
+              }}
+              onPointerDown={onPreventMouseFocus}
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

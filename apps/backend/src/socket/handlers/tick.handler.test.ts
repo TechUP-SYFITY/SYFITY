@@ -13,6 +13,7 @@ const playbackState: PlaybackStatePayload = {
   playlistItemId: 'playlist-item-1',
   currentTime: 30,
   isPlaying: true,
+  playbackVersion: 1,
 };
 
 type EmitRecord = {

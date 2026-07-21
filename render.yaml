@@ -21,6 +21,8 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
+      - key: VERCEL_PREVIEW_ORIGIN_PATTERN
+        sync: false
       - key: JWT_ACCESS_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET

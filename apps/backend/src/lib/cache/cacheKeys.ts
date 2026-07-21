@@ -1,7 +1,7 @@
 export const CacheKeys = {
   /**
    * Host 타이머 상태. TTL: 60초.
-   * 값: NodeJS.Timeout 참조 - 인메모리 전용 (NodeJS.Timeout 직렬화 불가).
+   * 값: HostCloseTimerState - 인메모리 전용 (NodeJS.Timeout 직렬화 불가).
    */
   hostTimer: (roomId: string) => `host-timer:${roomId}`,
 
@@ -16,8 +16,8 @@ export const CacheKeys = {
   ytSearch: (query: string) => `yt-search:${query}`,
 
   /**
-   * PlaybackState 캐시. TTL 없음.
-   * 값: PlaybackStateCache. play/pause/seek/next 이벤트로 갱신, 방 종료 시 del.
+   * PlaybackSession 캐시. TTL 없음.
+   * 값: 재생 상태·정책·셔플 큐·재생 이력을 함께 저장하며 방 종료 시 del.
    */
   playbackState: (roomId: string) => `playback:${roomId}`,
 } as const;

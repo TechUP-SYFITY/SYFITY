@@ -2,6 +2,33 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 
 import { server } from './server';
 
+// jsdom은 window.matchMedia를 구현하지 않아 useMediaQuery 등을 쓰는 컴포넌트가
+// 테스트에서 바로 에러를 던진다. 기본값(항상 매칭 안 됨)으로 폴리필한다.
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
+
+// jsdom은 ResizeObserver를 구현하지 않는다. jsdom은 실제 레이아웃 계산을 하지 않으므로
+// 콜백이 실제로 발화할 필요는 없고, observe/disconnect 호출이 에러 없이 통과하기만
+// 하면 되는 무동작 스텁으로 폴리필한다.
+if (typeof window !== 'undefined' && !window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'bypass' });
 });

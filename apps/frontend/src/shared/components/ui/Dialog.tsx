@@ -29,7 +29,7 @@ export function DialogContent({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <DialogPrimitive.Content
           className={cn(
-            'grid max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card/82 text-foreground shadow-[0_40px_100px_rgba(0,0,0,0.7),0_0_80px_rgba(114,244,164,0.06)] backdrop-blur-xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+            `grid max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card/82 text-foreground shadow-[0_40px_100px_rgba(0,0,0,0.7),0_0_80px_rgba(114,244,164,0.06)] backdrop-blur-xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95`,
             className,
           )}
           {...props}
@@ -46,7 +46,7 @@ export function DialogHeader({ className, ...props }: React.ComponentProps<'div'
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-2 border-b border-border px-5 pt-5 pb-4',
+        `flex items-center justify-between gap-2 border-b border-border px-5 pt-5 pb-4`,
         className,
       )}
       {...props}
@@ -62,7 +62,7 @@ export function DialogCloseButton({
   return (
     <DialogPrimitive.Close
       className={cn(
-        'flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-xl text-white/55 transition-colors outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4',
+        `flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-xl text-white/55 transition-colors outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4`,
         className,
       )}
       {...props}
@@ -77,7 +77,7 @@ export function DialogIconBadge({ className, ...props }: React.ComponentProps<'d
   return (
     <div
       className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary to-accent text-black drop-shadow-[0_0_8px_rgba(114,244,164,0.3)] [&_svg]:size-4',
+        `flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary to-accent text-black drop-shadow-[0_0_8px_rgba(114,244,164,0.3)] [&_svg]:size-4`,
         className,
       )}
       {...props}
@@ -110,7 +110,7 @@ export function DialogBody({ className, ...props }: React.ComponentProps<'div'>)
 export function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
-      className={cn('flex flex-col-reverse gap-3 px-5 pb-5 sm:flex-row sm:gap-2.5', className)}
+      className={cn(`flex flex-col-reverse gap-3 px-5 pb-5 sm:flex-row sm:gap-2.5`, className)}
       {...props}
     />
   );

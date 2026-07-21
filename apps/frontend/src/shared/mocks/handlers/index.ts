@@ -1,6 +1,13 @@
 import { authHandlers } from './auth.handlers';
+import { chatHandlers } from './chat.handlers';
 import { playlistHandlers } from './playlist.handlers';
 import { roomHandlers } from './room.handlers';
 import { searchHandlers } from './search.handlers';
 
-export const handlers = [...authHandlers, ...roomHandlers, ...playlistHandlers, ...searchHandlers];
+export const handlers = [
+  ...authHandlers,
+  ...roomHandlers,
+  ...chatHandlers,
+  ...playlistHandlers,
+  ...searchHandlers,
+];

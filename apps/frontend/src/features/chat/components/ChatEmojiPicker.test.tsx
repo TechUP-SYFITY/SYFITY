@@ -10,16 +10,19 @@ vi.mock('emoji-picker-react', () => ({
     emojiVersion,
     height,
     onEmojiClick,
+    previewConfig,
     width,
   }: {
     emojiVersion?: string;
     height?: number | string;
     onEmojiClick: (emojiData: { emoji: string }) => void;
+    previewConfig?: { showPreview?: boolean };
     width?: number | string;
   }) => (
     <button
       data-emoji-version={emojiVersion}
       data-height={height}
+      data-show-preview={previewConfig?.showPreview}
       data-width={width}
       type="button"
       onClick={() => onEmojiClick({ emoji: '😀' })}
@@ -62,12 +65,22 @@ describe('ChatEmojiPicker', () => {
     expect(picker).toHaveAttribute('data-height', '100%');
   });
 
-  it('Unicode 13.1 이하의 이모지만 표시한다', async () => {
+  it('Unicode 12.1 이하의 이모지만 표시한다', async () => {
     render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
     const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
 
-    expect(picker).toHaveAttribute('data-emoji-version', '13.1');
+    expect(picker).toHaveAttribute('data-emoji-version', '12.1');
+  });
+
+  it('미리보기와 카테고리 탐색 영역을 숨긴다', async () => {
+    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
+
+    expect(picker).toHaveAttribute('data-show-preview', 'false');
+    expect(picker.parentElement).toHaveClass('chat-emoji-picker');
   });
 });

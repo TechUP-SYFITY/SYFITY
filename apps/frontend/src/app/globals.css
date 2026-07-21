@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+.chat-emoji-picker .epr-category-nav {
+  display: none;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* Syfity 색상 스케일 (primary=Neon Green, accent=Purple, gray=Neutral) */

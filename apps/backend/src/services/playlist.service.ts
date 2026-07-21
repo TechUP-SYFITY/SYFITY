@@ -2,8 +2,9 @@ import { ERROR_CODES, type AddPlaylistItemRequest } from '@syfity/shared';
 
 import type { PlaybackService } from './playback.service';
 import { AppError } from '../errors/appError';
-import type { IYouTubeClient } from '../lib/youtube/youtube.client';
+import { YOUTUBE_MUSIC_CATEGORY_ID, type IYouTubeClient } from '../lib/youtube/youtube.client';
 import { broadcastToRoom } from '../socket/broadcast';
+import type { IPersonalPlaylistRepository } from '../types/personal-playlist';
 import {
   toPlaylistItem,
   type IPlaylistRepository,
@@ -12,11 +13,18 @@ import {
   type ReorderPlaylistItemInput,
 } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
+import { assertOwnedPersonalPlaylist } from '../utils/personalPlaylistAccess';
+import { resolveVideoId } from '../utils/resolveVideoId';
 import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 
 type PlaylistPlaybackService = Pick<
   PlaybackService,
   'advanceAfterCurrentRemoved' | 'enqueueIfShuffled'
+>;
+
+type ImportPersonalPlaylistRepository = Pick<
+  IPersonalPlaylistRepository,
+  'findPlaylistById' | 'getItems'
 >;
 
 export class PlaylistService {
@@ -25,6 +33,7 @@ export class PlaylistService {
     private readonly roomRepo: Pick<IRoomRepository, 'findRoomById' | 'findMembership'>,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
     private readonly playbackService: PlaylistPlaybackService,
+    private readonly personalPlaylistRepository: ImportPersonalPlaylistRepository,
   ) {}
 
   async getPlaylist(roomId: string, userId: string): Promise<PlaylistItemRecord[]> {
@@ -40,7 +49,7 @@ export class PlaylistService {
   ): Promise<PlaylistItemRecord> {
     await assertActiveRoomMember(this.roomRepo, roomId, userId);
 
-    const videoId = this.resolveVideoId(request);
+    const videoId = resolveVideoId(request);
     const existingItem = await this.playlistRepo.findItemByRoomAndVideoId(roomId, videoId);
     if (existingItem) {
       throw this.createDuplicateVideoError();
@@ -55,6 +64,13 @@ export class PlaylistService {
         400,
         ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
         '임베드가 금지된 영상입니다.',
+      );
+    }
+    if (video.categoryId !== YOUTUBE_MUSIC_CATEGORY_ID) {
+      throw new AppError(
+        400,
+        ERROR_CODES.PLAYLIST_NOT_MUSIC,
+        '음악이 아닌 영상은 추가할 수 없습니다.',
       );
     }
 
@@ -147,21 +163,29 @@ export class PlaylistService {
     });
   }
 
-  private resolveVideoId(request: AddPlaylistItemRequest): string {
-    if (request.videoId) {
-      return request.videoId;
+  async importFromPersonalPlaylist(
+    roomId: string,
+    userId: string,
+    personalPlaylistId: string,
+  ): Promise<{ addedCount: number; duplicateCount: number; unavailableCount: number }> {
+    await assertRoomHost(this.roomRepo, roomId, userId);
+    await assertOwnedPersonalPlaylist(this.personalPlaylistRepository, personalPlaylistId, userId);
+
+    const sourceItems = await this.personalPlaylistRepository.getItems(personalPlaylistId);
+    const result = await this.playlistRepo.importItems(roomId, sourceItems, userId);
+
+    for (const item of result.addedItems) {
+      await this.playbackService.enqueueIfShuffled(roomId, item.id);
     }
 
-    if (!request.youtubeUrl) {
-      throw new AppError(400, ERROR_CODES.PLAYLIST_INVALID_URL, 'YouTube URL이 올바르지 않습니다.');
-    }
+    const playlist = await this.playlistRepo.getPlaylist(roomId);
+    broadcastToRoom(roomId, 'playlist:updated', { playlist: playlist.map(toPlaylistItem) });
 
-    const videoId = this.parseVideoId(request.youtubeUrl);
-    if (!videoId) {
-      throw new AppError(400, ERROR_CODES.PLAYLIST_INVALID_URL, 'YouTube URL이 올바르지 않습니다.');
-    }
-
-    return videoId;
+    return {
+      addedCount: result.addedItems.length,
+      duplicateCount: result.duplicateCount,
+      unavailableCount: result.unavailableCount,
+    };
   }
 
   private createDuplicateVideoError(): AppError {
@@ -170,44 +194,5 @@ export class PlaylistService {
       ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
       '이미 플레이리스트에 추가된 곡입니다.',
     );
-  }
-
-  private parseVideoId(url: string): string | null {
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      return null;
-    }
-
-    if (parsed.hostname === 'youtu.be') {
-      return this.nonEmpty(parsed.pathname.split('/')[1]);
-    }
-
-    if (
-      parsed.hostname !== 'youtube.com' &&
-      parsed.hostname !== 'www.youtube.com' &&
-      parsed.hostname !== 'music.youtube.com'
-    ) {
-      return null;
-    }
-
-    if (parsed.pathname === '/watch') {
-      return this.nonEmpty(parsed.searchParams.get('v'));
-    }
-
-    if (parsed.pathname.startsWith('/embed/')) {
-      return this.nonEmpty(parsed.pathname.split('/')[2]);
-    }
-
-    if (parsed.pathname.startsWith('/shorts/')) {
-      return this.nonEmpty(parsed.pathname.split('/')[2]);
-    }
-
-    return null;
-  }
-
-  private nonEmpty(value: string | null | undefined): string | null {
-    return value === undefined || value === null || value === '' ? null : value;
   }
 }

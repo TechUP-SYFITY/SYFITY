@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { PlaylistRepository, type PlaylistRepositoryPrisma } from './playlist.repository';
 import { Prisma } from '../generated/prisma/client';
+import type { PersonalPlaylistItemRecord } from '../types/personal-playlist';
 import {
   PlaylistDuplicateVideoError,
   type AddPlaylistItemData,
@@ -66,6 +67,7 @@ function makePrisma(
       _max: { position: overrides.maxPosition ?? null },
     }),
     create: vi.fn().mockResolvedValue(overrides.createResult ?? playlistItem),
+    createManyAndReturn: vi.fn().mockResolvedValue([overrides.createResult ?? playlistItem]),
     findUnique: vi.fn().mockResolvedValue(overrides.findUniqueResult ?? null),
     update: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue({}),
@@ -336,5 +338,95 @@ describe('PlaylistRepository', () => {
 
     expect(prisma.playlistItem.update).not.toHaveBeenCalled();
     expect(prisma.$transaction).toHaveBeenCalledWith([]);
+  });
+
+  it('개인 Playlist에서 사용 가능하고 중복되지 않은 곡만 Room 끝에 가져온다', async () => {
+    const existingItem = { ...playlistItem, videoId: 'existing-video', position: 3 };
+    const sourceItems: PersonalPlaylistItemRecord[] = [
+      {
+        id: 'source-1',
+        personalPlaylistId: 'personal-1',
+        videoId: 'existing-video',
+        title: 'Existing',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 1,
+        status: 'available',
+        addedAt: new Date(),
+      },
+      {
+        id: 'source-2',
+        personalPlaylistId: 'personal-1',
+        videoId: 'unavailable-video',
+        title: 'Unavailable',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 2,
+        status: 'unavailable',
+        addedAt: new Date(),
+      },
+      {
+        id: 'source-3',
+        personalPlaylistId: 'personal-1',
+        videoId: 'new-video',
+        title: 'New',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 3,
+        status: 'available',
+        addedAt: new Date(),
+      },
+    ];
+    const prisma = makePrisma({ findManyResult: [existingItem], maxPosition: 3 });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.importItems('room-1', sourceItems, 'user-1')).resolves.toEqual({
+      addedItems: [playlistItem],
+      duplicateCount: 1,
+      unavailableCount: 1,
+    });
+
+    expect(prisma.playlistItem.createManyAndReturn).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          roomId: 'room-1',
+          videoId: 'new-video',
+          position: 4,
+          addedBy: 'user-1',
+          status: 'available',
+        }),
+      ],
+      select: expect.any(Object),
+    });
+  });
+
+  it('가져올 곡이 없으면 aggregate와 createManyAndReturn을 호출하지 않는다', async () => {
+    const sourceItems: PersonalPlaylistItemRecord[] = [
+      {
+        id: 'source-1',
+        personalPlaylistId: 'personal-1',
+        videoId: 'video-1',
+        title: 'Song',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 1,
+        status: 'unavailable',
+        addedAt: new Date(),
+      },
+    ];
+    const prisma = makePrisma({ findManyResult: [] });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.importItems('room-1', sourceItems, 'user-1')).resolves.toEqual({
+      addedItems: [],
+      duplicateCount: 0,
+      unavailableCount: 1,
+    });
+    expect(prisma.playlistItem.aggregate).not.toHaveBeenCalled();
+    expect(prisma.playlistItem.createManyAndReturn).not.toHaveBeenCalled();
   });
 });

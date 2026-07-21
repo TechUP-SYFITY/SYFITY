@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                                                       |
 | --------- | -------------------------------------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                                            |
-| 버전      | v2.1                                                                                                                       |
-| 상태      | Host 멤버 로스터·추방 목록 조회와 추방·해제 API 계약을 추가                                                                |
+| 버전      | v2.2                                                                                                                       |
+| 상태      | 개인 Playlist 항목 오류와 Music 카테고리 검증 계약을 추가                                                                  |
 | 작성 목적 | Syfity REST API 계약 정의                                                                                                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `06-socket-event-spec.md` |
 
@@ -338,12 +338,13 @@ Room Playlist를 `position` 오름차순으로 반환한다.
 
 두 필드가 모두 없거나 모두 있으면 `VALIDATION_ERROR`(400)를 반환한다.
 
-| 코드                         | HTTP | 설명                  |
-| ---------------------------- | ---- | --------------------- |
-| `PLAYLIST_INVALID_URL`       | 400  | videoId 파싱 불가 URL |
-| `PLAYLIST_VIDEO_UNAVAILABLE` | 400  | 재생·임베드 불가 영상 |
-| `PLAYLIST_DUPLICATE_VIDEO`   | 409  | 동일 영상이 이미 있음 |
-| `SERVER_YOUTUBE_API_ERROR`   | 502  | YouTube API 실패      |
+| 코드                         | HTTP | 설명                       |
+| ---------------------------- | ---- | -------------------------- |
+| `PLAYLIST_INVALID_URL`       | 400  | videoId 파싱 불가 URL      |
+| `PLAYLIST_VIDEO_UNAVAILABLE` | 400  | 재생·임베드 불가 영상      |
+| `PLAYLIST_NOT_MUSIC`         | 400  | Music 카테고리가 아닌 영상 |
+| `PLAYLIST_DUPLICATE_VIDEO`   | 409  | 동일 영상이 이미 있음      |
+| `SERVER_YOUTUBE_API_ERROR`   | 502  | YouTube API 실패           |
 
 ### 6.3 `DELETE /rooms/:roomId/playlist/:itemId`
 
@@ -425,7 +426,15 @@ Unicode 이모지는 기존 `message` TEXT에 포함되며 별도 REST API가 �
 | `DELETE /personal-playlists/:playlistId/items/:itemId` | -                                           | `204 No Content`                                             | 항목 삭제                 |
 | `PATCH /personal-playlists/:playlistId/items`          | `{ items: [{ id, position }] }`             | `{ success: true, data: { items: [PersonalPlaylistItem] } }` | 전체 순서 변경            |
 
-개인 Playlist 곡 추가도 `videoId`와 `youtubeUrl` 중 정확히 하나를 요구하며, 둘 다 없거나 모두 있으면 `VALIDATION_ERROR`(400)를 반환한다. 순서 변경의 `items`는 대상 Playlist의 모든 항목 id를 정확히 한 번씩 포함하고 `position`은 `0`부터 항목 수-1까지 연속이어야 하며, 위반 시 `VALIDATION_ERROR`(400)를 반환한다. 동일 `videoId` 중복은 `PERSONAL_PLAYLIST_DUPLICATE_VIDEO`(409)로 거부한다. 추가 시 영상 재생·임베드 검증에 실패하면 `PLAYLIST_VIDEO_UNAVAILABLE`(400)을 반환한다.
+개인 Playlist 곡 추가도 `videoId`와 `youtubeUrl` 중 정확히 하나를 요구하며, 둘 다 없거나 모두 있으면 `VALIDATION_ERROR`(400)를 반환한다. 순서 변경의 `items`는 대상 Playlist의 모든 항목 id를 정확히 한 번씩 포함하고 `position`은 `0`부터 항목 수-1까지 연속이어야 하며, 위반 시 `VALIDATION_ERROR`(400)를 반환한다. 동일 `videoId` 중복은 `PERSONAL_PLAYLIST_DUPLICATE_VIDEO`(409)로 거부한다. 추가 시 영상 재생·임베드 검증에 실패하면 `PLAYLIST_VIDEO_UNAVAILABLE`(400), Music 카테고리가 아니면 `PLAYLIST_NOT_MUSIC`(400)을 반환한다. Playlist는 존재하지만 대상 곡이 없으면 `PERSONAL_PLAYLIST_ITEM_NOT_FOUND`(404)를 반환한다.
+
+| 코드                                | HTTP | 설명                       |
+| ----------------------------------- | ---- | -------------------------- |
+| `PLAYLIST_INVALID_URL`              | 400  | videoId 파싱 불가 URL      |
+| `PLAYLIST_VIDEO_UNAVAILABLE`        | 400  | 재생·임베드 불가 영상      |
+| `PLAYLIST_NOT_MUSIC`                | 400  | Music 카테고리가 아닌 영상 |
+| `PERSONAL_PLAYLIST_DUPLICATE_VIDEO` | 409  | 동일 영상이 이미 있음      |
+| `PERSONAL_PLAYLIST_ITEM_NOT_FOUND`  | 404  | 대상 곡이 없음             |
 
 ---
 

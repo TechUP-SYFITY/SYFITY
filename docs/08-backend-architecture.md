@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v2.0                                                                                  |
-| 상태      | 인메모리 재생 세션, Room 수명 주기, 개인 Playlist·추방 처리 구조로 재구성             |
+| 버전      | v2.1                                                                                  |
+| 상태      | 개인 Playlist와 Room Playlist 불러오기 컨트롤러 구조를 명확화                         |
 | 작성 목적 | Syfity 백엔드 구조 정의                                                               |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -52,6 +52,7 @@ apps/backend/
       chat.controller.ts
       health.controller.ts
       personal-playlist.controller.ts
+      playlist-import.controller.ts
       playlist.controller.ts
       room-lifecycle.controller.ts → 내부 정리 API 응답 처리 (tsoa 미사용)
       room.controller.ts

@@ -4,6 +4,9 @@ import { ApiClientError } from '@/shared/types/api';
 
 const API_ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
   AUTH_FORBIDDEN: '이 작업을 할 권한이 없어요.',
+  PERSONAL_PLAYLIST_ACCESS_DENIED: '내 플레이리스트가 아니에요.',
+  PERSONAL_PLAYLIST_DUPLICATE_VIDEO: '이미 이 플레이리스트에 추가된 곡이에요.',
+  PERSONAL_PLAYLIST_NOT_FOUND: '이미 삭제됐거나 찾을 수 없는 플레이리스트예요.',
   PLAYLIST_DUPLICATE_VIDEO: '이미 플레이리스트에 추가된 곡이에요.',
   PLAYLIST_INVALID_URL: '유효한 YouTube 링크를 입력해주세요.',
   PLAYLIST_ITEM_NOT_FOUND: '이미 삭제됐거나 찾을 수 없는 곡이에요.',

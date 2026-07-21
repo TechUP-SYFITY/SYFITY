@@ -1,9 +1,12 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import { ToastProvider } from '@/shared/components/ui';
 import { pretendard } from '@/shared/lib/fonts';
 import { QueryProvider } from '@/shared/lib/query/QueryProvider';
 import { MockingProvider } from '@/shared/mocks/MockingProvider';
+
+import { PwaProvider } from '@/widgets/pwa/PwaProvider';
+
 import './globals.css';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://syfity.site';
@@ -38,6 +41,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#09090B',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,7 +55,10 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <ToastProvider viewportClassName="bottom-16 sm:bottom-20 lg:right-0 lg:left-auto lg:max-w-sm lg:translate-x-0 lg:p-6">
           <MockingProvider>
-            <QueryProvider>{children}</QueryProvider>
+            <QueryProvider>
+              <PwaProvider />
+              {children}
+            </QueryProvider>
           </MockingProvider>
         </ToastProvider>
       </body>

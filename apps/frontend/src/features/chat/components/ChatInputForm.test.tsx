@@ -6,9 +6,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ChatInputForm } from './ChatInputForm';
 import { CHAT_MAX_MESSAGE_LENGTH } from '../constants/chatConstants';
 
+vi.mock('./ChatEmojiPicker', () => ({
+  ChatEmojiPicker: ({ onEmojiSelect }: { onEmojiSelect: (emoji: string) => void }) => (
+    <button type="button" onClick={() => onEmojiSelect('😀')}>
+      이모지 추가
+    </button>
+  ),
+}));
+
 describe('ChatInputForm', () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it('이모지 피커의 위치 기준이 되도록 입력 폼을 배치한다', () => {
+    render(<ChatInputForm onSubmit={vi.fn()} />);
+
+    expect(screen.getByLabelText('채팅 메시지 입력').closest('form')).toHaveClass('relative');
   });
 
   it('공백만 제출하면 onSubmit을 호출하지 않고 에러를 표시하지 않는다', () => {
@@ -97,6 +111,54 @@ describe('ChatInputForm', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(input).toHaveValue('첫 줄\n');
+  });
+
+  it('피커에서 선택한 Unicode 이모지를 현재 커서 위치에 삽입하고 포커스를 유지한다', () => {
+    render(<ChatInputForm onSubmit={vi.fn()} />);
+    const input = screen.getByLabelText('채팅 메시지 입력') as HTMLTextAreaElement;
+
+    fireEvent.change(input, { target: { value: 'hello world' } });
+    input.focus();
+    input.setSelectionRange(5, 5);
+    fireEvent.click(screen.getByRole('button', { name: '이모지 추가' }));
+
+    expect(input).toHaveValue('hello😀 world');
+    expect(input.selectionStart).toBe(7);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('이모지 삽입으로 최대 길이를 초과하면 값과 선택 범위를 유지한다', () => {
+    render(<ChatInputForm onSubmit={vi.fn()} />);
+    const input = screen.getByLabelText('채팅 메시지 입력') as HTMLTextAreaElement;
+    const value = '가'.repeat(CHAT_MAX_MESSAGE_LENGTH);
+
+    fireEvent.change(input, { target: { value } });
+    input.setSelectionRange(20, 21);
+    const emojiButton = screen.getByRole('button', { name: '이모지 추가' });
+    emojiButton.focus();
+    fireEvent.click(emojiButton);
+
+    expect(input).toHaveValue(value);
+    expect(input.selectionStart).toBe(20);
+    expect(input.selectionEnd).toBe(21);
+    expect(document.activeElement).toBe(input);
+    expect(
+      screen.getByText(`메시지는 ${CHAT_MAX_MESSAGE_LENGTH}자를 초과할 수 없어요.`),
+    ).toBeInTheDocument();
+  });
+
+  it('길이 오류 이후 허용 범위 내에서 이모지를 삽입하면 오류를 지운다', () => {
+    render(<ChatInputForm onSubmit={vi.fn()} />);
+    const input = screen.getByLabelText('채팅 메시지 입력') as HTMLTextAreaElement;
+
+    fireEvent.change(input, { target: { value: '가'.repeat(CHAT_MAX_MESSAGE_LENGTH + 1) } });
+    input.setSelectionRange(0, 2);
+    fireEvent.click(screen.getByRole('button', { name: '이모지 추가' }));
+
+    expect(input).toHaveValue(`😀${'가'.repeat(CHAT_MAX_MESSAGE_LENGTH - 2)}`);
+    expect(
+      screen.queryByText(`메시지는 ${CHAT_MAX_MESSAGE_LENGTH}자를 초과할 수 없어요.`),
+    ).toBeNull();
   });
 
   it('서버 전송 에러를 인라인으로 표시한다', () => {

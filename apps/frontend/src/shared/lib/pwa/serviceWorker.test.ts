@@ -1,23 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  isIOSSafari,
-  isServiceWorkerRegistrationEnabled,
-  isStandaloneDisplayMode,
-  registerServiceWorker,
-} from './serviceWorker';
+async function loadServiceWorker() {
+  return import('./serviceWorker');
+}
 
 describe('serviceWorker', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    vi.resetModules();
     Reflect.deleteProperty(navigator, 'serviceWorker');
     Reflect.deleteProperty(navigator, 'userAgent');
   });
 
-  it('MSW가 활성화된 환경에서는 PWA Service Worker를 등록하지 않는다', () => {
+  it('MSW가 활성화된 환경에서는 PWA Service Worker를 등록하지 않는다', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('NEXT_PUBLIC_API_MOCKING', 'enabled');
+    const { isServiceWorkerRegistrationEnabled, registerServiceWorker } = await loadServiceWorker();
     const register = vi.fn();
     Object.defineProperty(navigator, 'serviceWorker', {
       configurable: true,
@@ -30,8 +29,10 @@ describe('serviceWorker', () => {
     expect(register).not.toHaveBeenCalled();
   });
 
-  it('프로덕션이 아니면 Service Worker를 등록하지 않는다', () => {
+  it('프로덕션이 아니면 Service Worker를 등록하지 않는다', async () => {
     vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('NEXT_PUBLIC_API_MOCKING', 'disabled');
+    const { isServiceWorkerRegistrationEnabled, registerServiceWorker } = await loadServiceWorker();
     const register = vi.fn();
     Object.defineProperty(navigator, 'serviceWorker', {
       configurable: true,
@@ -44,7 +45,8 @@ describe('serviceWorker', () => {
     expect(register).not.toHaveBeenCalled();
   });
 
-  it('standalone display mode과 iOS Safari를 올바르게 판별한다', () => {
+  it('standalone display mode과 iOS Safari를 올바르게 판별한다', async () => {
+    const { isIOSSafari, isStandaloneDisplayMode } = await loadServiceWorker();
     vi.stubGlobal(
       'matchMedia',
       vi.fn(() => ({ matches: true })),
@@ -59,7 +61,8 @@ describe('serviceWorker', () => {
     expect(isIOSSafari()).toBe(true);
   });
 
-  it('iOS Chrome 같은 비 Safari 브라우저에는 설치 안내를 제공하지 않는다', () => {
+  it('iOS Chrome 같은 비 Safari 브라우저에는 설치 안내를 제공하지 않는다', async () => {
+    const { isIOSSafari } = await loadServiceWorker();
     Object.defineProperty(navigator, 'userAgent', {
       configurable: true,
       value:

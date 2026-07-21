@@ -1,3 +1,5 @@
+import { isMockingEnabled } from '@/shared/lib/env';
+
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 export interface BeforeInstallPromptEvent extends Event {
@@ -8,7 +10,7 @@ export interface BeforeInstallPromptEvent extends Event {
 export function isServiceWorkerRegistrationEnabled(): boolean {
   return (
     process.env.NODE_ENV === 'production' &&
-    process.env.NEXT_PUBLIC_API_MOCKING !== 'enabled' &&
+    !isMockingEnabled() &&
     typeof navigator !== 'undefined' &&
     'serviceWorker' in navigator
   );

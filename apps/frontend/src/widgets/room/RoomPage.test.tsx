@@ -323,6 +323,7 @@ describe('RoomPage', () => {
     expect(useChatStore.getState().messages).not.toHaveLength(0);
 
     const onRoomKicked = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[4];
+    const lateSnapshot = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[3];
     expect(onRoomKicked).toBeTypeOf('function');
 
     act(() => {
@@ -344,6 +345,28 @@ describe('RoomPage', () => {
     expect(screen.getByText('Host에 의해 Room에서 추방되었습니다.')).toBeInTheDocument();
     expect(routerReplace).toHaveBeenCalledOnce();
     expect(routerReplace).toHaveBeenCalledWith('/home');
+
+    await waitFor(() => {
+      expect(vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[1]).toBe(false);
+    });
+
+    act(() => {
+      lateSnapshot?.({
+        roomId: roomFixture.room.id,
+        hostConnection: { status: 'connected' },
+        playbackState: roomFixture.playbackState,
+        playbackPolicy: roomFixture.playbackPolicy,
+        playlist: roomFixture.playlist,
+        members: roomFixture.members,
+        recentChats: roomFixture.chats,
+      });
+    });
+
+    expect(useRoomStore.getState().room).toBeNull();
+    expect(usePresenceStore.getState().members).toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(useChatStore.getState().messages).toHaveLength(0);
   });
 
   it('Room 초대 버튼으로 초대 모달을 열고 실제 초대 코드와 링크를 복사한다', async () => {

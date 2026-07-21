@@ -326,11 +326,6 @@ export class RoomRepository implements IRoomRepository {
         select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
       });
 
-      await tx.roomMember.updateMany({
-        where: { roomId, status: { notIn: ['left', 'kicked'] } },
-        data: { status: 'left', leftAt: now, lastSeenAt: now },
-      });
-
       return room;
     });
   }

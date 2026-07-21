@@ -1,3 +1,5 @@
+import type { KickedRoomMember } from '@syfity/shared';
+
 import type {
   ChatMessage,
   PlaybackState,
@@ -110,6 +112,15 @@ export const roomFixture = {
       userId: 'fallback-member-5',
     },
   ] satisfies RoomMember[],
+  kickedMembers: [
+    {
+      id: 'kicked-membership-1',
+      kickedAt: '2026-07-21T01:00:00.000Z',
+      nickname: '추방 멤버',
+      profileImage: null,
+      userId: 'kicked-user-1',
+    },
+  ] satisfies KickedRoomMember[],
   playbackState: {
     currentTime: 0,
     isPlaying: false,

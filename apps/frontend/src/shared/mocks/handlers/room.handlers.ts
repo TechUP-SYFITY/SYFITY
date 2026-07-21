@@ -5,9 +5,13 @@ import type {
   CreateRoomMembershipResponse,
   CreateRoomRequest,
   CreateRoomResponse,
+  GetActiveRoomMembersResponse,
+  GetKickedRoomMembersResponse,
   GetRoomResponse,
   RecentRoomsResponse,
   UpdateRoomRequest,
+  UpdateRoomMemberRequest,
+  UpdateRoomMemberResponse,
   UpdateRoomResponse,
 } from '@syfity/shared';
 
@@ -81,6 +85,36 @@ export const roomHandlers = [
         createdAt: new Date().toISOString(),
       },
     } satisfies GetRoomResponse);
+  }),
+  http.get(`${API}/rooms/:roomId/members`, ({ params, request }) => {
+    if (params.roomId !== roomFixture.room.id) {
+      return notFound('ROOM_NOT_FOUND', 'Room not found');
+    }
+
+    const status = new URL(request.url).searchParams.get('status');
+    if (status === 'kicked') {
+      return HttpResponse.json({
+        success: true,
+        data: { members: roomFixture.kickedMembers },
+      } satisfies GetKickedRoomMembersResponse);
+    }
+
+    return HttpResponse.json({
+      success: true,
+      data: { members: roomFixture.members },
+    } satisfies GetActiveRoomMembersResponse);
+  }),
+  http.patch(`${API}/rooms/:roomId/members/:memberId`, async ({ params, request }) => {
+    if (params.roomId !== roomFixture.room.id) {
+      return notFound('ROOM_NOT_FOUND', 'Room not found');
+    }
+
+    const body = (await request.json()) as UpdateRoomMemberRequest;
+
+    return HttpResponse.json({
+      success: true,
+      data: { memberId: String(params.memberId), status: body.status },
+    } satisfies UpdateRoomMemberResponse);
   }),
   http.patch(`${API}/rooms/:roomId`, async ({ params, request }) => {
     if (params.roomId !== roomFixture.room.id) {

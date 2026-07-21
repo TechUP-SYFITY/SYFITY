@@ -13,16 +13,18 @@ import type { IPlaylistRepository } from '../types/playlist';
 import type {
   IRoomRepository,
   CreateMembershipResult,
+  KickedMemberRecord,
   LeaveRoomResult,
   RoomDetailRecord,
   RoomMemberRecord,
+  RoomMemberLookupRecord,
   RoomRecord,
   RoomSnapshotResult,
   RoomUpdateRecord,
 } from '../types/room';
-import type { RoomClosedPayload } from '../types/socket';
+import type { PresenceUpdatePayload, RoomClosedPayload, RoomKickedPayload } from '../types/socket';
 import { toChatSystemPayload } from '../utils/chatPayload';
-import { assertActiveRoomMember } from '../utils/roomAccess';
+import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
 const RECENT_CHAT_LIMIT = 50;
@@ -54,6 +56,11 @@ export class RoomService {
     }
     if (room.status === 'inactive') {
       throw new AppError(403, ERROR_CODES.ROOM_INACTIVE, '비활성화된 Room입니다.');
+    }
+
+    const membership = await this.roomRepo.findMembership(room.id, userId);
+    if (membership?.status === 'kicked') {
+      throw new AppError(403, ERROR_CODES.ROOM_MEMBER_KICKED, 'Host에 의해 추방된 사용자입니다.');
     }
 
     const isNewMembership = await this.roomRepo.upsertMembership(room.id, userId);
@@ -122,6 +129,76 @@ export class RoomService {
 
   async getMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return this.roomRepo.findMembers(roomId);
+  }
+
+  async getActiveMembers(roomId: string, hostUserId: string): Promise<RoomMemberRecord[]> {
+    await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    return this.roomRepo.findMembers(roomId);
+  }
+
+  async getKickedMembers(roomId: string, hostUserId: string): Promise<KickedMemberRecord[]> {
+    await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    return this.roomRepo.findKickedMembers(roomId);
+  }
+
+  async kickMember(
+    roomId: string,
+    hostUserId: string,
+    memberId: string,
+  ): Promise<{ memberId: string; status: 'kicked' }> {
+    const room = await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    this.assertRoomIsActive(room.status);
+
+    const member = await this.roomRepo.findMemberById(roomId, memberId);
+    if (!member) {
+      throw new AppError(404, ERROR_CODES.ROOM_MEMBER_NOT_FOUND, '참여자를 찾을 수 없습니다.');
+    }
+    if (member.userId === room.hostId) {
+      throw new AppError(409, ERROR_CODES.ROOM_CANNOT_KICK_HOST, 'Host는 추방할 수 없습니다.');
+    }
+
+    const didTransition = await this.roomRepo.updateMemberStatusByMemberId(
+      roomId,
+      memberId,
+      'kicked',
+      ['online', 'offline'],
+    );
+    if (!didTransition) {
+      throw new AppError(
+        404,
+        ERROR_CODES.ROOM_MEMBER_NOT_FOUND,
+        '추방할 수 없는 상태의 참여자입니다.',
+      );
+    }
+
+    await this.disconnectAndNotifyKicked(roomId, member);
+    return { memberId, status: 'kicked' };
+  }
+
+  async unkickMember(
+    roomId: string,
+    hostUserId: string,
+    memberId: string,
+  ): Promise<{ memberId: string; status: 'left' }> {
+    const room = await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    this.assertRoomIsActive(room.status);
+
+    const member = await this.roomRepo.findMemberById(roomId, memberId);
+    if (!member) {
+      throw new AppError(404, ERROR_CODES.ROOM_MEMBER_NOT_FOUND, '참여자를 찾을 수 없습니다.');
+    }
+
+    const didTransition = await this.roomRepo.updateMemberStatusByMemberId(
+      roomId,
+      memberId,
+      'left',
+      ['kicked'],
+    );
+    if (!didTransition) {
+      throw new AppError(409, ERROR_CODES.ROOM_MEMBER_NOT_KICKED, '추방 상태가 아닙니다.');
+    }
+
+    return { memberId, status: 'left' };
   }
 
   async leaveRoom(roomId: string, userId: string): Promise<LeaveRoomResult> {
@@ -208,5 +285,42 @@ export class RoomService {
     }
 
     return member;
+  }
+
+  private assertRoomIsActive(status: RoomDetailRecord['status']): void {
+    if (status === 'closed') {
+      throw new AppError(403, ERROR_CODES.ROOM_CLOSED, '종료된 Room입니다.');
+    }
+    if (status === 'inactive') {
+      throw new AppError(403, ERROR_CODES.ROOM_INACTIVE, '비활성화된 Room입니다.');
+    }
+  }
+
+  private async disconnectAndNotifyKicked(
+    roomId: string,
+    member: Pick<RoomMemberLookupRecord, 'userId' | 'nickname' | 'profileImage' | 'role'>,
+  ): Promise<void> {
+    const roomKey = `room:${roomId}`;
+    const io = getIo();
+    const payload: RoomKickedPayload = {
+      roomId,
+      message: 'Host에 의해 Room에서 추방되었습니다.',
+    };
+    const sockets = await io.in(roomKey).fetchSockets();
+
+    for (const targetSocket of sockets) {
+      if (targetSocket.data.userId !== member.userId) continue;
+      targetSocket.emit('room:kicked', payload);
+      await targetSocket.leave(roomKey);
+    }
+
+    const presencePayload: PresenceUpdatePayload = {
+      userId: member.userId,
+      nickname: member.nickname,
+      profileImage: member.profileImage,
+      role: member.role,
+      status: 'left',
+    };
+    broadcastToRoom(roomId, 'presence:update', presencePayload);
   }
 }

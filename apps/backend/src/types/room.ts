@@ -33,7 +33,7 @@ export type CreateRoomData = {
 };
 
 export type RoomRole = 'host' | 'member' | 'guest';
-export type RoomMemberStatus = 'online' | 'offline' | 'left';
+export type RoomMemberStatus = 'online' | 'offline' | 'left' | 'kicked';
 export type HostConnectionState =
   { status: 'connected' } | { status: 'disconnected'; waitUntil: string };
 
@@ -43,6 +43,23 @@ export type RoomMembershipRecord = {
 };
 
 export type RoomMemberRecord = {
+  id: string;
+  userId: string;
+  nickname: string;
+  profileImage: string | null;
+  role: RoomRole;
+  status: 'online' | 'offline' | 'left';
+};
+
+export type KickedMemberRecord = {
+  id: string;
+  userId: string;
+  nickname: string;
+  profileImage: string | null;
+  kickedAt: Date;
+};
+
+export type RoomMemberLookupRecord = {
   id: string;
   userId: string;
   nickname: string;
@@ -75,6 +92,14 @@ export interface IRoomRepository {
   findMembership(roomId: string, userId: string): Promise<RoomMembershipRecord | null>;
   upsertMembership(roomId: string, userId: string): Promise<boolean>;
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
+  findMemberById(roomId: string, memberId: string): Promise<RoomMemberLookupRecord | null>;
+  updateMemberStatusByMemberId(
+    roomId: string,
+    memberId: string,
+    status: RoomMemberStatus,
+    fromStatuses: RoomMemberStatus[],
+  ): Promise<boolean>;
+  findKickedMembers(roomId: string): Promise<KickedMemberRecord[]>;
   upsertRecentRoom(userId: string, roomId: string): Promise<void>;
   updateMemberStatus(
     roomId: string,

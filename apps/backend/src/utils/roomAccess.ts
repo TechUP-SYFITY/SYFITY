@@ -19,6 +19,9 @@ export async function assertActiveRoomMember(
   if (!membership || membership.status === 'left') {
     throw new AppError(403, ERROR_CODES.ROOM_ACCESS_DENIED, 'Room 참여자만 접근할 수 있습니다.');
   }
+  if (membership.status === 'kicked') {
+    throw new AppError(403, ERROR_CODES.ROOM_MEMBER_KICKED, 'Host에 의해 추방된 사용자입니다.');
+  }
 
   return room;
 }

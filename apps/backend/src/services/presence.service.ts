@@ -28,7 +28,7 @@ export class PresenceService {
 
   async getActiveMembershipRole(roomId: string, userId: string): Promise<RoomRole | null> {
     const membership = await this.roomRepo.findMembership(roomId, userId);
-    if (!membership || membership.status === 'left') return null;
+    if (!membership || membership.status === 'left' || membership.status === 'kicked') return null;
 
     return membership.role;
   }

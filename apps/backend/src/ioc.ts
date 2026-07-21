@@ -26,6 +26,7 @@ import { AuthController } from './controllers/auth.controller';
 import { ChatController } from './controllers/chat.controller';
 import { HealthController } from './controllers/health.controller';
 import { PlaylistController } from './controllers/playlist.controller';
+import { RoomMemberController } from './controllers/room-member.controller';
 import { RoomMembershipController } from './controllers/room-membership.controller';
 import { RoomController } from './controllers/room.controller';
 import { SearchController } from './controllers/search.controller';
@@ -82,6 +83,7 @@ export const playlistService = new PlaylistService(
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
 register(RoomMembershipController, () => new RoomMembershipController(roomService));
+register(RoomMemberController, () => new RoomMemberController(roomService));
 register(ChatController, () => new ChatController(chatService));
 register(SearchController, () => {
   const youtubeClient = new YouTubeClient(config.youtube.apiKey);

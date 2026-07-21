@@ -59,6 +59,15 @@ describe('assertActiveRoomMember', () => {
     });
   });
 
+  it('kicked 상태면 ROOM_MEMBER_KICKED를 던진다', async () => {
+    const roomRepo = makeRoomRepo({ membership: { role: 'member', status: 'kicked' } });
+
+    await expect(assertActiveRoomMember(roomRepo, 'room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_MEMBER_KICKED,
+    });
+  });
+
   it.each(['online', 'offline'] as const)('%s 상태 참여자면 Room을 반환한다', async (status) => {
     const roomRepo = makeRoomRepo({ membership: { role: 'member', status } });
 

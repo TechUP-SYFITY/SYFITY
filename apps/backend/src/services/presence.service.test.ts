@@ -110,6 +110,12 @@ describe('PresenceService', () => {
     await expect(service.getActiveMembershipRole('room-1', 'user-1')).resolves.toBeNull();
   });
 
+  it('추방된 멤버십이면 역할 조회는 null을 반환한다', async () => {
+    const { service } = makeFixture({ membership: { role: 'member', status: 'kicked' } });
+
+    await expect(service.getActiveMembershipRole('room-1', 'user-1')).resolves.toBeNull();
+  });
+
   it('멤버 offline 타이머를 5초 후 실행하고 cache에 저장한다', () => {
     vi.useFakeTimers();
     const { service, cacheMocks } = makeFixture();

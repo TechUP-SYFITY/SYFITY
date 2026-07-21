@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                                                       |
 | --------- | -------------------------------------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                                            |
-| 버전      | v2.0                                                                                                                       |
-| 상태      | Room 수명 주기, 개인 Playlist, 추방 관리 API와 Socket 재생 분리로 재구성                                                   |
+| 버전      | v2.1                                                                                                                       |
+| 상태      | Host 멤버 로스터·추방 목록 조회와 추방·해제 API 계약을 추가                                                                |
 | 작성 목적 | Syfity REST API 계약 정의                                                                                                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `06-socket-event-spec.md` |
 
@@ -261,11 +261,20 @@ Host가 closed Room을 논리 삭제한다. 실제 DB 행은 보존하되 status
 
 ### 5.9 Member 추방 관리
 
-#### `GET /rooms/:roomId/members?status=kicked`
+#### `GET /rooms/:roomId/members`
 
-Host만 `kicked` 상태의 Room Member 목록을 조회한다.
+Host만 Room Member 목록을 조회한다. `status` 쿼리가 없으면 현재 활성 로스터(`online`/`offline`)를, `status=kicked`면 추방 목록을 반환한다.
 
 ```ts
+// GET /rooms/:roomId/members
+{
+  success: true,
+  data: { members: [{ id, userId, nickname, profileImage, role, status: 'online' | 'offline' }] }
+}
+```
+
+```ts
+// GET /rooms/:roomId/members?status=kicked
 {
   success: true,
   data: { members: [{ id, userId, nickname, profileImage, kickedAt: string }] }
@@ -290,6 +299,8 @@ Host가 Room Member의 상태를 변경한다.
 ```
 
 `status: 'kicked'`는 active Room에서만 가능하며 Host 자신은 추방할 수 없다. 대상의 모든 Socket Room 연결을 해제한다. `status: 'left'`는 kicked Member만 대상으로 하며, 자동 재입장시키지 않는다.
+
+Room 상태 오류(`ROOM_CLOSED`/`ROOM_INACTIVE`)는 [5.8 Room 수명 주기 오류](#58-room-수명-주기-오류)를 따른다.
 
 | 코드                     | HTTP | 설명                                       |
 | ------------------------ | ---- | ------------------------------------------ |

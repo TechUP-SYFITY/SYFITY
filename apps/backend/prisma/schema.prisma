@@ -28,6 +28,7 @@ enum RoomMemberStatus {
   online
   offline
   left
+  kicked
 }
 
 enum PlaylistItemStatus {
@@ -88,11 +89,13 @@ model RoomMember {
   joinedAt   DateTime         @map("joined_at") @db.Timestamptz
   lastSeenAt DateTime?        @map("last_seen_at") @db.Timestamptz
   leftAt     DateTime?        @map("left_at") @db.Timestamptz
+  updatedAt  DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   room Room @relation(fields: [roomId], references: [id])
   user User @relation(fields: [userId], references: [id])
 
   @@unique([roomId, userId])
+  @@index([roomId, status])
   @@map("room_members")
 }
 

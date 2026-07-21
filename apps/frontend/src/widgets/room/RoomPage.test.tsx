@@ -128,6 +128,7 @@ describe('RoomPage', () => {
       true,
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
   });
 
@@ -155,6 +156,7 @@ describe('RoomPage', () => {
     expect(useRoomLiveConnections).toHaveBeenCalledWith(
       roomFixture.room.id,
       true,
+      expect.any(Function),
       expect.any(Function),
       expect.any(Function),
     );
@@ -273,6 +275,46 @@ describe('RoomPage', () => {
     });
 
     expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+  });
+
+  it('추방 이벤트를 받으면 Room 상태를 모두 정리하고 안내 후 /home으로 이동한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(useRoomStore.getState().room).not.toBeNull();
+    expect(usePresenceStore.getState().members).not.toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).not.toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).not.toBeNull();
+    expect(useChatStore.getState().messages).not.toHaveLength(0);
+
+    const onRoomKicked = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[4];
+    expect(onRoomKicked).toBeTypeOf('function');
+
+    act(() => {
+      onRoomKicked?.({
+        roomId: roomFixture.room.id,
+        message: 'Host에 의해 Room에서 추방되었습니다.',
+      });
+      onRoomKicked?.({
+        roomId: roomFixture.room.id,
+        message: 'Host에 의해 Room에서 추방되었습니다.',
+      });
+    });
+
+    expect(useRoomStore.getState().room).toBeNull();
+    expect(usePresenceStore.getState().members).toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(useChatStore.getState().messages).toHaveLength(0);
+    expect(screen.getByText('Host에 의해 Room에서 추방되었습니다.')).toBeInTheDocument();
+    expect(routerReplace).toHaveBeenCalledOnce();
     expect(routerReplace).toHaveBeenCalledWith('/home');
   });
 

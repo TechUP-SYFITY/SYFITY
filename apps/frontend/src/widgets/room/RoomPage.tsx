@@ -1,7 +1,7 @@
 'use client';
 
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/shared/components/ui';
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
@@ -59,6 +59,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   const toastIdRef = useRef(0);
   const playerControllerRef = useRef<PlayerController | null>(null);
   const {
+    exitClosedRoom,
     hasJoinedRoom,
     hostConnection,
     exitRoom,
@@ -103,6 +104,16 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   });
   const roomExitError = closeRoom.isError ? getApiErrorMessage(closeRoom.error) : undefined;
   const isRoomClosing = closeRoom.isPending || closeRoom.isSuccess;
+
+  useEffect(() => {
+    if (!closeRoom.isSuccess || !hasJoinedRoom) {
+      return undefined;
+    }
+
+    const fallbackTimer = window.setTimeout(exitClosedRoom, 3000);
+
+    return () => window.clearTimeout(fallbackTimer);
+  }, [closeRoom.isSuccess, exitClosedRoom, hasJoinedRoom]);
 
   if (joinRoom.isPending) {
     return <RoomLoadingState />;

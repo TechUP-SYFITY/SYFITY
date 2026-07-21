@@ -325,7 +325,7 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '나가기' })).toBeDisabled();
   });
 
-  it('Host는 확인 후 REST로 Room 종료를 요청하고 room:closed 이벤트를 기다린다', async () => {
+  it('Host는 REST 종료 후 room:closed 이벤트를 기다리되 응답이 없으면 Home으로 이동한다', async () => {
     const updateRoom = vi.fn();
     server.use(
       http.patch('*/api/v1/rooms/:roomId', async ({ request }) => {
@@ -365,6 +365,9 @@ describe('RoomPage', () => {
     fireEvent.click(confirmButton);
     expect(updateRoom).toHaveBeenCalledTimes(1);
     expect(routerReplace).not.toHaveBeenCalledWith('/home');
+
+    await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/home'), { timeout: 4000 });
+    expect(screen.getByText('Room이 종료되었습니다.')).toBeVisible();
   });
 
   it('Host Room 종료 요청이 실패하면 Dialog에서 오류를 안내하고 Room에 남는다', async () => {

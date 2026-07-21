@@ -33,6 +33,7 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
         <div className="absolute right-0 bottom-[calc(100%+0.5rem)] z-50 h-[min(300px,calc(100dvh-12rem))] w-full max-w-[350px]">
           <EmojiPicker
             emojiStyle={EmojiStyle.NATIVE}
+            emojiVersion="13.1"
             height="100%"
             width="100%"
             onEmojiClick={(emojiData) => {

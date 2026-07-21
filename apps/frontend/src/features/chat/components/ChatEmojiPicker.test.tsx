@@ -7,15 +7,18 @@ import { ChatEmojiPicker } from './ChatEmojiPicker';
 
 vi.mock('emoji-picker-react', () => ({
   default: ({
+    emojiVersion,
     height,
     onEmojiClick,
     width,
   }: {
+    emojiVersion?: string;
     height?: number | string;
     onEmojiClick: (emojiData: { emoji: string }) => void;
     width?: number | string;
   }) => (
     <button
+      data-emoji-version={emojiVersion}
       data-height={height}
       data-width={width}
       type="button"
@@ -57,5 +60,14 @@ describe('ChatEmojiPicker', () => {
     );
     expect(picker).toHaveAttribute('data-width', '100%');
     expect(picker).toHaveAttribute('data-height', '100%');
+  });
+
+  it('Unicode 13.1 이하의 이모지만 표시한다', async () => {
+    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
+
+    expect(picker).toHaveAttribute('data-emoji-version', '13.1');
   });
 });

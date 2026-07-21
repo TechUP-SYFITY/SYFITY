@@ -29,6 +29,15 @@ if (typeof window !== 'undefined' && !window.ResizeObserver) {
   } as unknown as typeof ResizeObserver;
 }
 
+// jsdom은 Pointer Capture와 scrollIntoView를 구현하지 않는다. Radix(DropdownMenu 등)는
+// 열림/포커스 과정에서 이들을 호출하므로, 무동작 스텁으로 폴리필해 테스트에서 에러가 나지 않게 한다.
+if (typeof Element !== 'undefined') {
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.setPointerCapture ??= () => {};
+  Element.prototype.releasePointerCapture ??= () => {};
+  Element.prototype.scrollIntoView ??= () => {};
+}
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'bypass' });
 });

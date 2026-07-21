@@ -82,6 +82,14 @@ function createWrapper(queryClient = createTestQueryClient()) {
   };
 }
 
+// Host의 "추가" 컨트롤은 드롭다운(검색으로 추가 / 내 플레이리스트 불러오기)이므로,
+// 검색 패널을 열려면 트리거를 연 뒤 "검색으로 추가" 항목을 선택해야 한다.
+async function openSearchViaAddMenu() {
+  const [addTrigger] = await screen.findAllByRole('button', { name: '추가' });
+  fireEvent.keyDown(addTrigger as HTMLElement, { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('menuitem', { name: '검색으로 추가' }));
+}
+
 describe('RoomPage', () => {
   beforeEach(() => {
     didSeedSnapshot = false;
@@ -539,8 +547,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'Night Changes' },
     });
@@ -562,8 +569,7 @@ describe('RoomPage', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
-    const [reopenSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(reopenSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
   });
 
@@ -595,9 +601,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    expect(openSearchButton).toBeDefined();
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
 
     expect(await screen.findByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
 
@@ -644,8 +648,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'Night Changes' },
     });
@@ -686,8 +689,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'https://youtu.be/yellow' },
     });

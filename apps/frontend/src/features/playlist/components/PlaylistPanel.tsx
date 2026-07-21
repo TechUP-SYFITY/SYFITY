@@ -1,13 +1,12 @@
 'use client';
 
 // Playlist 데이터 훅과 패널 UI 조합을 담당한다.
-import { Plus } from 'lucide-react';
 import { useEffect } from 'react';
 
-import { Button } from '@/shared/components/ui';
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
 import type { PlaylistItem } from '@/shared/types/domain';
 
+import { PlaylistAddMenu } from './PlaylistAddMenu';
 import { PlaylistEmptyState } from './PlaylistEmptyState';
 import { PlaylistErrorState } from './PlaylistErrorState';
 import { PlaylistItemRow } from './PlaylistItemRow';
@@ -29,6 +28,7 @@ interface PlaylistPanelProps {
   isHost: boolean;
   isReady: boolean;
   onOpenSearch: () => void;
+  onOpenImport?: () => void;
   playlistApiClient?: PlaylistApi;
 }
 
@@ -42,6 +42,7 @@ export function PlaylistPanel({
   isHost,
   isReady,
   onOpenSearch,
+  onOpenImport,
   playlistApiClient,
 }: PlaylistPanelProps) {
   const shouldUseParentPlaylist = Boolean(playlistItems);
@@ -136,6 +137,8 @@ export function PlaylistPanel({
         isBackgroundFetching={isBackgroundFetching}
         itemCount={visiblePlaylist.length}
         onAddClick={handleOpenSearch}
+        showImport={isHost && Boolean(onOpenImport)}
+        onImportClick={onOpenImport}
       />
 
       {mutationErrorMessage ? <PlaylistMutationError message={mutationErrorMessage} /> : null}
@@ -188,14 +191,15 @@ export function PlaylistPanel({
           의해 스크롤 중 클리핑되어 버튼이 스크롤을 따라오지 못하는 것처럼 보인다. 곡 리스트만
           내부에서 스크롤되고 aside 자체 박스는 움직이지 않으므로, absolute로도 항상 패널
           우측 하단에 고정된다. */}
-      <Button
-        className="absolute right-5 bottom-5 z-30 rounded-2xl shadow-lg xl:hidden"
-        type="button"
-        disabled={!isActiveRoomMember}
-        onClick={handleOpenSearch}
-      >
-        <Plus className="size-4" aria-hidden />곡 추가
-      </Button>
+      <div className="absolute right-5 bottom-5 z-30 xl:hidden">
+        <PlaylistAddMenu
+          variant="floating"
+          disabled={!isActiveRoomMember}
+          showImport={isHost && Boolean(onOpenImport)}
+          onAddSearch={handleOpenSearch}
+          onImport={onOpenImport}
+        />
+      </div>
     </aside>
   );
 }

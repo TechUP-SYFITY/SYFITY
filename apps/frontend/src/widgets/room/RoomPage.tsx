@@ -11,6 +11,7 @@ import { PresenceMockPanel } from '@/shared/mocks/PresenceMockPanel';
 import { RoomShell, type RoomMobileTab } from '@/widgets/room/RoomShell';
 
 import { UserMenu } from '@/features/auth/components/UserMenu';
+import { ImportToRoomDialog } from '@/features/personal-playlist/components/ImportToRoomDialog';
 import { PlayerPanel } from '@/features/player/components/PlayerPanel';
 import { usePlayerControls } from '@/features/player/hooks/usePlayerControls';
 import type { PlayerController } from '@/features/player/types/playerTypes';
@@ -55,6 +56,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   };
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [toastFeedback, setToastFeedback] = useState<SearchAddToastFeedback | null>(null);
   const toastIdRef = useRef(0);
   const playerControllerRef = useRef<PlayerController | null>(null);
@@ -253,6 +255,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
             isHost={isHost}
             isReady={hasJoinedRoom}
             onOpenSearch={handleOpenSearch}
+            onOpenImport={() => setIsImportOpen(true)}
           />
         }
         room={room}
@@ -273,6 +276,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
         roomId={roomId}
       />
       <InviteCodeDialog room={room} open={isInviteOpen} onOpenChange={setIsInviteOpen} />
+      <ImportToRoomDialog open={isImportOpen} onOpenChange={setIsImportOpen} roomId={roomId} />
       <SearchPanel
         feedback={
           <SearchAddToast feedback={toastFeedback} onClose={() => setToastFeedback(null)} />

@@ -128,8 +128,8 @@ describe('PlaylistPanel reorder', () => {
       await waitFor(() => {
         expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
           items: [
-            { id: secondItem.id, position: 1 },
-            { id: firstItem.id, position: 2 },
+            { id: secondItem.id, position: 0 },
+            { id: firstItem.id, position: 1 },
           ],
         });
       });
@@ -166,8 +166,8 @@ describe('PlaylistPanel reorder', () => {
     await waitFor(() => {
       expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
         items: [
-          { id: secondItem.id, position: 1 },
-          { id: firstItem.id, position: 2 },
+          { id: secondItem.id, position: 0 },
+          { id: firstItem.id, position: 1 },
         ],
       });
     });

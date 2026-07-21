@@ -7,7 +7,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CreatePlaylistDialog } from './CreatePlaylistDialog';
 import { personalPlaylistApi } from '../api/personalPlaylistApi';
-import type { PersonalPlaylistSummary } from '../types/personalPlaylistTypes';
+import type {
+  CreatePersonalPlaylistResponse,
+  PersonalPlaylistSummary,
+  UpdatePersonalPlaylistResponse,
+} from '../types/personalPlaylistTypes';
 
 vi.mock('../api/personalPlaylistApi', () => ({
   personalPlaylistApi: {
@@ -23,6 +27,18 @@ const existing: PersonalPlaylistSummary = {
   itemCount: 4,
   name: '밤 드라이브',
   totalDuration: 800,
+  updatedAt: '2026-07-20T12:00:00.000Z',
+};
+
+// docs/05 §7.1: 생성/이름 변경 응답은 최소 필드만 반환한다.
+const created: CreatePersonalPlaylistResponse = {
+  createdAt: '2026-07-20T12:00:00.000Z',
+  id: 'pl-1',
+  name: '밤 드라이브',
+};
+const updated: UpdatePersonalPlaylistResponse = {
+  id: 'pl-1',
+  name: '밤 드라이브',
   updatedAt: '2026-07-20T12:00:00.000Z',
 };
 
@@ -70,7 +86,7 @@ describe('CreatePlaylistDialog - 생성 모드', () => {
   });
 
   it('이름을 trim해서 createPlaylist를 호출한다', async () => {
-    vi.mocked(personalPlaylistApi.createPlaylist).mockResolvedValue(existing);
+    vi.mocked(personalPlaylistApi.createPlaylist).mockResolvedValue(created);
     renderDialog();
 
     fireEvent.change(nameInput(), { target: { value: '  새 리스트  ' } });
@@ -85,7 +101,7 @@ describe('CreatePlaylistDialog - 생성 모드', () => {
   });
 
   it('설명을 입력하면 함께 전송한다', async () => {
-    vi.mocked(personalPlaylistApi.createPlaylist).mockResolvedValue(existing);
+    vi.mocked(personalPlaylistApi.createPlaylist).mockResolvedValue(created);
     renderDialog();
 
     fireEvent.change(nameInput(), { target: { value: '새 리스트' } });
@@ -101,7 +117,7 @@ describe('CreatePlaylistDialog - 생성 모드', () => {
   });
 
   it('생성 성공 시 다이얼로그를 닫고 onCreated를 호출한다', async () => {
-    vi.mocked(personalPlaylistApi.createPlaylist).mockResolvedValue(existing);
+    vi.mocked(personalPlaylistApi.createPlaylist).mockResolvedValue(created);
     const onOpenChange = vi.fn();
     const onCreated = vi.fn();
     renderDialog({ onOpenChange, onCreated });
@@ -110,7 +126,7 @@ describe('CreatePlaylistDialog - 생성 모드', () => {
     fireEvent.click(submitButton());
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(onCreated).toHaveBeenCalledWith(existing);
+    expect(onCreated).toHaveBeenCalledWith(created);
   });
 
   it('생성 실패 시 에러 문구를 보여주고 닫지 않는다', async () => {
@@ -137,7 +153,7 @@ describe('CreatePlaylistDialog - 수정 모드', () => {
   });
 
   it('createPlaylist가 아니라 updatePlaylist를 호출한다', async () => {
-    vi.mocked(personalPlaylistApi.updatePlaylist).mockResolvedValue(existing);
+    vi.mocked(personalPlaylistApi.updatePlaylist).mockResolvedValue(updated);
     renderDialog({ playlist: existing });
 
     fireEvent.change(nameInput(), { target: { value: '새벽 드라이브' } });

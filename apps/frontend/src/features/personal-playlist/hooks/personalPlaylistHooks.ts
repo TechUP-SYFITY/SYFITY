@@ -73,8 +73,11 @@ export const useAddPlaylistItem = (id: string, api: PersonalPlaylistApi = person
 
   return useMutation({
     mutationFn: (body: AddPersonalPlaylistItemRequest) => api.addItem(id, body),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.detail(id) }),
+    // 곡 수가 바뀌므로 라이브러리 카드 요약(itemCount·totalDuration)을 쓰는 목록 쿼리도 무효화한다.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.detail(id) });
+      return queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.list() });
+    },
   });
 };
 
@@ -94,9 +97,11 @@ export const useDeletePlaylistItem = (
       );
       if (previous) {
         queryClient.setQueryData<PersonalPlaylistDetail>(personalPlaylistQueryKeys.detail(id), {
-          ...previous,
+          playlist: {
+            ...previous.playlist,
+            itemCount: Math.max(0, previous.playlist.itemCount - 1),
+          },
           items: previous.items.filter((item) => item.id !== itemId),
-          itemCount: Math.max(0, previous.itemCount - 1),
         });
       }
 
@@ -107,8 +112,10 @@ export const useDeletePlaylistItem = (
         queryClient.setQueryData(personalPlaylistQueryKeys.detail(id), context.previous);
       }
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.detail(id) }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.detail(id) });
+      return queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.list() });
+    },
   });
 };
 

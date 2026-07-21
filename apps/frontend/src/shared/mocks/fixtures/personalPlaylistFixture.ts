@@ -40,10 +40,10 @@ export const personalPlaylistSeeds: PersonalPlaylistSeed[] = [
     coverUrl: null,
     updatedAt: '2026-07-20T12:00:00.000Z',
     items: [
-      item('ppi-1', 'syFZfO_wfMQ', 'Night Changes', 'One Direction', 226, 1),
-      item('ppi-2', 'FTQbiNvZqaY', 'Instant Crush', 'Daft Punk', 337, 2),
-      item('ppi-3', 'MwpMEbgC7DA', 'Nightcall', 'Kavinsky', 258, 3),
-      item('ppi-4', 'unavailable1', 'Unavailable Track', 'Unknown', 0, 4, 'unavailable'),
+      item('ppi-1', 'syFZfO_wfMQ', 'Night Changes', 'One Direction', 226, 0),
+      item('ppi-2', 'FTQbiNvZqaY', 'Instant Crush', 'Daft Punk', 337, 1),
+      item('ppi-3', 'MwpMEbgC7DA', 'Nightcall', 'Kavinsky', 258, 2),
+      item('ppi-4', 'unavailable1', 'Unavailable Track', 'Unknown', 0, 3, 'unavailable'),
     ],
   },
   {
@@ -53,8 +53,8 @@ export const personalPlaylistSeeds: PersonalPlaylistSeed[] = [
     coverUrl: null,
     updatedAt: '2026-07-19T09:30:00.000Z',
     items: [
-      item('ppi-5', '5qap5aO4i9A', 'lofi hip hop radio', 'Lofi Girl', 300, 1),
-      item('ppi-6', 'DWcJFNfaw9c', 'Chillhop Essentials', 'Chillhop', 280, 2),
+      item('ppi-5', '5qap5aO4i9A', 'lofi hip hop radio', 'Lofi Girl', 300, 0),
+      item('ppi-6', 'DWcJFNfaw9c', 'Chillhop Essentials', 'Chillhop', 280, 1),
     ],
   },
   {

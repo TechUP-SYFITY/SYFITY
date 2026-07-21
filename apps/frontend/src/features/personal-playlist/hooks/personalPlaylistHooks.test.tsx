@@ -14,7 +14,10 @@ import {
   useReorderPlaylist,
 } from './personalPlaylistHooks';
 import type { PersonalPlaylistApi } from '../api/personalPlaylistApi';
-import type { PersonalPlaylistDetail } from '../types/personalPlaylistTypes';
+import type {
+  PersonalPlaylistDetail,
+  ReorderPersonalPlaylistResponse,
+} from '../types/personalPlaylistTypes';
 
 const playlistId = 'pl-1';
 
@@ -34,14 +37,16 @@ const firstItem = item('item-1', 1);
 const secondItem = item('item-2', 2);
 
 const detail: PersonalPlaylistDetail = {
-  coverUrl: null,
-  description: null,
-  id: playlistId,
-  itemCount: 2,
+  playlist: {
+    coverUrl: null,
+    description: null,
+    id: playlistId,
+    itemCount: 2,
+    name: '밤 드라이브',
+    totalDuration: 400,
+    updatedAt: '2026-07-20T12:00:00.000Z',
+  },
   items: [firstItem, secondItem],
-  name: '밤 드라이브',
-  totalDuration: 400,
-  updatedAt: '2026-07-20T12:00:00.000Z',
 };
 
 function createApi(override: Partial<PersonalPlaylistApi> = {}): PersonalPlaylistApi {
@@ -92,7 +97,7 @@ describe('useDeletePlaylistItem', () => {
     await waitFor(() => {
       expect(readDetail(queryClient)?.items.map((entry) => entry.id)).toEqual([secondItem.id]);
     });
-    expect(readDetail(queryClient)?.itemCount).toBe(1);
+    expect(readDetail(queryClient)?.playlist.itemCount).toBe(1);
   });
 
   it('삭제가 실패하면 이전 목록으로 되돌린다', async () => {
@@ -111,14 +116,13 @@ describe('useDeletePlaylistItem', () => {
         secondItem.id,
       ]);
     });
-    expect(readDetail(queryClient)?.itemCount).toBe(2);
+    expect(readDetail(queryClient)?.playlist.itemCount).toBe(2);
   });
 
   it('itemCount가 0 아래로 내려가지 않는다', async () => {
     const queryClient = createQueryClient();
     queryClient.setQueryData(personalPlaylistQueryKeys.detail(playlistId), {
-      ...detail,
-      itemCount: 0,
+      playlist: { ...detail.playlist, itemCount: 0 },
       items: [firstItem],
     });
     const api = createApi({ deleteItem: vi.fn(() => new Promise<void>(() => undefined)) });
@@ -129,7 +133,7 @@ describe('useDeletePlaylistItem', () => {
     result.current.mutate(firstItem.id);
 
     await waitFor(() => {
-      expect(readDetail(queryClient)?.itemCount).toBe(0);
+      expect(readDetail(queryClient)?.playlist.itemCount).toBe(0);
     });
   });
 });
@@ -138,7 +142,9 @@ describe('useReorderPlaylist', () => {
   it('요청 전에 전달된 position 순서로 목록을 재정렬한다', async () => {
     const queryClient = createQueryClient();
     seedDetail(queryClient);
-    const api = createApi({ reorder: vi.fn(() => new Promise<void>(() => undefined)) });
+    const api = createApi({
+      reorder: vi.fn(() => new Promise<ReorderPersonalPlaylistResponse>(() => undefined)),
+    });
     const { result } = renderHook(() => useReorderPlaylist(playlistId, api), {
       wrapper: wrapperFor(queryClient),
     });
@@ -187,7 +193,9 @@ describe('useReorderPlaylist', () => {
   it('payload에 없는 항목은 기존 position을 유지한다', async () => {
     const queryClient = createQueryClient();
     seedDetail(queryClient);
-    const api = createApi({ reorder: vi.fn(() => new Promise<void>(() => undefined)) });
+    const api = createApi({
+      reorder: vi.fn(() => new Promise<ReorderPersonalPlaylistResponse>(() => undefined)),
+    });
     const { result } = renderHook(() => useReorderPlaylist(playlistId, api), {
       wrapper: wrapperFor(queryClient),
     });
@@ -208,7 +216,11 @@ describe('useCreatePlaylist / useImportPlaylistToRoom', () => {
     const queryClient = createQueryClient();
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
     const api = createApi({
-      createPlaylist: vi.fn().mockResolvedValue({ ...detail, id: 'pl-new' }),
+      createPlaylist: vi.fn().mockResolvedValue({
+        id: 'pl-new',
+        name: '새 리스트',
+        createdAt: '2026-07-21T00:00:00.000Z',
+      }),
     });
     const { result } = renderHook(() => useCreatePlaylist(api), {
       wrapper: wrapperFor(queryClient),

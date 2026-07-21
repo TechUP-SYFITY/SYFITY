@@ -35,8 +35,9 @@ const toSummary = (seed: PersonalPlaylistSeed) => ({
   updatedAt: seed.updatedAt,
 });
 
+// docs/05 §7.1: 상세는 요약(playlist)과 곡 목록(items)을 분리한 중첩 구조로 응답한다.
 const toDetail = (seed: PersonalPlaylistSeed) => ({
-  ...toSummary(seed),
+  playlist: toSummary(seed),
   items: [...seed.items].sort((a, b) => a.position - b.position),
 });
 
@@ -54,16 +55,21 @@ export const personalPlaylistHandlers = [
       description?: string;
       coverUrl?: string;
     };
+    const now = new Date().toISOString();
     const seed: PersonalPlaylistSeed = {
       id: nextId('pl'),
       name: body.name,
       description: body.description ?? null,
       coverUrl: body.coverUrl ?? null,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
       items: [],
     };
     playlists = [seed, ...playlists];
-    return HttpResponse.json({ success: true, data: toSummary(seed) }, { status: 201 });
+    // docs/05 §7.1: 생성 응답은 { id, name, createdAt } 최소 필드만 반환한다.
+    return HttpResponse.json(
+      { success: true, data: { id: seed.id, name: seed.name, createdAt: now } },
+      { status: 201 },
+    );
   }),
 
   http.get(`${API}/personal-playlists/:id`, ({ params }) => {
@@ -83,7 +89,11 @@ export const personalPlaylistHandlers = [
     if (body.description !== undefined) seed.description = body.description;
     if (body.coverUrl !== undefined) seed.coverUrl = body.coverUrl;
     seed.updatedAt = new Date().toISOString();
-    return HttpResponse.json({ success: true, data: toSummary(seed) });
+    // docs/05 §7.1: 이름 변경 응답은 { id, name, updatedAt } 최소 필드만 반환한다.
+    return HttpResponse.json({
+      success: true,
+      data: { id: seed.id, name: seed.name, updatedAt: seed.updatedAt },
+    });
   }),
 
   http.delete(`${API}/personal-playlists/:id`, ({ params }) => {
@@ -105,7 +115,7 @@ export const personalPlaylistHandlers = [
       title: body.youtubeUrl ?? `Mock Track ${seed.items.length + 1}`,
       channelTitle: 'Mock Channel',
       duration: 200,
-      position: seed.items.length + 1,
+      position: seed.items.length,
       status: 'available',
       addedBy: 'mock-user',
       thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,

@@ -149,7 +149,7 @@ export function PersonalPlaylistDetail({ playlistId }: PersonalPlaylistDetailPro
           <span className="text-xs font-semibold tracking-wider text-primary uppercase">
             플레이리스트
           </span>
-          <h1 className="truncate text-2xl font-bold text-white">{data.name}</h1>
+          <h1 className="truncate text-2xl font-bold text-white">{data.playlist.name}</h1>
           <span className="text-xs text-white/55">
             {items.length}곡{totalDuration > 0 ? ` · ${formatPlaylistLength(totalDuration)}` : ''}
           </span>
@@ -229,7 +229,11 @@ export function PersonalPlaylistDetail({ playlistId }: PersonalPlaylistDetailPro
         </div>
       )}
 
-      <CreatePlaylistDialog open={isEditOpen} onOpenChange={setIsEditOpen} playlist={data} />
+      <CreatePlaylistDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        playlist={data.playlist}
+      />
 
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent className="max-w-105">
@@ -244,7 +248,8 @@ export function PersonalPlaylistDetail({ playlistId }: PersonalPlaylistDetailPro
           </DialogHeader>
           <DialogBody>
             <DialogDescription>
-              &lsquo;{data.name}&rsquo; 플레이리스트를 삭제할까요? 이 작업은 되돌릴 수 없어요.
+              &lsquo;{data.playlist.name}&rsquo; 플레이리스트를 삭제할까요? 이 작업은 되돌릴 수
+              없어요.
             </DialogDescription>
           </DialogBody>
           <DialogFooter>
@@ -277,7 +282,7 @@ export function PersonalPlaylistDetail({ playlistId }: PersonalPlaylistDetailPro
         }
         isAddPending={addItem.isPending}
         isOpen={isSearchOpen}
-        roomName={data.name}
+        roomName={data.playlist.name}
         onAddResult={(result: YoutubeSearchResult) => addPlaylistItem({ videoId: result.videoId })}
         onAddUrl={(youtubeUrl: string) => addPlaylistItem({ youtubeUrl })}
         onClose={handleCloseSearch}

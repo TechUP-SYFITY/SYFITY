@@ -5,29 +5,31 @@ import type { PlaylistItem } from '@/shared/types/domain';
 import type {
   AddPersonalPlaylistItemRequest,
   CreatePersonalPlaylistRequest,
+  CreatePersonalPlaylistResponse,
   ImportPlaylistToRoomRequest,
   ImportPlaylistToRoomResult,
   PersonalPlaylistDetail,
   PersonalPlaylistListResponse,
-  PersonalPlaylistSummary,
   ReorderPersonalPlaylistRequest,
+  ReorderPersonalPlaylistResponse,
   UpdatePersonalPlaylistRequest,
+  UpdatePersonalPlaylistResponse,
 } from '../types/personalPlaylistTypes';
 
 export const personalPlaylistApi = {
   getPlaylists: () => apiClient.get<PersonalPlaylistListResponse>('/personal-playlists'),
   getPlaylist: (id: string) => apiClient.get<PersonalPlaylistDetail>(`/personal-playlists/${id}`),
   createPlaylist: (body: CreatePersonalPlaylistRequest) =>
-    apiClient.post<PersonalPlaylistSummary>('/personal-playlists', body),
+    apiClient.post<CreatePersonalPlaylistResponse>('/personal-playlists', body),
   updatePlaylist: (id: string, body: UpdatePersonalPlaylistRequest) =>
-    apiClient.patch<PersonalPlaylistSummary>(`/personal-playlists/${id}`, body),
+    apiClient.patch<UpdatePersonalPlaylistResponse>(`/personal-playlists/${id}`, body),
   deletePlaylist: (id: string) => apiClient.delete<void>(`/personal-playlists/${id}`),
   addItem: (id: string, body: AddPersonalPlaylistItemRequest) =>
     apiClient.post<PlaylistItem>(`/personal-playlists/${id}/items`, body),
   deleteItem: (id: string, itemId: string) =>
     apiClient.delete<void>(`/personal-playlists/${id}/items/${itemId}`),
   reorder: (id: string, body: ReorderPersonalPlaylistRequest) =>
-    apiClient.patch<void>(`/personal-playlists/${id}/items`, body),
+    apiClient.patch<ReorderPersonalPlaylistResponse>(`/personal-playlists/${id}/items`, body),
   importToRoom: (roomId: string, body: ImportPlaylistToRoomRequest) =>
     apiClient.post<ImportPlaylistToRoomResult>(`/rooms/${roomId}/playlist-imports`, body),
 };

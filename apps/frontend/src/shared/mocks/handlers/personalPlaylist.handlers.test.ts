@@ -66,14 +66,16 @@ describe('personal playlist MSW handlers', () => {
     });
   });
 
-  it('생성은 201과 함께 빈 플레이리스트 요약을 반환한다', async () => {
+  it('생성은 201과 함께 docs/05 §7.1의 { id, name, createdAt } 최소 필드를 반환한다', async () => {
     const { data, status } = await createPlaylist('새 리스트');
 
     expect(status).toBe(201);
-    expect(data).toMatchObject({
-      success: true,
-      data: { name: '새 리스트', itemCount: 0, totalDuration: 0 },
-    });
+    const created = data?.success ? data.data : undefined;
+    expect(created).toMatchObject({ name: '새 리스트' });
+    expect(created).toHaveProperty('id');
+    expect(created).toHaveProperty('createdAt');
+    // 요약 필드(itemCount·totalDuration)는 계약상 포함하지 않는다.
+    expect(created).not.toHaveProperty('itemCount');
   });
 
   it('곡 추가 후 상세에 반영되고, 삭제하면 다시 빠진다', async () => {

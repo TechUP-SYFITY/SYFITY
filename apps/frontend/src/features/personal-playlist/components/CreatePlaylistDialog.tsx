@@ -27,7 +27,7 @@ interface CreatePlaylistDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   playlist?: PersonalPlaylistSummary; // 있으면 수정 모드
-  onCreated?: (playlist: PersonalPlaylistSummary) => void;
+  onCreated?: (playlist: { id: string; name: string }) => void;
 }
 
 export function CreatePlaylistDialog({

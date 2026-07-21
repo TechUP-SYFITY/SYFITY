@@ -3,6 +3,7 @@
 // PC Room 레이아웃의 멤버 사이드바를 표시한다.
 import { Badge } from '@/shared/components/ui';
 
+import { KickedMembersButton } from './KickedMembersButton';
 import { MemberList } from './MemberList';
 import { usePresenceStore } from '../store/presenceStore';
 import type { PresenceMember } from '../types/presence';
@@ -20,9 +21,12 @@ export function MemberSidebar({ members }: MemberSidebarProps) {
     <aside className="flex min-h-0 flex-1 flex-col border-r border-border bg-background">
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
         <span className="text-xs font-bold tracking-widest text-white/40 uppercase">멤버</span>
-        <Badge aria-live="polite" variant="primary">
-          {onlineCount}명
-        </Badge>
+        <div className="flex items-center gap-2">
+          <KickedMembersButton />
+          <Badge aria-live="polite" variant="primary">
+            {onlineCount}명
+          </Badge>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <MemberList members={members} compact />

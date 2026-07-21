@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { type ComponentType, useState } from 'react';
+import { type ComponentProps, type ComponentType, useState } from 'react';
 import { expect, within } from 'storybook/test';
 
 import { ToastProvider } from '@/shared/components/ui';
@@ -26,6 +26,16 @@ const members: PresenceMember[] = [
   })),
 ];
 
+type MemberSidebarStoryProps = ComponentProps<typeof MemberSidebar> & { isHost: boolean };
+
+function MemberSidebarStory({ isHost, ...props }: MemberSidebarStoryProps) {
+  return (
+    <MemberManagementProvider currentUserId="online-1" isHost={isHost} roomId="preview-room">
+      <MemberSidebar {...props} />
+    </MemberManagementProvider>
+  );
+}
+
 function MemberManagementStoryDecorator(Story: ComponentType) {
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -34,9 +44,7 @@ function MemberManagementStoryDecorator(Story: ComponentType) {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <MemberManagementProvider currentUserId="online-1" isHost={false} roomId="preview-room">
-          <Story />
-        </MemberManagementProvider>
+        <Story />
       </ToastProvider>
     </QueryClientProvider>
   );
@@ -44,8 +52,8 @@ function MemberManagementStoryDecorator(Story: ComponentType) {
 
 const meta = {
   title: 'Features/Presence/MemberSidebar',
-  component: MemberSidebar,
-  args: { members },
+  component: MemberSidebarStory,
+  args: { isHost: false, members },
   decorators: [
     MemberManagementStoryDecorator,
     (Story) => (
@@ -54,7 +62,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof MemberSidebar>;
+} satisfies Meta<typeof MemberSidebarStory>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -69,5 +77,14 @@ export const AllOffline: Story = {
   args: { members: members.map((member) => ({ ...member, status: 'offline' as const })) },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).findByText('0명')).resolves.toBeInTheDocument();
+  },
+};
+
+export const HostManagement: Story = {
+  args: { isHost: true },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).findByRole('button', { name: '추방 관리' }),
+    ).resolves.toBeEnabled();
   },
 };

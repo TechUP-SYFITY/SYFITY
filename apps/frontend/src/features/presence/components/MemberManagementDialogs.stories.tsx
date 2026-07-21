@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { type ComponentType, useState } from 'react';
 import { expect, fn, within } from 'storybook/test';
 
@@ -82,6 +83,48 @@ export const KickedList: Story = {
     await expect(
       screen.findByRole('button', { name: '추방 멤버 추방 해제' }),
     ).resolves.toBeEnabled();
+  },
+};
+
+export const EmptyKickedList: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/api/v1/rooms/:roomId/members', () =>
+          HttpResponse.json({ success: true, data: { members: [] } }),
+        ),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement.ownerDocument.body);
+
+    await expect(screen.findByText('추방된 멤버가 없어요.')).resolves.toBeInTheDocument();
+  },
+};
+
+export const KickedListError: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/api/v1/rooms/:roomId/members', () =>
+          HttpResponse.json(
+            {
+              success: false,
+              error: { code: 'SERVER_INTERNAL_ERROR', message: '목록 조회 실패' },
+            },
+            { status: 500 },
+          ),
+        ),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement.ownerDocument.body);
+
+    await expect(screen.findByRole('alert')).resolves.toHaveTextContent(
+      '추방 목록을 불러오지 못했어요.',
+    );
   },
 };
 

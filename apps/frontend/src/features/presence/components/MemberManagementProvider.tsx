@@ -42,10 +42,17 @@ export function MemberManagementProvider({
   const [unkickTarget, setUnkickTarget] = useState<KickedRoomMember | null>(null);
   const [isUnkickOpen, setIsUnkickOpen] = useState(false);
 
-  const openKickDialog = useCallback((member: RoomMemberSummary) => {
-    setKickTarget(member);
-    setIsKickOpen(true);
-  }, []);
+  const openKickDialog = useCallback(
+    (member: RoomMemberSummary) => {
+      if (!isHost || member.role === 'host' || member.userId === currentUserId) {
+        return;
+      }
+
+      setKickTarget(member);
+      setIsKickOpen(true);
+    },
+    [currentUserId, isHost],
+  );
 
   const handleKickOpenChange = useCallback((open: boolean) => {
     setIsKickOpen(open);
@@ -55,8 +62,12 @@ export function MemberManagementProvider({
   }, []);
 
   const openKickedMembersDialog = useCallback(() => {
+    if (!isHost) {
+      return;
+    }
+
     setIsKickedMembersOpen(true);
-  }, []);
+  }, [isHost]);
 
   const openUnkickDialog = useCallback((member: KickedRoomMember) => {
     setIsKickedMembersOpen(false);
@@ -68,6 +79,7 @@ export function MemberManagementProvider({
     setIsUnkickOpen(open);
     if (!open) {
       setUnkickTarget(null);
+      setIsKickedMembersOpen(true);
     }
   }, []);
 

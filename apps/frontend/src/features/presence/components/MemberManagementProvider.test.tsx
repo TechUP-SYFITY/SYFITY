@@ -121,4 +121,45 @@ describe('MemberManagementProvider', () => {
     expect(dialogs[0]).toHaveTextContent('수빈님의 추방을 해제할까요?');
     expect(screen.queryByRole('heading', { name: '추방 관리' })).not.toBeInTheDocument();
   });
+
+  it('추방 해제를 취소하면 추방 목록 Dialog로 돌아간다', async () => {
+    renderProvider(true);
+
+    fireEvent.click(screen.getByRole('button', { name: '추방 목록 열기' }));
+    fireEvent.click(await screen.findByRole('button', { name: '수빈 추방 해제' }));
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    const dialogs = await screen.findAllByRole('dialog');
+    expect(dialogs).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: '추방 관리' })).toBeInTheDocument();
+    expect(screen.queryByText('수빈님의 추방을 해제할까요?')).not.toBeInTheDocument();
+  });
+
+  it('추방 해제에 성공하면 갱신된 추방 목록 Dialog로 돌아간다', async () => {
+    vi.mocked(roomMemberApi.updateMember).mockResolvedValue({
+      memberId: kickedMember.id,
+      status: 'left',
+    });
+    renderProvider(true);
+
+    fireEvent.click(screen.getByRole('button', { name: '추방 목록 열기' }));
+    fireEvent.click(await screen.findByRole('button', { name: '수빈 추방 해제' }));
+    fireEvent.click(screen.getByRole('button', { name: '해제하기' }));
+
+    expect(await screen.findByRole('heading', { name: '추방 관리' })).toBeInTheDocument();
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(await screen.findByText('수빈님의 추방을 해제했어요.')).toBeInTheDocument();
+    await waitFor(() => expect(roomMemberApi.getKickedMembers).toHaveBeenCalledTimes(2));
+  });
+
+  it('비Host가 Context 액션을 직접 호출해도 관리 Dialog를 열지 않는다', () => {
+    renderProvider(false);
+    const openKickButton = screen.getByRole('button', { name: '추방 확인 열기' });
+    const openListButton = screen.getByRole('button', { name: '추방 목록 열기' });
+
+    fireEvent.click(openKickButton);
+    fireEvent.click(openListButton);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

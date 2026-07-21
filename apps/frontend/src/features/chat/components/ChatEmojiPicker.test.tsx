@@ -58,6 +58,7 @@ vi.mock('emoji-picker-react', () => ({
 describe('ChatEmojiPicker', () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it('선택한 Unicode 이모지를 상위 컴포넌트에 전달한다', async () => {
@@ -70,19 +71,54 @@ describe('ChatEmojiPicker', () => {
     expect(onEmojiSelect).toHaveBeenCalledWith('😀');
   });
 
-  it('입력 폼 안에서 우측 정렬되고 반응형 크기를 사용한다', async () => {
-    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+  it('모바일 화면에서 body 포털로 안전 배치한다', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      if (this.tagName === 'FORM') {
+        return {
+          bottom: 711,
+          height: 46,
+          left: 67,
+          right: 390,
+          top: 665,
+          width: 323,
+          x: 67,
+          y: 665,
+          toJSON: () => ({}),
+        };
+      }
+
+      return {
+        bottom: 0,
+        height: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+        width: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      };
+    });
+
+    render(
+      <form>
+        <ChatEmojiPicker onEmojiSelect={vi.fn()} />
+      </form>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
     const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
 
-    expect(picker.parentElement).toHaveClass(
-      'absolute',
-      'right-0',
-      'w-full',
-      'max-w-[350px]',
-      'h-[min(300px,calc(100dvh-12rem))]',
-    );
+    expect(picker.parentElement).toHaveStyle({
+      position: 'fixed',
+      left: '59px',
+      top: '357px',
+      width: '323px',
+      height: '300px',
+    });
+    expect(picker.parentElement?.parentElement).toBe(document.body);
     expect(picker).toHaveAttribute('data-width', '100%');
     expect(picker).toHaveAttribute('data-height', '100%');
   });

@@ -107,6 +107,34 @@ describe('RoomPage', () => {
     expect(screen.queryByTestId('presence-mock-panel')).toBeNull();
   });
 
+  it('추방된 사용자가 Room URL로 재입장하면 전용 차단 문구를 표시한다', async () => {
+    server.use(
+      http.post('*/api/v1/room-memberships', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'ROOM_MEMBER_KICKED',
+              message: 'Host에 의해 추방된 사용자입니다.',
+            },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText('Room에 입장하지 못했어요')).toBeInTheDocument();
+    expect(screen.getByText('Host가 다시 허용하기 전에는 입장할 수 없어요.')).toBeInTheDocument();
+    expect(screen.queryByTestId('presence-mock-panel')).not.toBeInTheDocument();
+  });
+
   it('mocking 활성 시 Room에 정상 입장하고 현재 사용자명을 표시한다', async () => {
     const Wrapper = createWrapper();
 

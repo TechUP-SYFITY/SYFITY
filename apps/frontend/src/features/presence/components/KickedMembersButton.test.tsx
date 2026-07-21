@@ -48,8 +48,10 @@ describe('KickedMembersButton', () => {
 
   it('Host가 버튼을 눌러 추방 관리 Dialog를 연다', async () => {
     renderButton(true);
+    const button = screen.getByRole('button', { name: '추방 관리' });
 
-    fireEvent.click(screen.getByRole('button', { name: '추방 관리' }));
+    expect(button).toHaveClass('size-11');
+    fireEvent.click(button);
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('추방 관리');
   });

@@ -118,6 +118,7 @@ export function KickedMembersDialog({
                   </div>
                   <Button
                     aria-label={`${member.nickname} 추방 해제`}
+                    className="min-h-11 min-w-11"
                     size="sm"
                     variant="primary-soft"
                     onClick={() => onRequestUnkick(member)}

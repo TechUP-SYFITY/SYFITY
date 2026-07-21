@@ -85,7 +85,9 @@ describe('KickedMembersDialog', () => {
     }).format(new Date(member.kickedAt));
 
     expect(await screen.findByText(kickedAt)).toHaveAttribute('datetime', member.kickedAt);
-    fireEvent.click(await screen.findByRole('button', { name: '지민 추방 해제' }));
+    const unkickButton = screen.getByRole('button', { name: '지민 추방 해제' });
+    expect(unkickButton).toHaveClass('min-h-11', 'min-w-11');
+    fireEvent.click(unkickButton);
 
     expect(onRequestUnkick).toHaveBeenCalledWith(member);
   });

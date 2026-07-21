@@ -16,7 +16,7 @@ export function KickedMembersButton() {
   return (
     <Button
       aria-label="추방 관리"
-      className="size-8 rounded-full"
+      className="size-11 shrink-0 rounded-full"
       size="icon"
       title="추방 관리"
       variant="ghost"

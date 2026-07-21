@@ -585,7 +585,7 @@ describe('RoomService', () => {
     });
   });
 
-  it('Host 자신 추방과 이미 추방된 멤버의 재추방을 거부한다', async () => {
+  it('Host 자신 추방을 ROOM_CANNOT_KICK_HOST로 거부한다', async () => {
     const host = { ...member, status: 'online' } satisfies RoomMemberLookupRecord;
     const { service, roomRepo } = makeService({
       roomRepo: { findMemberById: vi.fn().mockResolvedValue(host) },
@@ -596,6 +596,55 @@ describe('RoomService', () => {
       code: ERROR_CODES.ROOM_CANNOT_KICK_HOST,
     });
     expect(roomRepo.updateMemberStatusByMemberId).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['closed', ERROR_CODES.ROOM_CLOSED],
+    ['inactive', ERROR_CODES.ROOM_INACTIVE],
+  ] as const)('closed/inactive Room에서는 멤버 추방을 %s로 거부한다', async (status, code) => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findRoomById: vi.fn().mockResolvedValue({ ...roomDetail, status }) },
+    });
+
+    await expect(service.kickMember('room-1', 'user-1', 'member-2')).rejects.toMatchObject({
+      status: 403,
+      code,
+    });
+    expect(roomRepo.findMemberById).not.toHaveBeenCalled();
+  });
+
+  it('존재하지 않는 멤버 추방을 ROOM_MEMBER_NOT_FOUND로 거부한다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findMemberById: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.kickMember('room-1', 'user-1', 'missing-member')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_MEMBER_NOT_FOUND,
+    });
+    expect(roomRepo.updateMemberStatusByMemberId).not.toHaveBeenCalled();
+  });
+
+  it('이미 추방된 멤버 재추방을 ROOM_MEMBER_NOT_FOUND로 거부한다', async () => {
+    const kickedTarget: RoomMemberLookupRecord = {
+      id: 'member-2',
+      userId: 'user-2',
+      nickname: 'Bob',
+      profileImage: null,
+      role: 'member',
+      status: 'kicked',
+    };
+    const { service } = makeService({
+      roomRepo: {
+        findMemberById: vi.fn().mockResolvedValue(kickedTarget),
+        updateMemberStatusByMemberId: vi.fn().mockResolvedValue(false),
+      },
+    });
+
+    await expect(service.kickMember('room-1', 'user-1', 'member-2')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_MEMBER_NOT_FOUND,
+    });
   });
 
   it('추방 해제는 kicked 상태만 left로 전환하고 Socket 이벤트를 내보내지 않는다', async () => {
@@ -644,6 +693,33 @@ describe('RoomService', () => {
       status: 409,
       code: ERROR_CODES.ROOM_MEMBER_NOT_KICKED,
     });
+  });
+
+  it.each([
+    ['closed', ERROR_CODES.ROOM_CLOSED],
+    ['inactive', ERROR_CODES.ROOM_INACTIVE],
+  ] as const)('closed/inactive Room에서는 추방 해제를 %s로 거부한다', async (status, code) => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findRoomById: vi.fn().mockResolvedValue({ ...roomDetail, status }) },
+    });
+
+    await expect(service.unkickMember('room-1', 'user-1', 'member-2')).rejects.toMatchObject({
+      status: 403,
+      code,
+    });
+    expect(roomRepo.findMemberById).not.toHaveBeenCalled();
+  });
+
+  it('존재하지 않는 멤버 추방 해제를 ROOM_MEMBER_NOT_FOUND로 거부한다', async () => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findMemberById: vi.fn().mockResolvedValue(null) },
+    });
+
+    await expect(service.unkickMember('room-1', 'user-1', 'missing-member')).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.ROOM_MEMBER_NOT_FOUND,
+    });
+    expect(roomRepo.updateMemberStatusByMemberId).not.toHaveBeenCalled();
   });
 
   it('online 전환 시 Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {

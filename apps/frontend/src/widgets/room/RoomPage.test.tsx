@@ -329,6 +329,13 @@ describe('RoomPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
 
     await waitFor(() => expect(updateRoom).toHaveBeenCalledWith({ status: 'closed' }));
+    await act(async () => Promise.resolve());
+
+    const confirmButton = screen.getByRole('button', { name: 'Room 종료 확인' });
+    expect(confirmButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    fireEvent.click(confirmButton);
+    expect(updateRoom).toHaveBeenCalledTimes(1);
     expect(routerReplace).not.toHaveBeenCalledWith('/home');
   });
 
@@ -359,6 +366,15 @@ describe('RoomPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Room 종료 요청에 실패했어요.');
+    expect(screen.getByRole('button', { name: 'Room 종료 확인' })).toBeEnabled();
+    const cancelButton = screen.getByRole('button', { name: '취소' });
+    expect(cancelButton).toBeEnabled();
+
+    fireEvent.click(cancelButton);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Room 종료' }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     expect(routerReplace).not.toHaveBeenCalledWith('/home');
   });
 

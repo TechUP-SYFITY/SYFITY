@@ -102,6 +102,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     roomId,
   });
   const roomExitError = closeRoom.isError ? getApiErrorMessage(closeRoom.error) : undefined;
+  const isRoomClosing = closeRoom.isPending || closeRoom.isSuccess;
 
   if (joinRoom.isPending) {
     return <RoomLoadingState />;
@@ -234,7 +235,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
           <RoomExitAction
             disabled={!room}
             errorMessage={roomExitError}
-            isPending={closeRoom.isPending}
+            isPending={isRoomClosing}
             role={isHost ? 'host' : 'member'}
             onConfirm={handleRoomExit}
             onOpenChange={(open) => {

@@ -257,7 +257,11 @@ describe('RoomController', () => {
         name: 'Evening Jazz',
         status: 'closed',
       } as never),
-    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+      message: 'name 또는 status: closed/active 중 하나가 필요합니다.',
+    });
     expect(roomService.updateRoom).not.toHaveBeenCalled();
   });
 

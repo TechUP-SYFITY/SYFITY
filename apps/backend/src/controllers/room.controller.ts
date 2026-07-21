@@ -166,7 +166,7 @@ export class RoomController {
       throw new AppError(
         400,
         ERROR_CODES.VALIDATION_ERROR,
-        'name 또는 status: closed 중 하나가 필요합니다.',
+        'name 또는 status: closed/active 중 하나가 필요합니다.',
       );
     }
 

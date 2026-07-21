@@ -11,6 +11,10 @@ const API_ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
   ROOM_ACCESS_DENIED: '이 Room에 참여한 이력이 없어요. 초대 링크로 다시 입장해주세요.',
   ROOM_CLOSED: '이미 종료된 Room입니다.',
   ROOM_INACTIVE: '현재 이용할 수 없는 Room입니다.',
+  ROOM_CANNOT_KICK_HOST: 'Host는 추방할 수 없어요.',
+  ROOM_MEMBER_KICKED: 'Host가 다시 허용하기 전에는 입장할 수 없어요.',
+  ROOM_MEMBER_NOT_FOUND: '참여자를 찾을 수 없어요.',
+  ROOM_MEMBER_NOT_KICKED: '이미 추방이 해제된 멤버예요.',
   ROOM_NOT_FOUND: '존재하지 않거나 입장할 수 없는 Room입니다.',
 };
 

@@ -27,7 +27,13 @@ export interface PlaybackState {
   playlistItemId: string | null;
   currentTime: number;
   isPlaying: boolean;
+  playbackVersion: number;
   updatedAt?: string;
+}
+
+export interface PlaybackPolicy {
+  repeatMode: 'off' | 'all' | 'one';
+  shuffleEnabled: boolean;
 }
 
 export interface PlaylistItem {

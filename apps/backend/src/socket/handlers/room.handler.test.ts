@@ -23,7 +23,7 @@ type RoomHandlerService = Pick<
   RoomService,
   'setMemberOnline' | 'getRoomSnapshot' | 'leaveRoom' | 'createSystemMessage'
 >;
-type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
+type RoomHandlerPlaybackService = Pick<PlaybackService, 'getSnapshotForSocket'>;
 type RoomHandlerPresenceService = Pick<
   PresenceService,
   'cancelMemberOfflineTimer' | 'cancelHostCloseTimer' | 'getHostConnectionState'
@@ -43,6 +43,7 @@ const playbackState = {
   playlistItemId: 'playlist-item-1',
   currentTime: 30,
   isPlaying: false,
+  playbackVersion: 0,
 };
 
 const snapshot: RoomSnapshotResult = {
@@ -81,7 +82,10 @@ function makePlaybackService(
   overrides: Partial<RoomHandlerPlaybackService> = {},
 ): RoomHandlerPlaybackService {
   return {
-    getPlaybackStateForSocket: vi.fn().mockResolvedValue(playbackState),
+    getSnapshotForSocket: vi.fn().mockResolvedValue({
+      playbackState,
+      playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+    }),
     ...overrides,
   };
 }
@@ -179,7 +183,7 @@ describe('registerRoomHandlers', () => {
     await getJoinHandler(handlers)({ roomId: 'room-1' }, ack);
 
     expect(roomService.setMemberOnline).toHaveBeenCalledWith('room-1', 'user-1');
-    expect(playbackService.getPlaybackStateForSocket).toHaveBeenCalledWith('room-1', 'user-1');
+    expect(playbackService.getSnapshotForSocket).toHaveBeenCalledWith('room-1', 'user-1');
     expect(roomService.getRoomSnapshot).toHaveBeenCalledWith('room-1');
     expect(socket.join).toHaveBeenCalledWith('room:room-1');
     expect(socketEmit).toHaveBeenCalledWith('room:joined', {
@@ -214,6 +218,25 @@ describe('registerRoomHandlers', () => {
     });
     expect(ack).toHaveBeenCalledWith({ success: true });
     expect(socketEmit.mock.invocationCallOrder[0]).toBeLessThan(ack.mock.invocationCallOrder[0]);
+  });
+
+  it('room:joined에 세션의 비기본 재생 정책을 그대로 담는다', async () => {
+    const { io } = makeIo();
+    const { socket, handlers, socketEmit } = makeSocket();
+    const playbackService = makePlaybackService({
+      getSnapshotForSocket: vi.fn().mockResolvedValue({
+        playbackState,
+        playbackPolicy: { repeatMode: 'all', shuffleEnabled: true },
+      }),
+    });
+
+    registerRoomHandlers(io, socket, { roomService: makeRoomService(), playbackService });
+    await getJoinHandler(handlers)({ roomId: 'room-1' }, vi.fn());
+
+    expect(socketEmit).toHaveBeenCalledWith(
+      'room:joined',
+      expect.objectContaining({ playbackPolicy: { repeatMode: 'all', shuffleEnabled: true } }),
+    );
   });
 
   it('room:join에서 이미 online 상태면 시스템 메시지를 생성하지 않는다', async () => {

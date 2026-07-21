@@ -12,12 +12,11 @@ import {
   type ReorderPlaylistItemInput,
 } from '../types/playlist';
 import type { IRoomRepository } from '../types/room';
-import type { PlaybackStatePayload } from '../types/socket';
 import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 
 type PlaylistPlaybackService = Pick<
   PlaybackService,
-  'getPlaybackState' | 'setTrack' | 'resetPlayback'
+  'advanceAfterCurrentRemoved' | 'enqueueIfShuffled'
 >;
 
 export class PlaylistService {
@@ -81,6 +80,7 @@ export class PlaylistService {
     }
 
     await this.roomRepo.touchLastActivity(roomId);
+    await this.playbackService.enqueueIfShuffled(roomId, item.id);
 
     const playlist = await this.playlistRepo.getPlaylist(roomId);
     broadcastToRoom(roomId, 'playlist:updated', {
@@ -140,47 +140,15 @@ export class PlaylistService {
       );
     }
 
-    const playbackState = await this.playbackService.getPlaybackState(roomId);
-    if (!playbackState) {
-      throw new AppError(
-        500,
-        ERROR_CODES.SERVER_INTERNAL_ERROR,
-        'PlaybackState를 찾을 수 없습니다.',
-      );
-    }
-
-    const isCurrentTrack = playbackState.playlistItemId === itemId;
-    let statePayload: PlaybackStatePayload | null = null;
-    let broadcastEvent: 'playback:change-track' | 'playback:pause' | null = null;
-
-    // playback_states(FK로 이 곡을 참조 중)를 먼저 옮기고 나서 playlist_items를 지운다.
-    // 순서를 바꾸면 참조가 남아있는 채로 삭제를 시도해 FK 제약에 걸린다.
-    // 두 단계가 하나의 트랜잭션은 아니라서(PlaybackService/PlaylistRepository가 별도 Repository),
-    // 중간에 실패하면 재생 상태는 이미 넘어갔는데 곡은 아직 안 지워진 채로 남을 수 있다 —
-    // 사용자가 삭제를 재시도하면 해소되는 낮은 위험으로 판단해 트랜잭션 통합은 보류했다.
-    if (isCurrentTrack) {
-      const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
-      const nextItem =
-        currentPlaylist.find(
-          (candidate) => candidate.position > item.position && candidate.status === 'available',
-        ) ?? null;
-
-      if (nextItem) {
-        statePayload = await this.playbackService.setTrack(roomId, nextItem.videoId, nextItem.id);
-        broadcastEvent = 'playback:change-track';
-      } else {
-        statePayload = await this.playbackService.resetPlayback(roomId);
-        broadcastEvent = 'playback:pause';
-      }
-    }
+    const transition = await this.playbackService.advanceAfterCurrentRemoved(roomId, itemId);
 
     await this.playlistRepo.deleteItem(itemId);
     await this.roomRepo.touchLastActivity(roomId);
 
     const updatedPlaylist = await this.playlistRepo.getPlaylist(roomId);
 
-    if (broadcastEvent && statePayload) {
-      broadcastToRoom(roomId, broadcastEvent, statePayload);
+    if (transition) {
+      broadcastToRoom(roomId, transition.broadcastEvent, transition.payload);
     }
     broadcastToRoom(roomId, 'playlist:updated', {
       playlist: updatedPlaylist.map(toPlaylistItem),

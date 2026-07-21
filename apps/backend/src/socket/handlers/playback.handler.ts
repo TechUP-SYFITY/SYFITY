@@ -7,10 +7,12 @@ import type {
   PlaybackAck,
   PlaybackChangeTrackPayload,
   PlaybackErrorPayload,
+  PlaybackEndedPayload,
   PlaybackPausePayload,
   PlaybackPlayPayload,
   PlaybackSeekPayload,
   PlaybackSyncRequestPayload,
+  PlaybackUpdateSettingsPayload,
 } from '../../types/socket';
 import { toSocketAckError } from '../socketError';
 import {
@@ -18,11 +20,21 @@ import {
   assertFiniteNumber,
   assertNonEmptyString,
   assertRoomId,
+  assertUpdateSettingsPayload,
 } from '../socketValidators';
 
 type PlaybackHandlerService = Pick<
   PlaybackService,
-  'play' | 'pause' | 'seek' | 'changeTrack' | 'reportError' | 'getPlaybackStateForSocket'
+  | 'play'
+  | 'pause'
+  | 'seek'
+  | 'selectTrack'
+  | 'nextTrack'
+  | 'previousTrack'
+  | 'updateSettings'
+  | 'reportEnded'
+  | 'reportError'
+  | 'getPlaybackStateForSocket'
 >;
 
 type PlaybackHandlerDeps = {
@@ -124,17 +136,77 @@ export function registerPlaybackHandlers(
       try {
         assertRoomId(payload?.roomId);
         assertChangeTrackAction(payload?.action);
-        assertNonEmptyString(payload?.playlistItemId, 'playlistItemId');
-        const { roomId, playlistItemId } = payload;
+        const { roomId, action } = payload;
         const userId = socket.data.userId;
-
-        const state = await playbackService.changeTrack(roomId, userId, playlistItemId);
-        io.to(`room:${roomId}`).emit('playback:change-track', state);
+        let result: Awaited<ReturnType<typeof playbackService.nextTrack>>;
+        if (action === 'select') {
+          assertNonEmptyString(payload.playlistItemId, 'playlistItemId');
+          result = await playbackService.selectTrack(roomId, userId, payload.playlistItemId);
+        } else if (action === 'next') {
+          result = await playbackService.nextTrack(roomId, userId);
+        } else {
+          result = await playbackService.previousTrack(roomId, userId);
+        }
+        io.to(`room:${roomId}`).emit(result.broadcastEvent, result.payload);
         ack({ success: true });
       } catch (err) {
         logger.error(
           { err, roomId: payload?.roomId, userId: socket.data.userId },
           '[playback:change-track] 처리 실패',
+        );
+        ack({ success: false, error: toSocketAckError(err) });
+      }
+    },
+  );
+
+  socket.on(
+    'playback:update-settings',
+    async (
+      payload: PlaybackUpdateSettingsPayload | null | undefined,
+      ack: (response: PlaybackAck) => void,
+    ) => {
+      try {
+        assertRoomId(payload?.roomId);
+        assertUpdateSettingsPayload(payload);
+        const { roomId, repeatMode, shuffleEnabled } = payload;
+        const settings = await playbackService.updateSettings(roomId, socket.data.userId, {
+          repeatMode,
+          shuffleEnabled,
+        });
+        io.to(`room:${roomId}`).emit('playback:settings', settings);
+        ack({ success: true });
+      } catch (err) {
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:update-settings] 처리 실패',
+        );
+        ack({ success: false, error: toSocketAckError(err) });
+      }
+    },
+  );
+
+  socket.on(
+    'playback:ended',
+    async (
+      payload: PlaybackEndedPayload | null | undefined,
+      ack: (response: PlaybackAck) => void,
+    ) => {
+      try {
+        assertRoomId(payload?.roomId);
+        assertNonEmptyString(payload?.playlistItemId, 'playlistItemId');
+        assertFiniteNumber(payload?.playbackVersion, 'playbackVersion');
+        const result = await playbackService.reportEnded(
+          payload.roomId,
+          socket.data.userId,
+          payload.playlistItemId,
+          payload.playbackVersion,
+        );
+        if (result) io.to(`room:${payload.roomId}`).emit(result.broadcastEvent, result.payload);
+        ack({ success: true });
+      } catch (err) {
+        logger.error(
+          { err, roomId: payload?.roomId, userId: socket.data.userId },
+          '[playback:ended] 처리 실패',
         );
         ack({ success: false, error: toSocketAckError(err) });
       }
@@ -155,9 +227,12 @@ export function registerPlaybackHandlers(
         const userId = socket.data.userId;
 
         const result = await playbackService.reportError(roomId, userId, videoId, errorCode);
-        io.to(`room:${roomId}`).emit('playback:error', result.errorPayload);
         if (result.playlist) {
           io.to(`room:${roomId}`).emit('playlist:updated', { playlist: result.playlist });
+        }
+        io.to(`room:${roomId}`).emit('playback:error', result.errorPayload);
+        if (result.transition) {
+          io.to(`room:${roomId}`).emit(result.transition.broadcastEvent, result.transition.payload);
         }
         ack({ success: true });
       } catch (err) {

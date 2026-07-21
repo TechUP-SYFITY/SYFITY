@@ -33,7 +33,7 @@ export class RoomService {
     private readonly cache: ICache,
     private readonly playlistRepo: Pick<IPlaylistRepository, 'getPlaylist'>,
     private readonly chatRepo: Pick<IChatRepository, 'findLatestChats' | 'createMessage'>,
-    private readonly playbackService: Pick<PlaybackService, 'initializeCache' | 'clearCache'>,
+    private readonly playbackService: Pick<PlaybackService, 'clearSession'>,
   ) {}
 
   async createRoom(userId: string, name: string): Promise<RoomRecord> {
@@ -41,8 +41,6 @@ export class RoomService {
     const room = await this.roomRepo.createRoom({ name, hostId: userId, inviteCode });
 
     await this.roomRepo.upsertRecentRoom(userId, room.id);
-    this.playbackService.initializeCache(room.id);
-
     return room;
   }
 
@@ -154,7 +152,7 @@ export class RoomService {
     }
 
     const closedRoom = await this.roomRepo.closeRoom(roomId);
-    this.playbackService.clearCache(roomId);
+    this.playbackService.clearSession(roomId);
 
     return closedRoom;
   }

@@ -2,12 +2,12 @@ import { OAuth2Client } from 'google-auth-library';
 import type { IocContainer } from 'tsoa';
 
 import { cache } from './lib/cache';
+import { PlaybackSessionStore } from './lib/playback/playback-session.store';
 import { prisma } from './lib/prisma';
 import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
-import { PlaybackRepository } from './repositories/playback.repository';
 import { PlaylistRepository } from './repositories/playlist.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
@@ -55,13 +55,12 @@ const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
 const playlistRepository = new PlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
-const playbackRepository = new PlaybackRepository(prisma);
+const playbackSessionStore = new PlaybackSessionStore(cache);
 const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
 export const playbackService = new PlaybackService(
-  playbackRepository,
   roomRepository,
   playlistRepository,
-  cache,
+  playbackSessionStore,
   playlistYoutubeClient,
 );
 export const presenceService = new PresenceService(roomRepository, cache);

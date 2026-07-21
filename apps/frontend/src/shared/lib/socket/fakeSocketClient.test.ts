@@ -164,6 +164,31 @@ describe('fakeSocketClient', () => {
     );
   });
 
+  it('supports next action and broadcasts changed playback policy', () => {
+    const socket = fakeSocketClient.connect();
+    const stateListener = vi.fn<(payload: PlaybackState) => void>();
+    const settingsListener = vi.fn();
+    socket.on('playback:change-track', stateListener);
+    socket.on('playback:settings', settingsListener);
+
+    socket.emit('playback:play', { currentTime: 0, roomId: roomFixture.room.id }, vi.fn());
+    socket.emit('playback:change-track', { action: 'next', roomId: roomFixture.room.id }, vi.fn());
+    socket.emit(
+      'playback:update-settings',
+      { roomId: roomFixture.room.id, repeatMode: 'all', shuffleEnabled: true },
+      vi.fn(),
+    );
+
+    expect(stateListener).toHaveBeenLastCalledWith(
+      expect.objectContaining({ playbackVersion: expect.any(Number) as number }),
+    );
+    expect(settingsListener).toHaveBeenCalledWith({
+      playbackVersion: expect.any(Number) as number,
+      repeatMode: 'all',
+      shuffleEnabled: true,
+    });
+  });
+
   it('emits chat received before acking chat send', () => {
     const socket = fakeSocketClient.connect();
     const calls: string[] = [];

@@ -2,7 +2,7 @@
 import type { PlaybackState } from '@/shared/types/domain';
 
 export type PlaybackEventSource =
-  'play' | 'pause' | 'seek' | 'change-track' | 'tick' | 'sync-response' | 'room-join';
+  'play' | 'pause' | 'seek' | 'change-track' | 'tick' | 'sync-response' | 'room-join' | 'reset';
 
 export type PlaybackSyncStatus = 'idle' | 'pending' | 'synced' | 'error';
 

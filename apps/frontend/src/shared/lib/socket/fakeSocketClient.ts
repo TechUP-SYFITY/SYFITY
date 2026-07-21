@@ -2,7 +2,7 @@
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { SocketAck } from '@/shared/types/api';
-import type { ChatMessage, PlaybackState } from '@/shared/types/domain';
+import type { ChatMessage, PlaybackPolicy, PlaybackState } from '@/shared/types/domain';
 import type {
   ChatSendAckData,
   ChatSendPayload,
@@ -11,6 +11,8 @@ import type {
   PlaybackCurrentTimePayload,
   PlaybackErrorPayload,
   PlaybackSeekPayload,
+  PlaybackEndedPayload,
+  PlaybackUpdateSettingsPayload,
 } from '@/shared/types/socket';
 
 import type { SocketClient, SyfityListenEvents, SyfitySocket } from './types';
@@ -25,12 +27,15 @@ type Ack<T = undefined> = (response: SocketAck<T>) => void;
 interface FakeSocketContext {
   emitLocal: EmitLocal;
   getPlaybackState: () => PlaybackState;
+  getPlaybackPolicy: () => PlaybackPolicy;
   setPlaybackState: (state: PlaybackState) => void;
+  setPlaybackPolicy: (policy: PlaybackPolicy) => void;
 }
 
 const createFakeSocket = (): SyfitySocket => {
   const listeners = new Map<keyof SyfityListenEvents, Set<Listener>>();
   let playbackState: PlaybackState = { ...roomFixture.playbackState };
+  let playbackPolicy: PlaybackPolicy = { ...roomFixture.playbackPolicy } as PlaybackPolicy;
 
   const emitLocal: EmitLocal = (event, ...args) => {
     listeners.get(event)?.forEach((listener) => listener(...args));
@@ -49,8 +54,12 @@ const createFakeSocket = (): SyfitySocket => {
       handleClientEvent(event, [...args], {
         emitLocal,
         getPlaybackState: () => playbackState,
+        getPlaybackPolicy: () => playbackPolicy,
         setPlaybackState: (state) => {
           playbackState = state;
+        },
+        setPlaybackPolicy: (policy) => {
+          playbackPolicy = policy;
         },
       });
     },
@@ -103,7 +112,7 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
         roomId: (args[0] as { roomId: string }).roomId,
         hostConnection: { status: 'connected' },
         playbackState: ctx.getPlaybackState(),
-        playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+        playbackPolicy: ctx.getPlaybackPolicy(),
         playlist: roomFixture.playlist,
         members: roomFixture.members,
         recentChats: roomFixture.chats,
@@ -191,14 +200,15 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
     case 'playback:change-track': {
       const payload = args[0] as PlaybackChangeTrackPayload;
       const ack = readAck(args[1]);
-      if (payload.action !== 'select') {
-        ack?.({
-          success: false,
-          error: { code: 'VALIDATION_ERROR', message: 'Only select is supported' },
-        });
-        return;
+      const available = roomFixture.playlist.filter((item) => item.status === 'available');
+      const currentIndex = available.findIndex(
+        (item) => item.id === ctx.getPlaybackState().playlistItemId,
+      );
+      let targetItem = available.find((item) => item.id === payload.playlistItemId);
+      if (payload.action !== 'select' && available.length) {
+        const offset = payload.action === 'previous' ? -1 : 1;
+        targetItem = available[(currentIndex + offset + available.length) % available.length];
       }
-      const targetItem = roomFixture.playlist.find((item) => item.id === payload.playlistItemId);
 
       if (targetItem?.status !== 'available') {
         ack?.({
@@ -221,6 +231,49 @@ function handleClientEvent<Ev extends keyof ClientToServerEvents>(
       ctx.setPlaybackState(next);
       ack?.({ success: true });
       ctx.emitLocal('playback:change-track', next);
+      break;
+    }
+
+    case 'playback:update-settings': {
+      const payload = args[0] as PlaybackUpdateSettingsPayload;
+      const ack = readAck(args[1]);
+      const currentPolicy = ctx.getPlaybackPolicy();
+      const policy: PlaybackPolicy = {
+        repeatMode: payload.repeatMode ?? currentPolicy.repeatMode,
+        shuffleEnabled: payload.shuffleEnabled ?? currentPolicy.shuffleEnabled,
+      };
+      ctx.setPlaybackPolicy(policy);
+      ack?.({ success: true });
+      ctx.emitLocal('playback:settings', {
+        ...policy,
+        playbackVersion: ctx.getPlaybackState().playbackVersion + 1,
+      });
+      break;
+    }
+
+    case 'playback:ended': {
+      const payload = args[0] as PlaybackEndedPayload;
+      const ack = readAck(args[1]);
+      const current = ctx.getPlaybackState();
+      if (
+        current.playlistItemId === payload.playlistItemId &&
+        current.playbackVersion === payload.playbackVersion
+      ) {
+        const available = roomFixture.playlist.filter((item) => item.status === 'available');
+        const index = available.findIndex((item) => item.id === current.playlistItemId);
+        const next = available[(index + 1) % available.length];
+        if (next) {
+          const nextState = updatePlaybackState(current, {
+            currentTime: 0,
+            isPlaying: true,
+            playlistItemId: next.id,
+            videoId: next.videoId,
+          });
+          ctx.setPlaybackState(nextState);
+          ctx.emitLocal('playback:change-track', nextState);
+        }
+      }
+      ack?.({ success: true });
       break;
     }
 
@@ -270,6 +323,7 @@ function updatePlaybackState(current: PlaybackState, patch: Partial<PlaybackStat
   return {
     ...current,
     ...patch,
+    playbackVersion: current.playbackVersion + 1,
     updatedAt: new Date().toISOString(),
   };
 }

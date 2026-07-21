@@ -24,6 +24,7 @@ const track: PlaylistItem = {
 const playbackState: PlaybackState = {
   currentTime: 45,
   isPlaying: false,
+  playbackVersion: 0,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };
@@ -41,12 +42,16 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     onNextTrack: vi.fn(),
     onPlayPause: vi.fn(),
     onPreviousTrack: vi.fn(),
+    onRepeatToggle: vi.fn(),
     onSeek: vi.fn(),
+    onShuffleToggle: vi.fn(),
     onVolumeChange: vi.fn(),
     pendingCommand: null,
     playbackState,
     playPauseDisabled: false,
     previousDisabled: false,
+    repeatMode: 'off',
+    shuffleEnabled: false,
     volume: 70,
   };
 
@@ -97,6 +102,26 @@ describe('MiniPlayer', () => {
     expect(onPlayPause).toHaveBeenCalledTimes(1);
     expect(onPreviousTrack).toHaveBeenCalledTimes(1);
     expect(onNextTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it('반복·셔플 버튼은 활성 상태를 표시하고 Host 명령을 호출한다', () => {
+    const onRepeatToggle = vi.fn();
+    const onShuffleToggle = vi.fn();
+    renderMiniPlayer({
+      onRepeatToggle,
+      onShuffleToggle,
+      repeatMode: 'one',
+      shuffleEnabled: true,
+    });
+
+    const shuffle = screen.getByRole('button', { name: '셔플 끄기' });
+    const repeat = screen.getByRole('button', { name: '한 곡 반복' });
+    expect(shuffle).toHaveAttribute('aria-pressed', 'true');
+    expect(repeat).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(shuffle);
+    fireEvent.click(repeat);
+    expect(onShuffleToggle).toHaveBeenCalledOnce();
+    expect(onRepeatToggle).toHaveBeenCalledOnce();
   });
 
   it('Member는 재생 제어를 사용하고 곡 이동만 비활성화한다', () => {

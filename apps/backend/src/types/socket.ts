@@ -1,5 +1,6 @@
 import type { ChatMessage, PlaylistItem } from '@syfity/shared';
 
+import type { PlaybackPolicyPayload, PlaybackStatePayload, RepeatMode } from './playback';
 import type { HostConnectionState, RoomMemberRecord, RoomMemberStatus, RoomRole } from './room';
 
 export type RoomJoinPayload = {
@@ -10,12 +11,8 @@ export type RoomLeavePayload = {
   roomId: string;
 };
 
-export type PlaybackStatePayload = {
-  currentTime: number;
-  isPlaying: boolean;
-  videoId: string | null;
-  playlistItemId: string | null;
-};
+export type { PlaybackStatePayload } from './playback';
+export type { PlaybackErrorBroadcastPayload } from './playback';
 
 export type PlaybackPlayPayload = {
   roomId: string;
@@ -44,9 +41,25 @@ export type PlaybackErrorPayload = {
   errorCode: number;
 };
 
-export type PlaybackErrorBroadcastPayload = {
-  videoId: string;
-  errorCode: number;
+export type PlaybackUpdateSettingsPayload = {
+  roomId: string;
+  repeatMode?: RepeatMode;
+  shuffleEnabled?: boolean;
+};
+
+export type PlaybackSettingsPayload = PlaybackPolicyPayload & { playbackVersion: number };
+
+export type PlaybackEndedPayload = {
+  roomId: string;
+  playlistItemId: string;
+  playbackVersion: number;
+};
+
+export type PlaybackResetPayload = {
+  roomId: string;
+  reason: 'cache-reset';
+  playbackState: PlaybackStatePayload;
+  playbackPolicy: PlaybackPolicyPayload;
 };
 
 export type PlaybackSyncRequestPayload = {
@@ -66,7 +79,7 @@ export type RoomJoinedPayload = {
   roomId: string;
   hostConnection: HostConnectionState;
   playbackState: PlaybackStatePayload;
-  playbackPolicy: { repeatMode: 'off'; shuffleEnabled: false };
+  playbackPolicy: PlaybackPolicyPayload;
   playlist: PlaylistItem[];
   members: RoomMemberRecord[];
   recentChats: ChatMessage[];

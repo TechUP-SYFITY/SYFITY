@@ -10,22 +10,3 @@ export function getCurrentPlaylistItem(
     playlist.find((item) => item.status === 'available')
   );
 }
-
-export function getAdjacentPlayablePlaylistItems(
-  playlist: PlaylistItem[],
-  currentItem: PlaylistItem | undefined,
-) {
-  const currentIndex = currentItem ? playlist.findIndex((item) => item.id === currentItem.id) : -1;
-
-  if (currentIndex < 0) {
-    return { nextItem: undefined, previousItem: undefined };
-  }
-
-  const previousItem = playlist
-    .slice(0, currentIndex)
-    .reverse()
-    .find((item) => item.status === 'available');
-  const nextItem = playlist.slice(currentIndex + 1).find((item) => item.status === 'available');
-
-  return { nextItem, previousItem };
-}

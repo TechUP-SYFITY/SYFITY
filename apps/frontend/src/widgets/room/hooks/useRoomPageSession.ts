@@ -34,6 +34,8 @@ export function useRoomPageSession(roomId: string) {
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const clearPlayback = usePlayerStore((state) => state.clearPlayback);
   const playbackState = usePlayerStore((state) => state.playbackState);
+  const playbackPolicy = usePlayerStore((state) => state.playbackPolicy);
+  const setPlaybackPolicy = usePlayerStore((state) => state.setPlaybackPolicy);
   const isMuted = usePlayerVolumeStore((state) => state.isMuted);
   const setVolume = usePlayerVolumeStore((state) => state.setVolume);
   const toggleMuted = usePlayerVolumeStore((state) => state.toggleMuted);
@@ -57,9 +59,18 @@ export function useRoomPageSession(roomId: string) {
       setMembers(snapshot.members);
       setPlaylist(snapshot.playlist);
       setPlaybackState(snapshot.playbackState, 'room-join');
+      setPlaybackPolicy(snapshot.playbackPolicy);
       setMessages(sortChatMessagesAscending(snapshot.recentChats));
     },
-    [joinRoom.data, setJoinedRoom, setMembers, setMessages, setPlaybackState, setPlaylist],
+    [
+      joinRoom.data,
+      setJoinedRoom,
+      setMembers,
+      setMessages,
+      setPlaybackPolicy,
+      setPlaybackState,
+      setPlaylist,
+    ],
   );
 
   useRoomLiveConnections(roomId, joinRoom.isSuccess, handleRoomClosed, handleSnapshot);
@@ -73,6 +84,7 @@ export function useRoomPageSession(roomId: string) {
     me,
     onlineMemberCount,
     playbackState,
+    playbackPolicy,
     playlist,
     room,
     setVolume,

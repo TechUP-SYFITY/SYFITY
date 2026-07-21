@@ -34,6 +34,7 @@ const socket = {
 const playbackState: PlaybackState = {
   currentTime: 24,
   isPlaying: true,
+  playbackVersion: 1,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };
@@ -87,5 +88,29 @@ describe('usePlaybackSocket', () => {
 
     expect(socket.off).toHaveBeenCalledWith('playback:tick', tickListener);
     expect(socket.off).toHaveBeenCalledWith('playback:sync-response', syncResponseListener);
+  });
+
+  it('settings와 reset 이벤트를 재생 정책과 상태에 반영한다', () => {
+    renderHook(() => usePlaybackSocket(true));
+    act(() => {
+      listeners.get('playback:settings')?.({
+        repeatMode: 'one',
+        shuffleEnabled: true,
+        playbackVersion: 2,
+      });
+      usePlayerStore.getState().pauseLocalSync();
+      listeners.get('playback:reset')?.({
+        roomId: 'room-1',
+        reason: 'cache-reset',
+        playbackState: { ...playbackState, isPlaying: false, playbackVersion: 3 },
+        playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+      });
+    });
+
+    expect(usePlayerStore.getState()).toMatchObject({
+      isLocalSyncPaused: false,
+      playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+      playbackState: { isPlaying: false, playbackVersion: 3 },
+    });
   });
 });

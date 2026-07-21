@@ -13,7 +13,6 @@ import type {
 export type RoomTransactionPrisma = {
   room: Pick<PrismaClient['room'], 'create' | 'update'>;
   roomMember: Pick<PrismaClient['roomMember'], 'create' | 'updateMany'>;
-  playbackState: Pick<PrismaClient['playbackState'], 'create'>;
 };
 
 export type RoomRepositoryPrisma = {
@@ -79,18 +78,6 @@ export class RoomRepository implements IRoomRepository {
           role: 'host',
           status: 'offline',
           joinedAt: now,
-        },
-      });
-
-      await tx.playbackState.create({
-        data: {
-          roomId: created.id,
-          videoId: null,
-          playlistItemId: null,
-          baseCurrentTime: 0,
-          isPlaying: false,
-          serverStartedAt: null,
-          serverPausedAt: null,
         },
       });
 

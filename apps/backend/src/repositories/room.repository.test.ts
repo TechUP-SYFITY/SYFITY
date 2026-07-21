@@ -61,9 +61,6 @@ function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionP
       create: vi.fn().mockResolvedValue({}),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
-    playbackState: {
-      create: vi.fn().mockResolvedValue({}),
-    },
   };
 }
 
@@ -159,7 +156,7 @@ describe('RoomRepository', () => {
     await expect(repo.existsRoom('room-1')).resolves.toBe(false);
   });
 
-  it('Room, Host 멤버, PlaybackState를 트랜잭션으로 생성한다', async () => {
+  it('Room과 Host 멤버를 트랜잭션으로 생성한다', async () => {
     const { prisma, tx } = makePrisma();
     const repo = new RoomRepository(prisma);
 
@@ -196,17 +193,6 @@ describe('RoomRepository', () => {
         role: 'host',
         status: 'offline',
         joinedAt: expect.any(Date),
-      },
-    });
-    expect(tx.playbackState.create).toHaveBeenCalledWith({
-      data: {
-        roomId: 'room-1',
-        videoId: null,
-        playlistItemId: null,
-        baseCurrentTime: 0,
-        isPlaying: false,
-        serverStartedAt: null,
-        serverPausedAt: null,
       },
     });
   });

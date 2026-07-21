@@ -19,7 +19,6 @@ interface PlayerPanelProps {
   roomId: string;
   isHost: boolean;
   playerControllerRef?: RefObject<PlayerController | null>;
-  onEnded: () => void;
   onPlaybackStateChange: (isPlaying: boolean, currentTime: number) => void;
   playlist: PlaylistItem[];
 }
@@ -29,7 +28,6 @@ export function PlayerPanel({
   roomId,
   isHost,
   playerControllerRef,
-  onEnded,
   onPlaybackStateChange,
   playlist,
 }: PlayerPanelProps) {
@@ -65,6 +63,13 @@ export function PlayerPanel({
       .catch(() => undefined);
   }
 
+  function handleTrackEnded() {
+    if (!canControlRoom || !playbackState?.playlistItemId) return;
+    void playbackCommands
+      .reportEnded(roomId, playbackState.playlistItemId, playbackState.playbackVersion)
+      .catch(() => undefined);
+  }
+
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 xl:mx-0">
       <div className="relative overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border">
@@ -72,7 +77,7 @@ export function PlayerPanel({
           playerControllerRef={playerControllerRef}
           playbackState={playbackState}
           onBufferingRecovered={handleBufferingRecovered}
-          onEnded={onEnded}
+          onEnded={handleTrackEnded}
           onError={handlePlayerError}
           onPlaybackStateChange={onPlaybackStateChange}
         />

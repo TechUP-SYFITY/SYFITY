@@ -15,6 +15,7 @@ vi.mock('../lib/playbackCommands', () => ({
     play: vi.fn(),
     requestSync: vi.fn(),
     seek: vi.fn(),
+    updateSettings: vi.fn(),
   },
 }));
 
@@ -28,6 +29,7 @@ describe('usePlayerControls', () => {
     vi.mocked(playbackCommands.pause).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.play).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.seek).mockResolvedValue(undefined);
+    vi.mocked(playbackCommands.updateSettings).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -35,7 +37,7 @@ describe('usePlayerControls', () => {
     vi.useRealTimers();
   });
 
-  it('Host가 이전 곡을 요청하면 previousItemId로 곡 변경 명령을 보낸다', async () => {
+  it('Host가 이전 곡을 요청하면 action 기반 곡 변경 명령을 보낸다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -52,7 +54,36 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-0');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'previous');
+    });
+  });
+
+  it('반복과 셔플 토글을 현재 정책 기준으로 서버에 요청한다', async () => {
+    usePlayerStore.getState().setPlaybackPolicy({ repeatMode: 'all', shuffleEnabled: false });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 0,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleRepeatToggle();
+    });
+    await waitFor(() => {
+      expect(playbackCommands.updateSettings).toHaveBeenCalledWith(roomId, { repeatMode: 'one' });
+    });
+
+    act(() => {
+      result.current.handleShuffleToggle();
+    });
+    await waitFor(() => {
+      expect(playbackCommands.updateSettings).toHaveBeenCalledWith(roomId, {
+        shuffleEnabled: true,
+      });
     });
   });
 
@@ -246,7 +277,7 @@ describe('usePlayerControls', () => {
     expect(callOrder).toEqual(['local-play', 'socket-change-track']);
     expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-0');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'previous');
     });
   });
 
@@ -280,7 +311,7 @@ describe('usePlayerControls', () => {
     expect(callOrder).toEqual(['local-play', 'socket-change-track']);
     expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
@@ -356,7 +387,7 @@ describe('usePlayerControls', () => {
     });
   });
 
-  it('Host가 다음 곡을 요청하면 nextItemId로 곡 변경 명령을 보낸다', async () => {
+  it('Host가 다음 곡을 요청하면 action 기반 곡 변경 명령을 보낸다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -373,11 +404,11 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
-  it('Host의 마지막 곡이 종료되면 0초 pause 명령을 보낸다', async () => {
+  it('Host의 다음 곡 요청은 마지막 곡 여부도 서버에 위임한다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -393,7 +424,7 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 0);
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
@@ -630,7 +661,7 @@ describe('usePlayerControls', () => {
       vi.advanceTimersByTime(200);
     });
 
-    expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+    expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     expect(playbackCommands.seek).not.toHaveBeenCalled();
 
     await act(async () => {

@@ -7,6 +7,7 @@ import type { PlayerPlaybackState } from '../types/playerTypes';
 const playbackState: PlayerPlaybackState = {
   currentTime: 10,
   isPlaying: true,
+  playbackVersion: 1,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };
@@ -119,5 +120,20 @@ describe('usePlayerStore', () => {
     usePlayerStore.getState().clearPlayback();
 
     expect(usePlayerStore.getState().isLocalSyncPaused).toBe(false);
+  });
+
+  it('반복·셔플 정책을 보관하고 reset 이벤트에서 로컬 동기화 중지를 해제한다', () => {
+    usePlayerStore.getState().setPlaybackPolicy({ repeatMode: 'all', shuffleEnabled: true });
+    expect(usePlayerStore.getState().playbackPolicy).toEqual({
+      repeatMode: 'all',
+      shuffleEnabled: true,
+    });
+
+    usePlayerStore.getState().pauseLocalSync();
+    usePlayerStore.getState().setPlaybackState(playbackState, 'reset');
+    expect(usePlayerStore.getState()).toMatchObject({
+      isLocalSyncPaused: false,
+      lastEventSource: 'reset',
+    });
   });
 });

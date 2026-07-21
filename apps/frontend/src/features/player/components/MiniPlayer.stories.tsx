@@ -21,6 +21,7 @@ const track: PlaylistItem = {
 const playbackState: PlaybackState = {
   currentTime: 64,
   isPlaying: false,
+  playbackVersion: 0,
   playlistItemId: track.id,
   videoId: track.videoId,
 };
@@ -41,12 +42,16 @@ const meta = {
     onNextTrack: fn(),
     onPlayPause: fn(),
     onPreviousTrack: fn(),
+    onRepeatToggle: fn(),
     onSeek: fn(),
+    onShuffleToggle: fn(),
     onVolumeChange: fn(),
     pendingCommand: null,
     playbackState,
     playPauseDisabled: false,
     previousDisabled: false,
+    repeatMode: 'off',
+    shuffleEnabled: false,
     volume: 70,
   },
 } satisfies Meta<typeof MiniPlayer>;

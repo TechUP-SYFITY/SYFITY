@@ -2,7 +2,6 @@
 
 // Room 하단에 고정되는 미니 플레이어 UI와 주입된 제어 상태를 표시한다.
 import {
-  Heart,
   Pause,
   Play,
   Repeat,
@@ -98,7 +97,7 @@ export function MiniPlayer({
     <footer className="fixed inset-x-0 bottom-0 z-40 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/95 px-5 backdrop-blur-sm xl:static xl:h-room-mini-player xl:px-6">
       <div className="flex w-56 min-w-0 flex-none items-center gap-3">
         <TrackArtwork track={currentTrack} />
-        <div className="w-24 min-w-0 flex-none">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold text-foreground">
             {currentTrack?.title ?? '재생 대기'}
           </p>
@@ -106,14 +105,6 @@ export function MiniPlayer({
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>
-        <button
-          className={cn(getIconButtonClass(true), `hidden sm:flex`)}
-          type="button"
-          aria-label="좋아요 기능 준비 중"
-          disabled
-        >
-          <Heart className="inline-block size-3.5 shrink-0" aria-hidden />
-        </button>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1">
@@ -238,7 +229,11 @@ export function MiniPlayer({
         ) : null}
       </div>
 
-      <div className="hidden w-36 flex-none items-center justify-end gap-2 xl:flex">
+      <div
+        className="hidden w-36 flex-none mini-player-volume-control items-center justify-end gap-2 xl:flex"
+        role="group"
+        aria-label="볼륨"
+      >
         <button
           className={getIconButtonClass(false)}
           type="button"

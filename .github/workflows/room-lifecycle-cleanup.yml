@@ -11,7 +11,8 @@ jobs:
     steps:
       - name: Call inactivate-stale endpoint
         run: |
-          BASE_URL="${RENDER_HEALTH_URL%/health}"
+          # RENDER_HEALTH_URL은 https://api.syfity.site/api/v1/health 형식이다.
+          BASE_URL="${RENDER_HEALTH_URL%/api/v1/health}"
           curl -fsS -X POST "$BASE_URL/api/v1/internal/rooms/inactivate-stale" \
             -H "Authorization: Bearer ${CRON_SECRET}"
         env:

@@ -109,21 +109,25 @@ export class PlaylistService {
   ): Promise<void> {
     await assertRoomHost(this.roomRepo, roomId, userId);
 
-    // getPlaylist는 position ASC로만 정렬하므로 값이 중복되면 동률 항목의 순서가 보장되지 않는다.
-    const positionSet = new Set(items.map((item) => item.position));
-    if (positionSet.size !== items.length) {
-      throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, '중복된 position 값이 있습니다.');
-    }
-
     const currentPlaylist = await this.playlistRepo.getPlaylist(roomId);
     const currentIdSet = new Set(currentPlaylist.map((item) => item.id));
     const requestIdSet = new Set(items.map((item) => item.id));
     const isSameSet =
+      items.length === currentPlaylist.length &&
       requestIdSet.size === currentIdSet.size &&
       [...requestIdSet].every((id) => currentIdSet.has(id));
 
     if (!isSameSet) {
       throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '일부 항목을 찾을 수 없습니다.');
+    }
+
+    const positions = items.map((item) => item.position).sort((left, right) => left - right);
+    if (!positions.every((position, index) => position === index)) {
+      throw new AppError(
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+        'position은 0부터 연속된 값이어야 합니다.',
+      );
     }
 
     await this.playlistRepo.reorderItems(items);

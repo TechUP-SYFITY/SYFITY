@@ -362,7 +362,7 @@ Host만 전체 순서 배열을 받아 DB 트랜잭션으로 position을 갱신�
 }
 ```
 
-`items`는 현재 Room Playlist의 모든 항목 id를 정확히 한 번씩 포함해야 하며, `position`은 `0`부터 항목 수-1까지 중복 없이 연속이어야 한다. 위반 시 `VALIDATION_ERROR`(400)를 반환한다.
+`items`는 현재 Room Playlist의 모든 항목 id를 정확히 한 번씩 포함해야 하며, id 집합이 일치하지 않으면 `PLAYLIST_ITEM_NOT_FOUND`(404)를 반환한다. `position`은 `0`부터 항목 수-1까지 중복 없이 연속이어야 하며, 위반 시 `VALIDATION_ERROR`(400)를 반환한다.
 
 성공 시 `204 No Content`를 반환하고, 서버는 `playlist:updated`로 갱신된 전체 Playlist를 Room에 전파한다.
 

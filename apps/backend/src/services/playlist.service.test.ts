@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ERROR_CODES } from '@syfity/shared';
 
-import { ERROR_CODES } from '@syfity/shared';
-
 import { PlaylistService } from './playlist.service';
 import { broadcastToRoom } from '../socket/broadcast';
 
@@ -95,6 +93,36 @@ describe('PlaylistService playback integration', () => {
       expect(playlistRepo.addItem).not.toHaveBeenCalled();
     },
   );
+
+  it('Room Playlist 순서 변경은 모든 항목 id와 0부터 연속된 position을 요구한다', async () => {
+    const { service, playlistRepo } = fixture();
+    const secondItem = { ...item, id: 'item-2', position: 2 };
+    playlistRepo.getPlaylist.mockResolvedValueOnce([item, secondItem]);
+
+    await expect(
+      service.reorderPlaylist('room-1', 'host', [
+        { id: 'item-1', position: 0 },
+        { id: 'item-1', position: 1 },
+        { id: 'item-2', position: 2 },
+      ]),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+
+    playlistRepo.getPlaylist.mockResolvedValueOnce([item, secondItem]);
+    await expect(
+      service.reorderPlaylist('room-1', 'host', [
+        { id: 'item-1', position: 0 },
+        { id: 'item-2', position: 2 },
+      ]),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: ERROR_CODES.VALIDATION_ERROR,
+    });
+    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
+  });
 
   it.each([{}, { videoId: 'video-1', youtubeUrl: 'https://youtu.be/video-1' }])(
     'videoId와 youtubeUrl이 정확히 하나가 아니면 VALIDATION_ERROR를 던진다',

@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type ComponentType, useState } from 'react';
 import { expect, within } from 'storybook/test';
 
+import { ToastProvider } from '@/shared/components/ui';
+
 import { MemberList } from './MemberList';
+import { MemberManagementProvider } from './MemberManagementProvider';
 import type { PresenceMember } from '../types/presence';
 
 const members: PresenceMember[] = [
@@ -28,11 +33,28 @@ const members: PresenceMember[] = [
   },
 ];
 
+function MemberManagementStoryDecorator(Story: ComponentType) {
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <MemberManagementProvider currentUserId="host-1" isHost={false} roomId="preview-room">
+          <Story />
+        </MemberManagementProvider>
+      </ToastProvider>
+    </QueryClientProvider>
+  );
+}
+
 const meta = {
   title: 'Features/Presence/MemberList',
   component: MemberList,
   args: { members },
   decorators: [
+    MemberManagementStoryDecorator,
     (Story) => (
       <div className="w-72 bg-background text-foreground">
         <Story />

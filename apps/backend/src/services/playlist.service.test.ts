@@ -103,7 +103,7 @@ describe('PlaylistService playback integration', () => {
 
       await expect(service.addItem('room-1', 'host', request)).rejects.toMatchObject({
         status: 400,
-        code: 'VALIDATION_ERROR',
+        code: ERROR_CODES.VALIDATION_ERROR,
       });
     },
   );
@@ -116,7 +116,7 @@ describe('PlaylistService playback integration', () => {
 
     await expect(service.addItem('room-1', 'host', { videoId: 'video-1' })).rejects.toMatchObject({
       status: 400,
-      code: 'PLAYLIST_NOT_MUSIC',
+      code: ERROR_CODES.PLAYLIST_NOT_MUSIC,
     });
   });
 

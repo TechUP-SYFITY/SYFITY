@@ -83,6 +83,25 @@ describe('PersonalPlaylistRepository', () => {
     );
   });
 
+  it('Playlist를 생성·조회·이름 변경한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PersonalPlaylistRepository(prisma);
+
+    await expect(repository.createPlaylist('user-1', 'New songs')).resolves.toEqual(playlist);
+    await expect(repository.findPlaylistById('playlist-1')).resolves.toEqual(playlist);
+    await expect(repository.updatePlaylistName('playlist-1', 'Renamed')).resolves.toEqual(playlist);
+
+    expect(prisma.personalPlaylist.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { ownerId: 'user-1', name: 'New songs' } }),
+    );
+    expect(prisma.personalPlaylist.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'playlist-1' } }),
+    );
+    expect(prisma.personalPlaylist.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'playlist-1' }, data: { name: 'Renamed' } }),
+    );
+  });
+
   it('Playlist 삭제는 cascade에 맡겨 단일 delete만 수행한다', async () => {
     const prisma = makePrisma();
     const repository = new PersonalPlaylistRepository(prisma);
@@ -131,5 +150,50 @@ describe('PersonalPlaylistRepository', () => {
         duration: 180,
       }),
     ).rejects.toBeInstanceOf(PersonalPlaylistDuplicateVideoError);
+  });
+
+  it('곡을 조회·삭제하고 순서를 트랜잭션으로 갱신한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PersonalPlaylistRepository(prisma);
+
+    await expect(repository.getItems('playlist-1')).resolves.toEqual([item]);
+    await expect(repository.findItemByPlaylistAndVideoId('playlist-1', 'video-1')).resolves.toEqual(
+      item,
+    );
+    await expect(repository.findItemById('item-1')).resolves.toEqual(item);
+    await repository.deleteItem('item-1');
+    await repository.reorderItems([
+      { id: 'item-1', position: 1 },
+      { id: 'item-2', position: 0 },
+    ]);
+
+    expect(prisma.personalPlaylistItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { personalPlaylistId: 'playlist-1' },
+        orderBy: { position: 'asc' },
+      }),
+    );
+    expect(prisma.personalPlaylistItem.findUnique).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: {
+          personalPlaylistId_videoId: { personalPlaylistId: 'playlist-1', videoId: 'video-1' },
+        },
+      }),
+    );
+    expect(prisma.personalPlaylistItem.findUnique).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ where: { id: 'item-1' } }),
+    );
+    expect(prisma.personalPlaylistItem.delete).toHaveBeenCalledWith({ where: { id: 'item-1' } });
+    expect(prisma.personalPlaylistItem.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'item-1' },
+      data: { position: 1 },
+    });
+    expect(prisma.personalPlaylistItem.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'item-2' },
+      data: { position: 0 },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledWith([expect.any(Promise), expect.any(Promise)]);
   });
 });

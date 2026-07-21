@@ -7,7 +7,7 @@ import { useRoomStore } from '@/features/room/store/roomStore';
 
 import { useRoomSocket } from './useRoomSocket';
 
-const { emit, listeners, socketConnect } = vi.hoisted(() => {
+const { emit, listeners, socketConnect, socketOff } = vi.hoisted(() => {
   const eventListeners = new Map<string, (payload: never) => void>();
   const socketEmit = vi.fn();
   const socket = {
@@ -19,7 +19,12 @@ const { emit, listeners, socketConnect } = vi.hoisted(() => {
   };
   const socketConnector = vi.fn(() => socket);
 
-  return { emit: socketEmit, listeners: eventListeners, socketConnect: socketConnector };
+  return {
+    emit: socketEmit,
+    listeners: eventListeners,
+    socketConnect: socketConnector,
+    socketOff: socket.off,
+  };
 });
 
 vi.mock('@/shared/lib/socket/socketClient', () => ({
@@ -33,6 +38,7 @@ describe('useRoomSocket', () => {
     listeners.clear();
     emit.mockClear();
     socketConnect.mockClear();
+    socketOff.mockClear();
     useRoomStore.getState().clearRoom();
   });
 
@@ -151,5 +157,32 @@ describe('useRoomSocket', () => {
       reason: 'host-closed',
     });
     expect(onRoomClosed).toHaveBeenCalledOnce();
+  });
+
+  it('다른 Room의 추방 이벤트는 무시하고 현재 Room의 추방 이벤트만 전달한다', () => {
+    const onRoomKicked = vi.fn();
+    renderHook(() => useRoomSocket('room-1', undefined, undefined, onRoomKicked));
+
+    act(() => {
+      listeners.get('room:kicked')?.({ roomId: 'room-2', message: '추방되었습니다.' } as never);
+    });
+    expect(onRoomKicked).not.toHaveBeenCalled();
+
+    act(() => {
+      listeners.get('room:kicked')?.({ roomId: 'room-1', message: '추방되었습니다.' } as never);
+    });
+    expect(onRoomKicked).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      message: '추방되었습니다.',
+    });
+  });
+
+  it('unmount 시 room:kicked 구독을 해제한다', () => {
+    const { unmount } = renderHook(() => useRoomSocket('room-1', undefined, undefined, vi.fn()));
+    const kickedListener = listeners.get('room:kicked');
+
+    unmount();
+
+    expect(socketOff).toHaveBeenCalledWith('room:kicked', kickedListener);
   });
 });

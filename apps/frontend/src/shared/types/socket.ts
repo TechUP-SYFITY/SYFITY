@@ -18,6 +18,11 @@ export interface RoomClosedPayload {
   reason: RoomClosedReason;
 }
 
+export interface RoomKickedPayload {
+  roomId: string;
+  message: string;
+}
+
 export interface RoomHostDisconnectedPayload {
   roomId: string;
   waitUntil: string;
@@ -106,6 +111,7 @@ export interface ServerToClientEvents {
   'room:host-disconnected': (payload: RoomHostDisconnectedPayload) => void;
   'room:host-reconnected': (payload: RoomJoinPayload) => void;
   'room:closed': (payload: RoomClosedPayload) => void;
+  'room:kicked': (payload: RoomKickedPayload) => void;
   'playback:play': (payload: PlaybackState) => void;
   'playback:pause': (payload: PlaybackState) => void;
   'playback:seek': (payload: PlaybackState) => void;

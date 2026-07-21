@@ -87,4 +87,30 @@ describe('HomeShell', () => {
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
     expect(onRetryMyRooms).toHaveBeenCalledTimes(1);
   });
+
+  it('캐시된 내 Room이 있으면 재조회 실패에도 목록을 유지한다', () => {
+    render(<HomeShell {...defaultProps} isMyRoomsError />);
+
+    expect(screen.getByText('내 활성 Room')).toBeInTheDocument();
+    expect(screen.queryByText('내 Room을 불러오지 못했어요')).not.toBeInTheDocument();
+  });
+
+  it('종료 시각이 없는 closed Room은 종료 시각 없음으로 표시한다', () => {
+    render(
+      <HomeShell
+        {...defaultProps}
+        myRooms={[
+          {
+            closedAt: null,
+            id: 'closed-room-without-timestamp',
+            name: '종료 시각 없는 Room',
+            status: 'closed',
+            updatedAt: '2026-07-20T08:00:00.000Z',
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('종료 시각 없음')).toBeInTheDocument();
+  });
 });

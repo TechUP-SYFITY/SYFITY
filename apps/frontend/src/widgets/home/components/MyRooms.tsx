@@ -50,7 +50,7 @@ export function MyRooms({ rooms, isLoading, isError, onRetry }: MyRoomsProps) {
     );
   }
 
-  if (isError) {
+  if (isError && rooms.length === 0) {
     return (
       <section className="flex flex-col gap-3">
         <SectionHeading />

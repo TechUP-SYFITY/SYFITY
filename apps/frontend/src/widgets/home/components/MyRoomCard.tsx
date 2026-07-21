@@ -16,7 +16,11 @@ interface MyRoomCardProps {
 
 function RoomDetails({ room }: MyRoomCardProps) {
   const isActive = room.status === 'active';
-  const timestamp = isActive ? room.updatedAt : (room.closedAt ?? room.updatedAt);
+  let timestampLabel = `${formatRelativeTime(room.updatedAt)} 업데이트`;
+
+  if (!isActive) {
+    timestampLabel = room.closedAt ? `${formatRelativeTime(room.closedAt)} 종료` : '종료 시각 없음';
+  }
 
   return (
     <>
@@ -33,7 +37,7 @@ function RoomDetails({ room }: MyRoomCardProps) {
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="size-3" aria-hidden />
-          {formatRelativeTime(timestamp)} {isActive ? '업데이트' : '종료'}
+          {timestampLabel}
         </span>
       </span>
     </>

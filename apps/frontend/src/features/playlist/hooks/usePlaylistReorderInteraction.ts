@@ -50,9 +50,10 @@ export function usePlaylistReorderInteraction({
   const submitReorder = (nextPlaylist: PlaylistItem[]) => {
     onBeforeReorder();
     onReorder({
+      // docs/05 §6.4·§7.2: position은 0부터 항목 수-1까지 중복 없이 연속이어야 한다.
       items: nextPlaylist.map((item, index) => ({
         id: item.id,
-        position: index + 1,
+        position: index,
       })),
     });
   };

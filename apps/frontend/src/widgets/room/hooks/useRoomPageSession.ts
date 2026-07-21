@@ -4,6 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
+import { useToast } from '@/shared/components/ui';
 import type { RoomJoinedPayload } from '@/shared/types/socket';
 
 import { useMe } from '@/features/auth/hooks/useAuth';
@@ -20,8 +21,9 @@ import { useRoomLiveConnections } from './useRoomLiveConnections';
 
 export function useRoomPageSession(roomId: string) {
   const router = useRouter();
+  const { pushToast } = useToast();
   const joinRoom = useJoinRoom(roomId);
-  const { data: me } = useMe();
+  const { data: me, isError: isMeError } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
   const hasJoinedRoom = useRoomStore((state) => state.hasJoinedRoom && state.room?.id === roomId);
   const room = useRoomStore((state) => state.room);
@@ -30,6 +32,7 @@ export function useRoomPageSession(roomId: string) {
     (state) => state.members.filter((member) => member.status === 'online').length,
   );
   const setMembers = usePresenceStore((state) => state.setMembers);
+  const clearMembers = usePresenceStore((state) => state.clearMembers);
   const localPlaybackPosition = usePlayerStore((state) => state.localPlaybackPosition);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const clearPlayback = usePlayerStore((state) => state.clearPlayback);
@@ -42,12 +45,28 @@ export function useRoomPageSession(roomId: string) {
   const volume = usePlayerVolumeStore((state) => state.volume);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
+  const clearPlaylist = usePlaylistStore((state) => state.clearPlaylist);
   const setMessages = useChatStore((state) => state.setMessages);
+  const clearMessages = useChatStore((state) => state.clearMessages);
+  const clearRoom = useRoomStore((state) => state.clearRoom);
+
+  const exitRoom = useCallback(() => {
+    clearMessages();
+    clearMembers();
+    clearPlayback();
+    clearPlaylist();
+    clearRoom();
+    router.replace('/home');
+  }, [clearMembers, clearMessages, clearPlayback, clearPlaylist, clearRoom, router]);
 
   const handleRoomClosed = useCallback(() => {
-    clearPlayback();
-    router.replace('/home');
-  }, [clearPlayback, router]);
+    pushToast({
+      id: 'room-closed',
+      title: 'Room이 종료되었습니다.',
+      variant: 'info',
+    });
+    exitRoom();
+  }, [exitRoom, pushToast]);
 
   const handleSnapshot = useCallback(
     (snapshot: RoomJoinedPayload) => {
@@ -76,9 +95,12 @@ export function useRoomPageSession(roomId: string) {
   useRoomLiveConnections(roomId, joinRoom.isSuccess, handleRoomClosed, handleSnapshot);
 
   return {
+    exitClosedRoom: handleRoomClosed,
+    exitRoom,
     hasJoinedRoom,
     hostConnection,
     isMuted,
+    isMeError,
     joinRoom,
     localPlaybackPosition,
     me,

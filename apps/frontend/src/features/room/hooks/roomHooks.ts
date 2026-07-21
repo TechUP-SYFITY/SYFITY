@@ -3,6 +3,9 @@
 // Room REST API를 TanStack Query 훅으로 연결한다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { socketClient } from '@/shared/lib/socket/socketClient';
+import type { SocketClient } from '@/shared/lib/socket/types';
+
 import { roomApi, type RoomApi } from '../api/roomApi';
 import type { CreateRoomRequest, UpdateRoomRequest } from '../types/roomTypes';
 
@@ -80,4 +83,17 @@ export const useCloseRoom = (roomId: string) => {
     mutationFn: () => roomApi.updateRoom(roomId, { status: 'closed' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.all }),
   });
+};
+
+export const useLeaveRoom = (roomId: string, client: SocketClient = socketClient) => {
+  return () => {
+    const socket = client.get();
+
+    if (!socket?.connected) {
+      return false;
+    }
+
+    socket.emit('room:leave', { roomId });
+    return true;
+  };
 };

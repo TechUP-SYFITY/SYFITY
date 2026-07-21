@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UserProfileResponse } from '@syfity/shared';
 
 import { ToastProvider } from '@/shared/components/ui';
+import { socketClient } from '@/shared/lib/socket/socketClient';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
@@ -25,10 +26,22 @@ vi.mock('./hooks/useRoomLiveConnections', () => ({
   useRoomLiveConnections: vi.fn(),
 }));
 
-const { routerPush, routerReplace } = vi.hoisted(() => ({
-  routerPush: vi.fn(),
-  routerReplace: vi.fn(),
-}));
+const { routerPush, routerReplace, socket } = vi.hoisted(() => {
+  const fakeSocket = {
+    connect: vi.fn(),
+    connected: true,
+    disconnect: vi.fn(),
+    emit: vi.fn(),
+    off: vi.fn(),
+    on: vi.fn(),
+  };
+
+  return {
+    routerPush: vi.fn(),
+    routerReplace: vi.fn(),
+    socket: fakeSocket,
+  };
+});
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -37,19 +50,29 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+vi.mock('@/shared/lib/socket/socketClient', () => ({
+  socketClient: {
+    connect: vi.fn(() => socket),
+    disconnect: vi.fn(),
+    get: vi.fn(() => socket),
+  },
+}));
+
 vi.mock('@/shared/mocks/PresenceMockPanel', () => ({
   PresenceMockPanel: () => <div data-testid="presence-mock-panel" />,
 }));
 
 let didSeedSnapshot = false;
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: { retry: false },
     },
   });
+}
 
+function createWrapper(queryClient = createTestQueryClient()) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <ToastProvider>
@@ -62,6 +85,7 @@ function createWrapper() {
 describe('RoomPage', () => {
   beforeEach(() => {
     didSeedSnapshot = false;
+    vi.mocked(socketClient.get).mockReturnValue(socket);
     vi.mocked(useRoomLiveConnections).mockImplementation(
       (_roomId, enabled, _onRoomClosed, onSnapshot) => {
         if (enabled && !didSeedSnapshot) {
@@ -251,7 +275,7 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
   });
 
-  it('Room 종료 callback으로 재생 상태를 정리하고 /home으로 이동한다', async () => {
+  it('Room 종료 callback으로 Room 세션 상태를 정리하고 /home으로 이동한다', async () => {
     const Wrapper = createWrapper();
 
     render(
@@ -271,7 +295,202 @@ describe('RoomPage', () => {
     });
 
     expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(usePlaylistStore.getState().playlist).toEqual([]);
+    expect(usePresenceStore.getState().members).toEqual([]);
+    expect(useChatStore.getState().messages).toEqual([]);
+    expect(useRoomStore.getState().hasJoinedRoom).toBe(false);
+    expect(screen.getByText('Room이 종료되었습니다.')).toBeVisible();
     expect(routerReplace).toHaveBeenCalledWith('/home');
+  });
+
+  it('사용자 정보가 확인되기 전에는 Room 퇴장 액션을 실행할 수 없다', async () => {
+    server.use(
+      http.get(
+        '*/api/v1/me',
+        () =>
+          new Promise<HttpResponse<UserProfileResponse>>(() => {
+            // 사용자 응답을 대기 상태로 유지해 Room 입장과 인증 조회의 경합을 재현한다.
+          }),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '나가기' })).toBeDisabled();
+  });
+
+  it('사용자 정보 조회가 실패하면 역할을 추정하지 않고 Home으로 이동한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: { code: 'AUTH_FORBIDDEN', message: '사용자 정보를 조회할 수 없습니다.' },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(
+      await screen.findByText('사용자 정보를 확인할 수 없어 Home으로 이동합니다.'),
+    ).toBeVisible();
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+    expect(socket.emit).not.toHaveBeenCalledWith('room:leave', { roomId: roomFixture.room.id });
+  });
+
+  it('Host는 REST 종료 후 room:closed 이벤트를 기다리되 응답이 없으면 Home으로 이동한다', async () => {
+    const updateRoom = vi.fn();
+    server.use(
+      http.patch('*/api/v1/rooms/:roomId', async ({ request }) => {
+        updateRoom(await request.json());
+        return HttpResponse.json({
+          success: true,
+          data: {
+            id: roomFixture.room.id,
+            name: roomFixture.room.name,
+            status: 'closed',
+            closedAt: '2026-07-21T00:00:00.000Z',
+            updatedAt: '2026-07-21T00:00:00.000Z',
+          },
+        });
+      }),
+    );
+    const queryClient = createTestQueryClient();
+    const Wrapper = createWrapper(queryClient);
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room 종료' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
+
+    await waitFor(() => expect(updateRoom).toHaveBeenCalledWith({ status: 'closed' }));
+    await waitFor(() =>
+      expect(queryClient.getMutationCache().getAll().at(-1)?.state.status).toBe('success'),
+    );
+
+    const confirmButton = screen.getByRole('button', { name: 'Room 종료 확인' });
+    expect(confirmButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    fireEvent.click(confirmButton);
+    expect(updateRoom).toHaveBeenCalledTimes(1);
+    expect(routerReplace).not.toHaveBeenCalledWith('/home');
+
+    await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/home'), { timeout: 4000 });
+    expect(screen.getByText('Room이 종료되었습니다.')).toBeVisible();
+  });
+
+  it('Host Room 종료 요청이 실패하면 Dialog에서 오류를 안내하고 Room에 남는다', async () => {
+    server.use(
+      http.patch('*/api/v1/rooms/:roomId', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'SERVER_INTERNAL_ERROR',
+              message: 'Room 종료 요청에 실패했어요.',
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room 종료' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Room 종료 요청에 실패했어요.');
+    expect(screen.getByRole('button', { name: 'Room 종료 확인' })).toBeEnabled();
+    const cancelButton = screen.getByRole('button', { name: '취소' });
+    expect(cancelButton).toBeEnabled();
+
+    fireEvent.click(cancelButton);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Room 종료' }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(routerReplace).not.toHaveBeenCalledWith('/home');
+  });
+
+  it('Member는 즉시 room:leave를 전송하고 Home으로 이동한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            email: 'jimin@example.com',
+            id: 'fallback-member-1',
+            nickname: '지민',
+            profileImage: null,
+          },
+        } satisfies UserProfileResponse),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '나가기' }));
+
+    expect(socket.emit).toHaveBeenCalledWith('room:leave', { roomId: roomFixture.room.id });
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+  });
+
+  it('Socket이 연결되지 않은 Member에게 퇴장 실패를 안내한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            email: 'jimin@example.com',
+            id: 'fallback-member-1',
+            nickname: '지민',
+            profileImage: null,
+          },
+        } satisfies UserProfileResponse),
+      ),
+    );
+    vi.mocked(socketClient.get).mockReturnValue(null);
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '나가기' }));
+
+    expect(await screen.findByText('서버 연결을 확인한 뒤 다시 시도해 주세요.')).toBeVisible();
+    expect(routerReplace).not.toHaveBeenCalledWith('/home');
   });
 
   it('Room 초대 버튼으로 초대 모달을 열고 실제 초대 코드와 링크를 복사한다', async () => {

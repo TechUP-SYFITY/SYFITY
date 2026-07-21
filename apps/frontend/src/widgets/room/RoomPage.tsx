@@ -1,8 +1,9 @@
 'use client';
 
 // Room 페이지에서 REST 입장, Socket 연결, 화면 조립 흐름을 연결한다.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { useToast } from '@/shared/components/ui';
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import { PresenceMockPanel } from '@/shared/mocks/PresenceMockPanel';
@@ -17,6 +18,8 @@ import { PlaylistPanel } from '@/features/playlist/components/PlaylistPanel';
 import { useAddPlaylistItem } from '@/features/playlist/hooks/playlistHooks';
 import type { AddPlaylistItemRequest } from '@/features/playlist/types/playlistTypes';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
+import { RoomExitAction } from '@/features/room/components/RoomExitAction';
+import { useCloseRoom, useLeaveRoom } from '@/features/room/hooks/roomHooks';
 import type { YoutubeSearchResult } from '@/features/search/api/searchApi';
 import {
   SearchAddToast,
@@ -56,8 +59,11 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   const toastIdRef = useRef(0);
   const playerControllerRef = useRef<PlayerController | null>(null);
   const {
+    exitClosedRoom,
     hasJoinedRoom,
     hostConnection,
+    exitRoom,
+    isMeError,
     isMuted: miniPlayerIsMuted,
     joinRoom,
     localPlaybackPosition,
@@ -71,6 +77,9 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     toggleMuted: toggleMiniPlayerMute,
     volume: miniPlayerVolume,
   } = useRoomPageSession(roomId);
+  const closeRoom = useCloseRoom(roomId);
+  const leaveRoom = useLeaveRoom(roomId);
+  const { pushToast } = useToast();
   const addSearchResult = useAddPlaylistItem(roomId);
 
   const isHost = me !== undefined && room !== null && me.id === room.hostId;
@@ -94,6 +103,31 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     playerControllerRef,
     roomId,
   });
+  const roomExitError = closeRoom.isError ? getApiErrorMessage(closeRoom.error) : undefined;
+  const isRoomClosing = closeRoom.isPending || closeRoom.isSuccess;
+
+  useEffect(() => {
+    if (!isMeError || !hasJoinedRoom) {
+      return;
+    }
+
+    pushToast({
+      id: 'room-user-error',
+      title: '사용자 정보를 확인할 수 없어 Home으로 이동합니다.',
+      variant: 'error',
+    });
+    exitRoom();
+  }, [exitRoom, hasJoinedRoom, isMeError, pushToast]);
+
+  useEffect(() => {
+    if (!closeRoom.isSuccess || !hasJoinedRoom) {
+      return undefined;
+    }
+
+    const fallbackTimer = window.setTimeout(exitClosedRoom, 3000);
+
+    return () => window.clearTimeout(fallbackTimer);
+  }, [closeRoom.isSuccess, exitClosedRoom, hasJoinedRoom]);
 
   if (joinRoom.isPending) {
     return <RoomLoadingState />;
@@ -146,6 +180,24 @@ function RoomPageContent({ roomId }: RoomPageProps) {
     }
 
     addPlaylistItem({ youtubeUrl });
+  };
+
+  const handleRoomExit = () => {
+    if (isHost) {
+      closeRoom.mutate();
+      return;
+    }
+
+    if (!leaveRoom()) {
+      pushToast({
+        id: 'room-leave-error',
+        title: '서버 연결을 확인한 뒤 다시 시도해 주세요.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    exitRoom();
   };
 
   return (
@@ -204,6 +256,20 @@ function RoomPageContent({ roomId }: RoomPageProps) {
           />
         }
         room={room}
+        roomAction={
+          <RoomExitAction
+            disabled={!room || me === undefined}
+            errorMessage={roomExitError}
+            isPending={isRoomClosing}
+            role={isHost ? 'host' : 'member'}
+            onConfirm={handleRoomExit}
+            onOpenChange={(open) => {
+              if (!open) {
+                closeRoom.reset();
+              }
+            }}
+          />
+        }
         roomId={roomId}
       />
       <InviteCodeDialog room={room} open={isInviteOpen} onOpenChange={setIsInviteOpen} />

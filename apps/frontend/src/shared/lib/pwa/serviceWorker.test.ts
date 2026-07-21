@@ -10,6 +10,7 @@ describe('serviceWorker', () => {
     vi.restoreAllMocks();
     vi.resetModules();
     Reflect.deleteProperty(navigator, 'serviceWorker');
+    Reflect.deleteProperty(navigator, 'standalone');
     Reflect.deleteProperty(navigator, 'userAgent');
   });
 
@@ -61,12 +62,34 @@ describe('serviceWorker', () => {
     expect(isIOSSafari()).toBe(true);
   });
 
+  it('일반 브라우저는 standalone display mode로 판별하지 않는다', async () => {
+    const { isStandaloneDisplayMode } = await loadServiceWorker();
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: false })),
+    );
+    Object.defineProperty(navigator, 'standalone', { configurable: true, value: false });
+
+    expect(isStandaloneDisplayMode()).toBe(false);
+  });
+
   it('iOS Chrome 같은 비 Safari 브라우저에는 설치 안내를 제공하지 않는다', async () => {
     const { isIOSSafari } = await loadServiceWorker();
     Object.defineProperty(navigator, 'userAgent', {
       configurable: true,
       value:
         'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) CriOS/130.0.0.0 Mobile/15E148 Safari/604.1',
+    });
+
+    expect(isIOSSafari()).toBe(false);
+  });
+
+  it('일반 Chrome 브라우저에는 iOS Safari 안내를 제공하지 않는다', async () => {
+    const { isIOSSafari } = await loadServiceWorker();
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value:
+        'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36',
     });
 
     expect(isIOSSafari()).toBe(false);

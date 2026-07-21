@@ -64,13 +64,15 @@ vi.mock('@/shared/mocks/PresenceMockPanel', () => ({
 
 let didSeedSnapshot = false;
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: { retry: false },
     },
   });
+}
 
+function createWrapper(queryClient = createTestQueryClient()) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <ToastProvider>
@@ -317,7 +319,8 @@ describe('RoomPage', () => {
         });
       }),
     );
-    const Wrapper = createWrapper();
+    const queryClient = createTestQueryClient();
+    const Wrapper = createWrapper(queryClient);
 
     render(
       <Wrapper>
@@ -329,7 +332,9 @@ describe('RoomPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
 
     await waitFor(() => expect(updateRoom).toHaveBeenCalledWith({ status: 'closed' }));
-    await act(async () => Promise.resolve());
+    await waitFor(() =>
+      expect(queryClient.getMutationCache().getAll().at(-1)?.state.status).toBe('success'),
+    );
 
     const confirmButton = screen.getByRole('button', { name: 'Room 종료 확인' });
     expect(confirmButton).toBeDisabled();

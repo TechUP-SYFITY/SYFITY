@@ -120,7 +120,7 @@ export function RoomExitAction({
             isLoading={isPending}
             onClick={onConfirm}
           >
-            <OctagonX aria-hidden />
+            {!isPending ? <OctagonX aria-hidden /> : null}
             Room 종료
           </Button>
         </DialogFooter>

@@ -20,7 +20,10 @@ describe('RoomExitAction', () => {
     expect(screen.getByRole('dialog', { name: 'Room을 종료할까요?' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '나가기' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
+    const confirmButton = screen.getByRole('button', { name: 'Room 종료 확인' });
+
+    expect(confirmButton.querySelector('.lucide-octagon-x')).toBeInTheDocument();
+    fireEvent.click(confirmButton);
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
@@ -42,9 +45,14 @@ describe('RoomExitAction', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Room 종료' }));
     rerender(<RoomExitAction role="host" isPending onConfirm={onConfirm} />);
 
-    expect(screen.getByRole('button', { name: 'Room 종료 확인' })).toBeDisabled();
+    const confirmButton = screen.getByRole('button', { name: 'Room 종료 확인' });
+
+    expect(confirmButton).toBeDisabled();
+    expect(confirmButton).toHaveAttribute('aria-busy', 'true');
+    expect(confirmButton.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(confirmButton.querySelector('.lucide-octagon-x')).toBeNull();
     expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
+    fireEvent.click(confirmButton);
     expect(onConfirm).not.toHaveBeenCalled();
   });
 

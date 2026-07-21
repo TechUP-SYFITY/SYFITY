@@ -7,14 +7,25 @@ import type { SocketClient, SyfitySocket } from '@/shared/lib/socket/types';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { ApiClientError } from '@/shared/types/api';
 
-import { useCloseRoom, useJoinRoom, useJoinRoomByCode, useLeaveRoom } from './roomHooks';
+import {
+  useCloseRoom,
+  useJoinRoom,
+  useJoinRoomByCode,
+  useLeaveRoom,
+  useMyRooms,
+} from './roomHooks';
 import { roomApi } from '../api/roomApi';
-import type { CreateRoomMembershipResponse, RoomResponse } from '../types/roomTypes';
+import type {
+  CreateRoomMembershipResponse,
+  MyRoomsResponse,
+  RoomResponse,
+} from '../types/roomTypes';
 
 vi.mock('../api/roomApi', () => ({
   roomApi: {
     createRoomMembership: vi.fn(),
     createRoom: vi.fn(),
+    getMyRooms: vi.fn(),
     getRecentRooms: vi.fn(),
     getRoom: vi.fn(),
     updateRoom: vi.fn(),
@@ -34,6 +45,24 @@ const room = {
 } satisfies RoomResponse;
 
 const membership = { room: roomFixture.room } satisfies CreateRoomMembershipResponse;
+const myRooms = {
+  rooms: [
+    {
+      closedAt: null,
+      id: 'active-room',
+      name: '활성 Room',
+      status: 'active',
+      updatedAt: '2026-07-21T08:00:00.000Z',
+    },
+    {
+      closedAt: '2026-07-20T08:00:00.000Z',
+      id: 'closed-room',
+      name: '종료된 Room',
+      status: 'closed',
+      updatedAt: '2026-07-20T08:00:00.000Z',
+    },
+  ],
+} satisfies MyRoomsResponse;
 
 describe('Room membership hooks', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -52,6 +81,20 @@ describe('Room membership hooks', () => {
       inviteCode: roomFixture.room.inviteCode,
     });
     expect(result.current.data).toEqual(membership);
+  });
+
+  it('내 Room 목록을 전용 query key로 조회한다', async () => {
+    vi.mocked(roomApi.getMyRooms).mockResolvedValue(myRooms);
+    const queryClient = createQueryClient();
+
+    const { result } = renderHook(() => useMyRooms(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(roomApi.getMyRooms).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toEqual(myRooms);
+    expect(queryClient.getQueryData(['rooms', 'mine'])).toEqual(myRooms);
   });
 
   it('초대 코드 입장은 membership API 오류를 그대로 노출한다', async () => {

@@ -30,6 +30,7 @@ import {
   assertActiveRoomMember,
   assertJoinableRoomMember,
   assertRoomHost,
+  assertRoomHostWithoutActiveStatus,
 } from '../utils/roomAccess';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
@@ -197,7 +198,7 @@ export class RoomService {
     hostUserId: string,
     memberId: string,
   ): Promise<{ memberId: string; status: 'kicked' }> {
-    const room = await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    const room = await assertRoomHostWithoutActiveStatus(this.roomRepo, roomId, hostUserId);
     this.assertRoomIsActive(room.status);
 
     const member = await this.roomRepo.findMemberById(roomId, memberId);
@@ -231,7 +232,7 @@ export class RoomService {
     hostUserId: string,
     memberId: string,
   ): Promise<{ memberId: string; status: 'left' }> {
-    const room = await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    const room = await assertRoomHostWithoutActiveStatus(this.roomRepo, roomId, hostUserId);
     this.assertRoomIsActive(room.status);
 
     const member = await this.roomRepo.findMemberById(roomId, memberId);

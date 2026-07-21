@@ -764,15 +764,15 @@ describe('RoomService', () => {
   });
 
   it.each(['closed', 'inactive'] as const)(
-    'active가 아닌 Room에서는 멤버 추방을 ROOM_NOT_ACTIVE로 거부한다',
+    'active가 아닌 Room에서는 멤버 추방을 상태별 오류로 거부한다',
     async (status) => {
       const { service, roomRepo } = makeService({
         roomRepo: { findRoomById: vi.fn().mockResolvedValue({ ...roomDetail, status }) },
       });
 
       await expect(service.kickMember('room-1', 'user-1', 'member-2')).rejects.toMatchObject({
-        status: 409,
-        code: ERROR_CODES.ROOM_NOT_ACTIVE,
+        status: 403,
+        code: status === 'closed' ? ERROR_CODES.ROOM_CLOSED : ERROR_CODES.ROOM_INACTIVE,
       });
       expect(roomRepo.findMemberById).not.toHaveBeenCalled();
     },
@@ -861,15 +861,15 @@ describe('RoomService', () => {
   });
 
   it.each(['closed', 'inactive'] as const)(
-    'active가 아닌 Room에서는 추방 해제를 ROOM_NOT_ACTIVE로 거부한다',
+    'active가 아닌 Room에서는 추방 해제를 상태별 오류로 거부한다',
     async (status) => {
       const { service, roomRepo } = makeService({
         roomRepo: { findRoomById: vi.fn().mockResolvedValue({ ...roomDetail, status }) },
       });
 
       await expect(service.unkickMember('room-1', 'user-1', 'member-2')).rejects.toMatchObject({
-        status: 409,
-        code: ERROR_CODES.ROOM_NOT_ACTIVE,
+        status: 403,
+        code: status === 'closed' ? ERROR_CODES.ROOM_CLOSED : ERROR_CODES.ROOM_INACTIVE,
       });
       expect(roomRepo.findMemberById).not.toHaveBeenCalled();
     },

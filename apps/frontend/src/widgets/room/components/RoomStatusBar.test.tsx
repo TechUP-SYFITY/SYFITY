@@ -20,4 +20,16 @@ describe('RoomStatusBar', () => {
 
     expect(onInviteClick).not.toHaveBeenCalled();
   });
+
+  it('Room 도메인 액션을 초대 버튼 옆에 조합한다', () => {
+    render(
+      <RoomStatusBar
+        onlineMemberCount={1}
+        room={null}
+        roomAction={<button type="button">나가기</button>}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '나가기' })).toBeInTheDocument();
+  });
 });

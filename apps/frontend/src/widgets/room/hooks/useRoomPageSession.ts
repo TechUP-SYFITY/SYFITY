@@ -30,6 +30,7 @@ export function useRoomPageSession(roomId: string) {
     (state) => state.members.filter((member) => member.status === 'online').length,
   );
   const setMembers = usePresenceStore((state) => state.setMembers);
+  const clearMembers = usePresenceStore((state) => state.clearMembers);
   const localPlaybackPosition = usePlayerStore((state) => state.localPlaybackPosition);
   const setPlaybackState = usePlayerStore((state) => state.setPlaybackState);
   const clearPlayback = usePlayerStore((state) => state.clearPlayback);
@@ -42,12 +43,19 @@ export function useRoomPageSession(roomId: string) {
   const volume = usePlayerVolumeStore((state) => state.volume);
   const playlist = usePlaylistStore((state) => state.playlist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
+  const clearPlaylist = usePlaylistStore((state) => state.clearPlaylist);
   const setMessages = useChatStore((state) => state.setMessages);
+  const clearMessages = useChatStore((state) => state.clearMessages);
+  const clearRoom = useRoomStore((state) => state.clearRoom);
 
   const handleRoomClosed = useCallback(() => {
+    clearMessages();
+    clearMembers();
     clearPlayback();
+    clearPlaylist();
+    clearRoom();
     router.replace('/home');
-  }, [clearPlayback, router]);
+  }, [clearMembers, clearMessages, clearPlayback, clearPlaylist, clearRoom, router]);
 
   const handleSnapshot = useCallback(
     (snapshot: RoomJoinedPayload) => {
@@ -76,6 +84,7 @@ export function useRoomPageSession(roomId: string) {
   useRoomLiveConnections(roomId, joinRoom.isSuccess, handleRoomClosed, handleSnapshot);
 
   return {
+    exitRoom: handleRoomClosed,
     hasJoinedRoom,
     hostConnection,
     isMuted,

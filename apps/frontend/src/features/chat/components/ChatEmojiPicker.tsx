@@ -1,6 +1,6 @@
 'use client';
 
-import { Categories, EmojiStyle, Theme } from 'emoji-picker-react';
+import { Categories, type CategoryConfig, EmojiStyle, Theme } from 'emoji-picker-react';
 import { SmilePlus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react';
@@ -16,16 +16,16 @@ const PICKER_MAX_WIDTH = 350;
 const VIEWPORT_MARGIN = 8;
 
 const CHAT_EMOJI_CATEGORIES = [
-  Categories.SUGGESTED,
-  Categories.CUSTOM,
-  Categories.SMILEYS_PEOPLE,
-  Categories.ANIMALS_NATURE,
-  Categories.FOOD_DRINK,
-  Categories.TRAVEL_PLACES,
-  Categories.ACTIVITIES,
-  Categories.OBJECTS,
-  Categories.SYMBOLS,
-];
+  { category: Categories.SUGGESTED, name: 'Frequently Used' },
+  { category: Categories.CUSTOM, name: 'Custom Emojis' },
+  { category: Categories.SMILEYS_PEOPLE, name: 'Smileys & People' },
+  { category: Categories.ANIMALS_NATURE, name: 'Animals & Nature' },
+  { category: Categories.FOOD_DRINK, name: 'Food & Drink' },
+  { category: Categories.TRAVEL_PLACES, name: 'Travel & Places' },
+  { category: Categories.ACTIVITIES, name: 'Activities' },
+  { category: Categories.OBJECTS, name: 'Objects' },
+  { category: Categories.SYMBOLS, name: 'Symbols' },
+] satisfies CategoryConfig[];
 
 interface ChatEmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;

@@ -16,7 +16,7 @@ vi.mock('emoji-picker-react', () => ({
     theme,
     width,
   }: {
-    categories?: string[];
+    categories?: Array<{ category: string; name: string }>;
     emojiVersion?: string;
     height?: number | string;
     onEmojiClick: (emojiData: { emoji: string }) => void;
@@ -26,7 +26,8 @@ vi.mock('emoji-picker-react', () => ({
     width?: number | string;
   }) => (
     <button
-      data-categories={categories?.join(',')}
+      data-categories={categories?.map(({ category }) => category).join(',')}
+      data-category-names={categories?.map(({ name }) => name).join(',')}
       data-emoji-version={emojiVersion}
       data-height={height}
       data-show-preview={previewConfig?.showPreview}
@@ -74,7 +75,9 @@ describe('ChatEmojiPicker', () => {
   it('모바일 화면에서 body 포털로 안전 배치한다', async () => {
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
     vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844);
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
       if (this.tagName === 'FORM') {
         return {
           bottom: 711,
@@ -130,6 +133,18 @@ describe('ChatEmojiPicker', () => {
     const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
 
     expect(picker).toHaveAttribute('data-emoji-version', '12.1');
+  });
+
+  it('카테고리 제목 정보를 전달한다', async () => {
+    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
+
+    expect(picker).toHaveAttribute(
+      'data-category-names',
+      expect.stringContaining('Smileys & People'),
+    );
   });
 
   it('미리보기와 카테고리 탐색 영역을 숨긴다', async () => {

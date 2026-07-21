@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatEmojiPicker } from './ChatEmojiPicker';
@@ -72,6 +72,39 @@ describe('ChatEmojiPicker', () => {
     expect(onEmojiSelect).toHaveBeenCalledWith('😀');
   });
 
+  it('피커 바깥을 클릭하면 닫힌다', async () => {
+    render(
+      <div>
+        <button type="button">피커 바깥</button>
+        <ChatEmojiPicker onEmojiSelect={vi.fn()} />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    await screen.findByRole('button', { name: '피커 이모지 선택' });
+    const outsideButton = screen.getByRole('button', { name: '피커 바깥' });
+    fireEvent.pointerDown(outsideButton);
+    fireEvent.click(outsideButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '피커 이모지 선택' })).toBeNull();
+    });
+  });
+
+  it('Escape를 누르면 피커가 닫힌다', async () => {
+    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+
+    const trigger = screen.getByRole('button', { name: '이모지 선택기 열기' });
+    fireEvent.click(trigger);
+    await screen.findByRole('button', { name: '피커 이모지 선택' });
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '피커 이모지 선택' })).toBeNull();
+    });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('모바일 화면에서 body 포털로 안전 배치한다', async () => {
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
     vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844);
@@ -115,18 +148,19 @@ describe('ChatEmojiPicker', () => {
     const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
 
     expect(picker.parentElement).toHaveStyle({
-      position: 'fixed',
-      left: '59px',
-      top: '357px',
       width: '323px',
       height: '300px',
     });
-    expect(picker.parentElement?.parentElement).toBe(document.body);
+    expect(picker.parentElement).toHaveAttribute('data-side', 'top');
+    expect(picker.parentElement?.parentElement).toHaveAttribute(
+      'data-radix-popper-content-wrapper',
+    );
+    expect(picker.parentElement?.parentElement?.parentElement).toBe(document.body);
     expect(picker).toHaveAttribute('data-width', '100%');
     expect(picker).toHaveAttribute('data-height', '100%');
   });
 
-  it('연속 스크롤에서 위치 계산을 프레임당 한 번만 예약한다', async () => {
+  it('연속 스크롤에서 크기 계산을 프레임당 한 번만 예약한다', async () => {
     const frameCallbacks: FrameRequestCallback[] = [];
     const requestAnimationFrame = vi
       .spyOn(window, 'requestAnimationFrame')
@@ -158,7 +192,7 @@ describe('ChatEmojiPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
     await screen.findByRole('button', { name: '피커 이모지 선택' });
     const initialFrameCount = requestAnimationFrame.mock.calls.length;
-    const initialPositionCount = getBoundingClientRect.mock.calls.length;
+    const initialSizeCalculationCount = getBoundingClientRect.mock.calls.length;
 
     act(() => {
       window.dispatchEvent(new Event('scroll'));
@@ -166,7 +200,7 @@ describe('ChatEmojiPicker', () => {
     });
 
     expect(requestAnimationFrame).toHaveBeenCalledTimes(initialFrameCount + 1);
-    expect(getBoundingClientRect).toHaveBeenCalledTimes(initialPositionCount);
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(initialSizeCalculationCount);
     expect(addEventListener).toHaveBeenCalledWith('scroll', expect.any(Function), {
       capture: true,
       passive: true,
@@ -176,7 +210,7 @@ describe('ChatEmojiPicker', () => {
       frameCallbacks.at(-1)?.(0);
     });
 
-    expect(getBoundingClientRect).toHaveBeenCalledTimes(initialPositionCount + 1);
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(initialSizeCalculationCount + 1);
   });
 
   it('Unicode 12.1 이하의 이모지만 표시한다', async () => {

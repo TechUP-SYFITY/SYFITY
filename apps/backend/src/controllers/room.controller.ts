@@ -1,6 +1,7 @@
 import type { Request as ExRequest } from 'express';
 import {
   Body,
+  Delete,
   Get,
   Patch,
   Path,
@@ -16,6 +17,7 @@ import {
   ERROR_CODES,
   type CreateRoomRequest,
   type CreateRoomResponse,
+  type GetMyRoomsResponse,
   type GetRoomResponse,
   type RecentRoomsResponse,
   type UpdateRoomRequest,
@@ -27,7 +29,10 @@ import type { RoomService } from '../services/room.service';
 import type { UserService } from '../services/user.service';
 
 type RoomControllerService = Pick<UserService, 'getRecentRooms'>;
-type RoomControllerRoomService = Pick<RoomService, 'createRoom' | 'getRoomInfo' | 'updateRoom'>;
+type RoomControllerRoomService = Pick<
+  RoomService,
+  'createRoom' | 'deactivateRoom' | 'getMyRooms' | 'getRoomInfo' | 'updateRoom'
+>;
 type RoomUpdateCandidate = { name?: unknown; status?: unknown };
 
 function isRenameRoomRequest(body: RoomUpdateCandidate): body is { name: string } {
@@ -38,14 +43,21 @@ function isCloseRoomRequest(body: RoomUpdateCandidate): body is { status: 'close
   return body.name === undefined && body.status === 'closed';
 }
 
+function isRecoverRoomRequest(body: RoomUpdateCandidate): body is { status: 'active' } {
+  return body.name === undefined && body.status === 'active';
+}
+
 function parseRoomUpdateRequest(
   body: RoomUpdateCandidate,
-): { name: string } | { status: 'closed' } | null {
+): { name: string } | { status: 'closed' } | { status: 'active' } | null {
   if (isRenameRoomRequest(body)) {
     return { name: body.name };
   }
   if (isCloseRoomRequest(body)) {
     return { status: 'closed' };
+  }
+  if (isRecoverRoomRequest(body)) {
+    return { status: 'active' };
   }
   return null;
 }
@@ -95,6 +107,25 @@ export class RoomController {
           name: room.name,
           inviteCode: room.inviteCode,
           lastJoinedAt: room.lastJoinedAt.toISOString(),
+        })),
+      },
+    };
+  }
+
+  @Get('mine')
+  @Security('jwt')
+  @SuccessResponse(200, 'OK')
+  async getMyRooms(@Request() req: ExRequest): Promise<GetMyRoomsResponse> {
+    const rooms = await this.roomService.getMyRooms(req.user!.id);
+    return {
+      success: true,
+      data: {
+        rooms: rooms.map((room) => ({
+          id: room.id,
+          name: room.name,
+          status: room.status,
+          closedAt: room.closedAt?.toISOString() ?? null,
+          updatedAt: room.updatedAt.toISOString(),
         })),
       },
     };
@@ -151,5 +182,12 @@ export class RoomController {
         updatedAt: room.updatedAt.toISOString(),
       },
     };
+  }
+
+  @Delete('{roomId}')
+  @Security('jwt')
+  @SuccessResponse(204, 'No Content')
+  async deactivateRoom(@Path() roomId: string, @Request() req: ExRequest): Promise<void> {
+    await this.roomService.deactivateRoom(roomId, req.user!.id);
   }
 }

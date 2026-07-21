@@ -18,6 +18,7 @@ import { HealthService } from './services/health.service';
 import { PlaybackService } from './services/playback.service';
 import { PlaylistService } from './services/playlist.service';
 import { PresenceService } from './services/presence.service';
+import { RoomLifecycleService } from './services/room-lifecycle.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
 import { UserService } from './services/user.service';
@@ -26,6 +27,7 @@ import { AuthController } from './controllers/auth.controller';
 import { ChatController } from './controllers/chat.controller';
 import { HealthController } from './controllers/health.controller';
 import { PlaylistController } from './controllers/playlist.controller';
+import { RoomLifecycleController } from './controllers/room-lifecycle.controller';
 import { RoomMemberController } from './controllers/room-member.controller';
 import { RoomMembershipController } from './controllers/room-membership.controller';
 import { RoomController } from './controllers/room.controller';
@@ -54,6 +56,7 @@ register(AuthController, () => {
 const userRepository = new UserRepository(prisma);
 const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
+export const roomLifecycleService = new RoomLifecycleService(roomRepository);
 const playlistRepository = new PlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
 const playbackSessionStore = new PlaybackSessionStore(cache);
@@ -72,6 +75,7 @@ export const roomService = new RoomService(
   playlistRepository,
   chatRepository,
   playbackService,
+  roomLifecycleService,
 );
 export const playlistService = new PlaylistService(
   playlistRepository,
@@ -82,6 +86,7 @@ export const playlistService = new PlaylistService(
 
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
+export const roomLifecycleController = new RoomLifecycleController(roomLifecycleService);
 register(RoomMembershipController, () => new RoomMembershipController(roomService));
 register(RoomMemberController, () => new RoomMemberController(roomService));
 register(ChatController, () => new ChatController(chatService));

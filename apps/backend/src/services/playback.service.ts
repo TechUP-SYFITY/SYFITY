@@ -25,10 +25,7 @@ import { assertActiveRoomMember, assertRoomHost } from '../utils/roomAccess';
 const AUTO_ADVANCE_MARGIN_SECONDS = 1;
 const PREVIOUS_TRACK_RESTART_THRESHOLD_SECONDS = 3;
 
-type PlaybackRoomRepo = Pick<
-  IRoomRepository,
-  'findRoomById' | 'findMembership' | 'touchLastActivity'
->;
+type PlaybackRoomRepo = Pick<IRoomRepository, 'findRoomById' | 'findMembership'>;
 type PlaybackPlaylistRepo = Pick<
   IPlaylistRepository,
   'findItemById' | 'getPlaylist' | 'markUnavailable'
@@ -110,7 +107,6 @@ export class PlaybackService {
         if (!selection) {
           throw new AppError(404, ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND, '재생할 곡이 없습니다.');
         }
-        await this.roomRepo.touchLastActivity(roomId);
         return this.transitionToSelection(
           roomId,
           session,
@@ -120,7 +116,6 @@ export class PlaybackService {
           'playback:change-track',
         );
       }
-      await this.roomRepo.touchLastActivity(roomId);
       return this.applyTransition(
         roomId,
         session,
@@ -134,7 +129,6 @@ export class PlaybackService {
     await assertRoomHost(this.roomRepo, roomId, userId);
     const result = await this.withRoomLock(roomId, async () => {
       const session = this.sessionStore.get(roomId);
-      await this.roomRepo.touchLastActivity(roomId);
       return this.applyTransition(
         roomId,
         session,
@@ -149,7 +143,6 @@ export class PlaybackService {
     await assertRoomHost(this.roomRepo, roomId, userId);
     const result = await this.withRoomLock(roomId, async () => {
       const session = this.sessionStore.get(roomId);
-      await this.roomRepo.touchLastActivity(roomId);
       return this.applyTransition(roomId, session, { baseCurrentTime: seekTime }, 'playback:seek');
     });
     return result.payload;
@@ -168,7 +161,6 @@ export class PlaybackService {
       }
       const session = this.sessionStore.get(roomId);
       const history = this.appendHistory(session, session.playlistItemId, playlistItemId);
-      await this.roomRepo.touchLastActivity(roomId);
       return this.applyTransition(
         roomId,
         session,
@@ -192,7 +184,6 @@ export class PlaybackService {
       const session = this.sessionStore.get(roomId);
       const playlist = await this.playlistRepo.getPlaylist(roomId);
       const selection = this.selectNext(session, playlist, { honorRepeatOne: false });
-      await this.roomRepo.touchLastActivity(roomId);
       if (!selection)
         return this.applyTransition(roomId, session, { isPlaying: false }, 'playback:pause');
       return this.transitionToSelection(
@@ -219,7 +210,6 @@ export class PlaybackService {
       const previousId =
         elapsed < PREVIOUS_TRACK_RESTART_THRESHOLD_SECONDS ? history.pop() : undefined;
       const previous = previousId ? available.get(previousId) : undefined;
-      await this.roomRepo.touchLastActivity(roomId);
       if (!previous) {
         return this.applyTransition(
           roomId,

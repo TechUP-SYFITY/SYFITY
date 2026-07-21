@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { ERROR_CODES } from '@syfity/shared';
 
 import { ChatService } from './chat.service';
-import { logger } from '../lib/logger';
 import type { ChatRecord, IChatRepository } from '../types/chat';
 import type { IRoomRepository, RoomDetailRecord } from '../types/room';
 
@@ -23,6 +22,7 @@ const room: RoomDetailRecord = {
   hostId: 'user-1',
   inviteCode: 'ABC123',
   status: 'active',
+  closedAt: null,
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
 };
 
@@ -42,7 +42,7 @@ function makeRoomRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository
     existsRoom: vi.fn().mockResolvedValue(true),
     findRoomById: vi.fn().mockResolvedValue(room),
     findRoomByInviteCode: vi.fn().mockResolvedValue(room),
-    touchLastActivity: vi.fn().mockResolvedValue(undefined),
+    findRoomsByHostId: vi.fn().mockResolvedValue([]),
     findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'offline' }),
     upsertMembership: vi.fn().mockResolvedValue(undefined),
     findMembers: vi.fn().mockResolvedValue([]),
@@ -53,6 +53,9 @@ function makeRoomRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository
     updateMemberStatus: vi.fn().mockResolvedValue(undefined),
     findMemberInfo: vi.fn().mockResolvedValue(null),
     closeRoom: vi.fn().mockResolvedValue(undefined),
+    recoverRoom: vi.fn().mockResolvedValue(undefined),
+    deactivateRoom: vi.fn().mockResolvedValue(undefined),
+    inactivateStaleRooms: vi.fn().mockResolvedValue(0),
     updateRoomName: vi.fn().mockResolvedValue({
       id: 'room-1',
       name: 'Morning Jazz',
@@ -63,7 +66,7 @@ function makeRoomRepo(overrides: Partial<IRoomRepository> = {}): IRoomRepository
 }
 
 describe('ChatService', () => {
-  it('채팅 메시지를 trim 후 저장하고 Room lastActivity를 갱신한다', async () => {
+  it('채팅 메시지를 trim 후 저장한다', async () => {
     const chatRepo = makeChatRepo();
     const roomRepo = makeRoomRepo();
     const service = new ChatService(chatRepo, roomRepo);
@@ -84,7 +87,6 @@ describe('ChatService', () => {
       type: 'user',
       message: 'hello',
     });
-    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
   });
 
   it('비속어를 마스킹한 메시지를 저장한다', async () => {
@@ -106,38 +108,6 @@ describe('ChatService', () => {
     });
   });
 
-  it('Room lastActivity 갱신 실패는 채팅 전송을 실패시키지 않는다', async () => {
-    const error = new Error('touch failed');
-    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
-    const chatRepo = makeChatRepo();
-    const roomRepo = makeRoomRepo({ touchLastActivity: vi.fn().mockRejectedValue(error) });
-    const service = new ChatService(chatRepo, roomRepo);
-
-    try {
-      await expect(
-        service.sendMessage({
-          roomId: 'room-1',
-          userId: 'user-1',
-          message: 'hello',
-        }),
-      ).resolves.toEqual(chat);
-
-      expect(chatRepo.createMessage).toHaveBeenCalledWith({
-        roomId: 'room-1',
-        userId: 'user-1',
-        type: 'user',
-        message: 'hello',
-      });
-      expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
-      expect(loggerError).toHaveBeenCalledWith(
-        { err: error, roomId: 'room-1' },
-        '[ChatService.sendMessage] Room lastActivity 갱신 실패',
-      );
-    } finally {
-      loggerError.mockRestore();
-    }
-  });
-
   it('공백 메시지는 VALIDATION_ERROR를 던지고 저장하지 않는다', async () => {
     const chatRepo = makeChatRepo();
     const roomRepo = makeRoomRepo();
@@ -156,7 +126,6 @@ describe('ChatService', () => {
 
     expect(roomRepo.findRoomById).not.toHaveBeenCalled();
     expect(chatRepo.createMessage).not.toHaveBeenCalled();
-    expect(roomRepo.touchLastActivity).not.toHaveBeenCalled();
   });
 
   it('300자를 초과한 메시지는 VALIDATION_ERROR를 던지고 저장하지 않는다', async () => {
@@ -176,7 +145,6 @@ describe('ChatService', () => {
     });
 
     expect(chatRepo.createMessage).not.toHaveBeenCalled();
-    expect(roomRepo.touchLastActivity).not.toHaveBeenCalled();
   });
 
   it('채팅 전송 시 Room이 없으면 ROOM_NOT_FOUND를 던진다', async () => {
@@ -196,8 +164,23 @@ describe('ChatService', () => {
     });
 
     expect(chatRepo.createMessage).not.toHaveBeenCalled();
-    expect(roomRepo.touchLastActivity).not.toHaveBeenCalled();
   });
+
+  it.each(['closed', 'inactive'] as const)(
+    '%s Room 채팅 전송은 ROOM_NOT_ACTIVE를 반환한다',
+    async (status) => {
+      const chatRepo = makeChatRepo();
+      const roomRepo = makeRoomRepo({
+        findRoomById: vi.fn().mockResolvedValue({ ...room, status }),
+      });
+      const service = new ChatService(chatRepo, roomRepo);
+
+      await expect(
+        service.sendMessage({ roomId: 'room-1', userId: 'user-1', message: 'hello' }),
+      ).rejects.toMatchObject({ status: 409, code: ERROR_CODES.ROOM_NOT_ACTIVE });
+      expect(chatRepo.createMessage).not.toHaveBeenCalled();
+    },
+  );
 
   it('채팅 전송 시 참여자가 아니면 ROOM_ACCESS_DENIED를 던진다', async () => {
     const chatRepo = makeChatRepo();
@@ -216,7 +199,6 @@ describe('ChatService', () => {
     });
 
     expect(chatRepo.createMessage).not.toHaveBeenCalled();
-    expect(roomRepo.touchLastActivity).not.toHaveBeenCalled();
   });
 
   it('채팅 전송 시 이미 나간 참여자면 ROOM_ACCESS_DENIED를 던진다', async () => {
@@ -238,7 +220,6 @@ describe('ChatService', () => {
     });
 
     expect(chatRepo.createMessage).not.toHaveBeenCalled();
-    expect(roomRepo.touchLastActivity).not.toHaveBeenCalled();
   });
 
   it('Room이 존재하면 채팅 내역과 hasMore false를 반환한다', async () => {

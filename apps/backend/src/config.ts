@@ -52,4 +52,7 @@ export const config = {
   db: {
     url: requireEnv('DATABASE_URL'),
   },
+  cron: {
+    secret: requireEnv('CRON_SECRET'),
+  },
 };

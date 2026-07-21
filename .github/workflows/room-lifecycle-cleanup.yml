@@ -1,0 +1,19 @@
+name: Room Lifecycle Cleanup
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 매일 UTC 18:00 (KST 03:00)
+  workflow_dispatch: {}
+
+jobs:
+  inactivate-stale-rooms:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call inactivate-stale endpoint
+        run: |
+          BASE_URL="${RENDER_HEALTH_URL%/health}"
+          curl -fsS -X POST "$BASE_URL/api/v1/internal/rooms/inactivate-stale" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          RENDER_HEALTH_URL: ${{ vars.RENDER_HEALTH_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

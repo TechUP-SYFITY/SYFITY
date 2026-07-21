@@ -66,6 +66,16 @@
   border-radius: var(--radius-md);
 }
 
+.chat-emoji-picker .epr-emoji-native {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
 .chat-emoji-picker button.epr-emoji:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: -2px;

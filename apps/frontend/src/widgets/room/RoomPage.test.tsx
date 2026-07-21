@@ -299,6 +299,7 @@ describe('RoomPage', () => {
     expect(usePresenceStore.getState().members).toEqual([]);
     expect(useChatStore.getState().messages).toEqual([]);
     expect(useRoomStore.getState().hasJoinedRoom).toBe(false);
+    expect(screen.getByText('Room이 종료되었습니다.')).toBeVisible();
     expect(routerReplace).toHaveBeenCalledWith('/home');
   });
 

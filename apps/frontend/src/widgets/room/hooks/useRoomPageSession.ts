@@ -4,6 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
+import { useToast } from '@/shared/components/ui';
 import type { RoomJoinedPayload } from '@/shared/types/socket';
 
 import { useMe } from '@/features/auth/hooks/useAuth';
@@ -20,6 +21,7 @@ import { useRoomLiveConnections } from './useRoomLiveConnections';
 
 export function useRoomPageSession(roomId: string) {
   const router = useRouter();
+  const { pushToast } = useToast();
   const joinRoom = useJoinRoom(roomId);
   const { data: me } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
@@ -48,7 +50,7 @@ export function useRoomPageSession(roomId: string) {
   const clearMessages = useChatStore((state) => state.clearMessages);
   const clearRoom = useRoomStore((state) => state.clearRoom);
 
-  const handleRoomClosed = useCallback(() => {
+  const exitRoom = useCallback(() => {
     clearMessages();
     clearMembers();
     clearPlayback();
@@ -56,6 +58,15 @@ export function useRoomPageSession(roomId: string) {
     clearRoom();
     router.replace('/home');
   }, [clearMembers, clearMessages, clearPlayback, clearPlaylist, clearRoom, router]);
+
+  const handleRoomClosed = useCallback(() => {
+    pushToast({
+      id: 'room-closed',
+      title: 'Room이 종료되었습니다.',
+      variant: 'info',
+    });
+    exitRoom();
+  }, [exitRoom, pushToast]);
 
   const handleSnapshot = useCallback(
     (snapshot: RoomJoinedPayload) => {
@@ -84,7 +95,8 @@ export function useRoomPageSession(roomId: string) {
   useRoomLiveConnections(roomId, joinRoom.isSuccess, handleRoomClosed, handleSnapshot);
 
   return {
-    exitRoom: handleRoomClosed,
+    exitClosedRoom: handleRoomClosed,
+    exitRoom,
     hasJoinedRoom,
     hostConnection,
     isMuted,

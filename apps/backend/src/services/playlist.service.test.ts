@@ -1,10 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ERROR_CODES } from '@syfity/shared';
 
 import { ERROR_CODES } from '@syfity/shared';
 
 import { PlaylistService } from './playlist.service';
+import { broadcastToRoom } from '../socket/broadcast';
 
 vi.mock('../socket/broadcast', () => ({ broadcastToRoom: vi.fn() }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const item = {
   id: 'item-1',
@@ -135,6 +142,22 @@ describe('PlaylistService playback integration', () => {
     });
     expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
     expect(playbackService.enqueueIfShuffled).toHaveBeenCalledWith('room-1', 'item-2');
+    expect(broadcastToRoom).toHaveBeenCalledOnce();
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
+      playlist: [
+        {
+          id: 'item-1',
+          videoId: 'video-1',
+          title: 'Song',
+          channelTitle: 'Channel',
+          thumbnailUrl: '',
+          duration: 180,
+          position: 1,
+          addedBy: 'host',
+          status: 'available',
+        },
+      ],
+    });
   });
 
   it('추가할 곡이 없어도 playlist:updated broadcast를 수행한다', async () => {
@@ -152,5 +175,45 @@ describe('PlaylistService playback integration', () => {
       duplicateCount: 2,
       unavailableCount: 0,
     });
+    expect(broadcastToRoom).toHaveBeenCalledOnce();
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
+      playlist: expect.any(Array),
+    });
+  });
+
+  it.each([
+    {
+      label: 'Host가 아닌 사용자',
+      userId: 'member',
+      playlist: { id: 'personal-1', ownerId: 'member' },
+      code: ERROR_CODES.AUTH_FORBIDDEN,
+      status: 403,
+    },
+    {
+      label: '존재하지 않는 개인 Playlist',
+      userId: 'host',
+      playlist: null,
+      code: ERROR_CODES.PERSONAL_PLAYLIST_NOT_FOUND,
+      status: 404,
+    },
+    {
+      label: '다른 사용자의 개인 Playlist',
+      userId: 'host',
+      playlist: { id: 'personal-1', ownerId: 'other-user' },
+      code: ERROR_CODES.PERSONAL_PLAYLIST_ACCESS_DENIED,
+      status: 403,
+    },
+  ])('$label 가져오기를 거부한다', async ({ userId, playlist, code, status }) => {
+    const { service, playlistRepo, personalPlaylistRepo } = fixture();
+    personalPlaylistRepo.findPlaylistById.mockResolvedValueOnce(playlist);
+
+    await expect(
+      service.importFromPersonalPlaylist('room-1', userId, 'personal-1'),
+    ).rejects.toMatchObject({
+      status,
+      code,
+    });
+    expect(playlistRepo.importItems).not.toHaveBeenCalled();
+    expect(broadcastToRoom).not.toHaveBeenCalled();
   });
 });

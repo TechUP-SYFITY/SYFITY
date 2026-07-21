@@ -7,12 +7,14 @@ import { ChatEmojiPicker } from './ChatEmojiPicker';
 
 vi.mock('emoji-picker-react', () => ({
   default: ({
+    categories,
     emojiVersion,
     height,
     onEmojiClick,
     previewConfig,
     width,
   }: {
+    categories?: string[];
     emojiVersion?: string;
     height?: number | string;
     onEmojiClick: (emojiData: { emoji: string }) => void;
@@ -20,6 +22,7 @@ vi.mock('emoji-picker-react', () => ({
     width?: number | string;
   }) => (
     <button
+      data-categories={categories?.join(',')}
       data-emoji-version={emojiVersion}
       data-height={height}
       data-show-preview={previewConfig?.showPreview}
@@ -30,6 +33,18 @@ vi.mock('emoji-picker-react', () => ({
       피커 이모지 선택
     </button>
   ),
+  Categories: {
+    ACTIVITIES: 'activities',
+    ANIMALS_NATURE: 'animals_nature',
+    CUSTOM: 'custom',
+    FLAGS: 'flags',
+    FOOD_DRINK: 'food_drink',
+    OBJECTS: 'objects',
+    SMILEYS_PEOPLE: 'smileys_people',
+    SUGGESTED: 'suggested',
+    SYMBOLS: 'symbols',
+    TRAVEL_PLACES: 'travel_places',
+  },
   EmojiStyle: { NATIVE: 'native' },
 }));
 
@@ -82,5 +97,15 @@ describe('ChatEmojiPicker', () => {
 
     expect(picker).toHaveAttribute('data-show-preview', 'false');
     expect(picker.parentElement).toHaveClass('chat-emoji-picker');
+  });
+
+  it('플래그 카테고리를 표시하지 않는다', async () => {
+    render(<ChatEmojiPicker onEmojiSelect={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이모지 선택기 열기' }));
+    const picker = await screen.findByRole('button', { name: '피커 이모지 선택' });
+
+    expect(picker).not.toHaveAttribute('data-categories', expect.stringContaining('flags'));
+    expect(picker).toHaveAttribute('data-categories', expect.stringContaining('symbols'));
   });
 });

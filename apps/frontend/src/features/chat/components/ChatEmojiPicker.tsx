@@ -1,6 +1,6 @@
 'use client';
 
-import { EmojiStyle } from 'emoji-picker-react';
+import { Categories, EmojiStyle } from 'emoji-picker-react';
 import { SmilePlus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
@@ -8,6 +8,18 @@ import { useState } from 'react';
 import { Button } from '@/shared/components/ui';
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
+
+const CHAT_EMOJI_CATEGORIES = [
+  Categories.SUGGESTED,
+  Categories.CUSTOM,
+  Categories.SMILEYS_PEOPLE,
+  Categories.ANIMALS_NATURE,
+  Categories.FOOD_DRINK,
+  Categories.TRAVEL_PLACES,
+  Categories.ACTIVITIES,
+  Categories.OBJECTS,
+  Categories.SYMBOLS,
+];
 
 interface ChatEmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
@@ -32,6 +44,7 @@ export function ChatEmojiPicker({ onEmojiSelect }: ChatEmojiPickerProps) {
       {isOpen ? (
         <div className="chat-emoji-picker absolute right-0 bottom-[calc(100%+0.5rem)] z-50 h-[min(300px,calc(100dvh-12rem))] w-full max-w-[350px]">
           <EmojiPicker
+            categories={CHAT_EMOJI_CATEGORIES}
             emojiStyle={EmojiStyle.NATIVE}
             emojiVersion="12.1"
             height="100%"

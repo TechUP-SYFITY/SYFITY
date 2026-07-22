@@ -49,6 +49,9 @@ export const config = {
   youtube: {
     apiKey: requireEnv('YOUTUBE_API_KEY'),
   },
+  // Playwright E2E에서 YouTube 호출을 스텁으로 대체하는 스위치.
+  // 실제 적용 여부는 createYouTubeClient가 판단하며, 운영에서는 무시된다.
+  e2eMode: process.env.E2E_MODE === 'true',
   db: {
     url: requireEnv('DATABASE_URL'),
   },

@@ -176,7 +176,7 @@ export function SearchPanel({
                       <>
                         <div className="flex items-center justify-between border-b border-white/5.5 px-4 py-3 text-xs text-white/45">
                           <p>검색 결과 {results.length}개</p>
-                          <YoutubeAttributionLink variant="light" />
+                          <YoutubeAttributionLink />
                         </div>
                         <ul>
                           {results.map((result) => (

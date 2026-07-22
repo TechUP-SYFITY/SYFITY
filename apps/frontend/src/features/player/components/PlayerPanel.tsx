@@ -96,7 +96,7 @@ export function PlayerPanel({
           </p>
           {statusText ? (
             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <YoutubeAttributionLink variant="dark" />
+              <YoutubeAttributionLink />
               <span>{statusText}</span>
             </div>
           ) : null}

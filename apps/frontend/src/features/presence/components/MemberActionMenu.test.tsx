@@ -19,32 +19,28 @@ const member = {
 afterEach(cleanup);
 
 describe('MemberActionMenu', () => {
-  it('멤버 행을 누르면 옆에 추방 메뉴를 표시한다', async () => {
+  it('세로 점 버튼을 누르면 멤버 추방 메뉴를 표시한다', async () => {
     const onRequestKick = vi.fn();
 
-    render(
-      <MemberActionMenu member={member} onRequestKick={onRequestKick}>
-        <span>지민 멤버 행</span>
-      </MemberActionMenu>,
-    );
+    render(<MemberActionMenu member={member} onRequestKick={onRequestKick} />);
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: '지민 멤버 관리' }), {
+    const trigger = screen.getByRole('button', { name: '지민 멤버 관리' });
+
+    expect(trigger.querySelector('svg')).toHaveClass('lucide-ellipsis-vertical');
+
+    fireEvent.pointerDown(trigger, {
       button: 0,
       ctrlKey: false,
     });
-    fireEvent.click(await screen.findByRole('menuitem', { name: '추방' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: '멤버 추방' }));
 
     expect(onRequestKick).toHaveBeenCalledWith(member);
   });
 
   it('비활성 상태에서는 관리 메뉴를 열 수 없다', () => {
-    render(
-      <MemberActionMenu disabled member={member} onRequestKick={vi.fn()}>
-        <span>지민 멤버 행</span>
-      </MemberActionMenu>,
-    );
+    render(<MemberActionMenu disabled member={member} onRequestKick={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: '지민 멤버 관리' })).toBeDisabled();
-    expect(screen.queryByRole('menuitem', { name: '추방' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '멤버 추방' })).not.toBeInTheDocument();
   });
 });

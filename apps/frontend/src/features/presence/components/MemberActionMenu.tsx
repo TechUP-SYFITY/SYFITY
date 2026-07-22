@@ -1,11 +1,11 @@
 'use client';
 
-import { UserRoundX } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { EllipsisVertical, UserRoundX } from 'lucide-react';
 
 import type { RoomMemberSummary } from '@syfity/shared';
 
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,14 +15,12 @@ import {
 } from '@/shared/components/ui';
 
 interface MemberActionMenuProps {
-  children: ReactNode;
   disabled?: boolean;
   member: RoomMemberSummary;
   onRequestKick: (member: RoomMemberSummary) => void;
 }
 
 export function MemberActionMenu({
-  children,
   disabled = false,
   member,
   onRequestKick,
@@ -30,21 +28,22 @@ export function MemberActionMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
           aria-label={`${member.nickname} 멤버 관리`}
-          className="w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="size-11 shrink-0 rounded-xl"
           disabled={disabled}
-          type="button"
+          size="icon"
+          variant="ghost"
         >
-          {children}
-        </button>
+          <EllipsisVertical aria-hidden />
+        </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="right">
+      <DropdownMenuContent>
         <DropdownMenuLabel>{member.nickname}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={() => onRequestKick(member)}>
           <UserRoundX aria-hidden />
-          추방
+          멤버 추방
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

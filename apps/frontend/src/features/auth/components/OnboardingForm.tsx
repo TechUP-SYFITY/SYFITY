@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { Button, Input } from '@/shared/components/ui';
+import { Button, Checkbox, Input } from '@/shared/components/ui';
 
 import { ProfileImagePicker } from './ProfileImagePicker';
 import { useCompleteOnboarding, useMe } from '../hooks/useAuth';
@@ -40,11 +40,10 @@ export function OnboardingForm() {
         onChange={(event) => setNickname(event.target.value)}
       />
       <label className="flex items-start gap-3 text-sm text-muted-foreground">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={agreed}
-          onChange={(event) => setAgreed(event.target.checked)}
-          className="mt-1"
+          onCheckedChange={(checked) => setAgreed(checked === true)}
+          className="mt-0.5"
         />
         <span>
           저는 만 14세 이상이며{' '}

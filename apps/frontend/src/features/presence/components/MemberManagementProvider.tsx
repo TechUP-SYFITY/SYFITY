@@ -69,11 +69,18 @@ export function MemberManagementProvider({
     setIsKickedMembersOpen(true);
   }, [isHost]);
 
-  const openUnkickDialog = useCallback((member: KickedRoomMember) => {
-    setIsKickedMembersOpen(false);
-    setUnkickTarget(member);
-    setIsUnkickOpen(true);
-  }, []);
+  const openUnkickDialog = useCallback(
+    (member: KickedRoomMember) => {
+      if (!isHost) {
+        return;
+      }
+
+      setIsKickedMembersOpen(false);
+      setUnkickTarget(member);
+      setIsUnkickOpen(true);
+    },
+    [isHost],
+  );
 
   const handleUnkickOpenChange = useCallback((open: boolean) => {
     setIsUnkickOpen(open);

@@ -152,6 +152,23 @@ describe('MemberManagementProvider', () => {
     await waitFor(() => expect(roomMemberApi.getKickedMembers).toHaveBeenCalledTimes(2));
   });
 
+  it('Host 권한을 잃으면 추방 해제 Dialog를 열지 않는다', async () => {
+    const { rerender } = renderProvider(true);
+
+    fireEvent.click(screen.getByRole('button', { name: '추방 목록 열기' }));
+    const unkickButton = await screen.findByRole('button', { name: '수빈 추방 해제' });
+
+    rerender(
+      <MemberManagementProvider currentUserId="host-1" isHost={false} roomId="room-1">
+        <Consumer />
+      </MemberManagementProvider>,
+    );
+    fireEvent.click(unkickButton);
+
+    expect(screen.getByRole('heading', { name: '추방 관리' })).toBeInTheDocument();
+    expect(screen.queryByText('수빈님의 추방을 해제할까요?')).not.toBeInTheDocument();
+  });
+
   it('비Host가 Context 액션을 직접 호출해도 관리 Dialog를 열지 않는다', () => {
     renderProvider(false);
     const openKickButton = screen.getByRole('button', { name: '추방 확인 열기' });

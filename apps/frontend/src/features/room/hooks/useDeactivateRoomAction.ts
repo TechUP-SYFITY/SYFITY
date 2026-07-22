@@ -5,18 +5,13 @@ import type { ErrorCode } from '@syfity/shared';
 
 import { useToast } from '@/shared/components/ui/Toast';
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
-import { ApiClientError } from '@/shared/types/api';
 
-import { useDeactivateRoom } from './roomHooks';
+import { isDeactivationStateError, useDeactivateRoom } from './roomHooks';
 
 const DEACTIVATION_ERROR_MESSAGES = {
   ROOM_NOT_CLOSED: '이미 상태가 변경되어 비활성화할 수 없는 Room이에요.',
   ROOM_NOT_FOUND: '이미 비활성화되었거나 찾을 수 없는 Room이에요.',
 } satisfies Partial<Record<ErrorCode, string>>;
-
-const isDeactivationStateError = (error: unknown): error is ApiClientError =>
-  error instanceof ApiClientError &&
-  (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_NOT_FOUND');
 
 export function useDeactivateRoomAction() {
   const { pushToast } = useToast();

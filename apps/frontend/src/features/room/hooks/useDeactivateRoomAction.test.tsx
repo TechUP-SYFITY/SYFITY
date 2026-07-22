@@ -24,6 +24,9 @@ vi.mock('@/shared/components/ui/Toast', () => ({
 }));
 
 vi.mock('./roomHooks', () => ({
+  isDeactivationStateError: (error: unknown) =>
+    error instanceof ApiClientError &&
+    (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_NOT_FOUND'),
   useDeactivateRoom: (options: { onStateError?: (error: ApiClientError) => void }) => {
     mocks.deactivateOptions = options;
     return {

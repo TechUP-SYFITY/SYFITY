@@ -140,7 +140,7 @@ interface UseDeactivateRoomOptions {
   onStateError?: (error: ApiClientError) => void;
 }
 
-const isDeactivationStateError = (error: unknown): error is ApiClientError =>
+export const isDeactivationStateError = (error: unknown): error is ApiClientError =>
   error instanceof ApiClientError &&
   (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_NOT_FOUND');
 

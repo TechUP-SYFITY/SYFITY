@@ -424,6 +424,34 @@ describe('RoomService', () => {
     expect(roomRepo.findMembership).toHaveBeenCalledWith('room-1', 'user-1');
   });
 
+  it.each([
+    ['closed', ERROR_CODES.ROOM_CLOSED],
+    ['inactive', ERROR_CODES.ROOM_INACTIVE],
+  ] as const)('%s Room 기본 정보 조회를 상태별 오류로 거부한다', async (status, code) => {
+    const { service, roomRepo } = makeService({
+      roomRepo: { findRoomById: vi.fn().mockResolvedValue({ ...roomDetail, status }) },
+    });
+
+    await expect(service.getRoomInfo('room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code,
+    });
+    expect(roomRepo.findMembership).not.toHaveBeenCalled();
+  });
+
+  it('kicked 멤버의 Room 기본 정보 조회를 거부한다', async () => {
+    const { service } = makeService({
+      roomRepo: {
+        findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'kicked' }),
+      },
+    });
+
+    await expect(service.getRoomInfo('room-1', 'user-1')).rejects.toMatchObject({
+      status: 403,
+      code: ERROR_CODES.ROOM_MEMBER_KICKED,
+    });
+  });
+
   it('Room 기본 정보가 없으면 ROOM_NOT_FOUND를 던진다', async () => {
     const { service } = makeService({
       roomRepo: { findRoomById: vi.fn().mockResolvedValue(null) },

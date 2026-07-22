@@ -18,6 +18,8 @@ const meta = {
     myRooms: previewMyRooms,
     onCreateRoom: () => {},
     onJoinRoom: () => {},
+    onRecoverRoom: () => {},
+    onRecoveryOpenChange: () => {},
     onRetryMyRooms: () => {},
     recentRooms: previewRecentRooms,
   },

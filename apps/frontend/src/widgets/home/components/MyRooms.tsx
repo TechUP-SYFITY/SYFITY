@@ -8,9 +8,14 @@ import type { MyRoomSummary } from '@/features/room/types/roomTypes';
 import { MyRoomCard } from './MyRoomCard';
 
 interface MyRoomsProps {
+  recoveringRoomId?: string;
+  recoveryErrorMessage?: string;
+  recoveryErrorRoomId?: string;
   rooms: MyRoomSummary[];
   isLoading: boolean;
   isError: boolean;
+  onRecover: (roomId: string) => void;
+  onRecoveryOpenChange?: (open: boolean) => void;
   onRetry: () => void;
 }
 
@@ -27,7 +32,17 @@ function SectionHeading({ count }: { count?: number }) {
   );
 }
 
-export function MyRooms({ rooms, isLoading, isError, onRetry }: MyRoomsProps) {
+export function MyRooms({
+  recoveringRoomId,
+  recoveryErrorMessage,
+  recoveryErrorRoomId,
+  rooms,
+  isLoading,
+  isError,
+  onRecover,
+  onRecoveryOpenChange,
+  onRetry,
+}: MyRoomsProps) {
   if (isLoading) {
     return (
       <section className="flex flex-col gap-3" aria-label="내 Room 불러오는 중">
@@ -84,7 +99,16 @@ export function MyRooms({ rooms, isLoading, isError, onRetry }: MyRoomsProps) {
       <SectionHeading count={rooms.length} />
       <div className="flex flex-col gap-3">
         {rooms.map((room) => (
-          <MyRoomCard key={room.id} room={room} />
+          <MyRoomCard
+            key={room.id}
+            isRecovering={recoveringRoomId === room.id}
+            recoveryErrorMessage={
+              recoveryErrorRoomId === room.id ? recoveryErrorMessage : undefined
+            }
+            room={room}
+            onRecover={onRecover}
+            onRecoveryOpenChange={onRecoveryOpenChange}
+          />
         ))}
       </div>
     </section>

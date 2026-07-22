@@ -118,9 +118,12 @@ describe('MemberList management', () => {
 
     renderList(true);
 
-    expect(
-      screen.getByRole('button', { name: '멤버 관리 정보를 불러오는 중이에요' }),
-    ).toBeDisabled();
+    const unavailableButton = screen.getByRole('button', {
+      name: '멤버 관리 정보를 불러오는 중이에요',
+    });
+
+    expect(unavailableButton).toBeDisabled();
+    expect(unavailableButton).toHaveClass('size-9', 'border-transparent', 'bg-transparent');
     expect(screen.getByText('지민')).toBeInTheDocument();
   });
 });

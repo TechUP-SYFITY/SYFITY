@@ -27,6 +27,14 @@ describe('MemberActionMenu', () => {
     const trigger = screen.getByRole('button', { name: '지민 멤버 관리' });
 
     expect(trigger.querySelector('svg')).toHaveClass('lucide-ellipsis-vertical');
+    expect(trigger).toHaveClass(
+      'size-9',
+      'border-transparent',
+      'bg-transparent',
+      'hover:border-white/10',
+      'hover:bg-white/10',
+      'hover:text-white/85',
+    );
 
     fireEvent.pointerDown(trigger, {
       button: 0,

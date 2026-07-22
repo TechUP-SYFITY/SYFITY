@@ -674,18 +674,24 @@ describe('RoomRepository', () => {
   });
 
   it('30일 경과한 closed Room을 inactive로 전환하고 처리 건수를 반환한다', async () => {
+    const now = new Date('2026-08-01T12:00:00.000Z');
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now.getTime());
     const { prisma } = makePrisma();
     vi.mocked(prisma.room.updateMany).mockResolvedValue({ count: 2 } as never);
     const repo = new RoomRepository(prisma);
 
-    await expect(repo.inactivateStaleRooms()).resolves.toBe(2);
+    try {
+      await expect(repo.inactivateStaleRooms()).resolves.toBe(2);
 
-    expect(prisma.room.updateMany).toHaveBeenCalledWith({
-      where: {
-        status: 'closed',
-        closedAt: { lte: expect.any(Date) },
-      },
-      data: { status: 'inactive' },
-    });
+      expect(prisma.room.updateMany).toHaveBeenCalledWith({
+        where: {
+          status: 'closed',
+          closedAt: { lte: new Date('2026-07-02T12:00:00.000Z') },
+        },
+        data: { status: 'inactive' },
+      });
+    } finally {
+      dateNow.mockRestore();
+    }
   });
 });

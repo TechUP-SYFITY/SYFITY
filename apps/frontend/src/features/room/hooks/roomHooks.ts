@@ -8,7 +8,7 @@ import type { SocketClient } from '@/shared/lib/socket/types';
 import { ApiClientError } from '@/shared/types/api';
 
 import { roomApi, type RoomApi } from '../api/roomApi';
-import type { CreateRoomRequest, UpdateRoomRequest } from '../types/roomTypes';
+import type { CreateRoomRequest, MyRoomsResponse, UpdateRoomRequest } from '../types/roomTypes';
 
 export const roomQueryKeys = {
   all: ['rooms'] as const,
@@ -132,6 +132,47 @@ export const useRecoverRoom = ({ onStateError }: UseRecoverRoomOptions = {}) => 
           queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
         ]);
       }
+    },
+  });
+};
+
+interface UseDeactivateRoomOptions {
+  onStateError?: (error: ApiClientError) => void;
+}
+
+const isDeactivationStateError = (error: unknown) =>
+  error instanceof ApiClientError &&
+  (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_NOT_FOUND');
+
+export const useDeactivateRoom = ({ onStateError }: UseDeactivateRoomOptions = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (roomId: string) => roomApi.deleteRoom(roomId),
+    onSuccess: async (_, roomId) => {
+      queryClient.setQueryData<MyRoomsResponse>(roomQueryKeys.mine(), (current) =>
+        current
+          ? { ...current, rooms: current.rooms.filter((room) => room.id !== roomId) }
+          : current,
+      );
+      queryClient.removeQueries({ exact: true, queryKey: roomQueryKeys.detail(roomId) });
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+      ]);
+    },
+    onError: async (error, roomId) => {
+      if (!isDeactivationStateError(error)) {
+        return;
+      }
+
+      onStateError?.(error);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+      ]);
     },
   });
 };

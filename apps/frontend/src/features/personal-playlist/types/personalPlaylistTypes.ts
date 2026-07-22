@@ -1,70 +1,44 @@
-// 나만의 Playlist(개인 플레이리스트) REST 요청/응답 타입을 정의한다.
-// docs/05-api-spec.md 7절(개인 Playlist API)·6.5(불러오기)의 정식 스펙을 기준으로 한다.
-import type { PlaylistItem } from '@/shared/types/domain';
+// 나만의 Playlist(개인 플레이리스트) REST 요청/응답 타입.
+// 백엔드 정본(@syfity/shared)의 DTO를 그대로 재사용한다. (roomTypes.ts와 동일 패턴)
+// apiClient가 { success, data } 봉투를 언랩하므로, 여기서는 data 페이로드 형태로 노출한다.
+import type {
+  CreatePersonalPlaylistResponse as CreatePersonalPlaylistResponseEnvelope,
+  GetPersonalPlaylistResponse,
+  GetPersonalPlaylistsResponse,
+  ImportPersonalPlaylistRequest,
+  ImportPersonalPlaylistResponse,
+  PersonalPlaylist,
+  ReorderPersonalPlaylistItemsRequest,
+  ReorderPersonalPlaylistItemsResponse,
+  UpdatePersonalPlaylistResponse as UpdatePersonalPlaylistResponseEnvelope,
+} from '@syfity/shared';
 
-export interface PersonalPlaylistSummary {
-  id: string;
-  name: string;
-  description?: string | null;
-  coverUrl?: string | null;
-  itemCount: number;
-  totalDuration: number; // 초 단위 총 재생시간
-  updatedAt: string;
-}
+// 백엔드 DTO를 그대로 재노출 (형태 동일)
+export type {
+  AddPersonalPlaylistItemRequest,
+  CreatePersonalPlaylistRequest,
+  PersonalPlaylist,
+  PersonalPlaylistItem,
+  ReorderPersonalPlaylistItem,
+  UpdatePersonalPlaylistRequest,
+} from '@syfity/shared';
 
-export interface PersonalPlaylistDetail {
-  playlist: PersonalPlaylistSummary;
-  items: PlaylistItem[];
-}
+// 목록/상세의 playlist 요약 = 백엔드 PersonalPlaylist ({ id, name, createdAt, updatedAt })
+export type PersonalPlaylistSummary = PersonalPlaylist;
 
-export interface PersonalPlaylistListResponse {
-  playlists: PersonalPlaylistSummary[];
-}
+// GET /personal-playlists/{id} → { playlist, items }
+export type PersonalPlaylistDetail = GetPersonalPlaylistResponse['data'];
+// GET /personal-playlists → { playlists }
+export type PersonalPlaylistListResponse = GetPersonalPlaylistsResponse['data'];
 
-export interface CreatePersonalPlaylistRequest {
-  name: string;
-  description?: string;
-  coverUrl?: string;
-}
+// POST/PATCH 응답 (언랩된 data)
+export type CreatePersonalPlaylistResponse = CreatePersonalPlaylistResponseEnvelope['data'];
+export type UpdatePersonalPlaylistResponse = UpdatePersonalPlaylistResponseEnvelope['data'];
 
-export type UpdatePersonalPlaylistRequest = Partial<CreatePersonalPlaylistRequest>;
+// PATCH /personal-playlists/{id}/items (순서 변경)
+export type ReorderPersonalPlaylistRequest = ReorderPersonalPlaylistItemsRequest;
+export type ReorderPersonalPlaylistResponse = ReorderPersonalPlaylistItemsResponse['data'];
 
-export interface CreatePersonalPlaylistResponse {
-  id: string;
-  name: string;
-  createdAt: string;
-}
-
-export interface UpdatePersonalPlaylistResponse {
-  id: string;
-  name: string;
-  updatedAt: string;
-}
-
-export interface AddPersonalPlaylistItemRequest {
-  videoId?: string;
-  youtubeUrl?: string;
-}
-
-export interface ReorderPersonalPlaylistItem {
-  id: string;
-  position: number;
-}
-
-export interface ReorderPersonalPlaylistRequest {
-  items: ReorderPersonalPlaylistItem[];
-}
-
-export interface ReorderPersonalPlaylistResponse {
-  items: PlaylistItem[];
-}
-
-export interface ImportPlaylistToRoomRequest {
-  personalPlaylistId: string;
-}
-
-export interface ImportPlaylistToRoomResult {
-  addedCount: number;
-  duplicateCount: number;
-  unavailableCount: number;
-}
+// POST /rooms/{roomId}/playlist-imports (Room으로 불러오기)
+export type ImportPlaylistToRoomRequest = ImportPersonalPlaylistRequest;
+export type ImportPlaylistToRoomResult = ImportPersonalPlaylistResponse['data'];

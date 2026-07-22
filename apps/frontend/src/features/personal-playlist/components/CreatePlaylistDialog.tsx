@@ -21,7 +21,6 @@ import { useCreatePlaylist, useUpdatePlaylist } from '../hooks/personalPlaylistH
 import type { PersonalPlaylistSummary } from '../types/personalPlaylistTypes';
 
 const MAX_NAME_LENGTH = 30;
-const MAX_DESC_LENGTH = 80;
 
 interface CreatePlaylistDialogProps {
   open: boolean;
@@ -58,7 +57,6 @@ function PlaylistForm({
 }: Omit<CreatePlaylistDialogProps, 'open'>) {
   const isEdit = Boolean(playlist);
   const [name, setName] = useState(playlist?.name ?? '');
-  const [description, setDescription] = useState(playlist?.description ?? '');
 
   const createPlaylist = useCreatePlaylist();
   const updatePlaylist = useUpdatePlaylist(playlist?.id ?? '');
@@ -74,10 +72,7 @@ function PlaylistForm({
       return;
     }
 
-    const body = {
-      name: trimmedName,
-      description: description.trim() || undefined,
-    };
+    const body = { name: trimmedName };
 
     mutation.mutate(body, {
       onSuccess: (result) => {
@@ -116,20 +111,6 @@ function PlaylistForm({
               maxLength={MAX_NAME_LENGTH}
               autoFocus
               error={errorMessage}
-              showCount
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="playlist-desc" className="text-xs font-semibold text-white/65">
-              설명
-            </label>
-            <Input
-              id="playlist-desc"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="어떤 플레이리스트인가요? (선택)"
-              maxLength={MAX_DESC_LENGTH}
               showCount
             />
           </div>

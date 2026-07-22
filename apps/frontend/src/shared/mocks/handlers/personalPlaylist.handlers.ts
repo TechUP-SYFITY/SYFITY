@@ -1,7 +1,8 @@
 import { http, HttpResponse } from 'msw';
 
+import type { PersonalPlaylistItem } from '@syfity/shared';
+
 import type { ApiFailureResponse } from '@/shared/types/api';
-import type { PlaylistItem } from '@/shared/types/domain';
 
 import {
   personalPlaylistSeeds,
@@ -25,13 +26,11 @@ const notFound = (code = 'PERSONAL_PLAYLIST_NOT_FOUND', message = 'Playlist not 
     status: 404,
   });
 
+// 백엔드 PersonalPlaylist: { id, name, createdAt, updatedAt }
 const toSummary = (seed: PersonalPlaylistSeed) => ({
   id: seed.id,
   name: seed.name,
-  description: seed.description ?? null,
-  coverUrl: seed.coverUrl ?? null,
-  itemCount: seed.items.length,
-  totalDuration: seed.items.reduce((sum, item) => sum + item.duration, 0),
+  createdAt: seed.createdAt,
   updatedAt: seed.updatedAt,
 });
 
@@ -50,22 +49,17 @@ export const personalPlaylistHandlers = [
   ),
 
   http.post(`${API}/personal-playlists`, async ({ request }) => {
-    const body = (await request.json()) as {
-      name: string;
-      description?: string;
-      coverUrl?: string;
-    };
+    const body = (await request.json()) as { name: string };
     const now = new Date().toISOString();
     const seed: PersonalPlaylistSeed = {
       id: nextId('pl'),
       name: body.name,
-      description: body.description ?? null,
-      coverUrl: body.coverUrl ?? null,
+      createdAt: now,
       updatedAt: now,
       items: [],
     };
     playlists = [seed, ...playlists];
-    // docs/05 §7.1: 생성 응답은 { id, name, createdAt } 최소 필드만 반환한다.
+    // 생성 응답은 { id, name, createdAt } 최소 필드만 반환한다.
     return HttpResponse.json(
       { success: true, data: { id: seed.id, name: seed.name, createdAt: now } },
       { status: 201 },
@@ -80,16 +74,10 @@ export const personalPlaylistHandlers = [
   http.patch(`${API}/personal-playlists/:id`, async ({ params, request }) => {
     const seed = find(params.id);
     if (!seed) return notFound();
-    const body = (await request.json()) as {
-      name?: string;
-      description?: string;
-      coverUrl?: string;
-    };
+    const body = (await request.json()) as { name?: string };
     if (body.name !== undefined) seed.name = body.name;
-    if (body.description !== undefined) seed.description = body.description;
-    if (body.coverUrl !== undefined) seed.coverUrl = body.coverUrl;
     seed.updatedAt = new Date().toISOString();
-    // docs/05 §7.1: 이름 변경 응답은 { id, name, updatedAt } 최소 필드만 반환한다.
+    // 이름 변경 응답은 { id, name, updatedAt } 최소 필드만 반환한다.
     return HttpResponse.json({
       success: true,
       data: { id: seed.id, name: seed.name, updatedAt: seed.updatedAt },
@@ -109,15 +97,14 @@ export const personalPlaylistHandlers = [
     const body = (await request.json()) as { videoId?: string; youtubeUrl?: string };
     const videoId =
       body.videoId ?? extractYoutubeVideoId(body.youtubeUrl) ?? `mock-${sequence + 1}`;
-    const created: PlaylistItem = {
+    const created: PersonalPlaylistItem = {
       id: nextId('ppi'),
       videoId,
       title: body.youtubeUrl ?? `Mock Track ${seed.items.length + 1}`,
       channelTitle: 'Mock Channel',
       duration: 200,
-      position: seed.items.length,
+      position: seed.items.length + 1,
       status: 'available',
-      addedBy: 'mock-user',
       thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
     };
     seed.items = [...seed.items, created];

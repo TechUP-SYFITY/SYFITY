@@ -62,12 +62,9 @@ function ImportForm({ onOpenChange, roomId }: Omit<ImportToRoomDialogProps, 'ope
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const playlists = data?.playlists ?? [];
-  // 리스트는 있지만 전부 0곡이면 고를 수 있는 항목이 하나도 없다.
-  const hasNoImportablePlaylist =
-    playlists.length > 0 && playlists.every((playlist) => playlist.itemCount === 0);
-  // 선택 후 목록이 갱신되어 해당 리스트가 비었을 수도 있으므로 제출 시점에 다시 확인한다.
-  const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedId);
-  const canImport = selectedPlaylist !== undefined && selectedPlaylist.itemCount > 0;
+  // 목록 응답에는 곡 수가 없어 빈 리스트를 사전 판별하지 않는다. 선택만 되면 불러오기를 허용하고,
+  // 빈 리스트는 서버가 addedCount:0으로 응답하므로 결과 메시지로 안내한다.
+  const canImport = selectedId !== null;
   const errorMessage = importToRoom.isError
     ? '불러오기에 실패했어요. 다시 시도해 주세요.'
     : undefined;
@@ -126,22 +123,17 @@ function ImportForm({ onOpenChange, roomId }: Omit<ImportToRoomDialogProps, 'ope
       <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
         {playlists.map((playlist) => {
           const selected = playlist.id === selectedId;
-          // 곡이 없는 리스트는 불러와도 추가되는 곡이 없으므로 선택 자체를 막는다.
-          // (서버는 docs/12 §6.3대로 빈 리스트도 허용하지만, 헛된 왕복을 미리 끊는다.)
-          const isEmpty = playlist.itemCount === 0;
 
           return (
             <button
               key={playlist.id}
               type="button"
-              disabled={isEmpty}
               onClick={() => setSelectedId(playlist.id)}
               className={cn(
                 'flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
-                isEmpty && 'cursor-not-allowed opacity-45',
-                selected && 'border-primary/40 bg-primary/8',
-                !isEmpty && !selected && 'border-white/8 hover:border-white/15',
-                isEmpty && 'border-white/8',
+                selected
+                  ? 'border-primary/40 bg-primary/8'
+                  : 'border-white/8 hover:border-white/15',
               )}
             >
               <span
@@ -155,19 +147,10 @@ function ImportForm({ onOpenChange, roomId }: Omit<ImportToRoomDialogProps, 'ope
               <span className="size-8 shrink-0 rounded-lg bg-linear-to-br from-primary/40 to-accent/40" />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm font-semibold text-white">{playlist.name}</span>
-                <span className="text-xs text-white/40">
-                  {isEmpty ? '곡 없음' : `${playlist.itemCount}곡`}
-                </span>
               </span>
             </button>
           );
         })}
-
-        {hasNoImportablePlaylist ? (
-          <p className="px-1 pt-1 text-xs text-white/45">
-            곡이 담긴 플레이리스트가 없어요. 내 플레이리스트에서 곡을 먼저 추가해주세요.
-          </p>
-        ) : null}
       </div>
     );
   };

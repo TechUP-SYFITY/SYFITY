@@ -21,12 +21,9 @@ vi.mock('../api/personalPlaylistApi', () => ({
 }));
 
 const existing: PersonalPlaylistSummary = {
-  coverUrl: null,
-  description: '밤에 듣기 좋은 곡',
+  createdAt: '2026-07-18T10:00:00.000Z',
   id: 'pl-1',
-  itemCount: 4,
   name: '밤 드라이브',
-  totalDuration: 800,
   updatedAt: '2026-07-20T12:00:00.000Z',
 };
 
@@ -93,26 +90,7 @@ describe('CreatePlaylistDialog - 생성 모드', () => {
     fireEvent.click(submitButton());
 
     await waitFor(() => {
-      expect(personalPlaylistApi.createPlaylist).toHaveBeenCalledWith({
-        name: '새 리스트',
-        description: undefined,
-      });
-    });
-  });
-
-  it('설명을 입력하면 함께 전송한다', async () => {
-    vi.mocked(personalPlaylistApi.createPlaylist).mockResolvedValue(created);
-    renderDialog();
-
-    fireEvent.change(nameInput(), { target: { value: '새 리스트' } });
-    fireEvent.change(screen.getByLabelText('설명'), { target: { value: '드라이브용' } });
-    fireEvent.click(submitButton());
-
-    await waitFor(() => {
-      expect(personalPlaylistApi.createPlaylist).toHaveBeenCalledWith({
-        name: '새 리스트',
-        description: '드라이브용',
-      });
+      expect(personalPlaylistApi.createPlaylist).toHaveBeenCalledWith({ name: '새 리스트' });
     });
   });
 
@@ -148,7 +126,6 @@ describe('CreatePlaylistDialog - 수정 모드', () => {
 
     expect(screen.getByText('플레이리스트 수정')).toBeInTheDocument();
     expect(nameInput()).toHaveValue('밤 드라이브');
-    expect(screen.getByLabelText('설명')).toHaveValue('밤에 듣기 좋은 곡');
     expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument();
   });
 
@@ -162,7 +139,6 @@ describe('CreatePlaylistDialog - 수정 모드', () => {
     await waitFor(() => {
       expect(personalPlaylistApi.updatePlaylist).toHaveBeenCalledWith('pl-1', {
         name: '새벽 드라이브',
-        description: '밤에 듣기 좋은 곡',
       });
     });
     expect(personalPlaylistApi.createPlaylist).not.toHaveBeenCalled();

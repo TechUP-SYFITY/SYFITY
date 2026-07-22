@@ -22,13 +22,10 @@ vi.mock('../api/personalPlaylistApi', () => ({
 
 const roomId = 'room-1';
 
-const summary = (id: string, name: string, itemCount: number): PersonalPlaylistSummary => ({
-  coverUrl: null,
-  description: null,
+const summary = (id: string, name: string): PersonalPlaylistSummary => ({
+  createdAt: '2026-07-18T10:00:00.000Z',
   id,
-  itemCount,
   name,
-  totalDuration: itemCount * 200,
   updatedAt: '2026-07-20T12:00:00.000Z',
 });
 
@@ -54,29 +51,21 @@ afterEach(() => {
 });
 
 describe('ImportToRoomDialog', () => {
-  it('곡이 없는 플레이리스트는 선택할 수 없고 "곡 없음"으로 표시한다', async () => {
-    renderDialog([summary('pl-1', '밤 드라이브', 3), summary('pl-2', '빈 리스트', 0)]);
+  it('플레이리스트를 선택하기 전에는 "끝에 추가"가 비활성이다', async () => {
+    renderDialog([summary('pl-1', '밤 드라이브')]);
 
-    const emptyRow = await screen.findByRole('button', { name: /빈 리스트/ });
-
-    expect(emptyRow).toBeDisabled();
-    expect(emptyRow).toHaveTextContent('곡 없음');
-    expect(screen.getByRole('button', { name: /밤 드라이브/ })).toBeEnabled();
-  });
-
-  it('곡이 없는 플레이리스트를 눌러도 선택되지 않아 "끝에 추가"가 비활성이다', async () => {
-    renderDialog([summary('pl-2', '빈 리스트', 0)]);
-
-    fireEvent.click(await screen.findByRole('button', { name: /빈 리스트/ }));
+    await screen.findByRole('button', { name: /밤 드라이브/ });
 
     expect(screen.getByRole('button', { name: /끝에 추가/ })).toBeDisabled();
     expect(personalPlaylistApi.importToRoom).not.toHaveBeenCalled();
   });
 
-  it('전부 0곡이면 안내 문구를 보여준다', async () => {
-    renderDialog([summary('pl-1', '빈 리스트 A', 0), summary('pl-2', '빈 리스트 B', 0)]);
+  it('플레이리스트를 선택하면 "끝에 추가"가 활성화된다', async () => {
+    renderDialog([summary('pl-1', '밤 드라이브')]);
 
-    expect(await screen.findByText(/곡이 담긴 플레이리스트가 없어요/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /밤 드라이브/ }));
+
+    expect(screen.getByRole('button', { name: /끝에 추가/ })).toBeEnabled();
   });
 
   it('곡이 있는 플레이리스트를 선택하면 personalPlaylistId로 불러오기를 요청한다', async () => {
@@ -85,7 +74,7 @@ describe('ImportToRoomDialog', () => {
       duplicateCount: 1,
       unavailableCount: 0,
     });
-    renderDialog([summary('pl-1', '밤 드라이브', 3)]);
+    renderDialog([summary('pl-1', '밤 드라이브')]);
 
     fireEvent.click(await screen.findByRole('button', { name: /밤 드라이브/ }));
     fireEvent.click(screen.getByRole('button', { name: /끝에 추가/ }));
@@ -104,7 +93,7 @@ describe('ImportToRoomDialog', () => {
       duplicateCount: 3,
       unavailableCount: 1,
     });
-    renderDialog([summary('pl-1', '밤 드라이브', 4)]);
+    renderDialog([summary('pl-1', '밤 드라이브')]);
 
     fireEvent.click(await screen.findByRole('button', { name: /밤 드라이브/ }));
     fireEvent.click(screen.getByRole('button', { name: /끝에 추가/ }));

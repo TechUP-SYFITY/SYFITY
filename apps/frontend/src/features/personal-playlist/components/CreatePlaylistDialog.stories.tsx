@@ -11,12 +11,9 @@ import type { PersonalPlaylistSummary } from '../types/personalPlaylistTypes';
 const API = '*/api/v1';
 
 const existing: PersonalPlaylistSummary = {
-  coverUrl: null,
-  description: '밤에 듣기 좋은 곡',
+  createdAt: '2026-07-18T10:00:00.000Z',
   id: 'pl-night-drive',
-  itemCount: 12,
   name: '밤 드라이브',
-  totalDuration: 3660,
   updatedAt: '2026-07-20T12:00:00.000Z',
 };
 
@@ -78,7 +75,6 @@ export const CreateFilled: Story = {
     const body = within(canvasElement.ownerDocument.body);
 
     await userEvent.type(body.getByLabelText(/이름/), '새벽 드라이브');
-    await userEvent.type(body.getByLabelText('설명'), '조용한 밤에');
 
     await expect(body.getByRole('button', { name: '만들기' })).toBeEnabled();
   },

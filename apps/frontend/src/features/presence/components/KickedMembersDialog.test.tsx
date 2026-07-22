@@ -80,6 +80,19 @@ describe('KickedMembersDialog', () => {
     expect(icon?.parentElement).not.toHaveClass('to-accent', 'text-black');
   });
 
+  it('아이콘과 제목만 있는 간결한 헤더를 표시한다', () => {
+    vi.mocked(roomMemberApi.getKickedMembers).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+
+    renderDialog();
+
+    expect(screen.getByRole('heading', { name: '추방 관리' })).toBeInTheDocument();
+    expect(
+      screen.queryByText('추방된 멤버를 확인하고 다시 입장할 수 있게 해제합니다.'),
+    ).not.toBeInTheDocument();
+  });
+
   it('추방 목록을 불러오는 동안 loading 상태를 표시한다', () => {
     vi.mocked(roomMemberApi.getKickedMembers).mockImplementation(
       () => new Promise(() => undefined),

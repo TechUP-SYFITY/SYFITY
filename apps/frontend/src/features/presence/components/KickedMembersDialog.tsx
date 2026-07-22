@@ -10,7 +10,6 @@ import {
   DialogBody,
   DialogCloseButton,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogIconBadge,
   DialogTitle,
@@ -63,12 +62,7 @@ export function KickedMembersDialog({
             <DialogIconBadge className="rounded-full border border-primary/30 bg-primary/15 bg-none from-transparent to-transparent text-primary shadow-[0_0_16px_rgba(114,244,164,0.25)] drop-shadow-none">
               <UserMinus aria-hidden />
             </DialogIconBadge>
-            <div className="min-w-0">
-              <DialogTitle>추방 관리</DialogTitle>
-              <DialogDescription>
-                추방된 멤버를 확인하고 다시 입장할 수 있게 해제합니다.
-              </DialogDescription>
-            </div>
+            <DialogTitle className="truncate">추방 관리</DialogTitle>
           </div>
           <DialogCloseButton />
         </DialogHeader>

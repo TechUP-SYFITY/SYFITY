@@ -55,6 +55,26 @@ describe('ProfileImagePicker', () => {
     expect(resetMutate).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    {
+      file: new File(['image'], 'profile.gif', { type: 'image/gif' }),
+      message: 'PNG, JPEG, WebP 이미지만 업로드할 수 있어요.',
+    },
+    {
+      file: new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }),
+      message: '이미지는 5MB 이하만 업로드할 수 있어요.',
+    },
+  ])('사전 검증에 실패하면 "$message" 안내를 표시하고 업로드하지 않는다', ({ file, message }) => {
+    mockMutations();
+    render(<ProfileImagePicker currentImage={null} nickname="Alice" />);
+
+    fireEvent.change(screen.getByLabelText('이미지 선택'), { target: { files: [file] } });
+
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(uploadReset).toHaveBeenCalledOnce();
+    expect(uploadMutate).not.toHaveBeenCalled();
+  });
+
   it('업로드 중 및 서버 업로드 오류 상태를 표시한다', () => {
     vi.mocked(useUploadProfileImage).mockReturnValue({
       error: new Error('업로드에 실패했어요.'),

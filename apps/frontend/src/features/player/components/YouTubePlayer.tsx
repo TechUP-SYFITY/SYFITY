@@ -253,7 +253,7 @@ export function YouTubePlayer({
   ]);
 
   return (
-    <div className="flex min-h-[200px] w-full items-center justify-center bg-black">
+    <div className="flex h-full min-h-[200px] w-full items-center justify-center bg-black">
       <div
         className={playerSize ? 'shrink-0' : 'aspect-video h-auto w-full'}
         style={playerSize ? playerSizeToStyle(playerSize) : undefined}
@@ -275,8 +275,8 @@ export function calculatePlayerFrameSize(
   }
 
   const widthLimitedHeight = availableWidth * (9 / 16);
-  const height = Math.max(200, Math.min(availableHeight, widthLimitedHeight));
-  const width = Math.min(availableWidth, height * (16 / 9));
+  const height = Math.min(availableHeight, widthLimitedHeight);
+  const width = height * (16 / 9);
   return { height: Math.round(height), width: Math.round(width) };
 }
 

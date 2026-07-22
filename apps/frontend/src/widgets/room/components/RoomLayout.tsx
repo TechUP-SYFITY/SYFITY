@@ -102,7 +102,7 @@ export function RoomLayout({
       </div>
 
       <div
-        className="flex min-h-0 flex-1 flex-col px-5 py-4 xl:min-w-0 xl:self-stretch xl:border-r xl:border-border xl:p-6"
+        className="shrink-0 px-5 py-4 xl:flex xl:min-h-0 xl:min-w-0 xl:flex-1 xl:flex-col xl:self-stretch xl:border-r xl:border-border xl:p-6"
         data-testid="room-player-slot"
         ref={playerSlotRef}
       >

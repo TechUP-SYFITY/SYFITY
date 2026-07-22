@@ -91,6 +91,7 @@ describe('YouTubePlayer', () => {
   it('가용 폭·높이 중 더 좁은 축에 16:9 프레임을 맞춘다', () => {
     expect(calculatePlayerFrameSize(926, 300)).toEqual({ width: 533, height: 300 });
     expect(calculatePlayerFrameSize(800, 700)).toEqual({ width: 800, height: 450 });
+    expect(calculatePlayerFrameSize(311, 518)).toEqual({ width: 311, height: 175 });
   });
 
   it('player ready 시 현재 로컬 볼륨을 적용한다', async () => {

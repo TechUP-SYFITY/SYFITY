@@ -86,9 +86,9 @@ export function PlaylistItemRow({
         isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20',
         isDragging && 'z-10 bg-background opacity-90 shadow-md ring-1 ring-primary/40',
         dropPosition === 'before' &&
-          'before:absolute before:inset-x-4 before:top-0 before:z-20 before:h-0.5 before:bg-primary',
+          'before:absolute before:inset-x-0 before:top-0 before:z-20 before:h-0.5 before:bg-primary',
         dropPosition === 'after' &&
-          'after:absolute after:inset-x-4 after:bottom-0 after:z-20 after:h-0.5 after:bg-primary',
+          'after:absolute after:inset-x-0 after:bottom-0 after:z-20 after:h-0.5 after:bg-primary',
       )}
       onBlurCapture={onBlurWithin}
       onClick={onFocusWithin}

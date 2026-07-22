@@ -1,7 +1,6 @@
 'use client';
 
 // Playlist 데이터 훅과 패널 UI 조합을 담당한다.
-import { useEffect } from 'react';
 import {
   closestCenter,
   DndContext,
@@ -13,8 +12,10 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useEffect } from 'react';
 
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
+import { cn } from '@/shared/lib/utils';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 import { PlaylistAddMenu } from './PlaylistAddMenu';
@@ -112,6 +113,7 @@ export function PlaylistPanel({
   }, [data?.playlist, setPlaylist, shouldUseParentPlaylist]);
 
   const {
+    draggingItemId,
     dropPosition,
     dropTargetItemId,
     focusedActionItemId,
@@ -163,7 +165,12 @@ export function PlaylistPanel({
 
       {mutationErrorMessage ? <PlaylistMutationError message={mutationErrorMessage} /> : null}
 
-      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <div
+        className={cn(
+          'min-w-0 flex-1 overflow-x-hidden overflow-y-auto',
+          draggingItemId && 'scrollbar-none',
+        )}
+      >
         {isInitialLoading ? <PlaylistLoadingState /> : null}
         {isPlaylistError ? (
           <PlaylistErrorState

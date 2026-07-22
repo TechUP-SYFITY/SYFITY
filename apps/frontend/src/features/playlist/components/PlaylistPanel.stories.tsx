@@ -106,6 +106,21 @@ function createPlaylistApiMock(apiOverride: PlaylistApiOverride = {}): PlaylistA
   };
 }
 
+function createReorderablePlaylistApiMock(): PlaylistApi {
+  let currentPlaylist = [...playlistItems];
+
+  return createPlaylistApiMock({
+    getPlaylist: async () => ({ playlist: currentPlaylist }),
+    reorderPlaylist: async (_roomId, body) => {
+      const positionById = new Map(body.items.map((item) => [item.id, item.position]));
+
+      currentPlaylist = currentPlaylist
+        .map((item) => ({ ...item, position: positionById.get(item.id) ?? item.position }))
+        .sort((first, second) => first.position - second.position);
+    },
+  });
+}
+
 function withPlaylistStoryFrame() {
   return function PlaylistStoryFrameDecorator(Story: StoryRender) {
     usePlaylistStore.getState().clearPlaylist();
@@ -162,26 +177,45 @@ export const ParentPlaylistData: Story = {
 
 export const DragPreview: Story = {
   args: {
-    playlistItems,
+    playlistApiClient: createReorderablePlaylistApiMock(),
   },
   decorators: [withPlaylistStoryFrame()],
-  play: createDragPreview('[MouseLeft>]'),
 };
 
-export const TouchDragPreview: Story = {
+export const DraggingState: Story = {
   args: {
     playlistItems,
   },
   decorators: [withPlaylistStoryFrame()],
-  play: createDragPreview('[TouchA>]'),
+  play: createDragInteraction('[MouseLeft>]'),
 };
 
-function createDragPreview(pointerKey: '[MouseLeft>]' | '[TouchA>]') {
+export const TouchDraggingState: Story = {
+  args: {
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: createDragInteraction('[TouchA>]'),
+};
+
+export const DragAndDropInteraction: Story = {
+  args: {
+    playlistApiClient: createReorderablePlaylistApiMock(),
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: createDragInteraction('[MouseLeft>]', '[/MouseLeft]'),
+};
+
+function createDragInteraction(
+  pointerKey: '[MouseLeft>]' | '[TouchA>]',
+  releaseKey?: '[/MouseLeft]' | '[/TouchA]',
+) {
   return async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     const sourceRow = await canvas.findByTestId('playlist-row-story-night-changes');
     const middleRow = await canvas.findByTestId('playlist-row-story-dynamite');
-    const targetRow = await canvas.findByTestId('playlist-row-story-levitating');
+    const finalRow = await canvas.findByTestId('playlist-row-story-levitating');
+    const targetRow = releaseKey ? middleRow : finalRow;
 
     await userEvent.click(sourceRow);
 
@@ -190,7 +224,11 @@ function createDragPreview(pointerKey: '[MouseLeft>]' | '[TouchA>]') {
     const middleRect = middleRow.getBoundingClientRect();
     const targetRect = targetRow.getBoundingClientRect();
 
-    await userEvent.pointer([
+    const pointerActions: Array<{
+      coords: { x: number; y: number };
+      keys?: string;
+      target: HTMLElement;
+    }> = [
       {
         coords: {
           x: sourceRect.left + sourceRect.width / 2,
@@ -206,17 +244,56 @@ function createDragPreview(pointerKey: '[MouseLeft>]' | '[TouchA>]') {
         },
         target: middleRow,
       },
-      {
+    ];
+
+    if (!releaseKey) {
+      pointerActions.push({
         coords: {
           x: sourceRect.left + sourceRect.width / 2,
           y: targetRect.top + targetRect.height / 2,
         },
         target: targetRow,
-      },
-    ]);
+      });
+    }
+
+    if (releaseKey) {
+      pointerActions.push({
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: targetRect.top + targetRect.height / 2,
+        },
+        keys: releaseKey,
+        target: targetRow,
+      });
+    }
+
+    await userEvent.pointer(pointerActions);
+
+    const scrollContainer = sourceRow.parentElement;
+
+    if (releaseKey) {
+      await waitFor(() =>
+        expect(
+          Array.from(canvasElement.querySelectorAll('[data-playlist-item-id]')).map((row) =>
+            row.getAttribute('data-playlist-item-id'),
+          ),
+        ).toEqual(['story-dynamite', 'story-levitating', 'story-night-changes']),
+      );
+      await waitFor(() =>
+        expect(canvas.getByRole('button', { name: 'Night Changes 순서 변경' })).toHaveAttribute(
+          'aria-pressed',
+          'false',
+        ),
+      );
+      await waitFor(() => expect(scrollContainer).not.toHaveClass('scrollbar-none'));
+      await expect(scrollContainer).toHaveClass('overflow-y-auto');
+      return;
+    }
 
     await expect(handle).toHaveAttribute('aria-pressed', 'true');
     await waitFor(() => expect(targetRow).toHaveAttribute('data-drop-position', 'after'));
+    await expect(scrollContainer).toHaveClass('overflow-y-auto', 'scrollbar-none');
+    await expect(targetRow).toHaveClass('after:inset-x-0');
   };
 }
 

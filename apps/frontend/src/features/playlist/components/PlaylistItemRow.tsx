@@ -150,6 +150,7 @@ export function PlaylistItemRow({
               onPointerDown={(event) => {
                 if (dragHandleProps?.onPointerDown) {
                   dragHandleProps.onPointerDown(event);
+                  onPreventMouseFocus(event);
                   return;
                 }
 

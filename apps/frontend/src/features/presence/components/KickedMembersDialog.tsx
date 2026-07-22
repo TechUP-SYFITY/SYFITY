@@ -107,7 +107,11 @@ export function KickedMembersDialog({
                   className="flex min-h-16 items-center gap-3 rounded-2xl border border-border bg-white/3 px-3 py-2"
                   key={member.id}
                 >
-                  <MemberAvatar label={member.nickname} muted profileImage={member.profileImage} />
+                  <MemberAvatar
+                    label={member.nickname}
+                    profileImage={member.profileImage}
+                    showStatus={false}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-white/85">
                       {member.nickname}

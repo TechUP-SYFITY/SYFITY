@@ -85,6 +85,10 @@ describe('KickedMembersDialog', () => {
     }).format(new Date(member.kickedAt));
 
     expect(await screen.findByText(kickedAt)).toHaveAttribute('datetime', member.kickedAt);
+    const kickedMembersList = screen.getByRole('list', { name: '추방된 멤버 목록' });
+
+    expect(kickedMembersList.querySelector('.opacity-45')).not.toBeInTheDocument();
+    expect(kickedMembersList.querySelector('.bg-primary')).not.toBeInTheDocument();
     const unkickButton = screen.getByRole('button', { name: '지민 추방 해제' });
     expect(unkickButton).toHaveClass('min-h-11', 'min-w-11');
     fireEvent.click(unkickButton);

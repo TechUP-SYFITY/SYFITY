@@ -18,14 +18,21 @@ export function SortablePlaylistItemRow({
   item,
   ...props
 }: SortablePlaylistItemRowProps) {
-  const { attributes, isDragging, listeners, setActivatorNodeRef, setNodeRef, transform } =
-    useSortable({
-      attributes: {
-        roleDescription: '정렬 가능한 항목',
-      },
-      disabled: !isHost || !isReady || !isReorderEnabled,
-      id: item.id,
-    });
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setActivatorNodeRef,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({
+    attributes: {
+      roleDescription: '정렬 가능한 항목',
+    },
+    disabled: !isHost || !isReady || !isReorderEnabled,
+    id: item.id,
+  });
 
   return (
     <PlaylistItemRow
@@ -41,6 +48,7 @@ export function SortablePlaylistItemRow({
       rowRef={setNodeRef}
       style={{
         transform: CSS.Translate.toString(transform),
+        transition: isDragging ? undefined : transition,
       }}
     />
   );

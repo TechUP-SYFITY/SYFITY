@@ -82,7 +82,7 @@ export function PlaylistItemRow({
       data-drop-position={dropPosition ?? undefined}
       style={style}
       className={cn(
-        `group relative min-w-0 overflow-hidden border-b border-border px-4 py-3 transition duration-150 ease-out motion-reduce:transition-none`,
+        `group relative min-w-0 overflow-hidden border-b border-border px-4 py-3 transition-colors duration-150 ease-out motion-reduce:transition-none`,
         isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20',
         isDragging && 'z-10 bg-background opacity-90 shadow-md ring-1 ring-primary/40',
         dropPosition === 'before' &&

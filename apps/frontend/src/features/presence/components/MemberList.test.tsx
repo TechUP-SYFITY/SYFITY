@@ -80,7 +80,12 @@ describe('MemberList management', () => {
   it('Host에게 다른 멤버의 관리 메뉴만 제공한다', async () => {
     renderList(true);
 
-    expect(await screen.findByRole('button', { name: '지민 멤버 관리' })).toBeInTheDocument();
+    const managementButton = await screen.findByRole('button', { name: '지민 멤버 관리' });
+    const memberName = screen.getByText('지민');
+
+    expect(managementButton).toBeInTheDocument();
+    expect(memberName).toBeInTheDocument();
+    expect(managementButton).not.toContainElement(memberName);
     expect(screen.queryByRole('button', { name: 'Host 멤버 관리' })).not.toBeInTheDocument();
   });
 

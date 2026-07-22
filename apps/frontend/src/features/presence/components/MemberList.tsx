@@ -1,7 +1,7 @@
 'use client';
 
 // Room 멤버 목록을 온라인과 오프라인 그룹으로 나누어 표시한다.
-import { Crown } from 'lucide-react';
+import { Crown, EllipsisVertical } from 'lucide-react';
 
 import type { RoomMemberSummary } from '@syfity/shared';
 
@@ -114,31 +114,34 @@ function MemberGroup({
 
           if (!managementMember) {
             return (
-              <button
-                aria-label={
-                  isRosterPending
-                    ? '멤버 관리 정보를 불러오는 중이에요'
-                    : '멤버 관리 정보를 불러오지 못했어요'
-                }
-                className="w-full rounded-2xl text-left opacity-70"
-                disabled
-                key={member.userId}
-                type="button"
-              >
-                {row}
-              </button>
+              <div className="flex items-center gap-1" key={member.userId}>
+                <div className="min-w-0 flex-1">{row}</div>
+                <Button
+                  aria-label={
+                    isRosterPending
+                      ? '멤버 관리 정보를 불러오는 중이에요'
+                      : '멤버 관리 정보를 불러오지 못했어요'
+                  }
+                  className="size-11 shrink-0 rounded-xl"
+                  disabled
+                  size="icon"
+                  variant="ghost"
+                >
+                  <EllipsisVertical aria-hidden />
+                </Button>
+              </div>
             );
           }
 
           return (
-            <MemberActionMenu
-              disabled={isRosterPending}
-              key={member.userId}
-              member={managementMember}
-              onRequestKick={onRequestKick}
-            >
-              {row}
-            </MemberActionMenu>
+            <div className="flex items-center gap-1" key={member.userId}>
+              <div className="min-w-0 flex-1">{row}</div>
+              <MemberActionMenu
+                disabled={isRosterPending}
+                member={managementMember}
+                onRequestKick={onRequestKick}
+              />
+            </div>
           );
         })}
       </div>

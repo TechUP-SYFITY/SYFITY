@@ -10,7 +10,6 @@ import {
   DialogBody,
   DialogCloseButton,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogIconBadge,
@@ -82,16 +81,17 @@ export function KickMemberDialog({ member, onOpenChange, open, roomId }: KickMem
             <DialogIconBadge className="rounded-full border border-primary/30 bg-primary/15 bg-none from-transparent to-transparent text-primary shadow-[0_0_16px_rgba(114,244,164,0.25)] drop-shadow-none">
               <UserMinus aria-hidden />
             </DialogIconBadge>
-            <div className="min-w-0">
-              <DialogTitle>{member.nickname}님을 추방할까요?</DialogTitle>
-              <DialogDescription>추방 전에 대상 멤버를 다시 확인해주세요.</DialogDescription>
-            </div>
+            <DialogTitle className="truncate">{member.nickname}님을 추방할까요?</DialogTitle>
           </div>
           <DialogCloseButton disabled={kickMember.isPending} />
         </DialogHeader>
         <DialogBody>
-          <p className="text-sm leading-6 text-white/70">
-            추방된 멤버는 Host가 해제하기 전까지 이 Room에 다시 입장할 수 없어요.
+          <p
+            className="mx-auto max-w-sm text-center text-sm leading-6 text-white/70"
+            data-testid="kick-member-notice"
+          >
+            추방된 멤버는 Host가 해제하기 전까지
+            <br />이 Room에 다시 입장할 수 없어요.
           </p>
           {kickMember.isError ? (
             <p className="mt-2 text-sm text-destructive" role="alert">

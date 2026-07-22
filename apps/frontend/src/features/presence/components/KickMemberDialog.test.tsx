@@ -79,6 +79,16 @@ describe('KickMemberDialog', () => {
     expect(icon?.parentElement).not.toHaveClass('to-accent', 'text-black');
   });
 
+  it('보조 설명 없이 가운데 정렬된 두 줄 추방 안내를 표시한다', () => {
+    renderDialog();
+
+    expect(screen.queryByText('추방 전에 대상 멤버를 다시 확인해주세요.')).not.toBeInTheDocument();
+    const notice = screen.getByTestId('kick-member-notice');
+
+    expect(notice).toHaveClass('mx-auto', 'max-w-sm', 'text-center');
+    expect(notice.querySelector('br')).toBeInTheDocument();
+  });
+
   it('취소와 추방 버튼을 같은 너비로 배치한다', () => {
     renderDialog();
 

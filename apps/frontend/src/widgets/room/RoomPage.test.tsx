@@ -139,6 +139,34 @@ describe('RoomPage', () => {
     expect(screen.queryByTestId('presence-mock-panel')).toBeNull();
   });
 
+  it('추방된 사용자가 Room URL로 재입장하면 전용 차단 문구를 표시한다', async () => {
+    server.use(
+      http.post('*/api/v1/room-memberships', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'ROOM_MEMBER_KICKED',
+              message: 'Host에 의해 추방된 사용자입니다.',
+            },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText('Room에 입장하지 못했어요')).toBeInTheDocument();
+    expect(screen.getByText('Host가 다시 허용하기 전에는 입장할 수 없어요.')).toBeInTheDocument();
+    expect(screen.queryByTestId('presence-mock-panel')).not.toBeInTheDocument();
+  });
+
   it('mocking 활성 시 Room에 정상 입장하고 현재 사용자명을 표시한다', async () => {
     const Wrapper = createWrapper();
 
@@ -153,10 +181,12 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getByTestId('presence-mock-panel')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
     expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
     expect(useRoomLiveConnections).toHaveBeenCalledWith(
       roomFixture.room.id,
       true,
+      expect.any(Function),
       expect.any(Function),
       expect.any(Function),
     );
@@ -186,6 +216,7 @@ describe('RoomPage', () => {
     expect(useRoomLiveConnections).toHaveBeenCalledWith(
       roomFixture.room.id,
       true,
+      expect.any(Function),
       expect.any(Function),
       expect.any(Function),
     );
@@ -218,6 +249,7 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: '추방 관리' })).not.toBeInTheDocument();
   });
 
   it('Host 재접속 중에도 Member는 곡을 추가하고 본인 곡을 삭제할 수 있다', async () => {
@@ -309,6 +341,69 @@ describe('RoomPage', () => {
     expect(useRoomStore.getState().hasJoinedRoom).toBe(false);
     expect(screen.getByText('Room이 종료되었습니다.')).toBeVisible();
     expect(routerReplace).toHaveBeenCalledWith('/home');
+  });
+
+  it('추방 이벤트를 받으면 Room 상태를 모두 정리하고 안내 후 /home으로 이동한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(useRoomStore.getState().room).not.toBeNull();
+    expect(usePresenceStore.getState().members).not.toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).not.toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).not.toBeNull();
+    expect(useChatStore.getState().messages).not.toHaveLength(0);
+
+    const onRoomKicked = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[4];
+    const lateSnapshot = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[3];
+    expect(onRoomKicked).toBeTypeOf('function');
+
+    act(() => {
+      onRoomKicked?.({
+        roomId: roomFixture.room.id,
+        message: 'Host에 의해 Room에서 추방되었습니다.',
+      });
+      onRoomKicked?.({
+        roomId: roomFixture.room.id,
+        message: 'Host에 의해 Room에서 추방되었습니다.',
+      });
+    });
+
+    expect(useRoomStore.getState().room).toBeNull();
+    expect(usePresenceStore.getState().members).toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(useChatStore.getState().messages).toHaveLength(0);
+    expect(screen.getByText('Host에 의해 Room에서 추방되었습니다.')).toBeInTheDocument();
+    expect(routerReplace).toHaveBeenCalledOnce();
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+
+    await waitFor(() => {
+      expect(vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[1]).toBe(false);
+    });
+
+    act(() => {
+      lateSnapshot?.({
+        roomId: roomFixture.room.id,
+        hostConnection: { status: 'connected' },
+        playbackState: roomFixture.playbackState,
+        playbackPolicy: roomFixture.playbackPolicy,
+        playlist: roomFixture.playlist,
+        members: roomFixture.members,
+        recentChats: roomFixture.chats,
+      });
+    });
+
+    expect(useRoomStore.getState().room).toBeNull();
+    expect(usePresenceStore.getState().members).toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(useChatStore.getState().messages).toHaveLength(0);
   });
 
   it('사용자 정보가 확인되기 전에는 Room 퇴장 액션을 실행할 수 없다', async () => {

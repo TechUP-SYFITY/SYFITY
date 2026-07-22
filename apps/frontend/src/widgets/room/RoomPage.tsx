@@ -18,6 +18,7 @@ import type { PlayerController } from '@/features/player/types/playerTypes';
 import { PlaylistPanel } from '@/features/playlist/components/PlaylistPanel';
 import { useAddPlaylistItem } from '@/features/playlist/hooks/playlistHooks';
 import type { AddPlaylistItemRequest } from '@/features/playlist/types/playlistTypes';
+import { MemberManagementProvider } from '@/features/presence/components/MemberManagementProvider';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { RoomExitAction } from '@/features/room/components/RoomExitAction';
 import { useCloseRoom, useLeaveRoom } from '@/features/room/hooks/roomHooks';
@@ -204,77 +205,79 @@ function RoomPageContent({ roomId }: RoomPageProps) {
 
   return (
     <>
-      <RoomShell
-        headerActions={<UserMenu />}
-        activeMobileTab={activeMobileTab}
-        currentUserName={me?.nickname}
-        currentUserProfileImage={me?.profileImage}
-        hostConnection={hostConnection}
-        isHost={isHost}
-        miniPlayerCommandError={miniPlayerControls.commandError}
-        miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
-        miniPlayerIsLocalSyncPaused={miniPlayerControls.isLocalSyncPaused}
-        miniPlayerIsMuted={miniPlayerIsMuted}
-        miniPlayerNextDisabled={!miniPlayerHasPlayableTrack}
-        miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
-        miniPlayerPlayPauseDisabled={miniPlayerControls.playPauseDisabled}
-        miniPlayerPreviousDisabled={!miniPlayerHasPlayableTrack}
-        miniPlayerRepeatMode={playbackPolicy?.repeatMode ?? 'off'}
-        miniPlayerShuffleEnabled={playbackPolicy?.shuffleEnabled ?? false}
-        miniPlayerVolume={miniPlayerVolume}
-        onInviteClick={() => setIsInviteOpen(true)}
-        onMuteToggle={toggleMiniPlayerMute}
-        onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
-        onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
-        onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
-        onMiniPlayerRepeatToggle={miniPlayerControls.handleRepeatToggle}
-        onMiniPlayerSeek={miniPlayerControls.handleSeek}
-        onMiniPlayerShuffleToggle={miniPlayerControls.handleShuffleToggle}
-        onMiniPlayerVolumeChange={setMiniPlayerVolume}
-        onMobileTabChange={handleMobileTabChange}
-        onlineMemberCount={onlineMemberCount}
-        playbackState={miniPlayerPlaybackState}
-        playlist={playlist}
-        playerPanel={
-          <PlayerPanel
-            canControlRoom={canControlRoom}
-            roomId={roomId}
-            isHost={isHost}
-            playerControllerRef={playerControllerRef}
-            onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
-            playlist={playlist}
-          />
-        }
-        playlistPanel={
-          <PlaylistPanel
-            canControlRoom={canControlRoom}
-            currentPlaylistItemId={currentTrack?.id ?? null}
-            currentUserId={me?.id}
-            isActiveRoomMember={isActiveRoomMember}
-            roomId={roomId}
-            isHost={isHost}
-            isReady={hasJoinedRoom}
-            onOpenSearch={handleOpenSearch}
-            onOpenImport={() => setIsImportOpen(true)}
-          />
-        }
-        room={room}
-        roomAction={
-          <RoomExitAction
-            disabled={!room || me === undefined}
-            errorMessage={roomExitError}
-            isPending={isRoomClosing}
-            role={isHost ? 'host' : 'member'}
-            onConfirm={handleRoomExit}
-            onOpenChange={(open) => {
-              if (!open) {
-                closeRoom.reset();
-              }
-            }}
-          />
-        }
-        roomId={roomId}
-      />
+      <MemberManagementProvider currentUserId={me?.id} isHost={isHost} roomId={roomId}>
+        <RoomShell
+          headerActions={<UserMenu />}
+          activeMobileTab={activeMobileTab}
+          currentUserName={me?.nickname}
+          currentUserProfileImage={me?.profileImage}
+          hostConnection={hostConnection}
+          isHost={isHost}
+          miniPlayerCommandError={miniPlayerControls.commandError}
+          miniPlayerControlDisabled={miniPlayerControls.controlDisabled}
+          miniPlayerIsLocalSyncPaused={miniPlayerControls.isLocalSyncPaused}
+          miniPlayerIsMuted={miniPlayerIsMuted}
+          miniPlayerNextDisabled={!miniPlayerHasPlayableTrack}
+          miniPlayerPendingCommand={miniPlayerControls.pendingCommand}
+          miniPlayerPlayPauseDisabled={miniPlayerControls.playPauseDisabled}
+          miniPlayerPreviousDisabled={!miniPlayerHasPlayableTrack}
+          miniPlayerRepeatMode={playbackPolicy?.repeatMode ?? 'off'}
+          miniPlayerShuffleEnabled={playbackPolicy?.shuffleEnabled ?? false}
+          miniPlayerVolume={miniPlayerVolume}
+          onInviteClick={() => setIsInviteOpen(true)}
+          onMuteToggle={toggleMiniPlayerMute}
+          onMiniPlayerNextTrack={miniPlayerControls.handleNextTrack}
+          onMiniPlayerPlayPause={miniPlayerControls.handlePlayPause}
+          onMiniPlayerPreviousTrack={miniPlayerControls.handlePreviousTrack}
+          onMiniPlayerRepeatToggle={miniPlayerControls.handleRepeatToggle}
+          onMiniPlayerSeek={miniPlayerControls.handleSeek}
+          onMiniPlayerShuffleToggle={miniPlayerControls.handleShuffleToggle}
+          onMiniPlayerVolumeChange={setMiniPlayerVolume}
+          onMobileTabChange={handleMobileTabChange}
+          onlineMemberCount={onlineMemberCount}
+          playbackState={miniPlayerPlaybackState}
+          playlist={playlist}
+          playerPanel={
+            <PlayerPanel
+              canControlRoom={canControlRoom}
+              roomId={roomId}
+              isHost={isHost}
+              playerControllerRef={playerControllerRef}
+              onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
+              playlist={playlist}
+            />
+          }
+          playlistPanel={
+            <PlaylistPanel
+              canControlRoom={canControlRoom}
+              currentPlaylistItemId={currentTrack?.id ?? null}
+              currentUserId={me?.id}
+              isActiveRoomMember={isActiveRoomMember}
+              roomId={roomId}
+              isHost={isHost}
+              isReady={hasJoinedRoom}
+              onOpenSearch={handleOpenSearch}
+              onOpenImport={() => setIsImportOpen(true)}
+            />
+          }
+          room={room}
+          roomAction={
+            <RoomExitAction
+              disabled={!room || me === undefined}
+              errorMessage={roomExitError}
+              isPending={isRoomClosing}
+              role={isHost ? 'host' : 'member'}
+              onConfirm={handleRoomExit}
+              onOpenChange={(open) => {
+                if (!open) {
+                  closeRoom.reset();
+                }
+              }}
+            />
+          }
+          roomId={roomId}
+        />
+      </MemberManagementProvider>
       <InviteCodeDialog room={room} open={isInviteOpen} onOpenChange={setIsInviteOpen} />
       <ImportToRoomDialog open={isImportOpen} onOpenChange={setIsImportOpen} roomId={roomId} />
       <SearchPanel

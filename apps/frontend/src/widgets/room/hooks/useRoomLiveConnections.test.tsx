@@ -15,14 +15,17 @@ describe('useRoomLiveConnections', () => {
   it('snapshot callback을 Room socket에 연결한다', () => {
     const onSnapshot = vi.fn();
     const onRoomClosed = vi.fn();
-    renderHook(() => useRoomLiveConnections('room-1', true, onRoomClosed, onSnapshot));
+    const onRoomKicked = vi.fn();
+    renderHook(() =>
+      useRoomLiveConnections('room-1', true, onRoomClosed, onSnapshot, onRoomKicked),
+    );
 
-    expect(useRoomSocket).toHaveBeenCalledWith('room-1', onSnapshot, onRoomClosed);
+    expect(useRoomSocket).toHaveBeenCalledWith('room-1', onSnapshot, onRoomClosed, onRoomKicked);
   });
 
   it('비활성 상태에서는 빈 roomId로 Room socket을 호출한다', () => {
     renderHook(() => useRoomLiveConnections('room-1', false));
 
-    expect(useRoomSocket).toHaveBeenCalledWith('', undefined, undefined);
+    expect(useRoomSocket).toHaveBeenCalledWith('', undefined, undefined, undefined);
   });
 });

@@ -6,6 +6,17 @@ import { getApiErrorMessage } from './errorMessage';
 
 describe('getApiErrorMessage', () => {
   it.each([
+    ['ROOM_MEMBER_KICKED', 'Host가 다시 허용하기 전에는 입장할 수 없어요.'],
+    ['ROOM_MEMBER_NOT_FOUND', '참여자를 찾을 수 없어요.'],
+    ['ROOM_MEMBER_NOT_KICKED', '이미 추방이 해제된 멤버예요.'],
+    ['ROOM_CANNOT_KICK_HOST', 'Host는 추방할 수 없어요.'],
+  ] as const)('%s를 멤버 관리 안내로 바꾼다', (code, message) => {
+    const error = new ApiClientError({ code, message: 'server message' }, 403);
+
+    expect(getApiErrorMessage(error)).toBe(message);
+  });
+
+  it.each([
     ['PLAYLIST_INVALID_URL', '유효한 YouTube 링크를 입력해주세요.'],
     ['PLAYLIST_VIDEO_UNAVAILABLE', '재생할 수 없는 영상이에요.'],
     ['PLAYLIST_DUPLICATE_VIDEO', '이미 플레이리스트에 추가된 곡이에요.'],

@@ -15,6 +15,10 @@ vi.mock('@/features/presence/components/MemberList', () => ({
   MemberList: () => <div data-testid="member-list" />,
 }));
 
+vi.mock('@/features/presence/components/KickedMembersButton', () => ({
+  KickedMembersButton: () => <button type="button">추방 관리</button>,
+}));
+
 vi.mock('@/features/presence/components/MemberSidebar', () => ({
   MemberSidebar: () => <div data-testid="member-sidebar" />,
 }));
@@ -145,5 +149,20 @@ describe('RoomLayout', () => {
     expect(screen.queryByTestId('room-mobile-overlay')).not.toBeInTheDocument();
     // 인라인 패널은 페이지 흐름의 일부라 닫아도 보여줄 게 없으므로 닫기(X) 버튼이 없다.
     expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+  });
+
+  it('모바일 멤버 패널 헤더에 추방 관리 버튼을 배치한다', () => {
+    render(
+      <RoomLayout
+        activeMobileTab="members"
+        currentUserName="게스트"
+        onMobileTabChange={vi.fn()}
+        playerPanel={<div data-testid="player-panel" />}
+        playlistPanel={<div data-testid="playlist-panel" />}
+        roomId="room-1"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
   });
 });

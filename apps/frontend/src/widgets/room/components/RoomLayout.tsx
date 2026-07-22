@@ -12,6 +12,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useRef, type ReactNode } from 'react';
 
 import { ChatPanel } from '@/features/chat/components/ChatPanel';
+import { KickedMembersButton } from '@/features/presence/components/KickedMembersButton';
 import { MemberList } from '@/features/presence/components/MemberList';
 import { MemberSidebar } from '@/features/presence/components/MemberSidebar';
 
@@ -43,20 +44,31 @@ const MOBILE_OVERLAY_TITLE: Record<RoomMobileTab, string> = {
   chat: '채팅',
 };
 
-function MobileOverlayHeader({ title, onClose }: { title: string; onClose?: () => void }) {
+function MobileOverlayHeader({
+  action,
+  title,
+  onClose,
+}: {
+  action?: ReactNode;
+  title: string;
+  onClose?: () => void;
+}) {
   return (
     <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
       <span className="text-xs font-semibold text-muted-foreground">{title}</span>
-      {onClose ? (
-        <button
-          aria-label="닫기"
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-          onClick={onClose}
-          type="button"
-        >
-          <X className="size-4" aria-hidden />
-        </button>
-      ) : null}
+      <div className="flex items-center gap-1">
+        {action}
+        {onClose ? (
+          <button
+            aria-label="닫기"
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+            onClick={onClose}
+            type="button"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -103,7 +115,10 @@ export function RoomLayout({
           className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border pb-28 xl:hidden"
           data-testid="room-tall-viewport-panel"
         >
-          <MobileOverlayHeader title={MOBILE_OVERLAY_TITLE[activeMobileTab]} />
+          <MobileOverlayHeader
+            action={activeMobileTab === 'members' ? <KickedMembersButton /> : undefined}
+            title={MOBILE_OVERLAY_TITLE[activeMobileTab]}
+          />
           <div className="min-h-0 flex-1 overflow-hidden">
             {activeMobileTab === 'playlist' ? playlistPanel : null}
             {activeMobileTab === 'members' ? (
@@ -165,6 +180,7 @@ export function RoomLayout({
           {activeMobileTab ? (
             <>
               <MobileOverlayHeader
+                action={activeMobileTab === 'members' ? <KickedMembersButton /> : undefined}
                 title={MOBILE_OVERLAY_TITLE[activeMobileTab]}
                 onClose={closeMobileTab}
               />

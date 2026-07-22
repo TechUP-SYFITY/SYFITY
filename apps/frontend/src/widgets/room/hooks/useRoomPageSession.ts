@@ -2,10 +2,10 @@
 
 // Room 입장 응답을 도메인 store에 반영하고, 화면 생명주기에 맞춰 실시간 연결을 관리한다.
 import { useRouter } from 'next/navigation';
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { useToast } from '@/shared/components/ui';
-import type { RoomJoinedPayload } from '@/shared/types/socket';
+import type { RoomJoinedPayload, RoomKickedPayload } from '@/shared/types/socket';
 
 import { useMe } from '@/features/auth/hooks/useAuth';
 import { sortChatMessagesAscending } from '@/features/chat/lib/chatMessageOrder';
@@ -22,6 +22,8 @@ import { useRoomLiveConnections } from './useRoomLiveConnections';
 export function useRoomPageSession(roomId: string) {
   const router = useRouter();
   const { pushToast } = useToast();
+  const handledKickedRoomIdRef = useRef<string | null>(null);
+  const [disabledRoomId, setDisabledRoomId] = useState<string | null>(null);
   const joinRoom = useJoinRoom(roomId);
   const { data: me, isError: isMeError } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
@@ -68,9 +70,32 @@ export function useRoomPageSession(roomId: string) {
     exitRoom();
   }, [exitRoom, pushToast]);
 
+  const handleRoomKicked = useCallback(
+    (payload: RoomKickedPayload) => {
+      if (handledKickedRoomIdRef.current === payload.roomId) {
+        return;
+      }
+
+      handledKickedRoomIdRef.current = payload.roomId;
+      setDisabledRoomId(payload.roomId);
+      clearRoom();
+      clearMembers();
+      clearPlaylist();
+      clearPlayback();
+      clearMessages();
+      pushToast({
+        id: `room-kicked-${payload.roomId}`,
+        title: payload.message,
+        variant: 'error',
+      });
+      router.replace('/home');
+    },
+    [clearMembers, clearMessages, clearPlayback, clearPlaylist, clearRoom, pushToast, router],
+  );
+
   const handleSnapshot = useCallback(
     (snapshot: RoomJoinedPayload) => {
-      if (!joinRoom.data) {
+      if (!joinRoom.data || handledKickedRoomIdRef.current === snapshot.roomId) {
         return;
       }
 
@@ -92,7 +117,13 @@ export function useRoomPageSession(roomId: string) {
     ],
   );
 
-  useRoomLiveConnections(roomId, joinRoom.isSuccess, handleRoomClosed, handleSnapshot);
+  useRoomLiveConnections(
+    roomId,
+    joinRoom.isSuccess && disabledRoomId !== roomId,
+    handleRoomClosed,
+    handleSnapshot,
+    handleRoomKicked,
+  );
 
   return {
     exitClosedRoom: handleRoomClosed,

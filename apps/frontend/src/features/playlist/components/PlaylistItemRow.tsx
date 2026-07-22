@@ -9,6 +9,8 @@ import type { PlaylistItem } from '@/shared/types/domain';
 import { PlaylistArtwork } from './PlaylistArtwork';
 
 interface PlaylistItemRowProps {
+  // true면 hover 없이 순서변경/삭제 액션을 항상 노출한다 (개인 플레이리스트 상세).
+  alwaysShowActions?: boolean;
   isCurrent: boolean;
   isDeleteEnabled: boolean;
   isDeletePending: boolean;
@@ -18,7 +20,8 @@ interface PlaylistItemRowProps {
   isOwnItem: boolean;
   isReady: boolean;
   isReorderEnabled: boolean;
-  item: PlaylistItem;
+  // addedBy는 이 컴포넌트에서 쓰지 않으므로, addedBy 없는 개인 플레이리스트 아이템도 받는다.
+  item: Omit<PlaylistItem, 'addedBy'>;
   onBlurWithin: (event: React.FocusEvent<HTMLDivElement>) => void;
   onDelete: (itemId: string) => void;
   onDragHandlePointerCancel: () => void;
@@ -31,6 +34,7 @@ interface PlaylistItemRowProps {
 }
 
 export function PlaylistItemRow({
+  alwaysShowActions = false,
   isCurrent,
   isDeleteEnabled,
   isDeletePending,
@@ -54,9 +58,10 @@ export function PlaylistItemRow({
   const isUnavailable = item.status === 'unavailable';
   // Host는 모든 곡을, Member는 자신이 추가한 곡만 삭제할 수 있다 (docs/05-api-spec.md 6.3).
   const hasRowActions = isHost || isOwnItem;
-  const actionVisibilityClass = isFocused
-    ? 'flex opacity-100'
-    : 'hidden xl:flex xl:opacity-0 xl:group-hover:opacity-100';
+  const actionVisibilityClass =
+    alwaysShowActions || isFocused
+      ? 'flex opacity-100'
+      : 'hidden xl:flex xl:opacity-0 xl:group-hover:opacity-100';
 
   return (
     <div

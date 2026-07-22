@@ -38,12 +38,9 @@ const secondItem = item('item-2', 2);
 
 const detail: PersonalPlaylistDetail = {
   playlist: {
-    coverUrl: null,
-    description: null,
     id: playlistId,
-    itemCount: 2,
     name: '밤 드라이브',
-    totalDuration: 400,
+    createdAt: '2026-07-18T10:00:00.000Z',
     updatedAt: '2026-07-20T12:00:00.000Z',
   },
   items: [firstItem, secondItem],
@@ -84,7 +81,7 @@ const readDetail = (queryClient: QueryClient) =>
   queryClient.getQueryData<PersonalPlaylistDetail>(personalPlaylistQueryKeys.detail(playlistId));
 
 describe('useDeletePlaylistItem', () => {
-  it('요청이 끝나기 전에 곡을 목록에서 제거하고 itemCount를 줄인다', async () => {
+  it('요청이 끝나기 전에 곡을 목록에서 제거한다', async () => {
     const queryClient = createQueryClient();
     seedDetail(queryClient);
     const api = createApi({ deleteItem: vi.fn(() => new Promise<void>(() => undefined)) });
@@ -97,7 +94,6 @@ describe('useDeletePlaylistItem', () => {
     await waitFor(() => {
       expect(readDetail(queryClient)?.items.map((entry) => entry.id)).toEqual([secondItem.id]);
     });
-    expect(readDetail(queryClient)?.playlist.itemCount).toBe(1);
   });
 
   it('삭제가 실패하면 이전 목록으로 되돌린다', async () => {
@@ -116,25 +112,6 @@ describe('useDeletePlaylistItem', () => {
         secondItem.id,
       ]);
     });
-    expect(readDetail(queryClient)?.playlist.itemCount).toBe(2);
-  });
-
-  it('itemCount가 0 아래로 내려가지 않는다', async () => {
-    const queryClient = createQueryClient();
-    queryClient.setQueryData(personalPlaylistQueryKeys.detail(playlistId), {
-      playlist: { ...detail.playlist, itemCount: 0 },
-      items: [firstItem],
-    });
-    const api = createApi({ deleteItem: vi.fn(() => new Promise<void>(() => undefined)) });
-    const { result } = renderHook(() => useDeletePlaylistItem(playlistId, api), {
-      wrapper: wrapperFor(queryClient),
-    });
-
-    result.current.mutate(firstItem.id);
-
-    await waitFor(() => {
-      expect(readDetail(queryClient)?.playlist.itemCount).toBe(0);
-    });
   });
 });
 
@@ -149,11 +126,11 @@ describe('useReorderPlaylist', () => {
       wrapper: wrapperFor(queryClient),
     });
 
-    // docs/05 §7.2 규칙대로 0부터 연속
+    // 낙관적 캐시가 전달된 position 오름차순으로 재정렬하는지 확인 (position은 1-based)
     result.current.mutate({
       items: [
-        { id: secondItem.id, position: 0 },
-        { id: firstItem.id, position: 1 },
+        { id: secondItem.id, position: 1 },
+        { id: firstItem.id, position: 2 },
       ],
     });
 
@@ -176,8 +153,8 @@ describe('useReorderPlaylist', () => {
     await expect(
       result.current.mutateAsync({
         items: [
-          { id: secondItem.id, position: 0 },
-          { id: firstItem.id, position: 1 },
+          { id: secondItem.id, position: 1 },
+          { id: firstItem.id, position: 2 },
         ],
       }),
     ).rejects.toThrow('reorder failed');
@@ -200,7 +177,8 @@ describe('useReorderPlaylist', () => {
       wrapper: wrapperFor(queryClient),
     });
 
-    result.current.mutate({ items: [{ id: secondItem.id, position: 0 }] });
+    // firstItem만 뒤로 보낸다. payload에 없는 secondItem은 기존 position(2)을 유지한다.
+    result.current.mutate({ items: [{ id: firstItem.id, position: 3 }] });
 
     await waitFor(() => {
       expect(readDetail(queryClient)?.items.map((entry) => entry.id)).toEqual([

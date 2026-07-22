@@ -46,12 +46,9 @@ const item = (id: string, title: string, position: number): PlaylistItem => ({
 
 const detail = (items: PlaylistItem[]): DetailType => ({
   playlist: {
-    coverUrl: null,
-    description: null,
     id: playlistId,
-    itemCount: items.length,
     name: '밤 드라이브',
-    totalDuration: items.reduce((sum, entry) => sum + entry.duration, 0),
+    createdAt: '2026-07-18T10:00:00.000Z',
     updatedAt: '2026-07-20T12:00:00.000Z',
   },
   items,
@@ -138,7 +135,7 @@ describe('PersonalPlaylistDetail', () => {
     });
   });
 
-  it('키보드 정렬은 docs/05 규칙대로 0부터 연속된 position을 보낸다', async () => {
+  it('키보드 정렬은 1부터 연속된 position을 보낸다', async () => {
     vi.mocked(personalPlaylistApi.getPlaylist).mockResolvedValue(detail([firstItem, secondItem]));
     vi.mocked(personalPlaylistApi.reorder).mockResolvedValue({ items: [] });
 
@@ -152,8 +149,8 @@ describe('PersonalPlaylistDetail', () => {
     await waitFor(() => {
       expect(personalPlaylistApi.reorder).toHaveBeenCalledWith(playlistId, {
         items: [
-          { id: secondItem.id, position: 0 },
-          { id: firstItem.id, position: 1 },
+          { id: secondItem.id, position: 1 },
+          { id: firstItem.id, position: 2 },
         ],
       });
     });

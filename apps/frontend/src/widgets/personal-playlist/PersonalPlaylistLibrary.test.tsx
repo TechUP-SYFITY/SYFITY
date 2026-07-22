@@ -18,13 +18,10 @@ vi.mock('@/features/personal-playlist/api/personalPlaylistApi', () => ({
   },
 }));
 
-const summary = (id: string, name: string, itemCount: number): PersonalPlaylistSummary => ({
-  coverUrl: null,
-  description: null,
+const summary = (id: string, name: string): PersonalPlaylistSummary => ({
+  createdAt: '2026-07-18T10:00:00.000Z',
   id,
-  itemCount,
   name,
-  totalDuration: itemCount * 200,
   updatedAt: '2026-07-20T12:00:00.000Z',
 });
 
@@ -71,7 +68,7 @@ describe('PersonalPlaylistLibrary', () => {
     const retry = await screen.findByRole('button', { name: '다시 시도' });
 
     vi.mocked(personalPlaylistApi.getPlaylists).mockResolvedValue({
-      playlists: [summary('pl-1', '밤 드라이브', 4)],
+      playlists: [summary('pl-1', '밤 드라이브')],
     });
     fireEvent.click(retry);
 
@@ -98,7 +95,7 @@ describe('PersonalPlaylistLibrary', () => {
 
   it('목록이 있으면 카드와 개수 pill을 보여준다', async () => {
     vi.mocked(personalPlaylistApi.getPlaylists).mockResolvedValue({
-      playlists: [summary('pl-1', '밤 드라이브', 4), summary('pl-2', '집중 로파이', 2)],
+      playlists: [summary('pl-1', '밤 드라이브'), summary('pl-2', '집중 로파이')],
     });
 
     renderLibrary();
@@ -111,7 +108,7 @@ describe('PersonalPlaylistLibrary', () => {
 
   it('카드는 상세 경로로 링크된다', async () => {
     vi.mocked(personalPlaylistApi.getPlaylists).mockResolvedValue({
-      playlists: [summary('pl-1', '밤 드라이브', 4)],
+      playlists: [summary('pl-1', '밤 드라이브')],
     });
 
     renderLibrary();
@@ -122,7 +119,7 @@ describe('PersonalPlaylistLibrary', () => {
 
   it('"새 플레이리스트"를 누르면 생성 다이얼로그가 열린다', async () => {
     vi.mocked(personalPlaylistApi.getPlaylists).mockResolvedValue({
-      playlists: [summary('pl-1', '밤 드라이브', 4)],
+      playlists: [summary('pl-1', '밤 드라이브')],
     });
 
     renderLibrary();

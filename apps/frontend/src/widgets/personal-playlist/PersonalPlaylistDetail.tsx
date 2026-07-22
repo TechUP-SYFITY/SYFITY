@@ -205,6 +205,7 @@ export function PersonalPlaylistDetail({ playlistId }: PersonalPlaylistDetailPro
           {items.map((item) => (
             <PlaylistItemRow
               key={item.id}
+              alwaysShowActions
               isCurrent={false}
               isDeleteEnabled
               isDeletePending={deleteItem.isPending}

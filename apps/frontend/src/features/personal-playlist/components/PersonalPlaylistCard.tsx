@@ -1,9 +1,8 @@
 'use client';
 
-import { ChevronRight, ListMusic, Music } from 'lucide-react';
+import { ChevronRight, ListMusic } from 'lucide-react';
 import Link from 'next/link';
 
-import { formatPlaylistLength } from '../lib/formatPlaylistLength';
 import type { PersonalPlaylistSummary } from '../types/personalPlaylistTypes';
 
 interface PersonalPlaylistCardProps {
@@ -16,20 +15,12 @@ export function PersonalPlaylistCard({ playlist }: PersonalPlaylistCardProps) {
       href={`/playlists/${playlist.id}`}
       className="group flex w-full items-center gap-4 rounded-2xl border border-white/8 bg-[rgba(17,17,19,0.72)] p-4 text-left transition-colors hover:border-primary/25 hover:bg-[rgba(23,23,26,0.85)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
-      <span
-        className="relative flex size-13 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-linear-to-br from-primary/25 to-accent/25 bg-cover bg-center text-primary"
-        style={playlist.coverUrl ? { backgroundImage: `url(${playlist.coverUrl})` } : undefined}
-      >
-        {playlist.coverUrl ? null : <ListMusic className="size-5" aria-hidden />}
+      <span className="relative flex size-13 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-linear-to-br from-primary/25 to-accent/25 text-primary">
+        <ListMusic className="size-5" aria-hidden />
       </span>
 
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate text-sm font-semibold text-white">{playlist.name}</span>
-        <span className="flex items-center gap-1.5 text-xs text-white/40">
-          <Music className="size-3" aria-hidden />
-          {playlist.itemCount}곡
-          {playlist.totalDuration > 0 ? ` · ${formatPlaylistLength(playlist.totalDuration)}` : ''}
-        </span>
       </span>
 
       <ChevronRight

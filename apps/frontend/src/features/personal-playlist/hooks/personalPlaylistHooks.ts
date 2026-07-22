@@ -3,14 +3,13 @@
 // 나만의 Playlist REST API를 React Query 훅으로 연결한다. (store 없이 Query 캐시로만 관리)
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { PlaylistItem } from '@/shared/types/domain';
-
 import { personalPlaylistApi, type PersonalPlaylistApi } from '../api/personalPlaylistApi';
 import type {
   AddPersonalPlaylistItemRequest,
   CreatePersonalPlaylistRequest,
   ImportPlaylistToRoomRequest,
   PersonalPlaylistDetail,
+  PersonalPlaylistItem,
   ReorderPersonalPlaylistRequest,
   UpdatePersonalPlaylistRequest,
 } from '../types/personalPlaylistTypes';
@@ -73,7 +72,7 @@ export const useAddPlaylistItem = (id: string, api: PersonalPlaylistApi = person
 
   return useMutation({
     mutationFn: (body: AddPersonalPlaylistItemRequest) => api.addItem(id, body),
-    // 곡 수가 바뀌므로 라이브러리 카드 요약(itemCount·totalDuration)을 쓰는 목록 쿼리도 무효화한다.
+    // 상세(곡 목록)와 목록(updatedAt 정렬) 캐시를 무효화한다.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.detail(id) });
       return queryClient.invalidateQueries({ queryKey: personalPlaylistQueryKeys.list() });
@@ -97,10 +96,7 @@ export const useDeletePlaylistItem = (
       );
       if (previous) {
         queryClient.setQueryData<PersonalPlaylistDetail>(personalPlaylistQueryKeys.detail(id), {
-          playlist: {
-            ...previous.playlist,
-            itemCount: Math.max(0, previous.playlist.itemCount - 1),
-          },
+          ...previous,
           items: previous.items.filter((item) => item.id !== itemId),
         });
       }
@@ -157,7 +153,7 @@ export const useImportPlaylistToRoom = (
     mutationFn: (body: ImportPlaylistToRoomRequest) => api.importToRoom(roomId, body),
   });
 
-function reorderItems(items: PlaylistItem[], body: ReorderPersonalPlaylistRequest) {
+function reorderItems(items: PersonalPlaylistItem[], body: ReorderPersonalPlaylistRequest) {
   const positionById = new Map(body.items.map((item) => [item.id, item.position]));
 
   return [...items]

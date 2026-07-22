@@ -2,7 +2,7 @@
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
 import { AlertTriangle } from 'lucide-react';
-import type { RefObject } from 'react';
+import { useRef, type RefObject } from 'react';
 
 import { YoutubeAttributionLink } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
@@ -29,6 +29,7 @@ export function PlayerPanel({
   onPlaybackStateChange,
   playlist,
 }: PlayerPanelProps) {
+  const playerFrameRef = useRef<HTMLDivElement>(null);
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playbackError = usePlayerStore((state) => state.playbackError);
   const beginPlaybackSync = usePlayerStore((state) => state.beginPlaybackSync);
@@ -74,9 +75,13 @@ export function PlayerPanel({
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 xl:mx-0">
-      <div className="relative overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border">
+    <section className="mx-auto flex h-full w-full max-w-2xl flex-col gap-4 xl:mx-0">
+      <div
+        ref={playerFrameRef}
+        className="relative flex min-h-[200px] min-w-0 flex-1 overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border"
+      >
         <YouTubePlayer
+          availableContainerRef={playerFrameRef}
           playerControllerRef={playerControllerRef}
           playbackState={playbackState}
           onBufferingRecovered={handleBufferingRecovered}

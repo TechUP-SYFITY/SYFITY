@@ -3,7 +3,7 @@
 'use client';
 
 // YouTube IFrame Player API를 React 컴포넌트 생명주기에 연결한다.
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 
 import { getPlaybackCorrection } from '../lib/playerSync';
 import { usePlayerStore } from '../store/playerStore';
@@ -48,6 +48,7 @@ const loadYouTubeApi = () => {
 };
 
 interface YouTubePlayerProps {
+  availableContainerRef?: RefObject<HTMLElement | null>;
   playerControllerRef?: RefObject<PlayerController | null>;
   playbackState: PlayerPlaybackState | null;
   onBufferingRecovered: () => void;
@@ -57,6 +58,7 @@ interface YouTubePlayerProps {
 }
 
 export function YouTubePlayer({
+  availableContainerRef,
   playerControllerRef,
   playbackState,
   onBufferingRecovered,
@@ -80,6 +82,7 @@ export function YouTubePlayer({
   const isLocalSyncPaused = usePlayerStore((state) => state.isLocalSyncPaused);
   const isMuted = usePlayerVolumeStore((state) => state.isMuted);
   const volume = usePlayerVolumeStore((state) => state.volume);
+  const playerSize = usePlayerFrameSize(availableContainerRef);
 
   useEffect(() => {
     playbackStateRef.current = playbackState;
@@ -250,10 +253,62 @@ export function YouTubePlayer({
   ]);
 
   return (
-    <div className="aspect-video min-h-[200px] w-full bg-black">
-      <div className="size-full" ref={containerRef} />
+    <div className="flex min-h-[200px] w-full items-center justify-center bg-black">
+      <div
+        className={playerSize ? 'shrink-0' : 'aspect-video h-auto w-full'}
+        style={playerSize ? playerSizeToStyle(playerSize) : undefined}
+      >
+        <div className="size-full" ref={containerRef} />
+      </div>
     </div>
   );
+}
+
+type PlayerFrameSize = { height: number; width: number };
+
+export function calculatePlayerFrameSize(
+  availableWidth: number,
+  availableHeight: number,
+): PlayerFrameSize {
+  if (availableWidth <= 0 || availableHeight <= 0) {
+    return { height: 200, width: 200 };
+  }
+
+  const widthLimitedHeight = availableWidth * (9 / 16);
+  const height = Math.max(200, Math.min(availableHeight, widthLimitedHeight));
+  const width = Math.min(availableWidth, height * (16 / 9));
+  return { height: Math.round(height), width: Math.round(width) };
+}
+
+function playerSizeToStyle({ height, width }: PlayerFrameSize): CSSProperties {
+  return { height, width };
+}
+
+function usePlayerFrameSize(
+  availableContainerRef: RefObject<HTMLElement | null> | undefined,
+): PlayerFrameSize | null {
+  const [size, setSize] = useState<PlayerFrameSize | null>(null);
+
+  useEffect(() => {
+    const container = availableContainerRef?.current;
+    if (!container) return undefined;
+
+    const measure = () => {
+      const { height, width } = container.getBoundingClientRect();
+      setSize(calculatePlayerFrameSize(width, height));
+    };
+
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(container);
+    window.addEventListener('resize', measure);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [availableContainerRef]);
+
+  return size;
 }
 
 function applyPlaybackState(

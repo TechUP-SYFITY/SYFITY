@@ -28,6 +28,10 @@ const MOBILE_OVERLAY_HEADER_HEIGHT = 48;
 // 오버레이일 때도 화면 하단에 이 높이만큼만 붙는 단일 기준값이다.
 const MOBILE_TAB_PANEL_TOTAL_HEIGHT = MOBILE_OVERLAY_HEADER_HEIGHT + TAB_PANEL_HEIGHT;
 
+export function getMobileOverlayHeight(availableSpace: number): number {
+  return Math.max(0, Math.min(MOBILE_TAB_PANEL_TOTAL_HEIGHT, availableSpace));
+}
+
 interface RoomLayoutProps {
   activeMobileTab: RoomMobileTab | null;
   currentUserName: string;
@@ -83,10 +87,12 @@ export function RoomLayout({
   roomId,
 }: RoomLayoutProps) {
   const playerSlotRef = useRef<HTMLDivElement>(null);
-  const isTallViewport = useTallEnoughForInlineTabPanel(playerSlotRef);
+  const { availableSpace, isTallEnough: isTallViewport } =
+    useTallEnoughForInlineTabPanel(playerSlotRef);
   const tabBarRef = useRef<HTMLDivElement>(null);
   const isMobileOverlayOpen = activeMobileTab !== null && !isTallViewport;
   const showInPageMobilePanel = activeMobileTab !== null && isTallViewport;
+  const mobileOverlayHeight = getMobileOverlayHeight(availableSpace);
   const closeMobileTab = () => onMobileTabChange(null);
 
   return (
@@ -96,7 +102,7 @@ export function RoomLayout({
       </div>
 
       <div
-        className="shrink-0 px-5 py-4 xl:min-w-0 xl:flex-1 xl:self-stretch xl:border-r xl:border-border xl:p-6"
+        className="flex min-h-0 flex-1 flex-col px-5 py-4 xl:min-w-0 xl:self-stretch xl:border-r xl:border-border xl:p-6"
         data-testid="room-player-slot"
         ref={playerSlotRef}
       >
@@ -166,7 +172,7 @@ export function RoomLayout({
         <DialogPrimitive.Content
           className="absolute inset-x-0 bottom-28 z-30 flex flex-col overflow-hidden rounded-t-2xl bg-background outline-none data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom xl:hidden"
           data-testid="room-mobile-overlay"
-          style={{ height: MOBILE_TAB_PANEL_TOTAL_HEIGHT }}
+          style={{ height: mobileOverlayHeight }}
           onInteractOutside={(event) => {
             const target = event.detail.originalEvent.target as Node | null;
             if (target && tabBarRef.current?.contains(target)) {

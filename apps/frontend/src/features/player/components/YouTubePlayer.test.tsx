@@ -4,7 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { YouTubePlayer } from './YouTubePlayer';
+import { calculatePlayerFrameSize, YouTubePlayer } from './YouTubePlayer';
 import { usePlayerStore } from '../store/playerStore';
 import { usePlayerVolumeStore } from '../store/playerVolumeStore';
 import type { PlayerPlaybackState } from '../types/playerTypes';
@@ -86,6 +86,11 @@ describe('YouTubePlayer', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     usePlayerStore.getState().clearPlayback();
+  });
+
+  it('가용 폭·높이 중 더 좁은 축에 16:9 프레임을 맞춘다', () => {
+    expect(calculatePlayerFrameSize(926, 300)).toEqual({ width: 533, height: 300 });
+    expect(calculatePlayerFrameSize(800, 700)).toEqual({ width: 800, height: 450 });
   });
 
   it('player ready 시 현재 로컬 볼륨을 적용한다', async () => {

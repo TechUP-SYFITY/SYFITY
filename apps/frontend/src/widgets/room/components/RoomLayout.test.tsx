@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RoomLayout } from './RoomLayout';
+import { getMobileOverlayHeight, RoomLayout } from './RoomLayout';
 
 vi.mock('@/features/chat/components/ChatPanel', () => ({
   ChatPanel: () => <div data-testid="chat-panel" />,
@@ -112,8 +112,8 @@ describe('RoomLayout', () => {
       );
 
       expect(screen.getByTestId('room-mobile-overlay')).toBeInTheDocument();
-      // 화면 전체(inset-0)가 아니라 하단에 고정 높이(헤더 48 + 콘텐츠 280)만큼만 붙는다.
-      expect(screen.getByTestId('room-mobile-overlay')).toHaveStyle({ height: '328px' });
+      // 플레이어 아래 가용 공간(88px)을 넘지 않도록 높이가 축소된다.
+      expect(screen.getByTestId('room-mobile-overlay')).toHaveStyle({ height: '88px' });
       // 오버레이는 화면 전체를 덮지 않으므로 뒤로 돌아갈 수 있는 닫기(X) 버튼이 필요하다.
       expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
       expect(screen.queryByTestId('room-tall-viewport-panel')).not.toBeInTheDocument();
@@ -164,5 +164,11 @@ describe('RoomLayout', () => {
     );
 
     expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
+  });
+
+  it('오버레이 높이를 플레이어 아래 가용 공간과 목표 높이 중 작은 값으로 제한한다', () => {
+    expect(getMobileOverlayHeight(600)).toBe(328);
+    expect(getMobileOverlayHeight(88)).toBe(88);
+    expect(getMobileOverlayHeight(-10)).toBe(0);
   });
 });

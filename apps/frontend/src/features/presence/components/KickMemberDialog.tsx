@@ -100,10 +100,20 @@ export function KickMemberDialog({ member, onOpenChange, open, roomId }: KickMem
           ) : null}
         </DialogBody>
         <DialogFooter>
-          <Button disabled={kickMember.isPending} variant="ghost" onClick={() => setOpen(false)}>
+          <Button
+            className="sm:flex-1"
+            disabled={kickMember.isPending}
+            variant="ghost"
+            onClick={() => setOpen(false)}
+          >
             취소
           </Button>
-          <Button isLoading={kickMember.isPending} variant="destructive" onClick={confirmKick}>
+          <Button
+            className="sm:flex-1"
+            isLoading={kickMember.isPending}
+            variant="destructive"
+            onClick={confirmKick}
+          >
             추방하기
           </Button>
         </DialogFooter>

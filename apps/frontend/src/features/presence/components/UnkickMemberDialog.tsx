@@ -105,10 +105,15 @@ export function UnkickMemberDialog({
           ) : null}
         </DialogBody>
         <DialogFooter>
-          <Button disabled={unkickMember.isPending} variant="ghost" onClick={() => setOpen(false)}>
+          <Button
+            className="sm:flex-1"
+            disabled={unkickMember.isPending}
+            variant="ghost"
+            onClick={() => setOpen(false)}
+          >
             취소
           </Button>
-          <Button isLoading={unkickMember.isPending} onClick={confirmUnkick}>
+          <Button className="sm:flex-1" isLoading={unkickMember.isPending} onClick={confirmUnkick}>
             해제하기
           </Button>
         </DialogFooter>

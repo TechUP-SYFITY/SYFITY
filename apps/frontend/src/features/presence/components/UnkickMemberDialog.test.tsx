@@ -70,6 +70,13 @@ describe('UnkickMemberDialog', () => {
     expect(icon?.parentElement).toHaveClass('from-primary', 'to-accent', 'text-black');
   });
 
+  it('취소와 해제 버튼을 같은 너비로 배치한다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('button', { name: '취소' })).toHaveClass('sm:flex-1');
+    expect(screen.getByRole('button', { name: '해제하기' })).toHaveClass('sm:flex-1');
+  });
+
   it('확인 후 멤버의 추방을 해제하고 성공 안내를 표시한다', async () => {
     vi.mocked(roomMemberApi.updateMember).mockResolvedValue({
       memberId: member.id,

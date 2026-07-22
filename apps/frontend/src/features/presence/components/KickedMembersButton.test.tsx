@@ -50,7 +50,8 @@ describe('KickedMembersButton', () => {
     renderButton(true);
     const button = screen.getByRole('button', { name: '추방 관리' });
 
-    expect(button).toHaveClass('size-11');
+    expect(button).toHaveTextContent('관리');
+    expect(button).toHaveClass('min-h-11', 'px-3');
     fireEvent.click(button);
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('추방 관리');

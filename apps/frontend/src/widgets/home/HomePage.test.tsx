@@ -1,4 +1,4 @@
-// Home이 closed Room 복구 feature의 action과 상태만 조합하는지 검증한다.
+// Home이 closed Room 복구·비활성화 feature의 action과 상태만 조합하는지 검증한다.
 import '@testing-library/jest-dom/vitest';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -7,6 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomePage } from './HomePage';
 
 const mocks = vi.hoisted(() => ({
+  deactivate: vi.fn(),
+  deactivateActionState: {
+    deactivatingRoomId: undefined as string | undefined,
+    errorMessage: undefined as string | undefined,
+    errorRoomId: undefined as string | undefined,
+  },
+  deactivateReset: vi.fn(),
   actionState: {
     errorMessage: undefined as string | undefined,
     errorRoomId: undefined as string | undefined,
@@ -52,6 +59,14 @@ vi.mock('@/features/room/hooks/useRecoverRoomAction', () => ({
   }),
 }));
 
+vi.mock('@/features/room/hooks/useDeactivateRoomAction', () => ({
+  useDeactivateRoomAction: () => ({
+    ...mocks.deactivateActionState,
+    deactivate: mocks.deactivate,
+    reset: mocks.deactivateReset,
+  }),
+}));
+
 vi.mock('@/features/room/components/CreateRoomDialog', () => ({
   CreateRoomDialog: () => null,
 }));
@@ -68,6 +83,9 @@ describe('HomePage Room recovery', () => {
     mocks.actionState.errorMessage = undefined;
     mocks.actionState.errorRoomId = undefined;
     mocks.actionState.recoveringRoomId = undefined;
+    mocks.deactivateActionState.deactivatingRoomId = undefined;
+    mocks.deactivateActionState.errorMessage = undefined;
+    mocks.deactivateActionState.errorRoomId = undefined;
   });
 
   afterEach(cleanup);
@@ -99,5 +117,32 @@ describe('HomePage Room recovery', () => {
     fireEvent.click(screen.getByRole('button', { name: '닫기' }));
 
     expect(mocks.reset).toHaveBeenCalledOnce();
+  });
+
+  it('비활성화 확인 시 feature action을 호출한다', () => {
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '지난 Room 비활성화' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Room 비활성화 확인' }));
+
+    expect(mocks.deactivate).toHaveBeenCalledWith('closed-room');
+  });
+
+  it('feature가 반환한 비활성화 오류를 해당 Dialog에 표시한다', () => {
+    mocks.deactivateActionState.errorMessage = '이 작업을 할 권한이 없어요.';
+    mocks.deactivateActionState.errorRoomId = 'closed-room';
+
+    render(<HomePage />);
+    fireEvent.click(screen.getByRole('button', { name: '지난 Room 비활성화' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('이 작업을 할 권한이 없어요.');
+  });
+
+  it('비활성화 Dialog를 닫으면 feature 오류 상태를 초기화한다', () => {
+    render(<HomePage />);
+    fireEvent.click(screen.getByRole('button', { name: '지난 Room 비활성화' }));
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(mocks.deactivateReset).toHaveBeenCalledOnce();
   });
 });

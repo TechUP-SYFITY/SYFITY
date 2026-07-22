@@ -17,6 +17,8 @@ const meta = {
     isUserLoading: false,
     myRooms: previewMyRooms,
     onCreateRoom: () => {},
+    onDeactivateRoom: () => {},
+    onDeactivationOpenChange: () => {},
     onJoinRoom: () => {},
     onRecoverRoom: () => {},
     onRecoveryOpenChange: () => {},

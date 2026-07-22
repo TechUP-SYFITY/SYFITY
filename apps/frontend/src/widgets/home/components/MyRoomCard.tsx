@@ -6,13 +6,18 @@ import { useRouter } from 'next/navigation';
 
 import { Badge } from '@/shared/components/ui/Badge';
 
+import { DeactivateRoomAction } from '@/features/room/components/DeactivateRoomAction';
 import { RecoverRoomAction } from '@/features/room/components/RecoverRoomAction';
 import type { MyRoomSummary } from '@/features/room/types/roomTypes';
 
 import { formatRelativeTime } from '../homeFormatters';
 
 interface MyRoomCardProps {
+  deactivationErrorMessage?: string;
+  isDeactivating: boolean;
   isRecovering: boolean;
+  onDeactivate: (roomId: string) => void;
+  onDeactivationOpenChange?: (open: boolean) => void;
   onRecover: (roomId: string) => void;
   onRecoveryOpenChange?: (open: boolean) => void;
   recoveryErrorMessage?: string;
@@ -58,7 +63,11 @@ function RoomDetails({ room }: { room: MyRoomSummary }) {
 }
 
 export function MyRoomCard({
+  deactivationErrorMessage,
+  isDeactivating,
   isRecovering,
+  onDeactivate,
+  onDeactivationOpenChange,
   onRecover,
   onRecoveryOpenChange,
   recoveryErrorMessage,
@@ -68,15 +77,26 @@ export function MyRoomCard({
 
   if (room.status === 'closed') {
     return (
-      <div className="flex min-h-20 items-center gap-4 rounded-lg border border-border bg-surface/70 p-4">
-        <RoomDetails room={room} />
-        <RecoverRoomAction
-          errorMessage={recoveryErrorMessage}
-          isPending={isRecovering}
-          roomName={room.name}
-          onConfirm={() => onRecover(room.id)}
-          onOpenChange={onRecoveryOpenChange}
-        />
+      <div className="flex min-h-20 flex-col gap-3 rounded-lg border border-border bg-surface/70 p-4 sm:flex-row sm:items-center sm:gap-4">
+        <span className="flex min-w-0 flex-1 items-center gap-4">
+          <RoomDetails room={room} />
+        </span>
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+          <RecoverRoomAction
+            errorMessage={recoveryErrorMessage}
+            isPending={isRecovering}
+            roomName={room.name}
+            onConfirm={() => onRecover(room.id)}
+            onOpenChange={onRecoveryOpenChange}
+          />
+          <DeactivateRoomAction
+            errorMessage={deactivationErrorMessage}
+            isPending={isDeactivating}
+            roomName={room.name}
+            onConfirm={() => onDeactivate(room.id)}
+            onOpenChange={onDeactivationOpenChange}
+          />
+        </div>
       </div>
     );
   }

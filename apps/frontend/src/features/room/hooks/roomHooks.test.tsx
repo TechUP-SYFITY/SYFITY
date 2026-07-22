@@ -14,6 +14,7 @@ import {
   useJoinRoomByCode,
   useLeaveRoom,
   useMyRooms,
+  useRecoverRoom,
   useUpdateRoom,
 } from './roomHooks';
 import { roomApi } from '../api/roomApi';
@@ -224,6 +225,51 @@ describe('Room membership hooks', () => {
     });
 
     expect(roomApi.updateRoom).toHaveBeenCalledWith(roomFixture.room.id, { status: 'closed' });
+  });
+
+  it('Room 복구는 PATCH에 status: active를 전달하고 Home 쿼리를 갱신한다', async () => {
+    vi.mocked(roomApi.updateRoom).mockResolvedValue({
+      id: roomFixture.room.id,
+      name: roomFixture.room.name,
+      status: 'active',
+      closedAt: null,
+      updatedAt: '2026-07-22T02:00:00.000Z',
+    });
+    const queryClient = createQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useRecoverRoom(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(roomFixture.room.id);
+    });
+
+    expect(roomApi.updateRoom).toHaveBeenCalledWith(roomFixture.room.id, { status: 'active' });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['rooms', 'detail', roomFixture.room.id],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+  });
+
+  it('복구 기간 만료 시 내 Room 목록을 갱신한다', async () => {
+    const error = new ApiClientError(
+      { code: 'ROOM_RECOVERY_EXPIRED', message: 'Room recovery period expired' },
+      409,
+    );
+    vi.mocked(roomApi.updateRoom).mockRejectedValue(error);
+    const queryClient = createQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useRecoverRoom(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync(roomFixture.room.id)).rejects.toBe(error);
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
   });
 
   it('연결된 Socket으로 Member의 명시적 퇴장을 전송한다', () => {

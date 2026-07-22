@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { SocketClient } from '@/shared/lib/socket/types';
+import { ApiClientError } from '@/shared/types/api';
 
 import { roomApi, type RoomApi } from '../api/roomApi';
 import type { CreateRoomRequest, UpdateRoomRequest } from '../types/roomTypes';
@@ -100,6 +101,26 @@ export const useCloseRoom = (roomId: string) => {
   return useMutation({
     mutationFn: () => roomApi.updateRoom(roomId, { status: 'closed' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.all }),
+  });
+};
+
+export const useRecoverRoom = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (roomId: string) => roomApi.updateRoom(roomId, { status: 'active' }),
+    onSuccess: async (_, roomId) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+      ]);
+    },
+    onError: async (error) => {
+      if (error instanceof ApiClientError && error.code === 'ROOM_RECOVERY_EXPIRED') {
+        await queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() });
+      }
+    },
   });
 };
 

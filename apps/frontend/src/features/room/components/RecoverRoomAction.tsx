@@ -73,7 +73,7 @@ export function RecoverRoomAction({
 
         <DialogBody className="gap-3">
           <DialogDescription>
-            기존 Playlist와 재생 상태가 초기화됩니다. 참여 이력과 채팅은 그대로 유지됩니다.
+            기존 Playlist와 재생 상태가 초기화됩니다. 참여 이력과 채팅은 유지됩니다.
           </DialogDescription>
           {errorMessage ? (
             <p role="alert" className="text-xs text-destructive">

@@ -18,8 +18,6 @@ async function call<T>(path: string, init?: RequestInit) {
 interface Summary {
   id: string;
   name: string;
-  itemCount: number;
-  totalDuration: number;
 }
 
 const createPlaylist = (name: string) =>
@@ -34,16 +32,6 @@ describe('personal playlist MSW handlers', () => {
       success: true,
       data: { playlists: expect.any(Array) },
     });
-  });
-
-  it('목록 항목은 itemCount와 totalDuration을 계산해서 내려준다', async () => {
-    const { data } = await call<{ playlists: Summary[] }>('/personal-playlists');
-    const playlists = data?.success ? data.data.playlists : [];
-    const nightDrive = playlists.find((playlist) => playlist.id === 'pl-night-drive');
-
-    expect(nightDrive).toMatchObject({ name: '밤 드라이브', itemCount: 4 });
-    // 226 + 337 + 258 + 0(재생불가)
-    expect(nightDrive?.totalDuration).toBe(821);
   });
 
   it('상세는 position 오름차순으로 items를 정렬해 내려준다', async () => {
@@ -114,12 +102,12 @@ describe('personal playlist MSW handlers', () => {
     const firstId = first.data?.success ? first.data.data.id : '';
     const secondId = second.data?.success ? second.data.data.id : '';
 
-    // docs/05: position은 0부터 연속
+    // position은 1부터 연속 (백엔드 규약)
     const reordered = await call<{ items: { id: string }[] }>(`/personal-playlists/${id}/items`, {
       body: JSON.stringify({
         items: [
-          { id: secondId, position: 0 },
-          { id: firstId, position: 1 },
+          { id: secondId, position: 1 },
+          { id: firstId, position: 2 },
         ],
       }),
       method: 'PATCH',

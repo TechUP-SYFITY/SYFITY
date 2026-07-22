@@ -2,10 +2,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, fn, within } from 'storybook/test';
 
 import { ToastProvider } from '@/shared/components/ui';
+import type { PlaylistItem } from '@/shared/types/domain';
 
+import { MiniPlayer } from './MiniPlayer';
 import { PlaybackSyncToast } from './PlaybackSyncToast';
 import { usePlayerStore } from '../store/playerStore';
 import type { PlaybackSyncStatus } from '../types/playerTypes';
@@ -16,6 +18,18 @@ const playbackState = {
   playbackVersion: 1,
   playlistItemId: 'story-playlist-item',
   videoId: 'story-video',
+};
+
+const currentTrack: PlaylistItem = {
+  addedBy: 'story-host',
+  channelTitle: 'One Direction',
+  duration: 226,
+  id: playbackState.playlistItemId,
+  position: 1,
+  status: 'available',
+  thumbnailUrl: 'https://i.ytimg.com/vi/syFZfO_wfMQ/hqdefault.jpg',
+  title: 'Night Changes',
+  videoId: playbackState.videoId,
 };
 
 const meta = {
@@ -97,4 +111,38 @@ export const ManualPending: Story = {
 
 export const Error: Story = {
   decorators: [withSyncStatus('error')],
+};
+
+export const PendingAboveMiniPlayer: Story = {
+  decorators: [withSyncStatus('pending')],
+  render: () => (
+    <div className="flex h-dvh min-h-0 flex-col bg-background">
+      <PlaybackSyncToast />
+      <div className="min-h-0 flex-1" />
+      <MiniPlayer
+        commandError={null}
+        controlDisabled={false}
+        currentTrack={currentTrack}
+        isHost
+        isLocalSyncPaused={false}
+        isMuted={false}
+        nextDisabled={false}
+        onMuteToggle={fn()}
+        onNextTrack={fn()}
+        onPlayPause={fn()}
+        onPreviousTrack={fn()}
+        onRepeatToggle={fn()}
+        onSeek={fn()}
+        onShuffleToggle={fn()}
+        onVolumeChange={fn()}
+        pendingCommand={null}
+        playbackState={playbackState}
+        playPauseDisabled={false}
+        previousDisabled={false}
+        repeatMode="off"
+        shuffleEnabled={false}
+        volume={70}
+      />
+    </div>
+  ),
 };

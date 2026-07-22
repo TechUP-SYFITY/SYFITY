@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ToastProvider } from '@/shared/components/ui';
 
@@ -20,6 +20,7 @@ const playbackState = {
 describe('PlaybackSyncToast', () => {
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     usePlayerStore.getState().clearPlayback();
   });
 
@@ -82,11 +83,58 @@ describe('PlaybackSyncToast', () => {
 
   it('닫기 버튼으로 피드백 상태를 초기화한다', () => {
     usePlayerStore.getState().beginPlaybackSync();
+    usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
     renderPlaybackSyncToast();
 
     fireEvent.click(screen.getByRole('button', { name: '동기화 알림 닫기' }));
 
     expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
+  });
+
+  it('pending 토스트는 4초 후 닫혀도 늦은 동기화 응답을 완료 상태로 전환한다', async () => {
+    vi.useFakeTimers();
+    usePlayerStore.getState().beginPlaybackSync();
+    renderPlaybackSyncToast();
+
+    await act(() => vi.advanceTimersByTimeAsync(4000));
+
+    expect(
+      screen.queryByText('광고 또는 버퍼링 후 현재 위치로 자동 동기화됩니다'),
+    ).not.toBeInTheDocument();
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('pending');
+
+    act(() => {
+      usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
+    });
+
+    expect(screen.getByText('현재 재생 위치로 동기화됐어요.')).toBeInTheDocument();
+  });
+
+  it('완료 토스트는 2초, 오류 토스트는 4초 후 종료한다', async () => {
+    vi.useFakeTimers();
+    usePlayerStore.getState().beginPlaybackSync();
+    renderPlaybackSyncToast();
+
+    act(() => {
+      usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
+    });
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+
+    expect(screen.queryByText('현재 재생 위치로 동기화됐어요.')).not.toBeInTheDocument();
+
+    act(() => {
+      usePlayerStore.getState().beginPlaybackSync('manual');
+      usePlayerStore.getState().setPlaybackSyncError();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(3999));
+
+    expect(screen.getByText('동기화에 실패했어요. 다시 눌러 시도해주세요')).toBeInTheDocument();
+
+    await act(() => vi.advanceTimersByTimeAsync(1));
+
+    expect(
+      screen.queryByText('동기화에 실패했어요. 다시 눌러 시도해주세요'),
+    ).not.toBeInTheDocument();
   });
 });
 

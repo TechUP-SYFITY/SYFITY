@@ -8,9 +8,9 @@ import { useToast } from '@/shared/components/ui';
 
 import { usePlayerStore } from '../store/playerStore';
 
-const PENDING_DURATION_MS = 10_000;
-const SYNCED_DURATION_MS = 4_000;
-const ERROR_DURATION_MS = 6_000;
+const PENDING_DURATION_MS = 4_000;
+const SYNCED_DURATION_MS = 2_000;
+const ERROR_DURATION_MS = 4_000;
 const PLAYBACK_SYNC_TOAST_ID = 'playback-sync';
 
 export function PlaybackSyncToast() {
@@ -62,7 +62,7 @@ export function PlaybackSyncToast() {
       icon,
       duration,
       closeLabel: '동기화 알림 닫기',
-      onDismiss: clearPlaybackSync,
+      onDismiss: syncStatus === 'pending' ? undefined : clearPlaybackSync,
       variant,
     });
   }, [clearPlaybackSync, dismissToast, pushToast, syncSource, syncStatus]);

@@ -10,7 +10,6 @@ import {
   DialogBody,
   DialogCloseButton,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogIconBadge,
@@ -87,16 +86,18 @@ export function UnkickMemberDialog({
             <DialogIconBadge className="rounded-full border border-primary/30 bg-primary/15 bg-none from-transparent to-transparent text-primary shadow-[0_0_16px_rgba(114,244,164,0.25)] drop-shadow-none">
               <UserCheck aria-hidden />
             </DialogIconBadge>
-            <div className="min-w-0">
-              <DialogTitle>{member.nickname}님의 추방을 해제할까요?</DialogTitle>
-              <DialogDescription>해제할 멤버를 다시 확인해주세요.</DialogDescription>
-            </div>
+            <DialogTitle className="truncate">{member.nickname}님의 추방을 해제할까요?</DialogTitle>
           </div>
           <DialogCloseButton disabled={unkickMember.isPending} />
         </DialogHeader>
         <DialogBody>
-          <p className="text-sm leading-6 text-white/70">
-            추방을 해제해도 자동으로 입장되지는 않으며, 멤버가 다시 직접 입장해야 해요.
+          <p
+            className="mx-auto max-w-sm text-center text-sm leading-6 text-white/70"
+            data-testid="unkick-member-notice"
+          >
+            추방을 해제해도 자동으로 입장되지는 않으며,
+            <br />
+            멤버가 다시 직접 입장해야 해요.
           </p>
           {unkickMember.isError ? (
             <p className="mt-2 text-sm text-destructive" role="alert">

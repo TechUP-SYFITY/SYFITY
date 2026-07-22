@@ -14,8 +14,13 @@ interface HomeShellProps {
   myRooms: MyRoomSummary[];
   isMyRoomsLoading: boolean;
   isMyRoomsError: boolean;
+  recoveringRoomId?: string;
+  recoveryErrorMessage?: string;
+  recoveryErrorRoomId?: string;
   onCreateRoom: () => void;
   onJoinRoom: () => void;
+  onRecoverRoom: (roomId: string) => void;
+  onRecoveryOpenChange?: (open: boolean) => void;
   onRetryMyRooms: () => void;
 }
 
@@ -27,8 +32,13 @@ export function HomeShell({
   myRooms,
   isMyRoomsLoading,
   isMyRoomsError,
+  recoveringRoomId,
+  recoveryErrorMessage,
+  recoveryErrorRoomId,
   onCreateRoom,
   onJoinRoom,
+  onRecoverRoom,
+  onRecoveryOpenChange,
   onRetryMyRooms,
 }: HomeShellProps) {
   return (
@@ -48,9 +58,14 @@ export function HomeShell({
       />
 
       <MyRooms
+        recoveringRoomId={recoveringRoomId}
+        recoveryErrorMessage={recoveryErrorMessage}
+        recoveryErrorRoomId={recoveryErrorRoomId}
         rooms={myRooms}
         isLoading={isMyRoomsLoading}
         isError={isMyRoomsError}
+        onRecover={onRecoverRoom}
+        onRecoveryOpenChange={onRecoveryOpenChange}
         onRetry={onRetryMyRooms}
       />
     </div>

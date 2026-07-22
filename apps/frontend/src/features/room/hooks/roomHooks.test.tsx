@@ -14,6 +14,7 @@ import {
   useJoinRoomByCode,
   useLeaveRoom,
   useMyRooms,
+  useRecoverRoom,
   useUpdateRoom,
 } from './roomHooks';
 import { roomApi } from '../api/roomApi';
@@ -225,6 +226,60 @@ describe('Room membership hooks', () => {
 
     expect(roomApi.updateRoom).toHaveBeenCalledWith(roomFixture.room.id, { status: 'closed' });
   });
+
+  it('Room 복구는 PATCH에 status: active를 전달하고 Home 쿼리를 갱신한다', async () => {
+    vi.mocked(roomApi.updateRoom).mockResolvedValue({
+      id: roomFixture.room.id,
+      name: roomFixture.room.name,
+      status: 'active',
+      closedAt: null,
+      updatedAt: '2026-07-22T02:00:00.000Z',
+    });
+    const queryClient = createQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useRecoverRoom(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(roomFixture.room.id);
+    });
+
+    expect(roomApi.updateRoom).toHaveBeenCalledWith(roomFixture.room.id, { status: 'active' });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['rooms', 'detail', roomFixture.room.id],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+  });
+
+  it.each(['ROOM_NOT_CLOSED', 'ROOM_RECOVERY_EXPIRED'] as const)(
+    '%s 복구 오류 시 Room 캐시를 갱신한다',
+    async (code) => {
+      const error = new ApiClientError({ code, message: 'Room recovery state changed' }, 409);
+      vi.mocked(roomApi.updateRoom).mockRejectedValue(error);
+      const queryClient = createQueryClient();
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+      const onStateError = vi.fn();
+      const { result } = renderHook(() => useRecoverRoom({ onStateError }), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await expect(result.current.mutateAsync(roomFixture.room.id)).rejects.toBe(error);
+      });
+
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['rooms', 'detail', roomFixture.room.id],
+      });
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+      expect(onStateError).toHaveBeenCalledWith(error);
+      expect(onStateError.mock.invocationCallOrder[0]).toBeLessThan(
+        invalidateQueries.mock.invocationCallOrder[0],
+      );
+    },
+  );
 
   it('연결된 Socket으로 Member의 명시적 퇴장을 전송한다', () => {
     const emit = vi.fn();

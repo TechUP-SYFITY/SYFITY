@@ -48,6 +48,8 @@ const defaultProps = {
   nickname: 'Alice',
   onCreateRoom: noop,
   onJoinRoom: noop,
+  onRecoverRoom: noop,
+  onRecoveryOpenChange: noop,
   onRetryMyRooms: noop,
   recentRooms: previewRecentRooms,
 };
@@ -112,5 +114,16 @@ describe('HomeShell', () => {
     );
 
     expect(screen.getByText('종료 시각 없음')).toBeInTheDocument();
+  });
+
+  it('closed Room 복구 확인 후 해당 Room id를 전달한다', () => {
+    const onRecoverRoom = vi.fn();
+    render(<HomeShell {...defaultProps} onRecoverRoom={onRecoverRoom} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '내 종료 Room 복구' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Room 복구 확인' }));
+
+    expect(onRecoverRoom).toHaveBeenCalledWith('closed-room');
+    expect(screen.queryByRole('button', { name: '내 활성 Room 복구' })).toBeNull();
   });
 });

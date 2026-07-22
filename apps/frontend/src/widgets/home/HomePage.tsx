@@ -7,6 +7,7 @@ import { CreateRoomDialog } from '@/features/room/components/CreateRoomDialog';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { JoinRoomDialog } from '@/features/room/components/JoinRoomDialog';
 import { useMyRooms, useRecentRooms } from '@/features/room/hooks/roomHooks';
+import { useRecoverRoomAction } from '@/features/room/hooks/useRecoverRoomAction';
 import type { CreateRoomResponse, RoomInviteInfo } from '@/features/room/types/roomTypes';
 
 import { HomeShell } from './HomeShell';
@@ -15,6 +16,7 @@ export function HomePage() {
   const { data: user, isLoading: isUserLoading } = useMe();
   const recentRooms = useRecentRooms();
   const myRooms = useMyRooms();
+  const recoverRoom = useRecoverRoomAction();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
@@ -39,8 +41,17 @@ export function HomePage() {
         myRooms={myRooms.data?.rooms ?? []}
         isMyRoomsLoading={myRooms.isLoading}
         isMyRoomsError={myRooms.isError}
+        recoveringRoomId={recoverRoom.recoveringRoomId}
+        recoveryErrorMessage={recoverRoom.errorMessage}
+        recoveryErrorRoomId={recoverRoom.errorRoomId}
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
+        onRecoverRoom={recoverRoom.recover}
+        onRecoveryOpenChange={(open) => {
+          if (!open) {
+            recoverRoom.reset();
+          }
+        }}
         onRetryMyRooms={() => void myRooms.refetch()}
       />
 

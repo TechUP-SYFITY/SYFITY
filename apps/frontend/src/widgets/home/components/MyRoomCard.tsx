@@ -6,11 +6,16 @@ import { useRouter } from 'next/navigation';
 
 import { Badge } from '@/shared/components/ui/Badge';
 
+import { RecoverRoomAction } from '@/features/room/components/RecoverRoomAction';
 import type { MyRoomSummary } from '@/features/room/types/roomTypes';
 
 import { formatRelativeTime } from '../homeFormatters';
 
 interface MyRoomCardProps {
+  isRecovering: boolean;
+  onRecover: (roomId: string) => void;
+  onRecoveryOpenChange?: (open: boolean) => void;
+  recoveryErrorMessage?: string;
   room: MyRoomSummary;
 }
 
@@ -26,7 +31,7 @@ function getTimestampLabel(room: MyRoomSummary) {
   return `${formatRelativeTime(room.closedAt)} 종료`;
 }
 
-function RoomDetails({ room }: MyRoomCardProps) {
+function RoomDetails({ room }: { room: MyRoomSummary }) {
   const isActive = room.status === 'active';
   const timestampLabel = getTimestampLabel(room);
 
@@ -52,13 +57,26 @@ function RoomDetails({ room }: MyRoomCardProps) {
   );
 }
 
-export function MyRoomCard({ room }: MyRoomCardProps) {
+export function MyRoomCard({
+  isRecovering,
+  onRecover,
+  onRecoveryOpenChange,
+  recoveryErrorMessage,
+  room,
+}: MyRoomCardProps) {
   const router = useRouter();
 
   if (room.status === 'closed') {
     return (
       <div className="flex min-h-20 items-center gap-4 rounded-lg border border-border bg-surface/70 p-4">
         <RoomDetails room={room} />
+        <RecoverRoomAction
+          errorMessage={recoveryErrorMessage}
+          isPending={isRecovering}
+          roomName={room.name}
+          onConfirm={() => onRecover(room.id)}
+          onOpenChange={onRecoveryOpenChange}
+        />
       </div>
     );
   }

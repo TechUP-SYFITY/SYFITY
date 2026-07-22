@@ -122,7 +122,7 @@ function MemberGroup({
                       ? '멤버 관리 정보를 불러오는 중이에요'
                       : '멤버 관리 정보를 불러오지 못했어요'
                   }
-                  className="size-9 shrink-0 rounded-xl border-transparent bg-transparent text-white/45 transition-colors hover:border-white/10 hover:bg-white/10 hover:text-white/85 focus-visible:border-white/10 focus-visible:bg-white/10 focus-visible:text-white/85"
+                  className="size-9 shrink-0 rounded-xl border-0 bg-transparent text-white/45 transition-colors hover:bg-white/10 hover:text-white/85 focus-visible:bg-white/10 focus-visible:text-white/85"
                   disabled
                   size="icon"
                   variant="ghost"

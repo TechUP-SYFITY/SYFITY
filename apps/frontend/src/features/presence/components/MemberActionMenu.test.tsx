@@ -29,12 +29,12 @@ describe('MemberActionMenu', () => {
     expect(trigger.querySelector('svg')).toHaveClass('lucide-ellipsis-vertical');
     expect(trigger).toHaveClass(
       'size-9',
-      'border-transparent',
+      'border-0',
       'bg-transparent',
-      'hover:border-white/10',
       'hover:bg-white/10',
       'hover:text-white/85',
     );
+    expect(trigger).not.toHaveClass('hover:border-white/10');
 
     fireEvent.pointerDown(trigger, {
       button: 0,

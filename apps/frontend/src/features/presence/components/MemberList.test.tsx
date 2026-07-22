@@ -123,7 +123,7 @@ describe('MemberList management', () => {
     });
 
     expect(unavailableButton).toBeDisabled();
-    expect(unavailableButton).toHaveClass('size-9', 'border-transparent', 'bg-transparent');
+    expect(unavailableButton).toHaveClass('size-9', 'border-0', 'bg-transparent');
     expect(screen.getByText('지민')).toBeInTheDocument();
   });
 });

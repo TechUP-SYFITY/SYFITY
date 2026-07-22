@@ -30,7 +30,7 @@ export function MemberActionMenu({
       <DropdownMenuTrigger asChild>
         <Button
           aria-label={`${member.nickname} 멤버 관리`}
-          className="size-9 shrink-0 rounded-xl border-transparent bg-transparent text-white/45 transition-colors hover:border-white/10 hover:bg-white/10 hover:text-white/85 focus-visible:border-white/10 focus-visible:bg-white/10 focus-visible:text-white/85"
+          className="size-9 shrink-0 rounded-xl border-0 bg-transparent text-white/45 transition-colors hover:bg-white/10 hover:text-white/85 focus-visible:bg-white/10 focus-visible:text-white/85"
           disabled={disabled}
           size="icon"
           variant="ghost"

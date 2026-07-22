@@ -14,13 +14,21 @@ interface MyRoomCardProps {
   room: MyRoomSummary;
 }
 
+function getTimestampLabel(room: MyRoomSummary) {
+  if (room.status === 'active') {
+    return `${formatRelativeTime(room.updatedAt)} 업데이트`;
+  }
+
+  if (!room.closedAt) {
+    return '종료 시각 없음';
+  }
+
+  return `${formatRelativeTime(room.closedAt)} 종료`;
+}
+
 function RoomDetails({ room }: MyRoomCardProps) {
   const isActive = room.status === 'active';
-  let timestampLabel = `${formatRelativeTime(room.updatedAt)} 업데이트`;
-
-  if (!isActive) {
-    timestampLabel = room.closedAt ? `${formatRelativeTime(room.closedAt)} 종료` : '종료 시각 없음';
-  }
+  const timestampLabel = getTimestampLabel(room);
 
   return (
     <>

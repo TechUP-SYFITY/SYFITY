@@ -57,6 +57,7 @@ function makePrisma(
   return {
     user: {
       findUnique: vi.fn().mockResolvedValue(findUniqueResult),
+      update: vi.fn(),
     },
     recentRoom: {
       findMany: vi.fn().mockResolvedValue(findManyResult),
@@ -78,6 +79,7 @@ describe('UserRepository', () => {
         email: true,
         nickname: true,
         profileImage: true,
+        onboardedAt: true,
       },
     });
   });

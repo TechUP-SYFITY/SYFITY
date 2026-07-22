@@ -8,11 +8,13 @@ export type AuthRepositoryPrisma = {
 export class AuthRepository implements IAuthRepository {
   constructor(private readonly prisma: AuthRepositoryPrisma) {}
 
-  upsertUser(data: {
+  async upsertUser(data: {
     email: string;
     nickname: string;
     profileImage: string | null;
   }): Promise<UserRecord> {
+    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (existing?.onboardedAt) return existing;
     return this.prisma.user.upsert({
       where: { email: data.email },
       update: {

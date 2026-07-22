@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Frontend Architecture                                                          |
-| 버전      | v2.0                                                                                  |
-| 상태      | Room 세션·개인 Playlist·PWA 전역 UI 구조 정합화                                       |
+| 버전      | v2.1                                                                                  |
+| 상태      | 온보딩·계정 화면과 YouTube 계약 준수 UI 구조 추가                                     |
 | 작성 목적 | Syfity 프론트엔드 구조 정의                                                           |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -44,6 +44,7 @@ apps/frontend/
         callback/
           page.tsx            → Google OAuth 콜백 처리
       (protected)/
+        settings/             → 계정 설정 화면
         home/
           page.tsx            → Home Page
         room/
@@ -55,6 +56,8 @@ apps/frontend/
       offline/
         page.tsx              → 오프라인 안내 화면
       page.tsx                → Landing widget 렌더링
+      onboarding/             → 최초 로그인 온보딩
+      terms/, privacy/        → 공개 약관·개인정보처리방침
       layout.tsx              → Root 레이아웃
       proxy.ts                → Route 보호 (쿠키 존재 여부 체크)
 
@@ -137,6 +140,8 @@ app → widgets → features → shared
 - 라우트, params, layout, 오류 경계만 담당
 - feature/widget의 데이터 페칭·클라이언트 상태를 직접 소유하지 않음
 - Server Component 기본
+
+`(protected)/layout.tsx`는 `/me`의 `onboardedAt`을 확인해 미완료 사용자를 `/onboarding`으로 보낸다. Edge `proxy.ts`는 `/onboarding`, `/settings`, `/playlists`도 쿠키 단계에서 보호한다. 프로필 이미지는 signed URL로 Supabase Storage에 직접 업로드하고 `ProfileImagePicker`를 온보딩·계정 화면에서 공유한다. YouTube `rel: 0`은 관련 영상을 완전히 차단하지 않고 같은 채널 영상으로 제한한다.
 
 **widgets**
 

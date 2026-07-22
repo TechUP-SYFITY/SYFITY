@@ -173,7 +173,6 @@ export function YouTubePlayer({
         height: '100%',
         playerVars: {
           controls: 0,
-          modestbranding: 1,
           playsinline: 1,
           rel: 0,
         },
@@ -251,7 +250,7 @@ export function YouTubePlayer({
   ]);
 
   return (
-    <div className="aspect-video w-full bg-black">
+    <div className="aspect-video min-h-[200px] w-full bg-black">
       <div className="size-full" ref={containerRef} />
     </div>
   );

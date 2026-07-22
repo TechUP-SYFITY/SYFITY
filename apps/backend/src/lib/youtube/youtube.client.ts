@@ -18,6 +18,7 @@ export type YouTubeVideoDetail = {
   thumbnailUrl: string;
   duration: number;
   embeddable: boolean;
+  madeForKids: boolean;
   categoryId: string;
 };
 
@@ -65,6 +66,7 @@ type YouTubeVideosResponse = {
     };
     status?: {
       embeddable?: boolean;
+      madeForKids?: boolean;
     };
   }>;
 };
@@ -131,6 +133,7 @@ export class YouTubeClient implements IYouTubeClient {
         thumbnailUrl: this.getThumbnailUrl(item.snippet?.thumbnails),
         duration: this.parseDuration(item.contentDetails?.duration ?? ''),
         embeddable: item.status?.embeddable ?? true,
+        madeForKids: item.status?.madeForKids ?? false,
         categoryId: item.snippet?.categoryId ?? '',
       }));
   }

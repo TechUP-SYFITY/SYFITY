@@ -20,6 +20,12 @@ function makeRequest(): ExRequest {
 function makeUserService() {
   return {
     getMe: vi.fn().mockResolvedValue(userProfile),
+    completeOnboarding: vi.fn(),
+    updateNickname: vi.fn(),
+    createProfileImageUploadUrl: vi.fn(),
+    confirmProfileImageUpload: vi.fn(),
+    resetProfileImage: vi.fn(),
+    deleteAccount: vi.fn(),
   };
 }
 
@@ -30,7 +36,7 @@ describe('UserController', () => {
 
     await expect(controller.getMe(makeRequest())).resolves.toEqual({
       success: true,
-      data: userProfile,
+      data: { ...userProfile, onboardedAt: null },
     });
     expect(userService.getMe).toHaveBeenCalledWith('user-id');
   });

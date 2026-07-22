@@ -1,6 +1,7 @@
 import { ERROR_CODES, type AddPlaylistItemRequest } from '@syfity/shared';
 
 import type { PlaybackService } from './playback.service';
+import type { YoutubeMetadataRefreshService } from './youtube-metadata-refresh.service';
 import { AppError } from '../errors/appError';
 import { YOUTUBE_MUSIC_CATEGORY_ID, type IYouTubeClient } from '../lib/youtube/youtube.client';
 import { broadcastToRoom } from '../socket/broadcast';
@@ -34,6 +35,10 @@ export class PlaylistService {
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
     private readonly playbackService: PlaylistPlaybackService,
     private readonly personalPlaylistRepository: ImportPersonalPlaylistRepository,
+    private readonly metadataRefreshService: Pick<
+      YoutubeMetadataRefreshService,
+      'refreshVideoMetadata'
+    >,
   ) {}
 
   async getPlaylist(roomId: string, userId: string): Promise<PlaylistItemRecord[]> {
@@ -59,7 +64,7 @@ export class PlaylistService {
     if (!video || video.duration === 0) {
       throw new AppError(400, ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE, '재생할 수 없는 영상입니다.');
     }
-    if (!video.embeddable) {
+    if (!video.embeddable || video.madeForKids) {
       throw new AppError(
         400,
         ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
@@ -100,6 +105,26 @@ export class PlaylistService {
     });
 
     return item;
+  }
+
+  async refreshStaleMetadata(
+    cutoff: Date,
+  ): Promise<{ checkedCount: number; unavailableCount: number }> {
+    const staleItems = await this.playlistRepo.findStaleMetadataItems(cutoff);
+    if (staleItems.length === 0) return { checkedCount: 0, unavailableCount: 0 };
+
+    const refreshed = await this.metadataRefreshService.refreshVideoMetadata([
+      ...new Set(staleItems.map((item) => item.videoId)),
+    ]);
+    const updates = staleItems.map((item) => ({
+      id: item.id,
+      result: refreshed.get(item.videoId) ?? { status: 'unavailable' as const },
+    }));
+    await this.playlistRepo.applyMetadataRefresh(updates);
+    return {
+      checkedCount: staleItems.length,
+      unavailableCount: updates.filter((item) => item.result.status === 'unavailable').length,
+    };
   }
 
   async reorderPlaylist(

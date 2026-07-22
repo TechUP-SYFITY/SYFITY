@@ -108,6 +108,7 @@ describe('PlaylistRepository', () => {
         addedBy: true,
         status: true,
         addedAt: true,
+        metadataRefreshedAt: true,
       },
     });
   });
@@ -134,6 +135,7 @@ describe('PlaylistRepository', () => {
         position: 1,
         status: 'available',
         addedAt: expect.any(Date),
+        metadataRefreshedAt: expect.any(Date),
       },
       select: {
         id: true,
@@ -146,6 +148,7 @@ describe('PlaylistRepository', () => {
         addedBy: true,
         status: true,
         addedAt: true,
+        metadataRefreshedAt: true,
       },
     });
   });
@@ -246,6 +249,7 @@ describe('PlaylistRepository', () => {
         addedBy: true,
         status: true,
         addedAt: true,
+        metadataRefreshedAt: true,
       },
     });
   });

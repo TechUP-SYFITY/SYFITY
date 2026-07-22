@@ -9,6 +9,7 @@ import {
   type PersonalPlaylistRecord,
   type ReorderPersonalPlaylistItemInput,
 } from '../types/personal-playlist';
+import type { RefreshedVideoMetadata } from '../types/youtube-metadata';
 
 const PERSONAL_PLAYLIST_SELECT = {
   id: true,
@@ -62,7 +63,7 @@ type PersonalPlaylistItemTxClient = {
 export type PersonalPlaylistRepositoryPrisma = {
   personalPlaylist: Pick<
     PrismaClient['personalPlaylist'],
-    'findMany' | 'create' | 'findUnique' | 'update' | 'delete'
+    'findMany' | 'create' | 'findUnique' | 'update' | 'delete' | 'deleteMany'
   >;
   personalPlaylistItem: Pick<
     PrismaClient['personalPlaylistItem'],
@@ -112,6 +113,10 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
 
   async deletePlaylist(playlistId: string): Promise<void> {
     await this.prisma.personalPlaylist.delete({ where: { id: playlistId } });
+  }
+
+  async deleteAllByOwnerId(ownerId: string): Promise<void> {
+    await this.prisma.personalPlaylist.deleteMany({ where: { ownerId } });
   }
 
   getItems(playlistId: string): Promise<PersonalPlaylistItemRecord[]> {
@@ -174,6 +179,30 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
         this.prisma.personalPlaylistItem.update({
           where: { id: item.id },
           data: { position: item.position },
+        }),
+      ),
+    );
+  }
+
+  findStaleMetadataItems(cutoff: Date): Promise<Array<{ id: string; videoId: string }>> {
+    return this.prisma.personalPlaylistItem.findMany({
+      where: { metadataRefreshedAt: { lte: cutoff } },
+      select: { id: true, videoId: true },
+    });
+  }
+
+  async applyMetadataRefresh(
+    items: Array<{ id: string; result: RefreshedVideoMetadata }>,
+  ): Promise<void> {
+    const metadataRefreshedAt = new Date();
+    await this.prisma.$transaction(
+      items.map(({ id, result }) =>
+        this.prisma.personalPlaylistItem.update({
+          where: { id },
+          data:
+            result.status === 'available'
+              ? { ...result, metadataRefreshedAt }
+              : { status: 'unavailable', metadataRefreshedAt },
         }),
       ),
     );

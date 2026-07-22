@@ -16,4 +16,11 @@ export type RecentRoomRecord = {
 export interface IUserRepository {
   findUserById(userId: string): Promise<UserProfileRecord | null>;
   findRecentRooms(userId: string): Promise<RecentRoomRecord[]>;
+  completeOnboarding(
+    userId: string,
+    data: { nickname: string },
+  ): Promise<UserProfileRecord & { onboardedAt: Date }>;
+  updateNickname(userId: string, nickname: string): Promise<UserProfileRecord>;
+  updateProfileImage(userId: string, profileImage: string | null): Promise<UserProfileRecord>;
+  anonymizeUser(userId: string): Promise<void>;
 }

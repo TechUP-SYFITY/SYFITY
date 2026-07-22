@@ -23,6 +23,10 @@ function makeRepo(overrides: Partial<IUserRepository> = {}): IUserRepository {
   return {
     findUserById: vi.fn().mockResolvedValue(userProfile),
     findRecentRooms: vi.fn().mockResolvedValue(recentRooms),
+    completeOnboarding: vi.fn().mockResolvedValue({ ...userProfile, onboardedAt: new Date() }),
+    updateNickname: vi.fn().mockResolvedValue(userProfile),
+    updateProfileImage: vi.fn().mockResolvedValue(userProfile),
+    anonymizeUser: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

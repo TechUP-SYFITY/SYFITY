@@ -38,6 +38,9 @@ function fixture() {
     findItemById: vi.fn().mockResolvedValue(item),
     deleteItem: vi.fn().mockResolvedValue(undefined),
     reorderItems: vi.fn().mockResolvedValue(undefined),
+    deleteAllByOwnerId: vi.fn().mockResolvedValue(undefined),
+    findStaleMetadataItems: vi.fn().mockResolvedValue([]),
+    applyMetadataRefresh: vi.fn().mockResolvedValue(undefined),
   };
   const youtubeClient = {
     getVideoDetails: vi.fn().mockResolvedValue([
@@ -48,14 +51,17 @@ function fixture() {
         thumbnailUrl: '',
         duration: 180,
         embeddable: true,
+        madeForKids: false,
         categoryId: '10',
       },
     ]),
   };
+  const metadataRefreshService = { refreshVideoMetadata: vi.fn() };
   return {
-    service: new PersonalPlaylistService(repository, youtubeClient),
+    service: new PersonalPlaylistService(repository, youtubeClient, metadataRefreshService),
     repository,
     youtubeClient,
+    metadataRefreshService,
   };
 }
 

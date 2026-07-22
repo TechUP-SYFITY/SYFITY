@@ -27,7 +27,14 @@ export function proxy(request: NextRequest) {
   }
 
   // 토큰이 아예 없을 때만 보호 페이지를 막는다(원래 경로를 returnUrl로 보존).
-  if (!hasToken && (pathname === '/home' || pathname.startsWith('/room'))) {
+  if (
+    !hasToken &&
+    (pathname === '/home' ||
+      pathname === '/onboarding' ||
+      pathname === '/settings' ||
+      pathname.startsWith('/room') ||
+      pathname.startsWith('/playlists'))
+  ) {
     const url = new URL('/login', request.url);
     url.searchParams.set('returnUrl', pathname + search);
     return NextResponse.redirect(url);
@@ -35,5 +42,13 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/home', '/room/:path*'],
+  matcher: [
+    '/',
+    '/login',
+    '/home',
+    '/onboarding',
+    '/settings',
+    '/room/:path*',
+    '/playlists/:path*',
+  ],
 };

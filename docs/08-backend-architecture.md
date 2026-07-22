@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v2.1                                                                                  |
-| 상태      | 개인 Playlist와 Room Playlist 불러오기 컨트롤러 구조를 명확화                         |
+| 버전      | v2.2                                                                                  |
+| 상태      | 메타데이터 갱신·Storage·계정 삭제 내부 계층 추가                                      |
 | 작성 목적 | Syfity 백엔드 구조 정의                                                               |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -55,6 +55,7 @@ apps/backend/
       playlist-import.controller.ts
       playlist.controller.ts
       room-lifecycle.controller.ts → 내부 정리 API 응답 처리 (tsoa 미사용)
+      metadata-refresh.controller.ts → YouTube 메타데이터 갱신 내부 API
       room.controller.ts
       search.controller.ts
       user.controller.ts
@@ -71,6 +72,7 @@ apps/backend/
       playlist.service.ts
       presence.service.ts  → Socket 핸들러에서 호출, 연결 해제 유예 타이머 관리
       room-lifecycle.service.ts → 만료 보정·inactive 전환
+      metadata-refresh.service.ts → 두 Playlist 메타데이터 갱신 오케스트레이션
       room.service.ts
       search.service.ts    → YouTube API 직접 호출 (Repository 없음)
       user.service.ts
@@ -118,6 +120,7 @@ apps/backend/
         playback-session.store.ts → PlaybackState·반복·셔플·큐·이력 인메모리 관리
       youtube/
         youtube.client.ts
+      storage/                 → Supabase signed upload URL·공개 URL·삭제 클라이언트
 
     types/              → 도메인별 백엔드 타입 (auth/cache/chat/health/playback/personal-playlist/playlist/room/search/socket/user)
       express.d.ts      → Request 객체 확장 (user 정보 등)
@@ -390,7 +393,7 @@ app.use(errorHandler);
 
 ### 내부 Room 수명 주기 Router
 
-`POST /api/v1/internal/rooms/inactivate-stale`는 GitHub Actions만 호출한다. 공개 API와 분리해 tsoa Swagger에 노출하지 않지만, 내부에서도 같은 레이어 구조를 따른다.
+`POST /api/v1/internal/rooms/inactivate-stale`와 `POST /api/v1/internal/playlist-items/refresh-stale-metadata`는 cron-job.org가 호출한다. 공개 API와 분리해 tsoa Swagger에 노출하지 않지만, 내부에서도 같은 레이어 구조를 따른다. 성공 시 각 healthchecks.io URL로 별도 ping을 보내며 URL이 없으면 건너뛴다.
 
 ```text
 internal.routes.ts → cronAuth → RoomLifecycleController

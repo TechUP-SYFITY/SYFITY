@@ -241,7 +241,6 @@ function RoomPageContent({ roomId }: RoomPageProps) {
             <PlayerPanel
               canControlRoom={canControlRoom}
               roomId={roomId}
-              isHost={isHost}
               playerControllerRef={playerControllerRef}
               onPlaybackStateChange={miniPlayerControls.handlePlaybackStateChange}
               playlist={playlist}

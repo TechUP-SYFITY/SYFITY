@@ -4,6 +4,7 @@ export type UserRecord = {
   nickname: string;
   profileImage: string | null;
   refreshToken: string | null;
+  onboardedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

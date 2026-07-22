@@ -80,13 +80,12 @@ const playlist: PlaylistItem[] = [
 
 const onPlaybackStateChange = vi.fn();
 
-function renderPlayerPanel(isHost = true, playlistItems = playlist, canControlRoom = isHost) {
+function renderPlayerPanel(playlistItems = playlist, canControlRoom = true) {
   return render(
     <ToastProvider>
       <PlayerPanel
         canControlRoom={canControlRoom}
         roomId={roomId}
-        isHost={isHost}
         onPlaybackStateChange={onPlaybackStateChange}
         playlist={playlistItems}
       />
@@ -210,7 +209,7 @@ describe('PlayerPanel', () => {
 
   it('Member에서 player error 발생 시 서버에 재생 실패를 보고하지 않는다', () => {
     seedPlayback(false);
-    renderPlayerPanel(false);
+    renderPlayerPanel(playlist, false);
 
     fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 
@@ -219,7 +218,7 @@ describe('PlayerPanel', () => {
 
   it('Host 역할은 유지하지만 제어할 수 없으면 배지 없이 재생 실패 보고를 차단한다', () => {
     seedPlayback(false);
-    renderPlayerPanel(true, playlist, false);
+    renderPlayerPanel(playlist, false);
 
     fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 

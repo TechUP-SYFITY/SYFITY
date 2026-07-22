@@ -5,7 +5,7 @@ export type UserProfileResponse = {
     email: string;
     nickname: string;
     profileImage: string | null;
-    onboardedAt: string | null;
+    onboardedAt?: string | null;
   };
 };
 
@@ -42,7 +42,7 @@ export type UpdateNicknameResponse = {
 };
 
 export type CreateProfileImageUploadUrlRequest = {
-  mimeType: import('../constants/profile-image').ProfileImageMimeType;
+  mimeType: ProfileImageMimeType;
 };
 
 export type CreateProfileImageUploadUrlResponse = {
@@ -70,3 +70,4 @@ export type RecentRoomsResponse = {
     }[];
   };
 };
+import type { ProfileImageMimeType } from '../constants/profile-image';

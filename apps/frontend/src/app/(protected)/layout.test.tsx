@@ -54,7 +54,9 @@ describe('ProtectedLayout auth boundary', () => {
   });
 
   it('renders children when /me is 200', async () => {
-    fetchMock.mockResolvedValueOnce(res(200, { success: true, data: {} }));
+    fetchMock.mockResolvedValueOnce(
+      res(200, { success: true, data: { onboardedAt: '2026-01-01T00:00:00.000Z' } }),
+    );
 
     const result = await renderLayout();
 
@@ -67,6 +69,12 @@ describe('ProtectedLayout auth boundary', () => {
 
     await expect(renderLayout()).resolves.toBeTruthy();
     expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it('redirects an onboarding-incomplete user to /onboarding', async () => {
+    fetchMock.mockResolvedValueOnce(res(200, { success: true, data: { onboardedAt: null } }));
+
+    await expect(renderLayout()).rejects.toThrow('NEXT_REDIRECT:/onboarding');
   });
 
   it('blocks 401 AUTH_UNAUTHORIZED (위조·무효 토큰)', async () => {

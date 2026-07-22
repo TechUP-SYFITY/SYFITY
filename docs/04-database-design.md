@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                   |
 | --------- | ---------------------------------------------------------------------- |
 | 문서명    | Syfity Database Design                                                 |
-| 버전      | v2.2                                                                   |
-| 상태      | Playlist 순서 position의 1-based 계약을 명확화                         |
+| 버전      | v2.3                                                                   |
+| 상태      | YouTube 메타데이터 갱신 시각과 사용자 온보딩 완료 시각을 추가          |
 | 작성 목적 | Syfity 전체 기능의 PostgreSQL·Prisma 스키마 설계 정의                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md` |
 
@@ -124,14 +124,15 @@ erDiagram
 
 Google OAuth로 생성되는 사용자 계정이다.
 
-| 컬럼                   | 타입        | 제약         | 설명                 |
-| ---------------------- | ----------- | ------------ | -------------------- |
-| id                     | UUID        | PK           | 사용자 식별자        |
-| email                  | VARCHAR     | UK, NOT NULL | Google 계정 이메일   |
-| nickname               | VARCHAR     | NOT NULL     | 표시 이름            |
-| profile_image          | VARCHAR     | NULLABLE     | 프로필 이미지 URL    |
-| refresh_token          | VARCHAR     | NULLABLE     | Google Refresh Token |
-| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각       |
+| 컬럼                   | 타입        | 제약         | 설명                  |
+| ---------------------- | ----------- | ------------ | --------------------- |
+| id                     | UUID        | PK           | 사용자 식별자         |
+| email                  | VARCHAR     | UK, NOT NULL | Google 계정 이메일    |
+| nickname               | VARCHAR     | NOT NULL     | 표시 이름             |
+| profile_image          | VARCHAR     | NULLABLE     | 프로필 이미지 URL     |
+| refresh_token          | VARCHAR     | NULLABLE     | Google Refresh Token  |
+| onboarded_at           | TIMESTAMPTZ | NULLABLE     | 최초 온보딩 완료 시각 |
+| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각        |
 
 ### 4.2 rooms
 
@@ -194,7 +195,7 @@ active → closed → active
 
 ### 4.5 playlist_items
 
-Room 공동 Playlist 항목이다. 영상 메타데이터(`video_id`, `title`, `channel_title`, `thumbnail_url`, `duration`), `position`, `added_by`, `status`, `added_at`을 저장한다.
+Room 공동 Playlist 항목이다. 영상 메타데이터(`video_id`, `title`, `channel_title`, `thumbnail_url`, `duration`), `position`, `added_by`, `status`, `added_at`, `metadata_refreshed_at`을 저장한다. YouTube Data API 메타데이터는 25일 경과 시 갱신 대상으로 조회한다.
 
 - `(room_id, position)` 인덱스로 표시 순서를 조회한다.
 - 같은 Room의 동일 `video_id` 중복은 허용하지 않는다. `(room_id, video_id)` UNIQUE로 보장한다.
@@ -224,6 +225,8 @@ Room 채팅과 시스템 메시지다. `user_id`는 시스템 메시지에서 NU
 - 삭제는 hard delete이며, `personal_playlist_items` 외래 키의 `ON DELETE CASCADE`로 항목도 같은 트랜잭션에서 삭제한다. 보존 기간이나 cleanup cron은 필요하지 않다.
 
 ### 4.8 personal_playlist_items
+
+개인 Playlist 항목은 Room Playlist와 같은 영상 메타데이터 및 `metadata_refreshed_at`을 보관하고, 25일 경과 시 갱신 대상으로 조회한다.
 
 개인 Playlist의 곡이다. Room Playlist와 같은 영상 메타데이터와 `position`, `status`, `added_at`을 저장한다.
 

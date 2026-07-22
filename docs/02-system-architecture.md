@@ -2,36 +2,36 @@
 
 ## 1. 문서 정보
 
-| 항목      | 내용                                                                         |
-| --------- | ---------------------------------------------------------------------------- |
-| 문서명    | Syfity System Architecture                                                   |
-| 버전      | v2.0                                                                         |
-| 상태      | 전체 제품 기능, Render·UptimeRobot 운영, Room 수명 주기 자동화 구조로 재구성 |
-| 작성 목적 | Syfity 전체 시스템 구조 정의                                                 |
-| 기반 문서 | `01-prd.md`                                                                  |
+| 항목      | 내용                                                            |
+| --------- | --------------------------------------------------------------- |
+| 문서명    | Syfity System Architecture                                      |
+| 버전      | v2.1                                                            |
+| 상태      | cron-job.org와 healthchecks.io 기반 내부 작업 모니터링으로 전환 |
+| 작성 목적 | Syfity 전체 시스템 구조 정의                                    |
+| 기반 문서 | `01-prd.md`                                                     |
 
 ---
 
 ## 2. 기술 스택
 
-| 구분          | 기술                     | 비고                                   |
-| ------------- | ------------------------ | -------------------------------------- |
-| FE 프레임워크 | Next.js 16 (App Router)  | Turbopack 기본 번들러                  |
-| FE 상태 관리  | Zustand                  | Realtime State, Client State           |
-| FE 서버 상태  | TanStack Query           | REST API 데이터                        |
-| FE 스타일     | Tailwind CSS + shadcn/ui |                                        |
-| FE 폼         | React Hook Form + Zod    |                                        |
-| FE 테스트     | Vitest + Playwright      |                                        |
-| BE 프레임워크 | Express.js + Socket.IO   | REST API + 실시간 단일 서버            |
-| DB            | Supabase (PostgreSQL)    |                                        |
-| ORM           | Prisma                   | 마이그레이션 + 타입 자동 생성          |
-| FE 호스팅     | Vercel                   |                                        |
-| BE 호스팅     | Render                   | UptimeRobot 헬스체크로 유휴 슬립 방지  |
-| 가용성 점검   | UptimeRobot              | `/health` 10분 주기 확인·keep-alive    |
-| 정기 작업     | GitHub Actions           | 공개 저장소의 일일 Room 수명 주기 작업 |
-| 외부 API      | YouTube Data API v3      | 서버사이드 프록시                      |
-| 패키지 매니저 | pnpm (workspace)         | 모노레포                               |
-| 캐시          | node-cache               | 추상화하여 Redis 교체 가능하도록 설계  |
+| 구분          | 기술                     | 비고                                             |
+| ------------- | ------------------------ | ------------------------------------------------ |
+| FE 프레임워크 | Next.js 16 (App Router)  | Turbopack 기본 번들러                            |
+| FE 상태 관리  | Zustand                  | Realtime State, Client State                     |
+| FE 서버 상태  | TanStack Query           | REST API 데이터                                  |
+| FE 스타일     | Tailwind CSS + shadcn/ui |                                                  |
+| FE 폼         | React Hook Form + Zod    |                                                  |
+| FE 테스트     | Vitest + Playwright      |                                                  |
+| BE 프레임워크 | Express.js + Socket.IO   | REST API + 실시간 단일 서버                      |
+| DB            | Supabase (PostgreSQL)    |                                                  |
+| ORM           | Prisma                   | 마이그레이션 + 타입 자동 생성                    |
+| FE 호스팅     | Vercel                   |                                                  |
+| BE 호스팅     | Render                   | UptimeRobot 헬스체크로 유휴 슬립 방지            |
+| 가용성 점검   | UptimeRobot              | `/health` 10분 주기 확인·keep-alive              |
+| 정기 작업     | cron-job.org             | Room 수명 주기·YouTube 메타데이터 갱신 HTTP 작업 |
+| 외부 API      | YouTube Data API v3      | 서버사이드 프록시                                |
+| 패키지 매니저 | pnpm (workspace)         | 모노레포                                         |
+| 캐시          | node-cache               | 추상화하여 Redis 교체 가능하도록 설계            |
 
 ---
 
@@ -83,7 +83,7 @@ packages/shared/
 graph TD
     Client["Browser / PWA<br>Next.js / Vercel"]
     Monitor["UptimeRobot<br>/health 10분 주기 확인"]
-    Scheduler["GitHub Actions<br>일일 Room 수명 주기 작업"]
+    Scheduler["cron-job.org<br>내부 API 정기 작업"]
 
     subgraph Express["Express Server (Render)"]
         API["REST API Router<br>/auth /rooms /room-memberships<br>/rooms/:id/playlist /personal-playlists /rooms/:id/chats ..."]

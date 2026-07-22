@@ -11,6 +11,7 @@ import {
   type PlaylistItemRecord,
   type ReorderPlaylistItemInput,
 } from '../types/playlist';
+import type { RefreshedVideoMetadata } from '../types/youtube-metadata';
 
 const PLAYLIST_ITEM_SELECT = {
   id: true,
@@ -189,6 +190,30 @@ export class PlaylistRepository implements IPlaylistRepository {
         this.prisma.playlistItem.update({
           where: { id: item.id },
           data: { position: item.position },
+        }),
+      ),
+    );
+  }
+
+  findStaleMetadataItems(cutoff: Date): Promise<Array<{ id: string; videoId: string }>> {
+    return this.prisma.playlistItem.findMany({
+      where: { metadataRefreshedAt: { lte: cutoff } },
+      select: { id: true, videoId: true },
+    });
+  }
+
+  async applyMetadataRefresh(
+    items: Array<{ id: string; result: RefreshedVideoMetadata }>,
+  ): Promise<void> {
+    const metadataRefreshedAt = new Date();
+    await this.prisma.$transaction(
+      items.map(({ id, result }) =>
+        this.prisma.playlistItem.update({
+          where: { id },
+          data:
+            result.status === 'available'
+              ? { ...result, metadataRefreshedAt }
+              : { status: 'unavailable', metadataRefreshedAt },
         }),
       ),
     );

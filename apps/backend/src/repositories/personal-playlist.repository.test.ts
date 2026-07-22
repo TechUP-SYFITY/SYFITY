@@ -53,6 +53,7 @@ function makePrisma(
     findUnique: vi.fn().mockResolvedValue(overrides.playlistResult ?? playlist),
     update: vi.fn().mockResolvedValue(playlist),
     delete: vi.fn().mockResolvedValue({}),
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
   };
   const transaction =
     overrides.transaction ??

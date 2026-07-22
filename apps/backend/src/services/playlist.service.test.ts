@@ -40,6 +40,8 @@ function fixture(status: 'active' | 'closed' | 'inactive' = 'active') {
       duplicateCount: 0,
       unavailableCount: 0,
     }),
+    findStaleMetadataItems: vi.fn().mockResolvedValue([]),
+    applyMetadataRefresh: vi.fn().mockResolvedValue(undefined),
   };
   const roomRepo = {
     findRoomById: vi.fn().mockResolvedValue({ id: 'room-1', hostId: 'host', status }),
@@ -50,20 +52,32 @@ function fixture(status: 'active' | 'closed' | 'inactive' = 'active') {
     advanceAfterCurrentRemoved: vi.fn().mockResolvedValue(null),
   };
   const youtubeClient = {
-    getVideoDetails: vi.fn().mockResolvedValue([{ ...item, embeddable: true, categoryId: '10' }]),
+    getVideoDetails: vi
+      .fn()
+      .mockResolvedValue([{ ...item, embeddable: true, madeForKids: false, categoryId: '10' }]),
   };
   const personalPlaylistRepo = {
     findPlaylistById: vi.fn().mockResolvedValue({ id: 'personal-1', ownerId: 'host' }),
     getItems: vi.fn().mockResolvedValue([]),
   };
+  const metadataRefreshService = { refreshVideoMetadata: vi.fn() };
   const service = new PlaylistService(
     playlistRepo,
     roomRepo,
     youtubeClient,
     playbackService,
     personalPlaylistRepo,
+    metadataRefreshService,
   );
-  return { service, playbackService, playlistRepo, roomRepo, youtubeClient, personalPlaylistRepo };
+  return {
+    service,
+    playbackService,
+    playlistRepo,
+    roomRepo,
+    youtubeClient,
+    personalPlaylistRepo,
+    metadataRefreshService,
+  };
 }
 
 describe('PlaylistService playback integration', () => {

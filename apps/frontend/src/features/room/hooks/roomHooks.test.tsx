@@ -14,6 +14,7 @@ import {
   useJoinRoomByCode,
   useLeaveRoom,
   useMyRooms,
+  useUpdateRoom,
 } from './roomHooks';
 import { roomApi } from '../api/roomApi';
 import type {
@@ -118,6 +119,30 @@ describe('Room membership hooks', () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+  });
+
+  it('Room 이름 변경 성공 후 상세와 내 Room 쿼리를 갱신한다', async () => {
+    vi.mocked(roomApi.updateRoom).mockResolvedValue({
+      closedAt: null,
+      id: roomFixture.room.id,
+      name: '변경된 Room',
+      status: 'active',
+      updatedAt: '2026-07-22T01:00:00.000Z',
+    });
+    const queryClient = createQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useUpdateRoom(roomFixture.room.id), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ name: '변경된 Room' });
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['rooms', 'detail', roomFixture.room.id],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
   });
 
   it('초대 코드 입장은 membership API 오류를 그대로 노출한다', async () => {

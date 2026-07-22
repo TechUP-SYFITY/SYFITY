@@ -84,7 +84,12 @@ export const useUpdateRoom = (roomId: string) => {
 
   return useMutation({
     mutationFn: (body: UpdateRoomRequest) => roomApi.updateRoom(roomId, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+      ]);
+    },
   });
 };
 

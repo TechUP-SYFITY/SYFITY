@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '@/shared/types/api';
 
+import type * as RoomHooksModule from './roomHooks';
 import { useDeactivateRoomAction } from './useDeactivateRoomAction';
 
 const mocks = vi.hoisted(() => ({
@@ -23,19 +24,21 @@ vi.mock('@/shared/components/ui/Toast', () => ({
   useToast: () => ({ pushToast: mocks.pushToast }),
 }));
 
-vi.mock('./roomHooks', () => ({
-  isDeactivationStateError: (error: unknown) =>
-    error instanceof ApiClientError &&
-    (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_NOT_FOUND'),
-  useDeactivateRoom: (options: { onStateError?: (error: ApiClientError) => void }) => {
-    mocks.deactivateOptions = options;
-    return {
-      ...mocks.mutationState,
-      mutate: mocks.mutate,
-      reset: mocks.reset,
-    };
-  },
-}));
+vi.mock('./roomHooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof RoomHooksModule>();
+
+  return {
+    ...actual,
+    useDeactivateRoom: (options: { onStateError?: (error: ApiClientError) => void }) => {
+      mocks.deactivateOptions = options;
+      return {
+        ...mocks.mutationState,
+        mutate: mocks.mutate,
+        reset: mocks.reset,
+      };
+    },
+  };
+});
 
 describe('useDeactivateRoomAction', () => {
   beforeEach(() => {

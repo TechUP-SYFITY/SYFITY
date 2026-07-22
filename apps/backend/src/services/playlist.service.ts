@@ -122,11 +122,11 @@ export class PlaylistService {
     }
 
     const positions = items.map((item) => item.position).sort((left, right) => left - right);
-    if (!positions.every((position, index) => position === index)) {
+    if (!positions.every((position, index) => position === index + 1)) {
       throw new AppError(
         400,
         ERROR_CODES.VALIDATION_ERROR,
-        'position은 0부터 연속된 값이어야 합니다.',
+        'position은 1부터 연속된 값이어야 합니다.',
       );
     }
 

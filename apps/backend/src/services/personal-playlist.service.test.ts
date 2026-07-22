@@ -139,22 +139,22 @@ describe('PersonalPlaylistService', () => {
     });
   });
 
-  it('순서 변경은 전체 항목 id와 0부터 연속된 position을 요구한다', async () => {
+  it('순서 변경은 전체 항목 id와 1부터 연속된 position을 요구한다', async () => {
     const { service, repository } = fixture();
     repository.getItems.mockResolvedValueOnce([item, { ...item, id: 'item-2' }]);
     await expect(
       service.reorderItems('playlist-1', 'user-1', [
-        { id: 'item-1', position: 0 },
-        { id: 'missing', position: 1 },
+        { id: 'item-1', position: 1 },
+        { id: 'missing', position: 2 },
       ]),
     ).rejects.toMatchObject({ status: 404, code: ERROR_CODES.PERSONAL_PLAYLIST_ITEM_NOT_FOUND });
 
     repository.getItems.mockResolvedValueOnce([item, { ...item, id: 'item-2' }]);
     await expect(
       service.reorderItems('playlist-1', 'user-1', [
-        { id: 'item-1', position: 0 },
         { id: 'item-1', position: 1 },
-        { id: 'item-2', position: 2 },
+        { id: 'item-1', position: 2 },
+        { id: 'item-2', position: 3 },
       ]),
     ).rejects.toMatchObject({ status: 404, code: ERROR_CODES.PERSONAL_PLAYLIST_ITEM_NOT_FOUND });
     expect(repository.reorderItems).not.toHaveBeenCalled();
@@ -162,9 +162,18 @@ describe('PersonalPlaylistService', () => {
     repository.getItems.mockResolvedValueOnce([item, { ...item, id: 'item-2' }]);
     await expect(
       service.reorderItems('playlist-1', 'user-1', [
-        { id: 'item-1', position: 0 },
-        { id: 'item-2', position: 2 },
+        { id: 'item-1', position: 1 },
+        { id: 'item-2', position: 3 },
       ]),
     ).rejects.toMatchObject({ status: 400, code: ERROR_CODES.VALIDATION_ERROR });
+  });
+
+  it('순서 변경은 1-based position을 저장하고 최신 항목을 반환한다', async () => {
+    const { service, repository } = fixture();
+
+    await expect(
+      service.reorderItems('playlist-1', 'user-1', [{ id: 'item-1', position: 1 }]),
+    ).resolves.toEqual([item]);
+    expect(repository.reorderItems).toHaveBeenCalledWith([{ id: 'item-1', position: 1 }]);
   });
 });

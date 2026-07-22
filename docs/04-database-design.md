@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                   |
 | --------- | ---------------------------------------------------------------------- |
 | 문서명    | Syfity Database Design                                                 |
-| 버전      | v2.1                                                                   |
-| 상태      | 개인 Playlist 항목 순서 인덱스를 non-unique로 명확화                   |
+| 버전      | v2.2                                                                   |
+| 상태      | Playlist 순서 position의 1-based 계약을 명확화                         |
 | 작성 목적 | Syfity 전체 기능의 PostgreSQL·Prisma 스키마 설계 정의                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md` |
 
@@ -228,7 +228,7 @@ Room 채팅과 시스템 메시지다. `user_id`는 시스템 메시지에서 NU
 개인 Playlist의 곡이다. Room Playlist와 같은 영상 메타데이터와 `position`, `status`, `added_at`을 저장한다.
 
 - `(personal_playlist_id, video_id)` UNIQUE로 개인 Playlist 안의 중복 곡을 막는다.
-- `(personal_playlist_id, position)` non-unique 인덱스로 표시 순서를 조회한다. 여러 항목의 position을 맞바꾸는 트랜잭션에서 중간 UNIQUE 충돌을 피하기 위해, 순서 정합성(전체 항목 id 집합 일치와 `0..n-1` 연속 position)은 Service 계층에서 보장한다.
+- `(personal_playlist_id, position)` non-unique 인덱스로 표시 순서를 조회한다. 여러 항목의 position을 맞바꾸는 트랜잭션에서 중간 UNIQUE 충돌을 피하기 위해, 순서 정합성(전체 항목 id 집합 일치와 `1..n` 연속 position)은 Service 계층에서 보장한다.
 - 개별 곡 삭제는 hard delete다. Room으로 불러오기는 이 테이블을 읽어 Room Playlist 끝에 일회성 복사한다.
 
 ---

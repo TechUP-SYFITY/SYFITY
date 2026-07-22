@@ -1,5 +1,6 @@
 import { authHandlers } from './auth.handlers';
 import { chatHandlers } from './chat.handlers';
+import { personalPlaylistHandlers } from './personalPlaylist.handlers';
 import { playlistHandlers } from './playlist.handlers';
 import { roomHandlers } from './room.handlers';
 import { searchHandlers } from './search.handlers';
@@ -9,5 +10,6 @@ export const handlers = [
   ...roomHandlers,
   ...chatHandlers,
   ...playlistHandlers,
+  ...personalPlaylistHandlers,
   ...searchHandlers,
 ];

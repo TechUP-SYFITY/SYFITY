@@ -25,11 +25,10 @@ export function useRoomPageSession(roomId: string) {
   const handledKickedRoomIdRef = useRef<string | null>(null);
   const [disabledRoomId, setDisabledRoomId] = useState<string | null>(null);
   const joinRoom = useJoinRoom(roomId);
-  const { data: me } = useMe();
+  const { data: me, isError: isMeError } = useMe();
   const hostConnection = useRoomStore((state) => state.hostConnection);
   const hasJoinedRoom = useRoomStore((state) => state.hasJoinedRoom && state.room?.id === roomId);
   const room = useRoomStore((state) => state.room);
-  const clearRoom = useRoomStore((state) => state.clearRoom);
   const setJoinedRoom = useRoomStore((state) => state.setJoinedRoom);
   const onlineMemberCount = usePresenceStore(
     (state) => state.members.filter((member) => member.status === 'online').length,
@@ -47,15 +46,29 @@ export function useRoomPageSession(roomId: string) {
   const toggleMuted = usePlayerVolumeStore((state) => state.toggleMuted);
   const volume = usePlayerVolumeStore((state) => state.volume);
   const playlist = usePlaylistStore((state) => state.playlist);
-  const clearPlaylist = usePlaylistStore((state) => state.clearPlaylist);
   const setPlaylist = usePlaylistStore((state) => state.setPlaylist);
-  const clearMessages = useChatStore((state) => state.clearMessages);
+  const clearPlaylist = usePlaylistStore((state) => state.clearPlaylist);
   const setMessages = useChatStore((state) => state.setMessages);
+  const clearMessages = useChatStore((state) => state.clearMessages);
+  const clearRoom = useRoomStore((state) => state.clearRoom);
+
+  const exitRoom = useCallback(() => {
+    clearMessages();
+    clearMembers();
+    clearPlayback();
+    clearPlaylist();
+    clearRoom();
+    router.replace('/home');
+  }, [clearMembers, clearMessages, clearPlayback, clearPlaylist, clearRoom, router]);
 
   const handleRoomClosed = useCallback(() => {
-    clearPlayback();
-    router.replace('/home');
-  }, [clearPlayback, router]);
+    pushToast({
+      id: 'room-closed',
+      title: 'Room이 종료되었습니다.',
+      variant: 'info',
+    });
+    exitRoom();
+  }, [exitRoom, pushToast]);
 
   const handleRoomKicked = useCallback(
     (payload: RoomKickedPayload) => {
@@ -113,9 +126,12 @@ export function useRoomPageSession(roomId: string) {
   );
 
   return {
+    exitClosedRoom: handleRoomClosed,
+    exitRoom,
     hasJoinedRoom,
     hostConnection,
     isMuted,
+    isMeError,
     joinRoom,
     localPlaybackPosition,
     me,

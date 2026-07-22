@@ -7,11 +7,12 @@ import type {
   CreateRoomResponse,
   GetActiveRoomMembersResponse,
   GetKickedRoomMembersResponse,
+  GetMyRoomsResponse,
   GetRoomResponse,
   RecentRoomsResponse,
-  UpdateRoomRequest,
   UpdateRoomMemberRequest,
   UpdateRoomMemberResponse,
+  UpdateRoomRequest,
   UpdateRoomResponse,
 } from '@syfity/shared';
 
@@ -42,6 +43,31 @@ export const roomHandlers = [
       },
     } satisfies RecentRoomsResponse),
   ),
+  http.get(`${API}/rooms/mine`, () => {
+    const now = new Date();
+
+    return HttpResponse.json({
+      success: true,
+      data: {
+        rooms: [
+          {
+            closedAt: null,
+            id: roomFixture.room.id,
+            name: roomFixture.room.name,
+            status: 'active',
+            updatedAt: now.toISOString(),
+          },
+          {
+            closedAt: new Date(now.getTime() - 24 * 60 * 60_000).toISOString(),
+            id: 'closed-room-fixture',
+            name: '지난 플레이리스트',
+            status: 'closed',
+            updatedAt: new Date(now.getTime() - 24 * 60 * 60_000).toISOString(),
+          },
+        ],
+      },
+    } satisfies GetMyRoomsResponse);
+  }),
   http.post(`${API}/rooms`, async ({ request }) => {
     const body = (await request.json()) as CreateRoomRequest;
 

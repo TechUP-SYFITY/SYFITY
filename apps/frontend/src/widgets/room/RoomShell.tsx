@@ -56,6 +56,7 @@ interface RoomShellProps {
   playerPanel: ReactNode;
   playlistPanel: ReactNode;
   room: RoomDetail | null;
+  roomAction?: ReactNode;
   roomId: string;
 }
 
@@ -93,6 +94,7 @@ export function RoomShell({
   playerPanel,
   playlistPanel,
   room,
+  roomAction,
   roomId,
 }: RoomShellProps) {
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
@@ -105,6 +107,7 @@ export function RoomShell({
           onInviteClick={onInviteClick}
           onlineMemberCount={onlineMemberCount}
           room={room}
+          roomAction={roomAction}
         />
         {hostConnection.status === 'connected' ? null : (
           <HostConnectionNotice hostConnection={hostConnection} />

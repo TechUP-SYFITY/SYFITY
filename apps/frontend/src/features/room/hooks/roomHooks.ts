@@ -3,6 +3,9 @@
 // Room REST API를 TanStack Query 훅으로 연결한다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { socketClient } from '@/shared/lib/socket/socketClient';
+import type { SocketClient } from '@/shared/lib/socket/types';
+
 import { roomApi, type RoomApi } from '../api/roomApi';
 import type { CreateRoomRequest, UpdateRoomRequest } from '../types/roomTypes';
 
@@ -11,8 +14,15 @@ export const roomQueryKeys = {
   detail: (roomId: string) => [...roomQueryKeys.all, 'detail', roomId] as const,
   join: (roomId: string) => [...roomQueryKeys.all, 'join', roomId] as const,
   joinByCode: (inviteCode: string) => [...roomQueryKeys.all, 'join-by-code', inviteCode] as const,
+  mine: () => [...roomQueryKeys.all, 'mine'] as const,
   recent: () => [...roomQueryKeys.all, 'recent'] as const,
 };
+
+export const useMyRooms = () =>
+  useQuery({
+    queryFn: roomApi.getMyRooms,
+    queryKey: roomQueryKeys.mine(),
+  });
 
 export const useRecentRooms = () =>
   useQuery({
@@ -32,7 +42,12 @@ export const useCreateRoom = () => {
 
   return useMutation({
     mutationFn: (body: CreateRoomRequest) => roomApi.createRoom(body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+      ]);
+    },
   });
 };
 
@@ -69,7 +84,13 @@ export const useUpdateRoom = (roomId: string) => {
 
   return useMutation({
     mutationFn: (body: UpdateRoomRequest) => roomApi.updateRoom(roomId, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+      ]);
+    },
   });
 };
 
@@ -80,4 +101,17 @@ export const useCloseRoom = (roomId: string) => {
     mutationFn: () => roomApi.updateRoom(roomId, { status: 'closed' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.all }),
   });
+};
+
+export const useLeaveRoom = (roomId: string, client: SocketClient = socketClient) => {
+  return () => {
+    const socket = client.get();
+
+    if (!socket?.connected) {
+      return false;
+    }
+
+    socket.emit('room:leave', { roomId });
+    return true;
+  };
 };

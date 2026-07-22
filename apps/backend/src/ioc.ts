@@ -8,6 +8,7 @@ import { YouTubeClient } from './lib/youtube/youtube.client';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
+import { PersonalPlaylistRepository } from './repositories/personal-playlist.repository';
 import { PlaylistRepository } from './repositories/playlist.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
@@ -15,6 +16,7 @@ import { UserRepository } from './repositories/user.repository';
 import { AuthService } from './services/auth.service';
 import { ChatService } from './services/chat.service';
 import { HealthService } from './services/health.service';
+import { PersonalPlaylistService } from './services/personal-playlist.service';
 import { PlaybackService } from './services/playback.service';
 import { PlaylistService } from './services/playlist.service';
 import { PresenceService } from './services/presence.service';
@@ -26,6 +28,8 @@ import { UserService } from './services/user.service';
 import { AuthController } from './controllers/auth.controller';
 import { ChatController } from './controllers/chat.controller';
 import { HealthController } from './controllers/health.controller';
+import { PersonalPlaylistController } from './controllers/personal-playlist.controller';
+import { PlaylistImportController } from './controllers/playlist-import.controller';
 import { PlaylistController } from './controllers/playlist.controller';
 import { RoomLifecycleController } from './controllers/room-lifecycle.controller';
 import { RoomMemberController } from './controllers/room-member.controller';
@@ -58,6 +62,7 @@ const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
 export const roomLifecycleService = new RoomLifecycleService(roomRepository);
 const playlistRepository = new PlaylistRepository(prisma);
+const personalPlaylistRepository = new PersonalPlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
 const playbackSessionStore = new PlaybackSessionStore(cache);
 const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
@@ -82,6 +87,11 @@ export const playlistService = new PlaylistService(
   roomRepository,
   playlistYoutubeClient,
   playbackService,
+  personalPlaylistRepository,
+);
+export const personalPlaylistService = new PersonalPlaylistService(
+  personalPlaylistRepository,
+  playlistYoutubeClient,
 );
 
 register(UserController, () => new UserController(userService));
@@ -95,6 +105,8 @@ register(SearchController, () => {
   return new SearchController(new SearchService(youtubeClient, cache));
 });
 register(PlaylistController, () => new PlaylistController(playlistService));
+register(PersonalPlaylistController, () => new PersonalPlaylistController(personalPlaylistService));
+register(PlaylistImportController, () => new PlaylistImportController(playlistService));
 
 export const iocContainer: IocContainer = {
   get<T>(controller: new (...args: never[]) => T): T {

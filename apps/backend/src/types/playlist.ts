@@ -1,5 +1,7 @@
 import type { PlaylistItem } from '@syfity/shared';
 
+import type { PersonalPlaylistItemRecord } from './personal-playlist';
+
 export type PlaylistItemRecord = {
   id: string;
   videoId: string;
@@ -38,6 +40,12 @@ export type ReorderPlaylistItemInput = {
   position: number;
 };
 
+export type ImportPlaylistItemsResult = {
+  addedItems: PlaylistItemRecord[];
+  duplicateCount: number;
+  unavailableCount: number;
+};
+
 export class PlaylistDuplicateVideoError extends Error {}
 
 export interface IPlaylistRepository {
@@ -48,6 +56,11 @@ export interface IPlaylistRepository {
   markUnavailable(itemId: string): Promise<void>;
   deleteItem(itemId: string): Promise<void>;
   reorderItems(items: ReorderPlaylistItemInput[]): Promise<void>;
+  importItems(
+    roomId: string,
+    sourceItems: PersonalPlaylistItemRecord[],
+    addedBy: string,
+  ): Promise<ImportPlaylistItemsResult>;
 }
 
 export function toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {

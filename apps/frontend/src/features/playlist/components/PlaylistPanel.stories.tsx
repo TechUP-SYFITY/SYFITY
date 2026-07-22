@@ -2,7 +2,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import type { PlaylistItem } from '@/shared/types/domain';
 
@@ -159,6 +159,66 @@ export const ParentPlaylistData: Story = {
   },
   decorators: [withPlaylistStoryFrame()],
 };
+
+export const DragPreview: Story = {
+  args: {
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: createDragPreview('[MouseLeft>]'),
+};
+
+export const TouchDragPreview: Story = {
+  args: {
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: createDragPreview('[TouchA>]'),
+};
+
+function createDragPreview(pointerKey: '[MouseLeft>]' | '[TouchA>]') {
+  return async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const sourceRow = await canvas.findByTestId('playlist-row-story-night-changes');
+    const middleRow = await canvas.findByTestId('playlist-row-story-dynamite');
+    const targetRow = await canvas.findByTestId('playlist-row-story-levitating');
+
+    await userEvent.click(sourceRow);
+
+    const handle = canvas.getByRole('button', { name: 'Night Changes 순서 변경' });
+    const sourceRect = handle.getBoundingClientRect();
+    const middleRect = middleRow.getBoundingClientRect();
+    const targetRect = targetRow.getBoundingClientRect();
+
+    await userEvent.pointer([
+      {
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: sourceRect.top + sourceRect.height / 2,
+        },
+        keys: pointerKey,
+        target: handle,
+      },
+      {
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: middleRect.top + middleRect.height / 2,
+        },
+        target: middleRow,
+      },
+      {
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: targetRect.top + targetRect.height / 2,
+        },
+        target: targetRow,
+      },
+    ]);
+
+    await expect(handle).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(targetRow).toHaveAttribute('data-drop-position', 'after'));
+  };
+}
 
 export const MemberView: Story = {
   args: {

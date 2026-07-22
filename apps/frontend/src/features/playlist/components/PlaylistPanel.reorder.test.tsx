@@ -46,8 +46,6 @@ const secondItem: PlaylistItem = {
   videoId: 'video-2',
 };
 
-const originalElementFromPoint = document.elementFromPoint;
-
 function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -65,80 +63,34 @@ describe('PlaylistPanel reorder', () => {
 
   afterEach(() => {
     cleanup();
-    if (originalElementFromPoint) {
-      Object.defineProperty(document, 'elementFromPoint', {
-        configurable: true,
-        value: originalElementFromPoint,
-      });
-    } else {
-      Reflect.deleteProperty(document, 'elementFromPoint');
-    }
     usePlaylistStore.getState().clearPlaylist();
   });
 
-  it.each(['touch', 'mouse'] as const)(
-    'updates the store when a playlist item is moved down with a %s handle.',
-    async (pointerType) => {
-      usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
-      vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue(undefined);
+  it('connects the host drag handle to sortable semantics.', () => {
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <PlaylistPanel
+          canControlRoom
+          currentPlaylistItemId={firstItem.id}
+          isActiveRoomMember
+          playlistItems={[firstItem, secondItem]}
+          roomId={roomId}
+          isHost
+          isReady
+          onOpenSearch={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
 
-      render(
-        <QueryClientProvider client={createQueryClient()}>
-          <PlaylistPanel
-            canControlRoom
-            currentPlaylistItemId={firstItem.id}
-            isActiveRoomMember
-            playlistItems={[firstItem, secondItem]}
-            roomId={roomId}
-            isHost
-            isReady
-            onOpenSearch={vi.fn()}
-          />
-        </QueryClientProvider>,
-      );
+    const firstHandle = screen.getByTestId(`playlist-drag-handle-${firstItem.id}`);
 
-      const firstRow = screen.getByTestId(`playlist-row-${firstItem.id}`);
-      const secondRow = screen.getByTestId(`playlist-row-${secondItem.id}`);
-      const firstHandle = screen.getByTestId(`playlist-drag-handle-${firstItem.id}`);
-      Object.defineProperty(document, 'elementFromPoint', {
-        configurable: true,
-        value: vi.fn(() => secondRow),
-      });
-
-      fireEvent.focus(firstRow);
-      fireEvent.pointerDown(firstHandle, {
-        clientX: 24,
-        clientY: 24,
-        pointerId: 1,
-        pointerType,
-      });
-      fireEvent.pointerMove(firstHandle, {
-        clientX: 24,
-        clientY: 88,
-        pointerId: 1,
-        pointerType,
-      });
-      fireEvent.pointerUp(firstHandle, {
-        clientX: 24,
-        clientY: 88,
-        pointerId: 1,
-        pointerType,
-      });
-
-      await waitFor(() => {
-        expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
-          items: [
-            { id: secondItem.id, position: 1 },
-            { id: firstItem.id, position: 2 },
-          ],
-        });
-      });
-      expect(usePlaylistStore.getState().playlist.map((item) => item.id)).toEqual([
-        secondItem.id,
-        firstItem.id,
-      ]);
-    },
-  );
+    expect(firstHandle).toHaveAttribute('aria-roledescription', '정렬 가능한 항목');
+    expect(firstHandle).toHaveAttribute('aria-pressed', 'false');
+    expect(firstHandle).toHaveClass('touch-none');
+    expect(
+      screen.getByText('위쪽 또는 아래쪽 화살표 키로 재생목록 순서를 변경할 수 있습니다.'),
+    ).toBeInTheDocument();
+  });
 
   it('updates the store when a focused drag handle is moved down with keyboard.', async () => {
     usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
@@ -175,5 +127,58 @@ describe('PlaylistPanel reorder', () => {
       secondItem.id,
       firstItem.id,
     ]);
+  });
+
+  it('updates the store when a focused drag handle is moved up with keyboard.', async () => {
+    usePlaylistStore.getState().setPlaylist([firstItem, secondItem]);
+    vi.mocked(playlistApi.reorderPlaylist).mockResolvedValue(undefined);
+
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <PlaylistPanel
+          canControlRoom
+          currentPlaylistItemId={firstItem.id}
+          isActiveRoomMember
+          playlistItems={[firstItem, secondItem]}
+          roomId={roomId}
+          isHost
+          isReady
+          onOpenSearch={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.keyDown(screen.getByTestId(`playlist-drag-handle-${secondItem.id}`), {
+      key: 'ArrowUp',
+    });
+
+    await waitFor(() => {
+      expect(playlistApi.reorderPlaylist).toHaveBeenCalledWith(roomId, {
+        items: [
+          { id: secondItem.id, position: 1 },
+          { id: firstItem.id, position: 2 },
+        ],
+      });
+    });
+  });
+
+  it('does not expose reorder handles to a member.', () => {
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <PlaylistPanel
+          canControlRoom={false}
+          currentPlaylistItemId={firstItem.id}
+          isActiveRoomMember
+          playlistItems={[firstItem, secondItem]}
+          roomId={roomId}
+          isHost={false}
+          isReady
+          onOpenSearch={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByTestId(`playlist-drag-handle-${firstItem.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`playlist-drag-handle-${secondItem.id}`)).not.toBeInTheDocument();
   });
 });

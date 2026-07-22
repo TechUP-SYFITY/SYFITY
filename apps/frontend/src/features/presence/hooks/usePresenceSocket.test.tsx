@@ -39,6 +39,7 @@ describe('usePresenceSocket', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     usePresenceStore.getState().clearMembers();
   });
 
@@ -97,6 +98,7 @@ describe('usePresenceSocket', () => {
   });
 
   it('presence:update 수신 후 활성 RoomMember 목록을 갱신한다', () => {
+    vi.useFakeTimers();
     const queryClient = createQueryClient();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
     renderHook(() => usePresenceSocket('room-1'), { wrapper: createWrapper(queryClient) });
@@ -116,8 +118,22 @@ describe('usePresenceSocket', () => {
         status: 'online',
         userId: 'member-1',
       });
+      listener({
+        nickname: '새 멤버',
+        profileImage: null,
+        role: 'member',
+        status: 'offline',
+        userId: 'member-1',
+      });
     });
 
+    expect(invalidateSpy).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledOnce();
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: roomMemberQueryKeys.active('room-1'),
     });

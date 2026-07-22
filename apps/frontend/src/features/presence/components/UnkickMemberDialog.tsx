@@ -84,7 +84,7 @@ export function UnkickMemberDialog({
       >
         <DialogHeader>
           <div className="flex min-w-0 items-center gap-3">
-            <DialogIconBadge>
+            <DialogIconBadge className="rounded-full border border-primary/30 bg-primary/15 bg-none from-transparent to-transparent text-primary shadow-[0_0_16px_rgba(114,244,164,0.25)] drop-shadow-none">
               <UserCheck aria-hidden />
             </DialogIconBadge>
             <div className="min-w-0">

@@ -69,7 +69,15 @@ describe('KickedMembersDialog', () => {
     const icon = dialog.querySelector('.lucide-user-minus');
 
     expect(icon).toBeInTheDocument();
-    expect(icon?.parentElement).toHaveClass('from-primary', 'to-accent', 'text-black');
+    expect(icon?.parentElement).toHaveClass(
+      'rounded-full',
+      'border-primary/30',
+      'bg-none',
+      'bg-primary/15',
+      'text-primary',
+      'shadow-[0_0_16px_rgba(114,244,164,0.25)]',
+    );
+    expect(icon?.parentElement).not.toHaveClass('to-accent', 'text-black');
   });
 
   it('추방 목록을 불러오는 동안 loading 상태를 표시한다', () => {

@@ -68,7 +68,15 @@ describe('KickMemberDialog', () => {
     const icon = dialog.querySelector('.lucide-user-minus');
 
     expect(icon).toBeInTheDocument();
-    expect(icon?.parentElement).toHaveClass('from-primary', 'to-accent', 'text-black');
+    expect(icon?.parentElement).toHaveClass(
+      'rounded-full',
+      'border-primary/30',
+      'bg-none',
+      'bg-primary/15',
+      'text-primary',
+      'shadow-[0_0_16px_rgba(114,244,164,0.25)]',
+    );
+    expect(icon?.parentElement).not.toHaveClass('to-accent', 'text-black');
   });
 
   it('취소와 추방 버튼을 같은 너비로 배치한다', () => {

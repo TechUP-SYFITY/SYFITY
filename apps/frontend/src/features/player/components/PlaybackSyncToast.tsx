@@ -62,6 +62,7 @@ export function PlaybackSyncToast() {
       icon,
       duration,
       closeLabel: '동기화 알림 닫기',
+      onCloseClick: syncStatus === 'pending' ? clearPlaybackSync : undefined,
       onDismiss: syncStatus === 'pending' ? undefined : clearPlaybackSync,
       variant,
     });

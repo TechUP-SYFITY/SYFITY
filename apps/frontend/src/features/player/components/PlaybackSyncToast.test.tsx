@@ -81,14 +81,20 @@ describe('PlaybackSyncToast', () => {
     expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
   });
 
-  it('닫기 버튼으로 피드백 상태를 초기화한다', () => {
+  it('pending 토스트를 닫으면 상태를 초기화하고 늦은 응답에도 다시 표시하지 않는다', () => {
     usePlayerStore.getState().beginPlaybackSync();
-    usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
     renderPlaybackSyncToast();
 
     fireEvent.click(screen.getByRole('button', { name: '동기화 알림 닫기' }));
 
     expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
+
+    act(() => {
+      usePlayerStore.getState().setPlaybackState(playbackState, 'sync-response');
+    });
+
+    expect(usePlayerStore.getState().playbackSyncStatus).toBe('idle');
+    expect(screen.queryByText('현재 재생 위치로 동기화됐어요.')).not.toBeInTheDocument();
   });
 
   it('pending 토스트는 4초 후 닫혀도 늦은 동기화 응답을 완료 상태로 전환한다', async () => {

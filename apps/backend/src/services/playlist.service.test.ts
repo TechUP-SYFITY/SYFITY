@@ -4,6 +4,7 @@ import { ERROR_CODES } from '@syfity/shared';
 
 import { PlaylistService } from './playlist.service';
 import { broadcastToRoom } from '../socket/broadcast';
+import { PlaylistDuplicateVideoError } from '../types/playlist';
 
 vi.mock('../socket/broadcast', () => ({ broadcastToRoom: vi.fn() }));
 
@@ -218,6 +219,19 @@ describe('PlaylistService playback integration', () => {
     expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
       playlist: expect.any(Array),
     });
+  });
+
+  it('가져오기 재시도 소진 뒤 unique 충돌은 PLAYLIST_DUPLICATE_VIDEO으로 변환한다', async () => {
+    const { service, playlistRepo } = fixture();
+    playlistRepo.importItems.mockRejectedValueOnce(new PlaylistDuplicateVideoError());
+
+    await expect(
+      service.importFromPersonalPlaylist('room-1', 'host', 'personal-1'),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
+    });
+    expect(broadcastToRoom).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                                                       |
 | --------- | -------------------------------------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                                            |
-| 버전      | v2.3                                                                                                                       |
-| 상태      | Playlist 순서 position의 1-based 계약을 명확화                                                                             |
+| 버전      | v2.4                                                                                                                       |
+| 상태      | Playlist import의 동시 중복 처리 계약을 명확화                                                                             |
 | 작성 목적 | Syfity REST API 계약 정의                                                                                                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `06-socket-event-spec.md` |
 
@@ -382,6 +382,7 @@ active Room의 Host가 **자신의** 개인 Playlist를 Room Playlist 끝에 일
 ```
 
 - Room에 이미 있는 곡과 재생·임베드 불가 곡은 건너뛴다.
+- 동시 요청으로 같은 곡이 추가되며 unique 충돌이 나면 가져오기를 재시도하고, 재조회된 곡은 `duplicateCount`에 포함한다. 재시도 한도를 넘으면 `PLAYLIST_DUPLICATE_VIDEO`(409)를 반환한다.
 - 완료 후 `playlist:updated`를 한 번만 broadcast한다.
 - 셔플이 켜져 있으면 서버는 추가된 곡을 남은 인메모리 큐의 무작위 위치에 넣는다.
 - `personalPlaylistId`가 없으면 `PERSONAL_PLAYLIST_NOT_FOUND`(404), 요청자가 소유하지 않으면 `PERSONAL_PLAYLIST_ACCESS_DENIED`(403)를 반환한다.

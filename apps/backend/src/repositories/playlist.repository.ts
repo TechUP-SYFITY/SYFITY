@@ -116,17 +116,26 @@ export class PlaylistRepository implements IPlaylistRepository {
     );
   }
 
-  private async withSerializableRetry<T>(fn: (tx: PlaylistItemTxClient) => Promise<T>): Promise<T> {
+  private async withSerializableRetry<T>(
+    fn: (tx: PlaylistItemTxClient) => Promise<T>,
+    retryUniqueConstraint = false,
+  ): Promise<T> {
     for (let attempt = 1; ; attempt += 1) {
       try {
         return await this.prisma.$transaction(fn, {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         });
       } catch (error) {
-        if (isUniqueConstraintFailure(error)) {
+        const uniqueConstraintFailure = isUniqueConstraintFailure(error);
+        if (uniqueConstraintFailure && !retryUniqueConstraint) {
           throw new PlaylistDuplicateVideoError();
         }
-        if (!isSerializationFailure(error) || attempt >= ADD_ITEM_MAX_ATTEMPTS) {
+        const shouldRetry =
+          isSerializationFailure(error) || (retryUniqueConstraint && uniqueConstraintFailure);
+        if (!shouldRetry || attempt >= ADD_ITEM_MAX_ATTEMPTS) {
+          if (uniqueConstraintFailure) {
+            throw new PlaylistDuplicateVideoError();
+          }
           throw error;
         }
         await sleep(retryDelayMs(attempt));
@@ -234,6 +243,6 @@ export class PlaylistRepository implements IPlaylistRepository {
       });
 
       return { addedItems, duplicateCount, unavailableCount };
-    });
+    }, true);
   }
 }

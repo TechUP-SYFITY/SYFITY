@@ -429,4 +429,35 @@ describe('PlaylistRepository', () => {
     expect(prisma.playlistItem.aggregate).not.toHaveBeenCalled();
     expect(prisma.playlistItem.createManyAndReturn).not.toHaveBeenCalled();
   });
+
+  it('가져오기 중 unique 충돌은 재시도 후 중복 곡으로 집계한다', async () => {
+    const sourceItem: PersonalPlaylistItemRecord = {
+      id: 'source-1',
+      personalPlaylistId: 'personal-1',
+      videoId: 'video-1',
+      title: 'Song',
+      channelTitle: 'Channel',
+      thumbnailUrl: '',
+      duration: 180,
+      position: 1,
+      status: 'available',
+      addedAt: new Date(),
+    };
+    const prisma = makePrisma({ findManyResult: [playlistItem] });
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(uniqueConstraintError)
+      .mockImplementationOnce((fn: (tx: { playlistItem: typeof prisma.playlistItem }) => unknown) =>
+        fn({ playlistItem: prisma.playlistItem }),
+      );
+    prisma.$transaction = transaction as unknown as PlaylistRepositoryPrisma['$transaction'];
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.importItems('room-1', [sourceItem], 'user-1')).resolves.toEqual({
+      addedItems: [],
+      duplicateCount: 1,
+      unavailableCount: 0,
+    });
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
 });

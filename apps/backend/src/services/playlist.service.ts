@@ -176,7 +176,15 @@ export class PlaylistService {
     await assertOwnedPersonalPlaylist(this.personalPlaylistRepository, personalPlaylistId, userId);
 
     const sourceItems = await this.personalPlaylistRepository.getItems(personalPlaylistId);
-    const result = await this.playlistRepo.importItems(roomId, sourceItems, userId);
+    let result;
+    try {
+      result = await this.playlistRepo.importItems(roomId, sourceItems, userId);
+    } catch (error) {
+      if (error instanceof PlaylistDuplicateVideoError) {
+        throw this.createDuplicateVideoError();
+      }
+      throw error;
+    }
 
     for (const item of result.addedItems) {
       await this.playbackService.enqueueIfShuffled(roomId, item.id);

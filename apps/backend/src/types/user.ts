@@ -3,6 +3,7 @@ export type UserProfileRecord = {
   email: string;
   nickname: string;
   profileImage: string | null;
+  onboardedAt?: Date | null;
 };
 
 export type RecentRoomRecord = {

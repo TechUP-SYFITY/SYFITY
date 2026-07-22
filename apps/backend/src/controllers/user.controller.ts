@@ -19,6 +19,9 @@ export class UserController {
     const userId = req.user!.id;
     const user = await this.userService.getMe(userId);
 
-    return { success: true, data: user };
+    return {
+      success: true,
+      data: { ...user, onboardedAt: user.onboardedAt?.toISOString() ?? null },
+    };
   }
 }

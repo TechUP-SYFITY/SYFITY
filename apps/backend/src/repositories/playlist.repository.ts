@@ -23,6 +23,7 @@ const PLAYLIST_ITEM_SELECT = {
   addedBy: true,
   status: true,
   addedAt: true,
+  metadataRefreshedAt: true,
 } as const;
 
 // 두 요청이 동시에 같은 Room에 곡을 추가하면 max(position) 조회와 insert 사이에
@@ -98,18 +99,22 @@ export class PlaylistRepository implements IPlaylistRepository {
         })
         .then((result) =>
           tx.playlistItem.create({
-            data: {
-              roomId: data.roomId,
-              videoId: data.videoId,
-              title: data.title,
-              channelTitle: data.channelTitle,
-              thumbnailUrl: data.thumbnailUrl,
-              duration: data.duration,
-              position: (result._max.position ?? 0) + 1,
-              addedBy: data.addedBy,
-              status: 'available',
-              addedAt: new Date(),
-            },
+            data: (() => {
+              const addedAt = new Date();
+              return {
+                roomId: data.roomId,
+                videoId: data.videoId,
+                title: data.title,
+                channelTitle: data.channelTitle,
+                thumbnailUrl: data.thumbnailUrl,
+                duration: data.duration,
+                position: (result._max.position ?? 0) + 1,
+                addedBy: data.addedBy,
+                status: 'available',
+                addedAt,
+                metadataRefreshedAt: addedAt,
+              };
+            })(),
             select: PLAYLIST_ITEM_SELECT,
           }),
         ),
@@ -227,18 +232,22 @@ export class PlaylistRepository implements IPlaylistRepository {
       });
       let nextPosition = (_max.position ?? 0) + 1;
       const addedItems = await tx.playlistItem.createManyAndReturn({
-        data: itemsToInsert.map((item) => ({
-          roomId,
-          videoId: item.videoId,
-          title: item.title,
-          channelTitle: item.channelTitle,
-          thumbnailUrl: item.thumbnailUrl,
-          duration: item.duration,
-          position: nextPosition++,
-          addedBy,
-          status: 'available' as const,
-          addedAt: new Date(),
-        })),
+        data: itemsToInsert.map((item) => {
+          const addedAt = new Date();
+          return {
+            roomId,
+            videoId: item.videoId,
+            title: item.title,
+            channelTitle: item.channelTitle,
+            thumbnailUrl: item.thumbnailUrl,
+            duration: item.duration,
+            position: nextPosition++,
+            addedBy,
+            status: 'available' as const,
+            addedAt,
+            metadataRefreshedAt: addedAt,
+          };
+        }),
         select: PLAYLIST_ITEM_SELECT,
       });
 

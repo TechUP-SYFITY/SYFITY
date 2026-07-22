@@ -17,6 +17,7 @@ export type PersonalPlaylistItemRecord = {
   position: number;
   status: 'available' | 'unavailable';
   addedAt: Date;
+  metadataRefreshedAt?: Date;
 };
 
 export type AddPersonalPlaylistItemData = {

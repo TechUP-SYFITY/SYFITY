@@ -29,6 +29,7 @@ const PERSONAL_PLAYLIST_ITEM_SELECT = {
   position: true,
   status: true,
   addedAt: true,
+  metadataRefreshedAt: true,
 } as const;
 
 const ADD_ITEM_MAX_ATTEMPTS = 3;
@@ -130,12 +131,16 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
         })
         .then((result) =>
           tx.personalPlaylistItem.create({
-            data: {
-              ...data,
-              position: (result._max.position ?? 0) + 1,
-              status: 'available',
-              addedAt: new Date(),
-            },
+            data: (() => {
+              const addedAt = new Date();
+              return {
+                ...data,
+                position: (result._max.position ?? 0) + 1,
+                status: 'available',
+                addedAt,
+                metadataRefreshedAt: addedAt,
+              };
+            })(),
             select: PERSONAL_PLAYLIST_ITEM_SELECT,
           }),
         ),

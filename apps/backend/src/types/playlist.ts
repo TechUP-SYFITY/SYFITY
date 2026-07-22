@@ -13,6 +13,7 @@ export type PlaylistItemRecord = {
   addedBy: string;
   status: 'available' | 'unavailable';
   addedAt: Date;
+  metadataRefreshedAt?: Date;
 };
 
 export type AddPlaylistItemData = {

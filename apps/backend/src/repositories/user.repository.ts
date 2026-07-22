@@ -17,6 +17,7 @@ export class UserRepository implements IUserRepository {
         email: true,
         nickname: true,
         profileImage: true,
+        onboardedAt: true,
       },
     });
   }

@@ -47,6 +47,7 @@ model User {
   nickname     String
   profileImage String?  @map("profile_image")
   refreshToken String?  @map("refresh_token")
+  onboardedAt   DateTime? @map("onboarded_at") @db.Timestamptz
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -127,6 +128,7 @@ model PlaylistItem {
   addedBy      String             @map("added_by") @db.Uuid
   status       PlaylistItemStatus @default(available)
   addedAt      DateTime           @map("added_at") @db.Timestamptz
+  metadataRefreshedAt DateTime    @map("metadata_refreshed_at") @db.Timestamptz
 
   room           Room            @relation(fields: [roomId], references: [id])
   addedByUser    User            @relation(fields: [addedBy], references: [id])
@@ -176,6 +178,7 @@ model PersonalPlaylistItem {
   position           Int
   status             PlaylistItemStatus @default(available)
   addedAt            DateTime           @default(now()) @map("added_at") @db.Timestamptz
+  metadataRefreshedAt DateTime           @map("metadata_refreshed_at") @db.Timestamptz
 
   playlist PersonalPlaylist @relation(fields: [personalPlaylistId], references: [id], onDelete: Cascade)
 

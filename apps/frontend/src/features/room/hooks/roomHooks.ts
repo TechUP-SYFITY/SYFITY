@@ -14,8 +14,15 @@ export const roomQueryKeys = {
   detail: (roomId: string) => [...roomQueryKeys.all, 'detail', roomId] as const,
   join: (roomId: string) => [...roomQueryKeys.all, 'join', roomId] as const,
   joinByCode: (inviteCode: string) => [...roomQueryKeys.all, 'join-by-code', inviteCode] as const,
+  mine: () => [...roomQueryKeys.all, 'mine'] as const,
   recent: () => [...roomQueryKeys.all, 'recent'] as const,
 };
+
+export const useMyRooms = () =>
+  useQuery({
+    queryFn: roomApi.getMyRooms,
+    queryKey: roomQueryKeys.mine(),
+  });
 
 export const useRecentRooms = () =>
   useQuery({
@@ -35,7 +42,12 @@ export const useCreateRoom = () => {
 
   return useMutation({
     mutationFn: (body: CreateRoomRequest) => roomApi.createRoom(body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+      ]);
+    },
   });
 };
 
@@ -72,7 +84,13 @@ export const useUpdateRoom = (roomId: string) => {
 
   return useMutation({
     mutationFn: (body: UpdateRoomRequest) => roomApi.updateRoom(roomId, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+      ]);
+    },
   });
 };
 

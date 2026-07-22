@@ -113,6 +113,44 @@ describe('PlaylistRepository', () => {
     });
   });
 
+  it('메타데이터 갱신 대상만 cutoff 기준으로 조회하고 결과를 한 트랜잭션으로 저장한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PlaylistRepository(prisma);
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+
+    await repository.findStaleMetadataItems(cutoff);
+    await repository.applyMetadataRefresh([
+      {
+        id: 'playlist-item-1',
+        result: {
+          status: 'available',
+          title: 'Updated',
+          channelTitle: 'Channel',
+          thumbnailUrl: 'https://example.com/new.jpg',
+          duration: 200,
+        },
+      },
+      { id: 'playlist-item-2', result: { status: 'unavailable' } },
+    ]);
+
+    expect(prisma.playlistItem.findMany).toHaveBeenCalledWith({
+      where: { metadataRefreshedAt: { lte: cutoff } },
+      select: { id: true, videoId: true },
+    });
+    expect(prisma.playlistItem.update).toHaveBeenCalledWith({
+      where: { id: 'playlist-item-1' },
+      data: expect.objectContaining({
+        status: 'available',
+        title: 'Updated',
+        metadataRefreshedAt: expect.any(Date),
+      }),
+    });
+    expect(prisma.playlistItem.update).toHaveBeenCalledWith({
+      where: { id: 'playlist-item-2' },
+      data: { status: 'unavailable', metadataRefreshedAt: expect.any(Date) },
+    });
+  });
+
   it('플레이리스트가 비어 있으면 빈 배열을 반환한다', async () => {
     const repo = new PlaylistRepository(makePrisma({ findManyResult: [] }));
 

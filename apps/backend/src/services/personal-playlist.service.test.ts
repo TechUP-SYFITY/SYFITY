@@ -115,6 +115,57 @@ describe('PersonalPlaylistService', () => {
     });
   });
 
+  it('아동용으로 지정된 영상은 개인 Playlist에 추가하지 않는다', async () => {
+    const { service, repository, youtubeClient } = fixture();
+    youtubeClient.getVideoDetails.mockResolvedValueOnce([
+      { ...item, embeddable: true, madeForKids: true, categoryId: '10' },
+    ]);
+
+    await expect(
+      service.addItem('playlist-1', 'user-1', { videoId: 'video-1' }),
+    ).rejects.toMatchObject({ status: 400, code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE });
+    expect(repository.addItem).not.toHaveBeenCalled();
+  });
+
+  it('오래된 메타데이터를 갱신하고 조회 불가 영상은 unavailable로 저장한다', async () => {
+    const { service, repository, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    repository.findStaleMetadataItems.mockResolvedValueOnce([
+      { id: 'item-1', videoId: 'video-1' },
+      { id: 'item-2', videoId: 'missing-video' },
+    ]);
+    metadataRefreshService.refreshVideoMetadata.mockResolvedValueOnce(
+      new Map([
+        [
+          'video-1',
+          {
+            status: 'available',
+            title: 'Updated',
+            channelTitle: 'Channel',
+            thumbnailUrl: 'thumb',
+            duration: 200,
+          },
+        ],
+      ]),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 2,
+      unavailableCount: 1,
+    });
+    expect(metadataRefreshService.refreshVideoMetadata).toHaveBeenCalledWith([
+      'video-1',
+      'missing-video',
+    ]);
+    expect(repository.applyMetadataRefresh).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'item-1',
+        result: expect.objectContaining({ status: 'available' }),
+      }),
+      { id: 'item-2', result: { status: 'unavailable' } },
+    ]);
+  });
+
   it('중복 곡과 저장 중 unique 충돌을 PERSONAL_PLAYLIST_DUPLICATE_VIDEO로 거부한다', async () => {
     const { service, repository } = fixture();
     repository.findItemByPlaylistAndVideoId.mockResolvedValueOnce(item);

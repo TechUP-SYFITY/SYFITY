@@ -84,6 +84,44 @@ describe('PersonalPlaylistRepository', () => {
     );
   });
 
+  it('개인 Playlist의 메타데이터 갱신 대상과 결과를 저장한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PersonalPlaylistRepository(prisma);
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+
+    await repository.findStaleMetadataItems(cutoff);
+    await repository.applyMetadataRefresh([
+      {
+        id: 'item-1',
+        result: {
+          status: 'available',
+          title: 'Updated',
+          channelTitle: 'Channel',
+          thumbnailUrl: 'https://example.com/new.jpg',
+          duration: 200,
+        },
+      },
+      { id: 'item-2', result: { status: 'unavailable' } },
+    ]);
+
+    expect(prisma.personalPlaylistItem.findMany).toHaveBeenCalledWith({
+      where: { metadataRefreshedAt: { lte: cutoff } },
+      select: { id: true, videoId: true },
+    });
+    expect(prisma.personalPlaylistItem.update).toHaveBeenCalledWith({
+      where: { id: 'item-1' },
+      data: expect.objectContaining({
+        status: 'available',
+        title: 'Updated',
+        metadataRefreshedAt: expect.any(Date),
+      }),
+    });
+    expect(prisma.personalPlaylistItem.update).toHaveBeenCalledWith({
+      where: { id: 'item-2' },
+      data: { status: 'unavailable', metadataRefreshedAt: expect.any(Date) },
+    });
+  });
+
   it('Playlist를 생성·조회·이름 변경한다', async () => {
     const prisma = makePrisma();
     const repository = new PersonalPlaylistRepository(prisma);
@@ -110,6 +148,17 @@ describe('PersonalPlaylistRepository', () => {
     await repository.deletePlaylist('playlist-1');
     expect(prisma.personalPlaylist.delete).toHaveBeenCalledWith({ where: { id: 'playlist-1' } });
     expect(prisma.personalPlaylistItem.delete).not.toHaveBeenCalled();
+  });
+
+  it('회원 탈퇴 시 소유한 모든 개인 Playlist를 삭제한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PersonalPlaylistRepository(prisma);
+
+    await repository.deleteAllByOwnerId('user-1');
+
+    expect(prisma.personalPlaylist.deleteMany).toHaveBeenCalledWith({
+      where: { ownerId: 'user-1' },
+    });
   });
 
   it('새 곡은 Serializable 트랜잭션에서 마지막 position 뒤에 추가한다', async () => {

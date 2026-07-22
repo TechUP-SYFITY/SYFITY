@@ -174,6 +174,63 @@ describe('PlaylistService playback integration', () => {
     });
   });
 
+  it('아동용으로 지정된 영상은 Room Playlist에 추가하지 않는다', async () => {
+    const { service, youtubeClient, playlistRepo } = fixture();
+    youtubeClient.getVideoDetails.mockResolvedValueOnce([
+      { ...item, embeddable: true, madeForKids: true, categoryId: '10' },
+    ]);
+
+    await expect(service.addItem('room-1', 'host', { videoId: 'video-1' })).rejects.toMatchObject({
+      status: 400,
+      code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
+    });
+    expect(playlistRepo.addItem).not.toHaveBeenCalled();
+  });
+
+  it('오래된 메타데이터를 영상별 한 번만 갱신하고 누락 영상은 unavailable로 처리한다', async () => {
+    const { service, playlistRepo, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    playlistRepo.findStaleMetadataItems.mockResolvedValueOnce([
+      { id: 'item-1', videoId: 'video-1' },
+      { id: 'item-2', videoId: 'video-1' },
+      { id: 'item-3', videoId: 'missing-video' },
+    ]);
+    metadataRefreshService.refreshVideoMetadata.mockResolvedValueOnce(
+      new Map([
+        [
+          'video-1',
+          {
+            status: 'available',
+            title: 'Updated',
+            channelTitle: 'Channel',
+            thumbnailUrl: 'thumb',
+            duration: 200,
+          },
+        ],
+      ]),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 3,
+      unavailableCount: 1,
+    });
+    expect(metadataRefreshService.refreshVideoMetadata).toHaveBeenCalledWith([
+      'video-1',
+      'missing-video',
+    ]);
+    expect(playlistRepo.applyMetadataRefresh).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'item-1',
+        result: expect.objectContaining({ status: 'available' }),
+      }),
+      expect.objectContaining({
+        id: 'item-2',
+        result: expect.objectContaining({ status: 'available' }),
+      }),
+      { id: 'item-3', result: { status: 'unavailable' } },
+    ]);
+  });
+
   it('Host가 자신의 개인 Playlist를 가져오면 YouTube 재검증 없이 큐와 Playlist를 갱신한다', async () => {
     const { service, playlistRepo, playbackService, youtubeClient, personalPlaylistRepo } =
       fixture();

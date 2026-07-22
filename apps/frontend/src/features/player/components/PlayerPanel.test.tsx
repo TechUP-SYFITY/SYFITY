@@ -129,6 +129,24 @@ describe('PlayerPanel', () => {
     expect(screen.queryByText('Host 제어 가능')).not.toBeInTheDocument();
   });
 
+  it('Member가 로컬 동기화를 중지하면 자신의 화면만 일시정지됐음을 표시한다', () => {
+    seedPlayback(true);
+    usePlayerStore.getState().pauseLocalSync();
+
+    renderPlayerPanel(playlist, false);
+
+    expect(screen.getByText('내 화면만 일시정지됨')).toBeInTheDocument();
+    expect(screen.queryByText('호스트가 일시정지함')).not.toBeInTheDocument();
+  });
+
+  it('호스트 재생 상태가 일시정지이면 호스트 일시정지 상태를 표시한다', () => {
+    seedPlayback(false);
+
+    renderPlayerPanel(playlist, false);
+
+    expect(screen.getByText('호스트가 일시정지함')).toBeInTheDocument();
+  });
+
   it('영상 종료 이벤트를 공통 Player 제어 handler로 전달한다', () => {
     seedPlayback(false);
     renderPlayerPanel();

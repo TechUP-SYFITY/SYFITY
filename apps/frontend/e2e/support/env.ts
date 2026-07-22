@@ -1,7 +1,9 @@
-// E2E 스택 전역 상수.
-// .env 파일을 쓰지 않는 이유: 레포 .gitignore가 `.env*`를 전부 무시하므로 커밋할 수 없다.
-// 대신 이 모듈의 값을 playwright.config.ts의 webServer.env로 주입한다.
-// 여기 담긴 시크릿은 전부 로컬 전용 더미이며 운영 값과 절대 공유하지 않는다.
+// E2E 스택 전역 상수. 여기 담긴 값은 전부 로컬 전용 더미이며 운영 값과 절대 공유하지 않는다.
+// DB 접속값만은 docker-compose·migrate 스크립트와 공유해야 해서 .env.e2e를 단일 출처로 두고
+// Node 24의 process.loadEnvFile로 읽는다(별도 dotenv 의존성 불필요).
+import path from 'node:path';
+
+process.loadEnvFile(path.resolve(__dirname, '../.env.e2e'));
 
 // 개발 스택(3000/4000/54322)과 포트를 분리해, dev 서버를 켜 둔 채로도 E2E를 돌릴 수 있게 한다.
 export const FRONTEND_PORT = 3100;
@@ -11,7 +13,7 @@ export const FRONTEND_URL = `http://localhost:${FRONTEND_PORT}`;
 export const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 export const API_URL = `${BACKEND_URL}/api/v1`;
 
-export const DATABASE_URL = 'postgresql://postgres:postgres@127.0.0.1:55432/syfity_e2e';
+export const DATABASE_URL = process.env.DATABASE_URL as string;
 
 export const JWT_ACCESS_SECRET = 'e2e-access-secret';
 export const JWT_REFRESH_SECRET = 'e2e-refresh-secret';

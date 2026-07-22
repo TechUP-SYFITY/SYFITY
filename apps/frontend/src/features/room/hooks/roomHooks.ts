@@ -88,6 +88,7 @@ export const useUpdateRoom = (roomId: string) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
         queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+        queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
       ]);
     },
   });

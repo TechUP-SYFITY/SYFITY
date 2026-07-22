@@ -121,7 +121,7 @@ describe('Room membership hooks', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
   });
 
-  it('Room 이름 변경 성공 후 상세와 내 Room 쿼리를 갱신한다', async () => {
+  it('Room 이름 변경 성공 후 상세와 Home Room 쿼리를 갱신한다', async () => {
     vi.mocked(roomApi.updateRoom).mockResolvedValue({
       closedAt: null,
       id: roomFixture.room.id,
@@ -143,6 +143,7 @@ describe('Room membership hooks', () => {
       queryKey: ['rooms', 'detail', roomFixture.room.id],
     });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
   });
 
   it('초대 코드 입장은 membership API 오류를 그대로 노출한다', async () => {

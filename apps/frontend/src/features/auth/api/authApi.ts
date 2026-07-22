@@ -43,7 +43,9 @@ const uploadProfileImage = async (file: File): Promise<string | null> => {
   const { error } = await supabaseStorageClient.storage
     .from(bucket)
     .uploadToSignedUrl(path, token, file);
-  if (error) throw error;
+  if (error) {
+    throw new Error('이미지 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.');
+  }
   const data = await apiClient.post<UploadProfileImageResponse['data']>(
     '/me/profile-image/confirm',
     {

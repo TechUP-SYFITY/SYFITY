@@ -116,9 +116,16 @@ export const useRecoverRoom = () => {
         queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
       ]);
     },
-    onError: async (error) => {
-      if (error instanceof ApiClientError && error.code === 'ROOM_RECOVERY_EXPIRED') {
-        await queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() });
+    onError: async (error, roomId) => {
+      if (
+        error instanceof ApiClientError &&
+        (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_RECOVERY_EXPIRED')
+      ) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
+          queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),
+          queryClient.invalidateQueries({ queryKey: roomQueryKeys.recent() }),
+        ]);
       }
     },
   });

@@ -253,24 +253,28 @@ describe('Room membership hooks', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
   });
 
-  it('복구 기간 만료 시 내 Room 목록을 갱신한다', async () => {
-    const error = new ApiClientError(
-      { code: 'ROOM_RECOVERY_EXPIRED', message: 'Room recovery period expired' },
-      409,
-    );
-    vi.mocked(roomApi.updateRoom).mockRejectedValue(error);
-    const queryClient = createQueryClient();
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
-    const { result } = renderHook(() => useRecoverRoom(), {
-      wrapper: createWrapper(queryClient),
-    });
+  it.each(['ROOM_NOT_CLOSED', 'ROOM_RECOVERY_EXPIRED'] as const)(
+    '%s 복구 오류 시 Room 캐시를 갱신한다',
+    async (code) => {
+      const error = new ApiClientError({ code, message: 'Room recovery state changed' }, 409);
+      vi.mocked(roomApi.updateRoom).mockRejectedValue(error);
+      const queryClient = createQueryClient();
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+      const { result } = renderHook(() => useRecoverRoom(), {
+        wrapper: createWrapper(queryClient),
+      });
 
-    await act(async () => {
-      await expect(result.current.mutateAsync(roomFixture.room.id)).rejects.toBe(error);
-    });
+      await act(async () => {
+        await expect(result.current.mutateAsync(roomFixture.room.id)).rejects.toBe(error);
+      });
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
-  });
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['rooms', 'detail', roomFixture.room.id],
+      });
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+    },
+  );
 
   it('연결된 Socket으로 Member의 명시적 퇴장을 전송한다', () => {
     const emit = vi.fn();

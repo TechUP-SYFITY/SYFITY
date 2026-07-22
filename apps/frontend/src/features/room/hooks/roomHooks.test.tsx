@@ -10,6 +10,7 @@ import { ApiClientError } from '@/shared/types/api';
 import {
   useCloseRoom,
   useCreateRoom,
+  useDeactivateRoom,
   useJoinRoom,
   useJoinRoomByCode,
   useLeaveRoom,
@@ -28,6 +29,7 @@ vi.mock('../api/roomApi', () => ({
   roomApi: {
     createRoomMembership: vi.fn(),
     createRoom: vi.fn(),
+    deleteRoom: vi.fn(),
     getMyRooms: vi.fn(),
     getRecentRooms: vi.fn(),
     getRoom: vi.fn(),
@@ -280,6 +282,57 @@ describe('Room membership hooks', () => {
       );
     },
   );
+
+  it('closed Room 비활성화는 DELETE를 호출하고 내 Room 목록에서 즉시 제거한다', async () => {
+    vi.mocked(roomApi.deleteRoom).mockResolvedValue(undefined);
+    const queryClient = createQueryClient();
+    queryClient.setQueryData(['rooms', 'mine'], myRooms);
+    queryClient.setQueryData(['rooms', 'detail', 'closed-room'], room);
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useDeactivateRoom(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync('closed-room');
+    });
+
+    expect(roomApi.deleteRoom).toHaveBeenCalledWith('closed-room');
+    expect(queryClient.getQueryData<MyRoomsResponse>(['rooms', 'mine'])?.rooms).toEqual([
+      myRooms.rooms[0],
+    ]);
+    expect(queryClient.getQueryData(['rooms', 'detail', 'closed-room'])).toBeUndefined();
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+  });
+
+  it.each([
+    ['ROOM_NOT_CLOSED', 409],
+    ['ROOM_NOT_FOUND', 404],
+  ] as const)('%s 비활성화 오류 시 안내 후 Room 캐시를 갱신한다', async (code, status) => {
+    const error = new ApiClientError({ code, message: 'Room state changed' }, status);
+    vi.mocked(roomApi.deleteRoom).mockRejectedValue(error);
+    const queryClient = createQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const onStateError = vi.fn();
+    const { result } = renderHook(() => useDeactivateRoom({ onStateError }), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync('closed-room')).rejects.toBe(error);
+    });
+
+    expect(onStateError).toHaveBeenCalledWith(error);
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['rooms', 'detail', 'closed-room'],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+    expect(onStateError.mock.invocationCallOrder[0]).toBeLessThan(
+      invalidateQueries.mock.invocationCallOrder[0],
+    );
+  });
 
   it('연결된 Socket으로 Member의 명시적 퇴장을 전송한다', () => {
     const emit = vi.fn();

@@ -7,6 +7,9 @@ import { MyRooms } from './components/MyRooms';
 import { RecentRooms } from './components/RecentRooms';
 
 interface HomeShellProps {
+  deactivatingRoomId?: string;
+  deactivationErrorMessage?: string;
+  deactivationErrorRoomId?: string;
   nickname: string;
   isUserLoading: boolean;
   recentRooms: RoomSummary[];
@@ -17,6 +20,8 @@ interface HomeShellProps {
   recoveringRoomId?: string;
   recoveryErrorMessage?: string;
   recoveryErrorRoomId?: string;
+  onDeactivateRoom: (roomId: string) => void;
+  onDeactivationOpenChange?: (open: boolean) => void;
   onCreateRoom: () => void;
   onJoinRoom: () => void;
   onRecoverRoom: (roomId: string) => void;
@@ -25,6 +30,9 @@ interface HomeShellProps {
 }
 
 export function HomeShell({
+  deactivatingRoomId,
+  deactivationErrorMessage,
+  deactivationErrorRoomId,
   nickname,
   isUserLoading,
   recentRooms,
@@ -35,6 +43,8 @@ export function HomeShell({
   recoveringRoomId,
   recoveryErrorMessage,
   recoveryErrorRoomId,
+  onDeactivateRoom,
+  onDeactivationOpenChange,
   onCreateRoom,
   onJoinRoom,
   onRecoverRoom,
@@ -58,12 +68,17 @@ export function HomeShell({
       />
 
       <MyRooms
+        deactivatingRoomId={deactivatingRoomId}
+        deactivationErrorMessage={deactivationErrorMessage}
+        deactivationErrorRoomId={deactivationErrorRoomId}
         recoveringRoomId={recoveringRoomId}
         recoveryErrorMessage={recoveryErrorMessage}
         recoveryErrorRoomId={recoveryErrorRoomId}
         rooms={myRooms}
         isLoading={isMyRoomsLoading}
         isError={isMyRoomsError}
+        onDeactivate={onDeactivateRoom}
+        onDeactivationOpenChange={onDeactivationOpenChange}
         onRecover={onRecoverRoom}
         onRecoveryOpenChange={onRecoveryOpenChange}
         onRetry={onRetryMyRooms}

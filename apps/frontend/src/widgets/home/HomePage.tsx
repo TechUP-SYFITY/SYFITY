@@ -7,6 +7,7 @@ import { CreateRoomDialog } from '@/features/room/components/CreateRoomDialog';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { JoinRoomDialog } from '@/features/room/components/JoinRoomDialog';
 import { useMyRooms, useRecentRooms } from '@/features/room/hooks/roomHooks';
+import { useDeactivateRoomAction } from '@/features/room/hooks/useDeactivateRoomAction';
 import { useRecoverRoomAction } from '@/features/room/hooks/useRecoverRoomAction';
 import type { CreateRoomResponse, RoomInviteInfo } from '@/features/room/types/roomTypes';
 
@@ -16,6 +17,7 @@ export function HomePage() {
   const { data: user, isLoading: isUserLoading } = useMe();
   const recentRooms = useRecentRooms();
   const myRooms = useMyRooms();
+  const deactivateRoom = useDeactivateRoomAction();
   const recoverRoom = useRecoverRoomAction();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -34,6 +36,9 @@ export function HomePage() {
   return (
     <>
       <HomeShell
+        deactivatingRoomId={deactivateRoom.deactivatingRoomId}
+        deactivationErrorMessage={deactivateRoom.errorMessage}
+        deactivationErrorRoomId={deactivateRoom.errorRoomId}
         nickname={user?.nickname ?? '게스트'}
         isUserLoading={isUserLoading}
         recentRooms={recentRooms.data?.rooms ?? []}
@@ -44,6 +49,12 @@ export function HomePage() {
         recoveringRoomId={recoverRoom.recoveringRoomId}
         recoveryErrorMessage={recoverRoom.errorMessage}
         recoveryErrorRoomId={recoverRoom.errorRoomId}
+        onDeactivateRoom={deactivateRoom.deactivate}
+        onDeactivationOpenChange={(open) => {
+          if (!open) {
+            deactivateRoom.reset();
+          }
+        }}
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
         onRecoverRoom={recoverRoom.recover}

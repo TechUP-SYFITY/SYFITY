@@ -47,6 +47,8 @@ const defaultProps = {
   myRooms: previewMyRooms,
   nickname: 'Alice',
   onCreateRoom: noop,
+  onDeactivateRoom: noop,
+  onDeactivationOpenChange: noop,
   onJoinRoom: noop,
   onRecoverRoom: noop,
   onRecoveryOpenChange: noop,
@@ -125,5 +127,16 @@ describe('HomeShell', () => {
 
     expect(onRecoverRoom).toHaveBeenCalledWith('closed-room');
     expect(screen.queryByRole('button', { name: '내 활성 Room 복구' })).toBeNull();
+  });
+
+  it('closed Room 비활성화 확인 후 해당 Room id를 전달한다', () => {
+    const onDeactivateRoom = vi.fn();
+    render(<HomeShell {...defaultProps} onDeactivateRoom={onDeactivateRoom} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '내 종료 Room 비활성화' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Room 비활성화 확인' }));
+
+    expect(onDeactivateRoom).toHaveBeenCalledWith('closed-room');
+    expect(screen.queryByRole('button', { name: '내 활성 Room 비활성화' })).toBeNull();
   });
 });

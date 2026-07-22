@@ -8,12 +8,17 @@ import type { MyRoomSummary } from '@/features/room/types/roomTypes';
 import { MyRoomCard } from './MyRoomCard';
 
 interface MyRoomsProps {
+  deactivatingRoomId?: string;
+  deactivationErrorMessage?: string;
+  deactivationErrorRoomId?: string;
   recoveringRoomId?: string;
   recoveryErrorMessage?: string;
   recoveryErrorRoomId?: string;
   rooms: MyRoomSummary[];
   isLoading: boolean;
   isError: boolean;
+  onDeactivate: (roomId: string) => void;
+  onDeactivationOpenChange?: (open: boolean) => void;
   onRecover: (roomId: string) => void;
   onRecoveryOpenChange?: (open: boolean) => void;
   onRetry: () => void;
@@ -33,12 +38,17 @@ function SectionHeading({ count }: { count?: number }) {
 }
 
 export function MyRooms({
+  deactivatingRoomId,
+  deactivationErrorMessage,
+  deactivationErrorRoomId,
   recoveringRoomId,
   recoveryErrorMessage,
   recoveryErrorRoomId,
   rooms,
   isLoading,
   isError,
+  onDeactivate,
+  onDeactivationOpenChange,
   onRecover,
   onRecoveryOpenChange,
   onRetry,
@@ -101,11 +111,17 @@ export function MyRooms({
         {rooms.map((room) => (
           <MyRoomCard
             key={room.id}
+            deactivationErrorMessage={
+              deactivationErrorRoomId === room.id ? deactivationErrorMessage : undefined
+            }
+            isDeactivating={deactivatingRoomId === room.id}
             isRecovering={recoveringRoomId === room.id}
             recoveryErrorMessage={
               recoveryErrorRoomId === room.id ? recoveryErrorMessage : undefined
             }
             room={room}
+            onDeactivate={onDeactivate}
+            onDeactivationOpenChange={onDeactivationOpenChange}
             onRecover={onRecover}
             onRecoveryOpenChange={onRecoveryOpenChange}
           />

@@ -11,9 +11,9 @@ export class SupabaseStorageClient implements IObjectStorage {
   constructor(
     private readonly bucket: string,
     url: string,
-    serviceRoleKey: string,
+    secretKey: string,
   ) {
-    this.client = createClient(url, serviceRoleKey);
+    this.client = createClient(url, secretKey);
   }
 
   async createSignedUploadUrl(path: string): Promise<{ path: string; token: string }> {

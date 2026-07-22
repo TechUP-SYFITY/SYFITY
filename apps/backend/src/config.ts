@@ -64,7 +64,7 @@ export const config = {
   },
   supabase: {
     url: requireEnv('SUPABASE_URL'),
-    serviceRoleKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
+    secretKey: requireEnv('SUPABASE_SECRET_KEY'),
     profileImageBucket: process.env.SUPABASE_PROFILE_IMAGE_BUCKET ?? 'profile-images',
   },
 };

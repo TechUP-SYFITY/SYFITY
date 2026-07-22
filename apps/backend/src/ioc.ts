@@ -94,7 +94,7 @@ export const roomService = new RoomService(
 const profileImageStorage = new SupabaseStorageClient(
   config.supabase.profileImageBucket,
   config.supabase.url,
-  config.supabase.serviceRoleKey,
+  config.supabase.secretKey,
 );
 const userRepository = new UserRepository(prisma);
 const userService = new UserService(

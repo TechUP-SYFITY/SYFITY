@@ -1,8 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RoomMemberSummary } from '@syfity/shared';
@@ -12,6 +11,7 @@ import { ToastProvider } from '@/shared/components/ui';
 import { MemberList } from './MemberList';
 import { MemberManagementProvider } from './MemberManagementProvider';
 import { roomMemberApi } from '../api/roomMemberApi';
+import { roomMemberQueryKeys } from '../hooks/roomMemberHooks';
 import type { PresenceMember } from '../types/presence';
 
 vi.mock('../api/roomMemberApi', () => ({
@@ -52,20 +52,18 @@ const activeMembers = [
 
 const createQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-function TestProviders({ children }: { children: ReactNode }) {
-  return (
-    <QueryClientProvider client={createQueryClient()}>
-      <ToastProvider>{children}</ToastProvider>
-    </QueryClientProvider>
-  );
-}
-
-const renderList = (isHost: boolean) =>
+const renderList = (isHost: boolean, queryClient = createQueryClient()) =>
   render(
     <MemberManagementProvider currentUserId="host-1" isHost={isHost} roomId="room-1">
       <MemberList members={members} />
     </MemberManagementProvider>,
-    { wrapper: TestProviders },
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>{children}</ToastProvider>
+        </QueryClientProvider>
+      ),
+    },
   );
 
 describe('MemberList management', () => {
@@ -125,5 +123,22 @@ describe('MemberList management', () => {
     expect(unavailableButton).toBeDisabled();
     expect(unavailableButton).toHaveClass('size-9', 'border-0', 'bg-transparent');
     expect(screen.getByText('지민')).toBeInTheDocument();
+  });
+
+  it('관리 메타데이터를 다시 불러오는 동안 기존 관리 메뉴를 비활성화한다', async () => {
+    const queryClient = createQueryClient();
+    renderList(true, queryClient);
+
+    const managementButton = await screen.findByRole('button', { name: '지민 멤버 관리' });
+    expect(managementButton).toBeEnabled();
+
+    vi.mocked(roomMemberApi.getActiveMembers).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+    act(() => {
+      void queryClient.invalidateQueries({ queryKey: roomMemberQueryKeys.active('room-1') });
+    });
+
+    await waitFor(() => expect(managementButton).toBeDisabled());
   });
 });

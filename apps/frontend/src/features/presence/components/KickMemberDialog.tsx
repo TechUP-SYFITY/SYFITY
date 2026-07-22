@@ -1,6 +1,6 @@
 'use client';
 
-import { UserRoundX } from 'lucide-react';
+import { UserMinus } from 'lucide-react';
 
 import type { RoomMemberSummary } from '@syfity/shared';
 
@@ -79,8 +79,8 @@ export function KickMemberDialog({ member, onOpenChange, open, roomId }: KickMem
       >
         <DialogHeader>
           <div className="flex min-w-0 items-center gap-3">
-            <DialogIconBadge className="bg-destructive/15 text-destructive">
-              <UserRoundX aria-hidden />
+            <DialogIconBadge>
+              <UserMinus aria-hidden />
             </DialogIconBadge>
             <div className="min-w-0">
               <DialogTitle>{member.nickname}님을 추방할까요?</DialogTitle>

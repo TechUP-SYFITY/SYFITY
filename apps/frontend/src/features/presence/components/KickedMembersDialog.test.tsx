@@ -58,6 +58,20 @@ describe('KickedMembersDialog', () => {
 
   afterEach(cleanup);
 
+  it('브랜드 그라데이션의 멤버 제외 아이콘을 표시한다', () => {
+    vi.mocked(roomMemberApi.getKickedMembers).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+
+    renderDialog();
+
+    const dialog = screen.getByRole('dialog');
+    const icon = dialog.querySelector('.lucide-user-minus');
+
+    expect(icon).toBeInTheDocument();
+    expect(icon?.parentElement).toHaveClass('from-primary', 'to-accent', 'text-black');
+  });
+
   it('추방 목록을 불러오는 동안 loading 상태를 표시한다', () => {
     vi.mocked(roomMemberApi.getKickedMembers).mockImplementation(
       () => new Promise(() => undefined),

@@ -61,6 +61,16 @@ describe('KickMemberDialog', () => {
 
   afterEach(cleanup);
 
+  it('브랜드 그라데이션의 멤버 제외 아이콘을 표시한다', () => {
+    renderDialog();
+
+    const dialog = screen.getByRole('dialog');
+    const icon = dialog.querySelector('.lucide-user-minus');
+
+    expect(icon).toBeInTheDocument();
+    expect(icon?.parentElement).toHaveClass('from-primary', 'to-accent', 'text-black');
+  });
+
   it('확인 후 멤버를 추방하고 성공 안내를 표시한다', async () => {
     vi.mocked(roomMemberApi.updateMember).mockResolvedValue({
       memberId: member.id,

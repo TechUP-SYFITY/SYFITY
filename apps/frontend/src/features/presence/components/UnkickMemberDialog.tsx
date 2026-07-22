@@ -1,6 +1,6 @@
 'use client';
 
-import { UserRoundCheck } from 'lucide-react';
+import { UserCheck } from 'lucide-react';
 
 import type { KickedRoomMember } from '@syfity/shared';
 
@@ -85,7 +85,7 @@ export function UnkickMemberDialog({
         <DialogHeader>
           <div className="flex min-w-0 items-center gap-3">
             <DialogIconBadge>
-              <UserRoundCheck aria-hidden />
+              <UserCheck aria-hidden />
             </DialogIconBadge>
             <div className="min-w-0">
               <DialogTitle>{member.nickname}님의 추방을 해제할까요?</DialogTitle>

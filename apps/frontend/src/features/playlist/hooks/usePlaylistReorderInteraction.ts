@@ -7,12 +7,15 @@ import type { PlaylistItem } from '@/shared/types/domain';
 
 import type { ReorderPlaylistRequest } from '../types/playlistTypes';
 
+// 순서 계산에는 item.id만 필요하므로, addedBy 유무와 무관하게 Room·개인 아이템을 모두 받는다.
+type ReorderablePlaylistItem = Pick<PlaylistItem, 'id'>;
+
 interface UsePlaylistReorderInteractionParams {
   canControlRoom: boolean;
   isReady: boolean;
   onBeforeReorder: () => void;
   onReorder: (body: ReorderPlaylistRequest) => void;
-  playlist: PlaylistItem[];
+  playlist: ReorderablePlaylistItem[];
 }
 
 export function usePlaylistReorderInteraction({
@@ -47,13 +50,13 @@ export function usePlaylistReorderInteraction({
     setFocusedActionItemId((currentItemId) => (currentItemId === itemId ? null : currentItemId));
   };
 
-  const submitReorder = (nextPlaylist: PlaylistItem[]) => {
+  const submitReorder = (nextPlaylist: ReorderablePlaylistItem[]) => {
     onBeforeReorder();
     onReorder({
-      // docs/05 §6.4·§7.2: position은 0부터 항목 수-1까지 중복 없이 연속이어야 한다.
+      // 백엔드 규약: position은 1부터 항목 수까지 중복 없이 연속이어야 한다. (Room·개인 공통)
       items: nextPlaylist.map((item, index) => ({
         id: item.id,
-        position: index,
+        position: index + 1,
       })),
     });
   };

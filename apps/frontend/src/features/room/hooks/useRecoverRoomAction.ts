@@ -7,6 +7,7 @@ import type { ErrorCode } from '@syfity/shared';
 
 import { useToast } from '@/shared/components/ui/Toast';
 import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
+import { ApiClientError } from '@/shared/types/api';
 
 import { useRecoverRoom } from './roomHooks';
 
@@ -15,10 +16,21 @@ const RECOVERY_ERROR_MESSAGES = {
   ROOM_RECOVERY_EXPIRED: '더 이상 사용할 수 없는 Room이에요.',
 } satisfies Partial<Record<ErrorCode, string>>;
 
+const isRecoveryStateError = (error: unknown) =>
+  error instanceof ApiClientError &&
+  (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_RECOVERY_EXPIRED');
+
 export function useRecoverRoomAction() {
   const router = useRouter();
   const { pushToast } = useToast();
-  const mutation = useRecoverRoom();
+  const mutation = useRecoverRoom({
+    onStateError: (error) => {
+      pushToast({
+        title: getApiErrorMessage(error, { codeOverrides: RECOVERY_ERROR_MESSAGES }),
+        variant: 'error',
+      });
+    },
+  });
 
   const recover = (roomId: string) => {
     if (mutation.isPending) {
@@ -34,9 +46,10 @@ export function useRecoverRoomAction() {
   };
 
   return {
-    errorMessage: mutation.isError
-      ? getApiErrorMessage(mutation.error, { codeOverrides: RECOVERY_ERROR_MESSAGES })
-      : undefined,
+    errorMessage:
+      mutation.isError && !isRecoveryStateError(mutation.error)
+        ? getApiErrorMessage(mutation.error, { codeOverrides: RECOVERY_ERROR_MESSAGES })
+        : undefined,
     errorRoomId: mutation.isError ? mutation.variables : undefined,
     recover,
     recoveringRoomId: mutation.isPending ? mutation.variables : undefined,

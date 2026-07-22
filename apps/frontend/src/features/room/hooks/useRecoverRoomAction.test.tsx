@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     isPending: false,
     variables: undefined as string | undefined,
   },
+  recoverOptions: undefined as { onStateError?: (error: ApiClientError) => void } | undefined,
   pushToast: vi.fn(),
   reset: vi.fn(),
   routerPush: vi.fn(),
@@ -28,11 +29,14 @@ vi.mock('@/shared/components/ui/Toast', () => ({
 }));
 
 vi.mock('./roomHooks', () => ({
-  useRecoverRoom: () => ({
-    ...mocks.mutationState,
-    mutate: mocks.mutate,
-    reset: mocks.reset,
-  }),
+  useRecoverRoom: (options: { onStateError?: (error: ApiClientError) => void }) => {
+    mocks.recoverOptions = options;
+    return {
+      ...mocks.mutationState,
+      mutate: mocks.mutate,
+      reset: mocks.reset,
+    };
+  },
 }));
 
 describe('useRecoverRoomAction', () => {
@@ -42,6 +46,7 @@ describe('useRecoverRoomAction', () => {
     mocks.mutationState.isError = false;
     mocks.mutationState.isPending = false;
     mocks.mutationState.variables = undefined;
+    mocks.recoverOptions = undefined;
   });
 
   it('복구 성공을 안내하고 기존 Room 경로로 이동한다', () => {
@@ -76,15 +81,32 @@ describe('useRecoverRoomAction', () => {
   it.each([
     ['ROOM_NOT_CLOSED', '이미 복구되었거나 복구할 수 없는 Room이에요.'],
     ['ROOM_RECOVERY_EXPIRED', '더 이상 사용할 수 없는 Room이에요.'],
-    ['AUTH_FORBIDDEN', '이 작업을 할 권한이 없어요.'],
-  ])('%s 오류를 Dialog용 상태로 반환한다', (code, message) => {
-    mocks.mutationState.error = new ApiClientError({ code, message: 'Recovery failed' }, 409);
+  ])('%s 오류를 Toast로 안내하고 Dialog 메시지는 반환하지 않는다', (code, message) => {
+    const error = new ApiClientError({ code, message: 'Recovery failed' }, 409);
+    mocks.mutationState.error = error;
     mocks.mutationState.isError = true;
     mocks.mutationState.variables = 'closed-room';
 
     const { result } = renderHook(() => useRecoverRoomAction());
 
-    expect(result.current.errorMessage).toBe(message);
+    act(() => mocks.recoverOptions?.onStateError?.(error));
+
+    expect(mocks.pushToast).toHaveBeenCalledWith({ title: message, variant: 'error' });
+    expect(result.current.errorMessage).toBeUndefined();
+    expect(result.current.errorRoomId).toBe('closed-room');
+  });
+
+  it('권한 오류를 Dialog용 상태로 반환한다', () => {
+    mocks.mutationState.error = new ApiClientError(
+      { code: 'AUTH_FORBIDDEN', message: 'Recovery failed' },
+      403,
+    );
+    mocks.mutationState.isError = true;
+    mocks.mutationState.variables = 'closed-room';
+
+    const { result } = renderHook(() => useRecoverRoomAction());
+
+    expect(result.current.errorMessage).toBe('이 작업을 할 권한이 없어요.');
     expect(result.current.errorRoomId).toBe('closed-room');
     expect(mocks.pushToast).not.toHaveBeenCalled();
   });

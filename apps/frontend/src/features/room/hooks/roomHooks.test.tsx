@@ -260,7 +260,8 @@ describe('Room membership hooks', () => {
       vi.mocked(roomApi.updateRoom).mockRejectedValue(error);
       const queryClient = createQueryClient();
       const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
-      const { result } = renderHook(() => useRecoverRoom(), {
+      const onStateError = vi.fn();
+      const { result } = renderHook(() => useRecoverRoom({ onStateError }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -273,6 +274,10 @@ describe('Room membership hooks', () => {
       });
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'mine'] });
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms', 'recent'] });
+      expect(onStateError).toHaveBeenCalledWith(error);
+      expect(onStateError.mock.invocationCallOrder[0]).toBeLessThan(
+        invalidateQueries.mock.invocationCallOrder[0],
+      );
     },
   );
 

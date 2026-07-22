@@ -104,7 +104,11 @@ export const useCloseRoom = (roomId: string) => {
   });
 };
 
-export const useRecoverRoom = () => {
+interface UseRecoverRoomOptions {
+  onStateError?: (error: ApiClientError) => void;
+}
+
+export const useRecoverRoom = ({ onStateError }: UseRecoverRoomOptions = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -121,6 +125,7 @@ export const useRecoverRoom = () => {
         error instanceof ApiClientError &&
         (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_RECOVERY_EXPIRED')
       ) {
+        onStateError?.(error);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: roomQueryKeys.detail(roomId) }),
           queryClient.invalidateQueries({ queryKey: roomQueryKeys.mine() }),

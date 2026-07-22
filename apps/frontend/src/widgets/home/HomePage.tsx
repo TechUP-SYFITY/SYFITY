@@ -1,35 +1,22 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-import type { ErrorCode } from '@syfity/shared';
-
-import { useToast } from '@/shared/components/ui/Toast';
-import { getApiErrorMessage } from '@/shared/lib/api/errorMessage';
-import { ApiClientError } from '@/shared/types/api';
 
 import { useMe } from '@/features/auth/hooks/useAuth';
 import { CreateRoomDialog } from '@/features/room/components/CreateRoomDialog';
 import { InviteCodeDialog } from '@/features/room/components/InviteCodeDialog';
 import { JoinRoomDialog } from '@/features/room/components/JoinRoomDialog';
-import { useMyRooms, useRecentRooms, useRecoverRoom } from '@/features/room/hooks/roomHooks';
+import { useMyRooms, useRecentRooms } from '@/features/room/hooks/roomHooks';
+import { useRecoverRoomAction } from '@/features/room/hooks/useRecoverRoomAction';
 import type { CreateRoomResponse, RoomInviteInfo } from '@/features/room/types/roomTypes';
 
 import { HomeShell } from './HomeShell';
 
-const RECOVERY_ERROR_MESSAGES = {
-  ROOM_NOT_CLOSED: '이미 복구되었거나 복구할 수 없는 Room이에요.',
-  ROOM_RECOVERY_EXPIRED: '더 이상 사용할 수 없는 Room이에요.',
-} satisfies Partial<Record<ErrorCode, string>>;
-
 export function HomePage() {
-  const router = useRouter();
-  const { pushToast } = useToast();
   const { data: user, isLoading: isUserLoading } = useMe();
   const recentRooms = useRecentRooms();
   const myRooms = useMyRooms();
-  const recoverRoom = useRecoverRoom();
+  const recoverRoom = useRecoverRoomAction();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
@@ -44,28 +31,6 @@ export function HomePage() {
     setIsInviteOpen(true);
   };
 
-  const handleRecoverRoom = (roomId: string) => {
-    if (recoverRoom.isPending) {
-      return;
-    }
-
-    recoverRoom.mutate(roomId, {
-      onSuccess: () => {
-        pushToast({ title: 'Room을 복구했어요.', variant: 'success' });
-        router.push(`/room/${roomId}`);
-      },
-      onError: (error) => {
-        if (error instanceof ApiClientError && error.code === 'ROOM_RECOVERY_EXPIRED') {
-          pushToast({ title: RECOVERY_ERROR_MESSAGES.ROOM_RECOVERY_EXPIRED, variant: 'error' });
-        }
-      },
-    });
-  };
-
-  const recoveryErrorMessage = recoverRoom.isError
-    ? getApiErrorMessage(recoverRoom.error, { codeOverrides: RECOVERY_ERROR_MESSAGES })
-    : undefined;
-
   return (
     <>
       <HomeShell
@@ -76,12 +41,12 @@ export function HomePage() {
         myRooms={myRooms.data?.rooms ?? []}
         isMyRoomsLoading={myRooms.isLoading}
         isMyRoomsError={myRooms.isError}
-        recoveringRoomId={recoverRoom.isPending ? recoverRoom.variables : undefined}
-        recoveryErrorMessage={recoveryErrorMessage}
-        recoveryErrorRoomId={recoverRoom.isError ? recoverRoom.variables : undefined}
+        recoveringRoomId={recoverRoom.recoveringRoomId}
+        recoveryErrorMessage={recoverRoom.errorMessage}
+        recoveryErrorRoomId={recoverRoom.errorRoomId}
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
-        onRecoverRoom={handleRecoverRoom}
+        onRecoverRoom={recoverRoom.recover}
         onRecoveryOpenChange={(open) => {
           if (!open) {
             recoverRoom.reset();

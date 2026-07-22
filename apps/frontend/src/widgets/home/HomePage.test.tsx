@@ -1,32 +1,23 @@
-// Home의 closed Room 복구 성공 이동과 오류 안내 조합을 검증한다.
+// Home이 closed Room 복구 feature의 action과 상태만 조합하는지 검증한다.
 import '@testing-library/jest-dom/vitest';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiClientError } from '@/shared/types/api';
-
 import { HomePage } from './HomePage';
 
 const mocks = vi.hoisted(() => ({
-  mutate: vi.fn(),
-  pushToast: vi.fn(),
-  recoveryState: {
-    error: null as unknown,
-    isError: false,
-    isPending: false,
-    variables: undefined as string | undefined,
+  actionState: {
+    errorMessage: undefined as string | undefined,
+    errorRoomId: undefined as string | undefined,
+    recoveringRoomId: undefined as string | undefined,
   },
+  recover: vi.fn(),
   reset: vi.fn(),
-  routerPush: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mocks.routerPush }),
-}));
-
-vi.mock('@/shared/components/ui/Toast', () => ({
-  useToast: () => ({ pushToast: mocks.pushToast }),
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
@@ -51,9 +42,12 @@ vi.mock('@/features/room/hooks/roomHooks', () => ({
     refetch: vi.fn(),
   }),
   useRecentRooms: () => ({ data: { rooms: [] }, isLoading: false }),
-  useRecoverRoom: () => ({
-    ...mocks.recoveryState,
-    mutate: mocks.mutate,
+}));
+
+vi.mock('@/features/room/hooks/useRecoverRoomAction', () => ({
+  useRecoverRoomAction: () => ({
+    ...mocks.actionState,
+    recover: mocks.recover,
     reset: mocks.reset,
   }),
 }));
@@ -71,60 +65,39 @@ vi.mock('@/features/room/components/JoinRoomDialog', () => ({
 describe('HomePage Room recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.recoveryState.error = null;
-    mocks.recoveryState.isError = false;
-    mocks.recoveryState.isPending = false;
-    mocks.recoveryState.variables = undefined;
+    mocks.actionState.errorMessage = undefined;
+    mocks.actionState.errorRoomId = undefined;
+    mocks.actionState.recoveringRoomId = undefined;
   });
 
   afterEach(cleanup);
 
-  it('복구 성공 후 안내하고 기존 Room 경로로 이동한다', () => {
+  it('복구 확인 시 feature action을 호출한다', () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole('button', { name: '지난 Room 복구' }));
     fireEvent.click(screen.getByRole('button', { name: 'Room 복구 확인' }));
 
-    expect(mocks.mutate).toHaveBeenCalledWith('closed-room', expect.any(Object));
-    const options = mocks.mutate.mock.calls[0][1] as { onSuccess: () => void };
-    options.onSuccess();
-
-    expect(mocks.pushToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Room을 복구했어요.', variant: 'success' }),
-    );
-    expect(mocks.routerPush).toHaveBeenCalledWith('/room/closed-room');
+    expect(mocks.recover).toHaveBeenCalledWith('closed-room');
   });
 
-  it('복구 기간 만료 오류를 Toast로 안내한다', () => {
-    render(<HomePage />);
-
-    fireEvent.click(screen.getByRole('button', { name: '지난 Room 복구' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Room 복구 확인' }));
-
-    const options = mocks.mutate.mock.calls[0][1] as { onError: (error: unknown) => void };
-    options.onError(
-      new ApiClientError(
-        { code: 'ROOM_RECOVERY_EXPIRED', message: 'Room recovery period expired' },
-        409,
-      ),
-    );
-
-    expect(mocks.pushToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '더 이상 사용할 수 없는 Room이에요.', variant: 'error' }),
-    );
-  });
-
-  it.each([
-    ['AUTH_FORBIDDEN', '이 작업을 할 권한이 없어요.'],
-    ['ROOM_NOT_CLOSED', '이미 복구되었거나 복구할 수 없는 Room이에요.'],
-  ])('%s 복구 오류를 확인 Dialog에 표시한다', (code, message) => {
-    mocks.recoveryState.error = new ApiClientError({ code, message: 'Recovery failed' }, 409);
-    mocks.recoveryState.isError = true;
-    mocks.recoveryState.variables = 'closed-room';
+  it('feature가 반환한 복구 오류를 해당 Dialog에 표시한다', () => {
+    mocks.actionState.errorMessage = '이미 복구되었거나 복구할 수 없는 Room이에요.';
+    mocks.actionState.errorRoomId = 'closed-room';
 
     render(<HomePage />);
     fireEvent.click(screen.getByRole('button', { name: '지난 Room 복구' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '이미 복구되었거나 복구할 수 없는 Room이에요.',
+    );
+  });
+
+  it('복구 Dialog를 닫으면 feature 오류 상태를 초기화한다', () => {
+    render(<HomePage />);
+    fireEvent.click(screen.getByRole('button', { name: '지난 Room 복구' }));
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(mocks.reset).toHaveBeenCalledOnce();
   });
 });

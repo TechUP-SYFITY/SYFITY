@@ -55,6 +55,7 @@ function createRoomApiMock(apiOverride: RoomApiOverride = {}): RoomApi {
       status: 'active',
       createdAt: new Date().toISOString(),
     }),
+    deleteRoom: async () => undefined,
     getMyRooms: async () => ({ rooms: [] }),
     getRecentRooms: async () => ({ rooms: [] }),
     getRoom: async () => joinedRoomData.room,

@@ -14,7 +14,7 @@ const DEACTIVATION_ERROR_MESSAGES = {
   ROOM_NOT_FOUND: '이미 비활성화되었거나 찾을 수 없는 Room이에요.',
 } satisfies Partial<Record<ErrorCode, string>>;
 
-const isDeactivationStateError = (error: unknown) =>
+const isDeactivationStateError = (error: unknown): error is ApiClientError =>
   error instanceof ApiClientError &&
   (error.code === 'ROOM_NOT_CLOSED' || error.code === 'ROOM_NOT_FOUND');
 

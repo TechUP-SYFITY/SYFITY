@@ -75,10 +75,10 @@ export function PlayerPanel({
   }
 
   return (
-    <section className="mx-auto flex h-full w-full max-w-2xl flex-col gap-4 xl:mx-0">
+    <section className="mx-auto flex h-full w-full max-w-2xl flex-col gap-4 xl:mx-0 xl:flex-col xl:items-stretch landscape:flex-row landscape:items-start">
       <div
         ref={playerFrameRef}
-        className="relative flex min-h-[200px] min-w-0 flex-1 overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border"
+        className="relative flex min-h-[200px] min-w-0 flex-1 overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border xl:h-auto xl:w-auto xl:flex-1 landscape:h-[200px] landscape:w-[356px] landscape:flex-none"
       >
         <YouTubePlayer
           availableContainerRef={playerFrameRef}
@@ -91,7 +91,7 @@ export function PlayerPanel({
         />
       </div>
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 landscape:flex-1 landscape:items-center">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-bold text-foreground">
             {currentTrack?.title ?? '재생 대기'}

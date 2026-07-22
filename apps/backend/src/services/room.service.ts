@@ -89,17 +89,7 @@ export class RoomService {
   }
 
   async getRoomInfo(roomId: string, userId: string): Promise<RoomDetailRecord> {
-    const room = await this.roomRepo.findRoomById(roomId);
-    if (!room) {
-      throw new AppError(404, ERROR_CODES.ROOM_NOT_FOUND, '존재하지 않는 Room입니다.');
-    }
-
-    const membership = await this.roomRepo.findMembership(roomId, userId);
-    if (!membership) {
-      throw new AppError(403, ERROR_CODES.ROOM_ACCESS_DENIED, 'Room 참여자만 접근할 수 있습니다.');
-    }
-
-    return room;
+    return assertJoinableRoomMember(this.roomRepo, roomId, userId);
   }
 
   async updateRoom(

@@ -21,6 +21,7 @@ export interface PlaylistItemRowProps {
   isOwnItem: boolean;
   isReady: boolean;
   isReorderEnabled: boolean;
+  isSelectEnabled?: boolean;
   dropPosition?: 'after' | 'before' | null;
   dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
   dragHandleRef?: Ref<HTMLButtonElement>;
@@ -35,6 +36,7 @@ export interface PlaylistItemRowProps {
   onDragHandlePointerUp?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onFocusWithin: () => void;
   onPreventMouseFocus: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onSelect?: (itemId: string) => void;
   rowRef?: Ref<HTMLDivElement>;
   style?: CSSProperties;
 }
@@ -53,6 +55,7 @@ export function PlaylistItemRow({
   isOwnItem,
   isReady,
   isReorderEnabled,
+  isSelectEnabled = false,
   item,
   onBlurWithin,
   onDelete,
@@ -63,6 +66,7 @@ export function PlaylistItemRow({
   onDragHandlePointerUp,
   onFocusWithin,
   onPreventMouseFocus,
+  onSelect,
   rowRef,
   style,
 }: PlaylistItemRowProps) {
@@ -73,6 +77,26 @@ export function PlaylistItemRow({
     alwaysShowActions || isFocused
       ? 'flex opacity-100'
       : 'hidden xl:flex xl:opacity-0 xl:group-hover:opacity-100';
+  const itemContent = (
+    <>
+      <PlaylistArtwork item={item} />
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn('truncate text-sm font-bold', getTitleColorClass(isCurrent, isUnavailable))}
+        >
+          {item.title}
+          {isUnavailable ? (
+            <CircleAlert className="ml-1 inline-block size-3 text-destructive" aria-hidden />
+          ) : null}
+        </p>
+        <p className={cn('mt-1 truncate text-xs', getMetaColorClass(isUnavailable))}>
+          {item.channelTitle}
+          <span className="mx-1">·</span>
+          {formatDuration(item.duration)}
+        </p>
+      </div>
+    </>
+  );
 
   return (
     <div
@@ -96,25 +120,20 @@ export function PlaylistItemRow({
       tabIndex={hasRowActions ? 0 : undefined}
     >
       <div className="flex min-h-10 min-w-0 items-center gap-3">
-        <PlaylistArtwork item={item} />
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              'truncate text-sm font-bold',
-              getTitleColorClass(isCurrent, isUnavailable),
-            )}
+        {onSelect ? (
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset disabled:cursor-default disabled:opacity-100"
+            aria-current={isCurrent ? 'true' : undefined}
+            aria-label={`${item.title} 재생`}
+            disabled={!isSelectEnabled}
+            onClick={() => onSelect(item.id)}
           >
-            {item.title}
-            {isUnavailable ? (
-              <CircleAlert className="ml-1 inline-block size-3 text-destructive" aria-hidden />
-            ) : null}
-          </p>
-          <p className={cn('mt-1 truncate text-xs', getMetaColorClass(isUnavailable))}>
-            {item.channelTitle}
-            <span className="mx-1">·</span>
-            {formatDuration(item.duration)}
-          </p>
-        </div>
+            {itemContent}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-3">{itemContent}</div>
+        )}
         <div
           data-testid={`playlist-actions-${item.id}`}
           className={cn(

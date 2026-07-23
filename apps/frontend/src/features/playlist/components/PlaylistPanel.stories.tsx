@@ -2,7 +2,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import type { PlaylistItem } from '@/shared/types/domain';
 
@@ -63,6 +63,7 @@ const meta = {
     isHost: true,
     isReady: true,
     onOpenSearch: () => undefined,
+    onSelectItem: () => undefined,
     playlistApiClient: createPlaylistApiMock(),
   },
 } satisfies Meta<typeof PlaylistPanel>;
@@ -173,6 +174,31 @@ export const ParentPlaylistData: Story = {
     playlistItems,
   },
   decorators: [withPlaylistStoryFrame()],
+};
+
+export const SelectTrackInteraction: Story = {
+  args: {
+    currentPlaylistItemId: 'story-night-changes',
+    onSelectItem: fn(),
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const selectButton = canvas.getByRole('button', { name: 'Dynamite 재생' });
+
+    selectButton.focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(args.onSelectItem).toHaveBeenCalledTimes(1);
+    await expect(args.onSelectItem).toHaveBeenLastCalledWith('story-dynamite');
+
+    await userEvent.pointer([
+      { keys: '[TouchA>]', target: selectButton },
+      { keys: '[/TouchA]', target: selectButton },
+    ]);
+    await expect(args.onSelectItem).toHaveBeenCalledTimes(2);
+    await expect(args.onSelectItem).toHaveBeenLastCalledWith('story-dynamite');
+  },
 };
 
 export const DragPreview: Story = {
@@ -307,6 +333,7 @@ export const MemberView: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByRole('button', { name: '곡 추가' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Dynamite 재생' })).not.toBeInTheDocument();
   },
 };
 
@@ -328,6 +355,7 @@ export const HostControlsDisabled: Story = {
 
     await expect(canvas.getByRole('button', { name: 'Night Changes 순서 변경' })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: 'Night Changes 삭제' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Dynamite 재생' })).toBeDisabled();
   },
 };
 

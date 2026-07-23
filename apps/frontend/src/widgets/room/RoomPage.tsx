@@ -250,14 +250,16 @@ function RoomPageContent({ roomId }: RoomPageProps) {
           playlistPanel={
             <PlaylistPanel
               canControlRoom={canControlRoom}
-              currentPlaylistItemId={currentTrack?.id ?? null}
+              currentPlaylistItemId={playbackState?.playlistItemId ?? null}
               currentUserId={me?.id}
               isActiveRoomMember={isActiveRoomMember}
               roomId={roomId}
               isHost={isHost}
               isReady={hasJoinedRoom}
+              isSelectPending={miniPlayerControls.pendingCommand !== null}
               onOpenSearch={handleOpenSearch}
               onOpenImport={() => setIsImportOpen(true)}
+              onSelectItem={miniPlayerControls.handleSelectTrack}
             />
           }
           room={room}

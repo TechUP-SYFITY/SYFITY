@@ -21,7 +21,7 @@ import type { PlaybackPolicy, PlaybackState, PlaylistItem } from '@/shared/types
 import { TrackArtwork } from './TrackArtwork';
 
 export type MiniPlayerPendingCommand =
-  'play' | 'pause' | 'previous' | 'next' | 'seek' | 'repeat' | 'shuffle' | null;
+  'play' | 'pause' | 'previous' | 'next' | 'select' | 'seek' | 'repeat' | 'shuffle' | null;
 
 interface MiniPlayerProps {
   commandError: string | null;

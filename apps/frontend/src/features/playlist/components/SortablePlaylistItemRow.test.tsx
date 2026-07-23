@@ -43,12 +43,14 @@ const defaultProps = {
   isOwnItem: true,
   isReady: true,
   isReorderEnabled: true,
+  isSelectEnabled: true,
   item,
   onBlurWithin: vi.fn(),
   onDelete: vi.fn(),
   onDragHandleKeyDown: vi.fn(),
   onFocusWithin: vi.fn(),
   onPreventMouseFocus: vi.fn(),
+  onSelect: vi.fn(),
 };
 
 describe('SortablePlaylistItemRow', () => {

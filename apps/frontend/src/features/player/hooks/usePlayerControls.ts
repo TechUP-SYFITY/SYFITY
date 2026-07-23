@@ -9,7 +9,8 @@ import { playbackCommands } from '../lib/playbackCommands';
 import { usePlayerStore } from '../store/playerStore';
 import type { PlayerController } from '../types/playerTypes';
 
-export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek' | 'repeat' | 'shuffle';
+export type PlayerCommand =
+  'play' | 'pause' | 'previous' | 'next' | 'select' | 'seek' | 'repeat' | 'shuffle';
 
 const SEEK_DEBOUNCE_MS = 200;
 const PLAYER_COMMAND_ERROR_MESSAGE_OVERRIDES = {
@@ -156,6 +157,20 @@ export function usePlayerControls({
     void runHostCommand('next', () => playbackCommands.changeTrack(roomId, 'next'));
   }
 
+  function handleSelectTrack(playlistItemId: string) {
+    if (!playlistItemId || !canControlRoom || pendingCommandRef.current) {
+      return;
+    }
+
+    // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
+    playerControllerRef?.current?.play();
+    void runHostCommand(
+      'select',
+      () => playbackCommands.changeTrack(roomId, 'select', playlistItemId),
+      isPlaying ? undefined : () => playerControllerRef?.current?.pause(),
+    );
+  }
+
   function handleRepeatToggle() {
     let nextRepeatMode: 'off' | 'all' | 'one' = 'all';
     if (playbackPolicy?.repeatMode === 'all') {
@@ -232,6 +247,7 @@ export function usePlayerControls({
     handlePlaybackStateChange,
     handlePlayPause,
     handlePreviousTrack,
+    handleSelectTrack,
     handleRepeatToggle,
     handleSeek,
     handleShuffleToggle,

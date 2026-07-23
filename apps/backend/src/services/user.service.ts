@@ -101,18 +101,24 @@ export class UserService {
   }
 
   async deleteAccount(userId: string): Promise<void> {
-    const currentUser = await this.userRepo.findUserById(userId);
-    await this.removeProfileImage(currentUser?.profileImage ?? null);
+    await this.userRepo.markDeletionPending(userId);
+    try {
+      const currentUser = await this.userRepo.findUserById(userId);
+      await this.removeProfileImage(currentUser?.profileImage ?? null);
 
-    const roomRepo = this.requireRoomRepo();
-    const roomService = this.requireRoomService();
-    const personalPlaylistRepo = this.requirePersonalPlaylistRepo();
-    const hostedRooms = await roomRepo.findRoomsByHostId(userId);
-    for (const room of hostedRooms.filter((hostedRoom) => hostedRoom.status === 'active')) {
-      await roomService.closeRoomAndBroadcast(room.id, userId);
+      const roomRepo = this.requireRoomRepo();
+      const roomService = this.requireRoomService();
+      const personalPlaylistRepo = this.requirePersonalPlaylistRepo();
+      const hostedRooms = await roomRepo.findRoomsByHostId(userId);
+      for (const room of hostedRooms.filter((hostedRoom) => hostedRoom.status === 'active')) {
+        await roomService.closeRoomAndBroadcast(room.id, userId);
+      }
+      await personalPlaylistRepo.deleteAllByOwnerId(userId);
+      await this.userRepo.anonymizeUser(userId);
+    } catch (error) {
+      await this.userRepo.clearDeletionPending(userId);
+      throw error;
     }
-    await personalPlaylistRepo.deleteAllByOwnerId(userId);
-    await this.userRepo.anonymizeUser(userId);
   }
 
   private validateNickname(rawNickname: string): string {

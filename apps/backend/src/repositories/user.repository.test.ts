@@ -80,6 +80,7 @@ describe('UserRepository', () => {
         nickname: true,
         profileImage: true,
         onboardedAt: true,
+        deletionPendingAt: true,
         deletedAt: true,
       },
     });
@@ -124,19 +125,30 @@ describe('UserRepository', () => {
     );
   });
 
-  it('탈퇴 사용자를 익명 정보와 비어 있는 인증 상태로 전환한다', async () => {
+  it('탈퇴 시작 상태를 기록하고 완료 시 익명 정보와 비어 있는 인증 상태로 전환한다', async () => {
     const prisma = makePrisma();
     const repo = new UserRepository(prisma);
 
+    await repo.markDeletionPending('user-id');
+    await repo.clearDeletionPending('user-id');
     await repo.anonymizeUser('user-id');
 
-    expect(prisma.user.update).toHaveBeenCalledWith({
+    expect(prisma.user.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'user-id' },
+      data: { deletionPendingAt: expect.any(Date) },
+    });
+    expect(prisma.user.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'user-id' },
+      data: { deletionPendingAt: null },
+    });
+    expect(prisma.user.update).toHaveBeenNthCalledWith(3, {
       where: { id: 'user-id' },
       data: expect.objectContaining({
         email: expect.stringMatching(/^deleted-.+@deleted\.syfity\.local$/),
         nickname: '탈퇴한 사용자',
         profileImage: null,
         refreshToken: null,
+        deletionPendingAt: null,
         deletedAt: expect.any(Date),
       }),
     });

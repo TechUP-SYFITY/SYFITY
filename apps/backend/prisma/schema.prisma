@@ -48,6 +48,7 @@ model User {
   profileImage String?  @map("profile_image")
   refreshToken String?  @map("refresh_token")
   onboardedAt   DateTime? @map("onboarded_at") @db.Timestamptz
+  deletionPendingAt DateTime? @map("deletion_pending_at") @db.Timestamptz
   deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz

@@ -20,6 +20,7 @@ export class UserRepository implements IUserRepository {
         nickname: true,
         profileImage: true,
         onboardedAt: true,
+        deletionPendingAt: true,
         deletedAt: true,
       },
     });
@@ -52,6 +53,20 @@ export class UserRepository implements IUserRepository {
     });
   }
 
+  async markDeletionPending(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletionPendingAt: new Date() },
+    });
+  }
+
+  async clearDeletionPending(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletionPendingAt: null },
+    });
+  }
+
   async anonymizeUser(userId: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
@@ -60,6 +75,7 @@ export class UserRepository implements IUserRepository {
         nickname: '탈퇴한 사용자',
         profileImage: null,
         refreshToken: null,
+        deletionPendingAt: null,
         deletedAt: new Date(),
       },
     });

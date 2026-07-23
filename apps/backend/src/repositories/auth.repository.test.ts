@@ -174,4 +174,18 @@ describe('AuthRepository', () => {
 
     await expect(repo.findUserByRefreshToken('user-id', 'refresh-token')).resolves.toBe(null);
   });
+
+  it('탈퇴 진행 중인 사용자의 refreshToken은 거부한다', async () => {
+    const upsert = vi.fn();
+    const update = vi.fn();
+    const findUnique = vi.fn().mockResolvedValue({
+      ...userRecord,
+      refreshToken: 'refresh-token',
+      deletionPendingAt: new Date('2026-07-23T00:00:00.000Z'),
+    });
+    const prisma = { user: { upsert, update, findUnique } } satisfies AuthRepositoryPrisma;
+    const repo = new AuthRepository(prisma);
+
+    await expect(repo.findUserByRefreshToken('user-id', 'refresh-token')).resolves.toBe(null);
+  });
 });

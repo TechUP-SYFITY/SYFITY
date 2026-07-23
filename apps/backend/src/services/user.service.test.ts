@@ -28,6 +28,8 @@ function makeRepo(overrides: Partial<IUserRepository> = {}): IUserRepository {
     completeOnboarding: vi.fn().mockResolvedValue({ ...userProfile, onboardedAt: new Date() }),
     updateNickname: vi.fn().mockResolvedValue(userProfile),
     updateProfileImage: vi.fn().mockResolvedValue(userProfile),
+    markDeletionPending: vi.fn().mockResolvedValue(undefined),
+    clearDeletionPending: vi.fn().mockResolvedValue(undefined),
     anonymizeUser: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -198,6 +200,10 @@ describe('UserService', () => {
     expect(storage.remove).toHaveBeenCalledWith('user-id/old.png');
 
     await service.deleteAccount('user-id');
+    expect(repo.markDeletionPending).toHaveBeenCalledWith('user-id');
+    expect(vi.mocked(repo.markDeletionPending).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(storage.remove).mock.invocationCallOrder[1],
+    );
     expect(roomService.closeRoomAndBroadcast).toHaveBeenCalledWith('active-room', 'user-id');
     expect(roomService.closeRoomAndBroadcast).not.toHaveBeenCalledWith('closed-room', 'user-id');
     expect(personalPlaylistRepo.deleteAllByOwnerId).toHaveBeenCalledWith('user-id');
@@ -230,6 +236,8 @@ describe('UserService', () => {
     await expect(service.deleteAccount('user-id')).rejects.toThrow('storage unavailable');
 
     expect(storage.remove).toHaveBeenCalledWith('user-id/old.png');
+    expect(repo.markDeletionPending).toHaveBeenCalledWith('user-id');
+    expect(repo.clearDeletionPending).toHaveBeenCalledWith('user-id');
     expect(roomRepo.findRoomsByHostId).not.toHaveBeenCalled();
     expect(roomService.closeRoomAndBroadcast).not.toHaveBeenCalled();
     expect(personalPlaylistRepo.deleteAllByOwnerId).not.toHaveBeenCalled();

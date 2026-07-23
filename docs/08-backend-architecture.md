@@ -279,7 +279,7 @@ export class RoomService {
 
 `@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. REST 인증은 일반 Express 인증 미들웨어를 직접 붙이지 않고 tsoa Security 진입점을 사용한다. Socket.IO 인증은 별도로 `socket/socketAuth.ts`의 `socketAuth`를 사용한다.
 
-JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정이 삭제됐을 수 있으므로, `UserRepository.findUserById`로 DB 상태를 재확인하고 `deletedAt`이 있는 계정은 거부한다.
+JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정 탈퇴가 시작되거나 완료됐을 수 있으므로, `UserRepository.findUserById`로 DB 상태를 재확인하고 `deletionPendingAt` 또는 `deletedAt`이 있는 계정은 거부한다.
 
 ```ts
 // src/authentication.ts

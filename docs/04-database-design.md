@@ -124,16 +124,17 @@ erDiagram
 
 Google OAuth로 생성되는 사용자 계정이다.
 
-| 컬럼                   | 타입        | 제약         | 설명                                           |
-| ---------------------- | ----------- | ------------ | ---------------------------------------------- |
-| id                     | UUID        | PK           | 사용자 식별자                                  |
-| email                  | VARCHAR     | UK, NOT NULL | Google 계정 이메일                             |
-| nickname               | VARCHAR     | NOT NULL     | 표시 이름                                      |
-| profile_image          | VARCHAR     | NULLABLE     | 프로필 이미지 URL                              |
-| refresh_token          | VARCHAR     | NULLABLE     | Google Refresh Token                           |
-| onboarded_at           | TIMESTAMPTZ | NULLABLE     | 최초 온보딩 완료 시각                          |
-| deleted_at             | TIMESTAMPTZ | NULLABLE     | 계정 탈퇴 시각. 존재하면 기존 토큰 인증을 거부 |
-| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각                                 |
+| 컬럼                   | 타입        | 제약         | 설명                                                   |
+| ---------------------- | ----------- | ------------ | ------------------------------------------------------ |
+| id                     | UUID        | PK           | 사용자 식별자                                          |
+| email                  | VARCHAR     | UK, NOT NULL | Google 계정 이메일                                     |
+| nickname               | VARCHAR     | NOT NULL     | 표시 이름                                              |
+| profile_image          | VARCHAR     | NULLABLE     | 프로필 이미지 URL                                      |
+| refresh_token          | VARCHAR     | NULLABLE     | Google Refresh Token                                   |
+| onboarded_at           | TIMESTAMPTZ | NULLABLE     | 최초 온보딩 완료 시각                                  |
+| deletion_pending_at    | TIMESTAMPTZ | NULLABLE     | 탈퇴 정리 시작 시각. 존재하는 동안 신규 인증·쓰기 차단 |
+| deleted_at             | TIMESTAMPTZ | NULLABLE     | 계정 탈퇴 완료 시각. 존재하면 기존 토큰 인증을 거부    |
+| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각                                         |
 
 ### 4.2 rooms
 

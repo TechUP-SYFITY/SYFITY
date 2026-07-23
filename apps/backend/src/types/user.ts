@@ -4,6 +4,7 @@ export type UserProfileRecord = {
   nickname: string;
   profileImage: string | null;
   onboardedAt?: Date | null;
+  deletionPendingAt?: Date | null;
   deletedAt?: Date | null;
 };
 
@@ -23,5 +24,7 @@ export interface IUserRepository {
   ): Promise<UserProfileRecord & { onboardedAt: Date }>;
   updateNickname(userId: string, nickname: string): Promise<UserProfileRecord>;
   updateProfileImage(userId: string, profileImage: string | null): Promise<UserProfileRecord>;
+  markDeletionPending(userId: string): Promise<void>;
+  clearDeletionPending(userId: string): Promise<void>;
   anonymizeUser(userId: string): Promise<void>;
 }

@@ -74,6 +74,25 @@ describe('expressAuthentication', () => {
     expect(request.user).toBeUndefined();
   });
 
+  it('탈퇴 진행 중인 사용자의 기존 access token은 AUTH_UNAUTHORIZED를 반환한다', async () => {
+    findUserByIdMock.mockResolvedValue({
+      id: USER_ID,
+      email: 'user@example.com',
+      nickname: 'Alice',
+      profileImage: null,
+      deletionPendingAt: new Date('2026-07-23T00:00:00.000Z'),
+    });
+    const { expressAuthentication } = await import('./authentication');
+    const token = jwt.sign({ id: USER_ID, email: 'user@example.com' }, JWT_SECRET);
+    const request = { cookies: { access_token: token } } as unknown as Request;
+
+    await expect(expressAuthentication(request, 'jwt')).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_UNAUTHORIZED',
+    } satisfies Partial<AppError>);
+    expect(request.user).toBeUndefined();
+  });
+
   it('쿠키가 없으면 AUTH_UNAUTHORIZED를 반환한다', async () => {
     const { expressAuthentication } = await import('./authentication');
     const request = { cookies: {} } as unknown as Request;

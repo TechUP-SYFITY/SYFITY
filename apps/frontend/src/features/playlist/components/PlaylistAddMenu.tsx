@@ -31,7 +31,10 @@ export function PlaylistAddMenu({
   const isFloating = variant === 'floating';
   const buttonVariant = isFloating ? 'primary' : 'primary-soft';
   const buttonSize = isFloating ? 'md' : 'sm';
-  const buttonClass = cn('rounded-2xl', isFloating && 'shadow-lg');
+  const buttonClass = cn(
+    'rounded-2xl',
+    isFloating && 'h-11 justify-center px-4 py-0 text-center shadow-lg',
+  );
   const iconClass = isFloating ? 'size-4' : 'size-3';
   const label = isFloating ? '곡 추가' : '추가';
 

@@ -38,8 +38,10 @@ interface PlaylistPanelProps {
   roomId: string;
   isHost: boolean;
   isReady: boolean;
+  isSelectPending?: boolean;
   onOpenSearch: () => void;
   onOpenImport?: () => void;
+  onSelectItem?: (itemId: string) => void;
   playlistApiClient?: PlaylistApi;
 }
 
@@ -56,8 +58,10 @@ export function PlaylistPanel({
   roomId,
   isHost,
   isReady,
+  isSelectPending = false,
   onOpenSearch,
   onOpenImport,
+  onSelectItem,
   playlistApiClient,
 }: PlaylistPanelProps) {
   const shouldUseParentPlaylist = Boolean(playlistItems);
@@ -139,6 +143,14 @@ export function PlaylistPanel({
     return isActiveRoomMember && item.addedBy === currentUserId;
   };
 
+  const canSelectItem = (item: PlaylistItem) =>
+    isHost &&
+    canControlRoom &&
+    isReady &&
+    !isSelectPending &&
+    item.id !== currentPlaylistItemId &&
+    item.status !== 'unavailable';
+
   const handleDelete = (itemId: string) => {
     const item = visiblePlaylist.find((candidate) => candidate.id === itemId);
 
@@ -148,6 +160,16 @@ export function PlaylistPanel({
 
     resetMutationErrors();
     deletePlaylistItem.mutate(itemId);
+  };
+
+  const handleSelect = (itemId: string) => {
+    const item = visiblePlaylist.find((candidate) => candidate.id === itemId);
+
+    if (!item || !canSelectItem(item)) {
+      return;
+    }
+
+    onSelectItem?.(itemId);
   };
 
   return (
@@ -208,12 +230,14 @@ export function PlaylistPanel({
                   isOwnItem={item.addedBy === currentUserId}
                   isReady={isReady}
                   isReorderEnabled={canControlRoom}
+                  isSelectEnabled={Boolean(onSelectItem) && canSelectItem(item)}
                   item={item}
                   onBlurWithin={(event) => handleRowBlur(event, item.id)}
                   onDelete={handleDelete}
                   onDragHandleKeyDown={handleKeyboardReorder}
                   onFocusWithin={() => setFocusedActionItemId(item.id)}
                   onPreventMouseFocus={preventMouseFocus}
+                  onSelect={isHost && onSelectItem ? handleSelect : undefined}
                 />
               );
             })}

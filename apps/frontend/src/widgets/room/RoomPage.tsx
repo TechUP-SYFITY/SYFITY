@@ -256,8 +256,10 @@ function RoomPageContent({ roomId }: RoomPageProps) {
               roomId={roomId}
               isHost={isHost}
               isReady={hasJoinedRoom}
+              isSelectPending={miniPlayerControls.pendingCommand !== null}
               onOpenSearch={handleOpenSearch}
               onOpenImport={() => setIsImportOpen(true)}
+              onSelectItem={miniPlayerControls.handleSelectTrack}
             />
           }
           room={room}

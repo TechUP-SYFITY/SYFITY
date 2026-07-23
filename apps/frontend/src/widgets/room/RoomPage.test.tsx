@@ -192,6 +192,35 @@ describe('RoomPage', () => {
     );
   });
 
+  it('Host가 Playlist 곡을 선택하면 select Socket 명령을 정확히 한 번 전송한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Dynamite 재생' }));
+
+    await waitFor(() => {
+      const selectCalls = socket.emit.mock.calls.filter(
+        ([eventName]) => eventName === 'playback:change-track',
+      );
+      expect(selectCalls).toHaveLength(1);
+      expect(selectCalls[0]).toEqual([
+        'playback:change-track',
+        {
+          action: 'select',
+          playlistItemId: 'fallback-dynamite',
+          roomId: roomFixture.room.id,
+        },
+        expect.any(Function),
+      ]);
+    });
+    expect(usePlayerStore.getState().playbackState?.playlistItemId).toBeNull();
+  });
+
   it('이전 Room 상태가 남아 있어도 URL의 roomId로 연결한다', async () => {
     useRoomStore.setState({
       room: {

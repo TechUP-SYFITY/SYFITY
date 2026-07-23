@@ -23,6 +23,7 @@ const track = (index: number): YouTubeVideoDetail => ({
   thumbnailUrl: FAKE_THUMBNAIL_URL,
   duration: 180 + index, // 곡마다 다른 길이로 두어 표시 로직을 구분할 수 있게 한다
   embeddable: true,
+  madeForKids: false,
   categoryId: YOUTUBE_MUSIC_CATEGORY_ID,
 });
 
@@ -44,6 +45,7 @@ export const FAKE_YOUTUBE_CATALOG: readonly YouTubeVideoDetail[] = [
     thumbnailUrl: FAKE_THUMBNAIL_URL,
     duration: 200,
     embeddable: false,
+    madeForKids: false,
     categoryId: YOUTUBE_MUSIC_CATEGORY_ID,
   },
   {
@@ -53,6 +55,7 @@ export const FAKE_YOUTUBE_CATALOG: readonly YouTubeVideoDetail[] = [
     thumbnailUrl: FAKE_THUMBNAIL_URL,
     duration: 210,
     embeddable: true,
+    madeForKids: false,
     categoryId: NON_MUSIC_CATEGORY_ID,
   },
 ];

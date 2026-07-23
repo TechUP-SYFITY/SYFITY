@@ -73,8 +73,9 @@ export default defineConfig({
       //   1) Next 16은 같은 디렉터리에서 dev 서버를 하나만 허용한다. 개발용 dev 서버(:3000)를
       //      켜 둔 상태로 E2E를 돌리려면 dev 모드로는 불가능하다.
       //   2) E2E는 배포되는 산출물을 검증하는 편이 맞고, HMR로 인한 flake도 사라진다.
+      // @syfity/shared 빌드는 root e2e 스크립트가 두 서버 기동 전에 1회 선행한다.
+      // 여기서 다시 빌드하면 backend가 같은 dist를 읽는 시점과 동시 쓰기가 겹칠 수 있다.
       command: [
-        'pnpm --filter @syfity/shared build',
         'pnpm --filter frontend exec next build',
         `pnpm --filter frontend exec next start -p ${FRONTEND_PORT}`,
       ].join(' && '),

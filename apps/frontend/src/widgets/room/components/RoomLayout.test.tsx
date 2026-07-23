@@ -170,7 +170,7 @@ describe('RoomLayout', () => {
     expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
   });
 
-  it('가로모드 패널은 activeMobileTab과 무관하게 항상 렌더링되고 기본 탭은 재생목록이다', () => {
+  it('가로모드 사이드 패널은 작은 화면에서만 좁아지고 기본 탭은 재생목록이다', () => {
     render(
       <RoomLayout
         activeMobileTab={null}
@@ -184,6 +184,10 @@ describe('RoomLayout', () => {
 
     const landscapePanel = screen.getByTestId('room-landscape-panel');
     expect(landscapePanel).toBeInTheDocument();
+    expect(landscapePanel).toHaveClass('max-xl:landscape:flex');
+    expect(landscapePanel).toHaveClass('max-[767px]:landscape:w-64');
+    expect(landscapePanel).toHaveClass('min-[768px]:max-xl:landscape:w-room-side');
+    expect(screen.getByTestId('room-player-slot')).toHaveClass('max-xl:landscape:flex');
     expect(screen.getAllByTestId('playlist-panel').some((el) => landscapePanel.contains(el))).toBe(
       true,
     );

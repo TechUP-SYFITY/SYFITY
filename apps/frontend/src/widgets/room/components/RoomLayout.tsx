@@ -134,11 +134,12 @@ export function RoomLayout({
       {/* 가로모드 전용 사이드 패널. xl에서는 위의 멤버·재생목록·채팅 열이 이미 동시에
           보이므로 이 패널은 필요 없다 — max-xl:landscape:로 "xl 미만이면서 가로모드"일
           때만 켠다(landscape:와 xl:는 서로 다른 미디어 특성이라 그냥 landscape:만 쓰면
-          가로로 넓은 데스크톱에서도 함께 켜져버린다). 하단 MiniPlayer(h-16, 전체 폭 fixed,
+          가로로 넓은 데스크톱에서도 함께 켜져버린다). 768px 미만에서는 256px로 좁혀
+          356px Player가 확보할 폭을 남긴다. 하단 MiniPlayer(h-16, 전체 폭 fixed,
           z-40)가 이 패널 위에 겹쳐 뜨므로 그만큼(pb-16) 아래 여백을 비워 콘텐츠가
           가려지지 않게 한다. */}
       <div
-        className="hidden max-xl:landscape:flex max-xl:landscape:min-h-0 max-xl:landscape:w-room-side max-xl:landscape:flex-none max-xl:landscape:flex-col max-xl:landscape:overflow-hidden max-xl:landscape:border-l max-xl:landscape:border-border max-xl:landscape:pb-16"
+        className="hidden max-[767px]:landscape:w-64 max-xl:landscape:flex max-xl:landscape:min-h-0 max-xl:landscape:flex-none max-xl:landscape:flex-col max-xl:landscape:overflow-hidden max-xl:landscape:border-l max-xl:landscape:border-border max-xl:landscape:pb-16 min-[768px]:max-xl:landscape:w-room-side"
         data-testid="room-landscape-panel"
       >
         <MobileTabs activeTab={landscapeTab} onChange={setLandscapeTab} />

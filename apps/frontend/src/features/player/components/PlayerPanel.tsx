@@ -91,7 +91,7 @@ export function PlayerPanel({
         />
       </div>
 
-      <div className="flex min-w-0 items-start justify-between gap-4 max-xl:landscape:flex-1 max-xl:landscape:items-center">
+      <div className="flex min-w-0 items-start justify-between gap-4 max-[767px]:landscape:hidden max-xl:landscape:flex-1 max-xl:landscape:items-center">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-bold text-foreground">
             {currentTrack?.title ?? '재생 대기'}

@@ -1,6 +1,8 @@
 // 추방은 Room에서 내보내는 데서 끝나지 않고 재입장까지 막는다. 그 상태 전이는
 // Socket(room:kicked) → 대상 화면 이탈 → REST(POST /room-memberships) 거절로 이어지므로
 // 브라우저 두 개와 실제 서버가 있어야 확인할 수 있다.
+import type { Page } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test';
 import { resetRoomData } from '../support/db';
 import { TEST_USERS } from '../support/env';
@@ -13,9 +15,7 @@ test.beforeEach(async () => {
 });
 
 /** Host 화면에서 Member를 추방한다. 확인 다이얼로그까지 거친다. */
-const kickMember = async (
-  hostPage: Awaited<ReturnType<typeof openRoomWithHostAndMember>>['hostPage'],
-) => {
+const kickMember = async (hostPage: Page) => {
   await memberPanel(hostPage)
     .getByRole('button', { name: `${MEMBER} 멤버 관리` })
     .click();

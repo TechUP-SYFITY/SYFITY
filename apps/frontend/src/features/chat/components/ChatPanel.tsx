@@ -45,7 +45,7 @@ export function ChatPanel({
   const visibleMessages = messages ?? storeMessages;
 
   return (
-    <aside className="flex h-full min-h-0 flex-1 flex-col bg-background">
+    <aside className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-background">
       <div className="hidden h-12 shrink-0 items-center border-b border-border px-4 xl:flex">
         <h2 className="text-xs font-semibold text-muted-foreground">채팅</h2>
       </div>

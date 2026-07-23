@@ -266,17 +266,22 @@ export function YouTubePlayer({
 
 type PlayerFrameSize = { height: number; width: number };
 
+// YouTube RMF(Required Minimum Functionality)는 플레이어가 200×200px 미만으로
+// 축소되지 않을 것을 요구한다. 가용 공간이 이보다 좁아도 이 하한선을 지키기 위해
+// 필요하면 가용 너비를 넘어서더라도(letterbox 카드가 그만큼 커지도록) 강제한다.
+const MIN_PLAYER_DIMENSION = 200;
+
 export function calculatePlayerFrameSize(
   availableWidth: number,
   availableHeight: number,
 ): PlayerFrameSize {
   if (availableWidth <= 0 || availableHeight <= 0) {
-    return { height: 200, width: 200 };
+    return { height: MIN_PLAYER_DIMENSION, width: MIN_PLAYER_DIMENSION };
   }
 
   const widthLimitedHeight = availableWidth * (9 / 16);
-  const height = Math.min(availableHeight, widthLimitedHeight);
-  const width = height * (16 / 9);
+  const height = Math.max(MIN_PLAYER_DIMENSION, Math.min(availableHeight, widthLimitedHeight));
+  const width = Math.max(MIN_PLAYER_DIMENSION, height * (16 / 9));
   return { height: Math.round(height), width: Math.round(width) };
 }
 

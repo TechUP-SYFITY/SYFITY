@@ -91,7 +91,16 @@ describe('YouTubePlayer', () => {
   it('가용 폭·높이 중 더 좁은 축에 16:9 프레임을 맞춘다', () => {
     expect(calculatePlayerFrameSize(926, 300)).toEqual({ width: 533, height: 300 });
     expect(calculatePlayerFrameSize(800, 700)).toEqual({ width: 800, height: 450 });
-    expect(calculatePlayerFrameSize(311, 518)).toEqual({ width: 311, height: 175 });
+  });
+
+  it('16:9 계산 결과가 200px 미만이면 가용 너비를 넘어서라도 200×356으로 키운다', () => {
+    // 311×9/16 ≈ 175px로, RMF 최소 크기(200×200)를 지키기 위해 강제로 키워야 한다.
+    expect(calculatePlayerFrameSize(311, 518)).toEqual({ width: 356, height: 200 });
+  });
+
+  it('가용 공간이 아예 없으면(0 이하) 200×200 최소 크기를 반환한다', () => {
+    expect(calculatePlayerFrameSize(0, 0)).toEqual({ width: 200, height: 200 });
+    expect(calculatePlayerFrameSize(-10, 300)).toEqual({ width: 200, height: 200 });
   });
 
   it('player ready 시 현재 로컬 볼륨을 적용한다', async () => {

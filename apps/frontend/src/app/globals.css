@@ -250,8 +250,8 @@
 
 @utility mini-player-volume-control {
   & .mini-player-volume-range {
-    transform: scaleX(0.5) scaleY(1);
-    transform-origin: left center;
+    transform: scaleY(1);
+    transform-origin: center;
     transition-property: transform;
     transition-duration: 250ms;
     transition-timing-function: ease-out;
@@ -259,7 +259,7 @@
 
   &:hover .mini-player-volume-range,
   &:has(:focus-visible) .mini-player-volume-range {
-    transform: scaleX(1) scaleY(2);
+    transform: scaleY(2);
   }
 
   @media (prefers-reduced-motion: reduce) {

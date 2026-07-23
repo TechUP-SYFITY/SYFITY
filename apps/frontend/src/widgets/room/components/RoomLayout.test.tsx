@@ -91,8 +91,8 @@ describe('RoomLayout', () => {
 
     expect(screen.queryByTestId('room-mobile-overlay')).not.toBeInTheDocument();
     expect(screen.queryByTestId('room-tall-viewport-panel')).not.toBeInTheDocument();
-    // 데스크톱용 고정 슬롯 인스턴스만 남는다.
-    expect(screen.getAllByTestId('playlist-panel')).toHaveLength(1);
+    // 데스크톱용 고정 슬롯 + 가로모드 패널(기본 탭인 재생목록) 인스턴스가 남는다.
+    expect(screen.getAllByTestId('playlist-panel')).toHaveLength(2);
     expect(screen.getAllByTestId('chat-panel')).toHaveLength(1);
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument();
   });
@@ -123,9 +123,13 @@ describe('RoomLayout', () => {
         members: 'member-list',
         chat: 'chat-panel',
       } as const;
-      // 데스크톱용 고정 슬롯 인스턴스 1개 + 모바일 오버레이 인스턴스 1개.
-      const expectedCount = activeMobileTab === 'members' ? 1 : 2;
-      expect(screen.getAllByTestId(testIdByTab[activeMobileTab])).toHaveLength(expectedCount);
+      // 데스크톱용 고정 슬롯 인스턴스 1개 + 모바일 오버레이 인스턴스 1개, 재생목록은
+      // 가로모드 패널의 기본 탭이라 인스턴스가 하나 더 있다(데스크톱 슬롯 + 가로모드
+      // 패널 + 모바일 오버레이).
+      const expectedCountByTab = { playlist: 3, members: 1, chat: 2 } as const;
+      expect(screen.getAllByTestId(testIdByTab[activeMobileTab])).toHaveLength(
+        expectedCountByTab[activeMobileTab],
+      );
     },
   );
 
@@ -164,6 +168,26 @@ describe('RoomLayout', () => {
     );
 
     expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
+  });
+
+  it('가로모드 패널은 activeMobileTab과 무관하게 항상 렌더링되고 기본 탭은 재생목록이다', () => {
+    render(
+      <RoomLayout
+        activeMobileTab={null}
+        currentUserName="게스트"
+        onMobileTabChange={vi.fn()}
+        playerPanel={<div data-testid="player-panel" />}
+        playlistPanel={<div data-testid="playlist-panel" />}
+        roomId="room-1"
+      />,
+    );
+
+    const landscapePanel = screen.getByTestId('room-landscape-panel');
+    expect(landscapePanel).toBeInTheDocument();
+    expect(screen.getAllByTestId('playlist-panel').some((el) => landscapePanel.contains(el))).toBe(
+      true,
+    );
+    expect(screen.queryByTestId('member-list')).not.toBeInTheDocument();
   });
 
   it('오버레이 높이를 플레이어 아래 가용 공간과 목표 높이 중 작은 값으로 제한한다', () => {

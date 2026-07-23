@@ -53,7 +53,7 @@ export function PresenceMockPanel() {
   if (!isOpen) {
     return (
       <button
-        className="fixed right-4 bottom-4 z-50 rounded-xl border border-border bg-background/95 px-3 py-2 text-xs font-bold text-muted-foreground shadow-lg"
+        className="fixed right-4 bottom-36 z-50 rounded-xl border border-border bg-background/95 px-3 py-2 text-xs font-bold text-muted-foreground shadow-lg xl:bottom-24 landscape:bottom-20"
         onClick={() => setIsOpen(true)}
         type="button"
       >
@@ -63,7 +63,7 @@ export function PresenceMockPanel() {
   }
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 flex flex-col gap-2 rounded-xl border border-border bg-background/95 p-3 text-xs shadow-lg">
+    <div className="fixed right-4 bottom-36 z-50 flex flex-col gap-2 rounded-xl border border-border bg-background/95 p-3 text-xs shadow-lg xl:bottom-24 landscape:bottom-20">
       <div className="flex items-center justify-between gap-2">
         <p className="font-bold text-muted-foreground">Presence Dev Tools</p>
         <button

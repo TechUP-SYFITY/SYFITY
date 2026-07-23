@@ -237,6 +237,11 @@ apps/frontend/
       room-reorder.e2e.ts     → E-08
       room-join-errors.e2e.ts → E-09
       room-leave.e2e.ts       → E-12
+      room-kick.e2e.ts        → E-10
+      personal-playlist.e2e.ts → E-11
+      home-rooms.e2e.ts       → E-13
+      mobile-tabs.e2e.ts      → E-14
+      host-connection.e2e.ts  → E-15
       youtube-stub.e2e.ts     → YouTube 스텁 배선
       room-player-stub.e2e.ts → 외부 요청 차단
 docker-compose.e2e.yml
@@ -299,23 +304,20 @@ Backend는 `node-cache`로 재생 세션과 참여자 상태를 들고 있다. D
 
 ### 8.2 P1
 
-| ID   | 시나리오                                   |
-| ---- | ------------------------------------------ |
-| E-08 | Playlist 순서 변경과 Member 제어 UI 미노출 |
-| E-09 | 잘못된 초대 코드와 입력 검증               |
-| E-12 | Member 나가기와 재입장                     |
+| ID   | 시나리오                                                     |
+| ---- | ------------------------------------------------------------ |
+| E-08 | Playlist 순서 변경과 Member 제어 UI 미노출                   |
+| E-09 | 잘못된 초대 코드와 입력 검증                                 |
+| E-10 | Member 추방·해제와 재입장 거부, 멤버 관리 수단 미노출        |
+| E-11 | 개인 Playlist 생성·삭제·곡 관리, Room 불러오기의 Member 전파 |
+| E-12 | Member 나가기와 재입장                                       |
+| E-13 | 종료 Room 복구·비활성화, 최근 참여 방 재입장                 |
+| E-14 | 모바일 뷰포트 하단 탭 전환과 데스크톱 패널 미노출            |
+| E-15 | Host 연결 끊김 안내와 재접속 시 해제                         |
 
 ### 8.3 미착수
 
-| ID   | 시나리오                                 | 상태                                                              |
-| ---- | ---------------------------------------- | ----------------------------------------------------------------- |
-| E-10 | Member 추방·해제                         | Frontend에 추방 UI가 없다. Backend는 구현되어 있다                |
-| E-11 | 개인 Playlist 생성·곡 추가·Room 불러오기 | Home 진입점이 없다(`09-ui-ux-flow.md` §7.4가 UI 결정 전으로 유보) |
-| E-13 | 최근 Room·내 Room 목록에서 재입장·복구   | 기능은 구현되어 있다. 시나리오 미작성                             |
-| E-14 | 모바일 뷰포트 탭 전환                    | 해당 spec에서 viewport를 따로 지정해야 한다                       |
-| E-15 | Socket 재연결 안내                       | 시나리오 미작성                                                   |
-
-E-10이 막히면 추방된 사용자의 재입장 거부도 함께 미룬다. E-09는 나머지 오류 흐름만 다룬다.
+현재 미착수 시나리오는 없다. E-09는 나머지 오류 흐름만 다룬다.
 
 ### 8.4 다중 사용자 시나리오
 

@@ -80,6 +80,7 @@ describe('UserRepository', () => {
         nickname: true,
         profileImage: true,
         onboardedAt: true,
+        deletedAt: true,
       },
     });
   });
@@ -136,6 +137,7 @@ describe('UserRepository', () => {
         nickname: '탈퇴한 사용자',
         profileImage: null,
         refreshToken: null,
+        deletedAt: expect.any(Date),
       }),
     });
   });

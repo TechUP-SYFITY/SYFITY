@@ -51,6 +51,10 @@ export function expressAuthentication(
           reject(new AppError(404, ERROR_CODES.AUTH_USER_NOT_FOUND, '사용자를 찾을 수 없습니다.'));
           return;
         }
+        if (storedUser.deletedAt) {
+          reject(new AppError(401, ERROR_CODES.AUTH_UNAUTHORIZED, '탈퇴한 계정입니다.'));
+          return;
+        }
 
         const user = { id: payload.id, email: payload.email };
         request.user = user;

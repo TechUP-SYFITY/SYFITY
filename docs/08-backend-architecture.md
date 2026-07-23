@@ -6,7 +6,7 @@
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
 | 버전      | v2.2                                                                                  |
-| 상태      | 메타데이터 갱신·Storage·계정 삭제 내부 계층 추가                                      |
+| 상태      | 탈퇴 계정의 기존 토큰을 인증 단계에서 차단                                            |
 | 작성 목적 | Syfity 백엔드 구조 정의                                                               |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -279,7 +279,7 @@ export class RoomService {
 
 `@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. REST 인증은 일반 Express 인증 미들웨어를 직접 붙이지 않고 tsoa Security 진입점을 사용한다. Socket.IO 인증은 별도로 `socket/socketAuth.ts`의 `socketAuth`를 사용한다.
 
-JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정이 삭제됐을 수 있으므로, `UserRepository.findUserById`로 DB 존재 여부까지 재확인한다.
+JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정이 삭제됐을 수 있으므로, `UserRepository.findUserById`로 DB 상태를 재확인하고 `deletedAt`이 있는 계정은 거부한다.
 
 ```ts
 // src/authentication.ts
@@ -641,7 +641,7 @@ REST 엔드포인트와 Socket.IO는 인증 방식이 다르다.
 | REST (`@Security('jwt')`) | `expressAuthentication` | `src/authentication.ts`    |
 | Socket.IO                 | `socketAuth` 미들웨어   | `src/socket/socketAuth.ts` |
 
-REST의 `expressAuthentication`과 마찬가지로, JWT 검증만으로는 부족해 `UserRepository.findUserById`로 DB 존재 여부까지 재확인한다 — 그렇지 않으면 계정 삭제 직후에도 만료 전 토큰으로 Socket 연결을 계속 쓸 수 있다.
+REST의 `expressAuthentication`과 마찬가지로, JWT 검증만으로는 부족해 `UserRepository.findUserById`로 DB 상태를 재확인하고 탈퇴 계정을 거부한다 — 그렇지 않으면 계정 삭제 직후에도 만료 전 토큰으로 Socket 연결을 계속 쓸 수 있다.
 
 ```ts
 // src/socket/socketAuth.ts

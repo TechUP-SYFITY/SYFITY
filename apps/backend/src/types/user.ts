@@ -4,6 +4,7 @@ export type UserProfileRecord = {
   nickname: string;
   profileImage: string | null;
   onboardedAt?: Date | null;
+  deletedAt?: Date | null;
 };
 
 export type RecentRoomRecord = {

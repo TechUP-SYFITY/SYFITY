@@ -20,6 +20,7 @@ export class UserRepository implements IUserRepository {
         nickname: true,
         profileImage: true,
         onboardedAt: true,
+        deletedAt: true,
       },
     });
   }
@@ -59,6 +60,7 @@ export class UserRepository implements IUserRepository {
         nickname: '탈퇴한 사용자',
         profileImage: null,
         refreshToken: null,
+        deletedAt: new Date(),
       },
     });
   }

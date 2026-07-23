@@ -65,6 +65,26 @@ describe('socketAuth', () => {
     expect(socket.data.userId).toBeUndefined();
   });
 
+  it('탈퇴한 사용자의 기존 access token은 AUTH_UNAUTHORIZED로 next를 호출한다', async () => {
+    findUserByIdMock.mockResolvedValue({
+      id: USER_ID,
+      email: 'deleted-user@example.com',
+      nickname: '탈퇴한 사용자',
+      profileImage: null,
+      deletedAt: new Date('2026-07-23T00:00:00.000Z'),
+    });
+    const { socketAuth } = await import('./socketAuth');
+    const token = jwt.sign({ id: USER_ID, email: 'user@example.com' }, JWT_SECRET);
+    const { socket, next } = makeSocket(`access_token=${token}`);
+
+    await socketAuth(socket, next);
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { code: 'AUTH_UNAUTHORIZED' } }),
+    );
+    expect(socket.data.userId).toBeUndefined();
+  });
+
   it('쿠키가 없으면 AUTH_UNAUTHORIZED로 next를 호출한다', async () => {
     const { socketAuth } = await import('./socketAuth');
     const { socket, next } = makeSocket('');

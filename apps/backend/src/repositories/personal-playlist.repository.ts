@@ -184,10 +184,25 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
     );
   }
 
-  findStaleMetadataItems(cutoff: Date): Promise<Array<{ id: string; videoId: string }>> {
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: { id: string; metadataRefreshedAt: Date },
+  ): Promise<Array<{ id: string; videoId: string; metadataRefreshedAt: Date }>> {
     return this.prisma.personalPlaylistItem.findMany({
-      where: { metadataRefreshedAt: { lte: cutoff } },
-      select: { id: true, videoId: true },
+      where: {
+        metadataRefreshedAt: { lte: cutoff },
+        ...(cursor
+          ? {
+              OR: [
+                { metadataRefreshedAt: { gt: cursor.metadataRefreshedAt } },
+                { metadataRefreshedAt: cursor.metadataRefreshedAt, id: { gt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
     });
   }
 

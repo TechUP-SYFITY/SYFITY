@@ -28,6 +28,8 @@ type ImportPersonalPlaylistRepository = Pick<
   'findPlaylistById' | 'getItems'
 >;
 
+const METADATA_REFRESH_BATCH_SIZE = 100;
+
 export class PlaylistService {
   constructor(
     private readonly playlistRepo: IPlaylistRepository,
@@ -110,21 +112,30 @@ export class PlaylistService {
   async refreshStaleMetadata(
     cutoff: Date,
   ): Promise<{ checkedCount: number; unavailableCount: number }> {
-    const staleItems = await this.playlistRepo.findStaleMetadataItems(cutoff);
-    if (staleItems.length === 0) return { checkedCount: 0, unavailableCount: 0 };
+    let cursor: { id: string; metadataRefreshedAt: Date } | undefined;
+    let checkedCount = 0;
+    let unavailableCount = 0;
 
-    const refreshed = await this.metadataRefreshService.refreshVideoMetadata([
-      ...new Set(staleItems.map((item) => item.videoId)),
-    ]);
-    const updates = staleItems.map((item) => ({
-      id: item.id,
-      result: refreshed.get(item.videoId) ?? { status: 'unavailable' as const },
-    }));
-    await this.playlistRepo.applyMetadataRefresh(updates);
-    return {
-      checkedCount: staleItems.length,
-      unavailableCount: updates.filter((item) => item.result.status === 'unavailable').length,
-    };
+    for (;;) {
+      const staleItems = await this.playlistRepo.findStaleMetadataItems(cutoff, cursor);
+      if (staleItems.length === 0) return { checkedCount, unavailableCount };
+
+      const refreshed = await this.metadataRefreshService.refreshVideoMetadata([
+        ...new Set(staleItems.map((item) => item.videoId)),
+      ]);
+      const updates = staleItems.map((item) => ({
+        id: item.id,
+        result: refreshed.get(item.videoId) ?? { status: 'unavailable' as const },
+      }));
+      await this.playlistRepo.applyMetadataRefresh(updates);
+      checkedCount += staleItems.length;
+      unavailableCount += updates.filter((item) => item.result.status === 'unavailable').length;
+      if (staleItems.length < METADATA_REFRESH_BATCH_SIZE) {
+        return { checkedCount, unavailableCount };
+      }
+      const lastItem = staleItems[staleItems.length - 1]!;
+      cursor = { id: lastItem.id, metadataRefreshedAt: lastItem.metadataRefreshedAt };
+    }
   }
 
   async reorderPlaylist(

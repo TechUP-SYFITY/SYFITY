@@ -464,7 +464,7 @@ YouTube Music 영상 검색이다. 서버는 `search.list`와 `videos.list`로 M
 
 ## 9. 내부 운영 API
 
-`POST /internal/playlist-items/refresh-stale-metadata`는 `CRON_SECRET` 인증으로 25일 경과한 Room·개인 Playlist 메타데이터를 YouTube Data API에서 갱신하고, 삭제·비공개·임베드 불가·madeForKids 영상은 `unavailable`로 전환한다. cron-job.org가 이 엔드포인트, Room 비활성화, 프로필 이미지 정리 엔드포인트를 호출한다.
+`POST /internal/playlist-items/refresh-stale-metadata`는 `CRON_SECRET` 인증으로 25일 경과한 Room·개인 Playlist 메타데이터를 YouTube Data API에서 갱신하고, 삭제·비공개·임베드 불가·madeForKids 영상은 `unavailable`로 전환한다. 각 테이블은 `(metadataRefreshedAt, id)` cursor 기준 100개씩 독립 조회·반영해 대량 stale row도 한 트랜잭션에 누적하지 않는다. cron-job.org가 이 엔드포인트, Room 비활성화, 프로필 이미지 정리 엔드포인트를 호출한다.
 
 ### `POST /internal/rooms/inactivate-stale`
 

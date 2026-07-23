@@ -42,7 +42,13 @@ export type ReorderPlaylistItemInput = {
   position: number;
 };
 
-export type StalePlaylistMetadataItem = { id: string; videoId: string };
+export type StalePlaylistMetadataItem = {
+  id: string;
+  videoId: string;
+  metadataRefreshedAt: Date;
+};
+
+export type MetadataRefreshCursor = Pick<StalePlaylistMetadataItem, 'id' | 'metadataRefreshedAt'>;
 
 export type ImportPlaylistItemsResult = {
   addedItems: PlaylistItemRecord[];
@@ -65,7 +71,10 @@ export interface IPlaylistRepository {
     sourceItems: PersonalPlaylistItemRecord[],
     addedBy: string,
   ): Promise<ImportPlaylistItemsResult>;
-  findStaleMetadataItems(cutoff: Date): Promise<StalePlaylistMetadataItem[]>;
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: MetadataRefreshCursor,
+  ): Promise<StalePlaylistMetadataItem[]>;
   applyMetadataRefresh(items: Array<{ id: string; result: RefreshedVideoMetadata }>): Promise<void>;
 }
 

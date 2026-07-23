@@ -131,8 +131,8 @@ describe('PersonalPlaylistService', () => {
     const { service, repository, metadataRefreshService } = fixture();
     const cutoff = new Date('2026-06-01T00:00:00.000Z');
     repository.findStaleMetadataItems.mockResolvedValueOnce([
-      { id: 'item-1', videoId: 'video-1' },
-      { id: 'item-2', videoId: 'missing-video' },
+      { id: 'item-1', videoId: 'video-1', metadataRefreshedAt: cutoff },
+      { id: 'item-2', videoId: 'missing-video', metadataRefreshedAt: cutoff },
     ]);
     metadataRefreshService.refreshVideoMetadata.mockResolvedValueOnce(
       new Map([
@@ -164,6 +164,36 @@ describe('PersonalPlaylistService', () => {
       }),
       { id: 'item-2', result: { status: 'unavailable' } },
     ]);
+  });
+
+  it('100개 단위로 cursor를 넘겨 개인 Playlist 메타데이터를 갱신한다', async () => {
+    const { service, repository, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    const firstBatch = Array.from({ length: 100 }, (_, index) => ({
+      id: `item-${index + 1}`,
+      videoId: `video-${index + 1}`,
+      metadataRefreshedAt: cutoff,
+    }));
+    const lastBatch = [{ id: 'item-101', videoId: 'video-101', metadataRefreshedAt: cutoff }];
+    repository.findStaleMetadataItems
+      .mockResolvedValueOnce(firstBatch)
+      .mockResolvedValueOnce(lastBatch);
+    metadataRefreshService.refreshVideoMetadata.mockImplementation(
+      async (videoIds: string[]) =>
+        new Map(videoIds.map((videoId: string) => [videoId, { status: 'unavailable' as const }])),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 101,
+      unavailableCount: 101,
+    });
+
+    expect(repository.findStaleMetadataItems).toHaveBeenNthCalledWith(1, cutoff, undefined);
+    expect(repository.findStaleMetadataItems).toHaveBeenNthCalledWith(2, cutoff, {
+      id: 'item-100',
+      metadataRefreshedAt: cutoff,
+    });
+    expect(repository.applyMetadataRefresh).toHaveBeenCalledTimes(2);
   });
 
   it('중복 곡과 저장 중 unique 충돌을 PERSONAL_PLAYLIST_DUPLICATE_VIDEO로 거부한다', async () => {

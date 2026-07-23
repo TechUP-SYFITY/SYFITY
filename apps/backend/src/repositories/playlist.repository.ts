@@ -7,6 +7,7 @@ import {
   type AddPlaylistItemData,
   type IPlaylistRepository,
   type ImportPlaylistItemsResult,
+  type MetadataRefreshCursor,
   type PlaylistItemLookupRecord,
   type PlaylistItemRecord,
   type ReorderPlaylistItemInput,
@@ -202,10 +203,25 @@ export class PlaylistRepository implements IPlaylistRepository {
     );
   }
 
-  findStaleMetadataItems(cutoff: Date): Promise<Array<{ id: string; videoId: string }>> {
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: MetadataRefreshCursor,
+  ): Promise<Array<{ id: string; videoId: string; metadataRefreshedAt: Date }>> {
     return this.prisma.playlistItem.findMany({
-      where: { metadataRefreshedAt: { lte: cutoff } },
-      select: { id: true, videoId: true },
+      where: {
+        metadataRefreshedAt: { lte: cutoff },
+        ...(cursor
+          ? {
+              OR: [
+                { metadataRefreshedAt: { gt: cursor.metadataRefreshedAt } },
+                { metadataRefreshedAt: cursor.metadataRefreshedAt, id: { gt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
     });
   }
 

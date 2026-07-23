@@ -139,7 +139,9 @@ describe('PlaylistRepository', () => {
 
     expect(prisma.playlistItem.findMany).toHaveBeenCalledWith({
       where: { metadataRefreshedAt: { lte: cutoff } },
-      select: { id: true, videoId: true },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
     });
     expect(prisma.playlistItem.updateMany).toHaveBeenCalledWith({
       where: { id: 'playlist-item-1' },
@@ -152,6 +154,28 @@ describe('PlaylistRepository', () => {
     expect(prisma.playlistItem.updateMany).toHaveBeenCalledWith({
       where: { id: 'playlist-item-2' },
       data: { status: 'unavailable', metadataRefreshedAt: expect.any(Date) },
+    });
+  });
+
+  it('동일한 갱신 시각의 다음 항목부터 cursor 배치로 조회한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PlaylistRepository(prisma);
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    const cursor = { id: 'playlist-item-100', metadataRefreshedAt: cutoff };
+
+    await repository.findStaleMetadataItems(cutoff, cursor);
+
+    expect(prisma.playlistItem.findMany).toHaveBeenCalledWith({
+      where: {
+        metadataRefreshedAt: { lte: cutoff },
+        OR: [
+          { metadataRefreshedAt: { gt: cutoff } },
+          { metadataRefreshedAt: cutoff, id: { gt: 'playlist-item-100' } },
+        ],
+      },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
     });
   });
 

@@ -191,9 +191,9 @@ describe('PlaylistService playback integration', () => {
     const { service, playlistRepo, metadataRefreshService } = fixture();
     const cutoff = new Date('2026-06-01T00:00:00.000Z');
     playlistRepo.findStaleMetadataItems.mockResolvedValueOnce([
-      { id: 'item-1', videoId: 'video-1' },
-      { id: 'item-2', videoId: 'video-1' },
-      { id: 'item-3', videoId: 'missing-video' },
+      { id: 'item-1', videoId: 'video-1', metadataRefreshedAt: cutoff },
+      { id: 'item-2', videoId: 'video-1', metadataRefreshedAt: cutoff },
+      { id: 'item-3', videoId: 'missing-video', metadataRefreshedAt: cutoff },
     ]);
     metadataRefreshService.refreshVideoMetadata.mockResolvedValueOnce(
       new Map([
@@ -229,6 +229,36 @@ describe('PlaylistService playback integration', () => {
       }),
       { id: 'item-3', result: { status: 'unavailable' } },
     ]);
+  });
+
+  it('100개 단위로 cursor를 넘겨 메타데이터를 갱신한다', async () => {
+    const { service, playlistRepo, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    const firstBatch = Array.from({ length: 100 }, (_, index) => ({
+      id: `item-${index + 1}`,
+      videoId: `video-${index + 1}`,
+      metadataRefreshedAt: cutoff,
+    }));
+    const lastBatch = [{ id: 'item-101', videoId: 'video-101', metadataRefreshedAt: cutoff }];
+    playlistRepo.findStaleMetadataItems
+      .mockResolvedValueOnce(firstBatch)
+      .mockResolvedValueOnce(lastBatch);
+    metadataRefreshService.refreshVideoMetadata.mockImplementation(
+      async (videoIds: string[]) =>
+        new Map(videoIds.map((videoId: string) => [videoId, { status: 'unavailable' as const }])),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 101,
+      unavailableCount: 101,
+    });
+
+    expect(playlistRepo.findStaleMetadataItems).toHaveBeenNthCalledWith(1, cutoff, undefined);
+    expect(playlistRepo.findStaleMetadataItems).toHaveBeenNthCalledWith(2, cutoff, {
+      id: 'item-100',
+      metadataRefreshedAt: cutoff,
+    });
+    expect(playlistRepo.applyMetadataRefresh).toHaveBeenCalledTimes(2);
   });
 
   it('Host가 자신의 개인 Playlist를 가져오면 YouTube 재검증 없이 큐와 Playlist를 갱신한다', async () => {

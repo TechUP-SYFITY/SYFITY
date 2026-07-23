@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Check, CircleAlert, Info as InfoIcon } from 'lucide-react';
+import { useRef } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { Button } from './Button';
 import { Toast, ToastProvider, useToast } from './Toast';
@@ -40,6 +42,27 @@ function ToastStory({ children }: { children: React.ReactNode }) {
   return <ToastProvider>{children}</ToastProvider>;
 }
 
+function RepeatedToastDemo() {
+  const sequence = useRef(0);
+  const { pushToast } = useToast();
+
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => {
+        sequence.current += 1;
+        pushToast({
+          id: 'repeated-story-toast',
+          title: `반복 알림 ${sequence.current}`,
+          duration: 300,
+        });
+      }}
+    >
+      반복 알림 표시
+    </Button>
+  );
+}
+
 export const Success: Story = {
   render: () => (
     <ToastStory>
@@ -66,4 +89,24 @@ export const Info: Story = {
       <Demo variant="info" message="호스트가 재생을 시작했어요" icon={<InfoIcon aria-hidden />} />
     </ToastStory>
   ),
+};
+
+export const RepeatedSameId: Story = {
+  render: () => (
+    <ToastStory>
+      <RepeatedToastDemo />
+    </ToastStory>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(document.body);
+    const trigger = canvas.getByRole('button', { name: '반복 알림 표시' });
+
+    await userEvent.click(trigger);
+    await userEvent.click(trigger);
+
+    await expect(page.getByText('반복 알림 2')).toBeInTheDocument();
+    await expect(page.queryByText('반복 알림 1')).not.toBeInTheDocument();
+    await waitFor(() => expect(page.queryByText('반복 알림 2')).not.toBeInTheDocument());
+  },
 };

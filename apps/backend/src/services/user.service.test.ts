@@ -203,4 +203,36 @@ describe('UserService', () => {
     expect(personalPlaylistRepo.deleteAllByOwnerId).toHaveBeenCalledWith('user-id');
     expect(repo.anonymizeUser).toHaveBeenCalledWith('user-id');
   });
+
+  it('회원 탈퇴 중 프로필 이미지 삭제에 실패하면 후속 삭제 처리를 진행하지 않는다', async () => {
+    const previousUrl =
+      'https://project.supabase.co/storage/v1/object/public/profile-images/user-id/old.png';
+    const repo = makeRepo({
+      findUserById: vi.fn().mockResolvedValue({ ...userProfile, profileImage: previousUrl }),
+    });
+    const roomRepo = { findRoomsByHostId: vi.fn() };
+    const roomService = { closeRoomAndBroadcast: vi.fn() };
+    const personalPlaylistRepo = { deleteAllByOwnerId: vi.fn() };
+    const storage = {
+      createSignedUploadUrl: vi.fn(),
+      getPublicUrl: vi.fn(),
+      remove: vi.fn().mockRejectedValue(new Error('storage unavailable')),
+    };
+    const service = new UserService(
+      repo,
+      roomService,
+      roomRepo,
+      personalPlaylistRepo,
+      storage,
+      'profile-images',
+    );
+
+    await expect(service.deleteAccount('user-id')).rejects.toThrow('storage unavailable');
+
+    expect(storage.remove).toHaveBeenCalledWith('user-id/old.png');
+    expect(roomRepo.findRoomsByHostId).not.toHaveBeenCalled();
+    expect(roomService.closeRoomAndBroadcast).not.toHaveBeenCalled();
+    expect(personalPlaylistRepo.deleteAllByOwnerId).not.toHaveBeenCalled();
+    expect(repo.anonymizeUser).not.toHaveBeenCalled();
+  });
 });

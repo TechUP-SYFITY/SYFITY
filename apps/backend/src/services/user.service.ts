@@ -101,6 +101,9 @@ export class UserService {
   }
 
   async deleteAccount(userId: string): Promise<void> {
+    const currentUser = await this.userRepo.findUserById(userId);
+    await this.removeProfileImage(currentUser?.profileImage ?? null);
+
     const roomRepo = this.requireRoomRepo();
     const roomService = this.requireRoomService();
     const personalPlaylistRepo = this.requirePersonalPlaylistRepo();
@@ -108,8 +111,6 @@ export class UserService {
     for (const room of hostedRooms.filter((hostedRoom) => hostedRoom.status === 'active')) {
       await roomService.closeRoomAndBroadcast(room.id, userId);
     }
-    const currentUser = await this.userRepo.findUserById(userId);
-    await this.cleanupPreviousProfileImage(currentUser?.profileImage ?? null);
     await personalPlaylistRepo.deleteAllByOwnerId(userId);
     await this.userRepo.anonymizeUser(userId);
   }
@@ -123,12 +124,14 @@ export class UserService {
   }
 
   private async cleanupPreviousProfileImage(previousUrl: string | null): Promise<void> {
+    await this.removeProfileImage(previousUrl).catch(() => undefined);
+  }
+
+  private async removeProfileImage(previousUrl: string | null): Promise<void> {
     if (!previousUrl) return;
     const path = extractStoragePath(previousUrl, this.requireProfileImageBucket());
     if (!path) return;
-    await this.requireStorageClient()
-      .remove(path)
-      .catch(() => undefined);
+    await this.requireStorageClient().remove(path);
   }
 
   private requireStorageClient(): Pick<

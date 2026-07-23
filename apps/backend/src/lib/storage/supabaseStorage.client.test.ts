@@ -5,19 +5,19 @@ import { SupabaseStorageClient } from './supabaseStorage.client';
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }));
 
-function mockStorageClient(overrides: Partial<{ signed: unknown; publicUrl: string }> = {}) {
+function mockStorageClient(
+  overrides: Partial<{ signed: unknown; publicUrl: string; remove: unknown }> = {},
+) {
   const bucketClient = {
     createSignedUploadUrl: vi
       .fn()
       .mockResolvedValue(
         overrides.signed ?? { data: { path: 'user/image.png', token: 'token' }, error: null },
       ),
-    getPublicUrl: vi
-      .fn()
-      .mockReturnValue({
-        data: { publicUrl: overrides.publicUrl ?? 'https://cdn.example/image.png' },
-      }),
-    remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+    getPublicUrl: vi.fn().mockReturnValue({
+      data: { publicUrl: overrides.publicUrl ?? 'https://cdn.example/image.png' },
+    }),
+    remove: vi.fn().mockResolvedValue(overrides.remove ?? { data: [], error: null }),
   };
   const from = vi.fn().mockReturnValue(bucketClient);
   vi.mocked(createClient).mockReturnValue({ storage: { from } } as never);
@@ -55,6 +55,20 @@ describe('SupabaseStorageClient', () => {
     );
 
     await expect(storage.createSignedUploadUrl('user/image.png')).rejects.toMatchObject({
+      status: 502,
+      code: 'SERVER_INTERNAL_ERROR',
+    });
+  });
+
+  it('이미지 삭제 실패를 내부 서버 오류로 변환한다', async () => {
+    mockStorageClient({ remove: { data: null, error: new Error('failed') } });
+    const storage = new SupabaseStorageClient(
+      'profile-images',
+      'https://project.supabase.co',
+      'secret',
+    );
+
+    await expect(storage.remove('user/image.png')).rejects.toMatchObject({
       status: 502,
       code: 'SERVER_INTERNAL_ERROR',
     });

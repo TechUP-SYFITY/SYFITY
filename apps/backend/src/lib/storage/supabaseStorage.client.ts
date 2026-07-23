@@ -29,6 +29,13 @@ export class SupabaseStorageClient implements IObjectStorage {
   }
 
   async remove(path: string): Promise<void> {
-    await this.client.storage.from(this.bucket).remove([path]);
+    const { error } = await this.client.storage.from(this.bucket).remove([path]);
+    if (error) {
+      throw new AppError(
+        502,
+        ERROR_CODES.SERVER_INTERNAL_ERROR,
+        '프로필 이미지 삭제에 실패했습니다.',
+      );
+    }
   }
 }

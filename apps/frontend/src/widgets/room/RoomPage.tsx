@@ -250,7 +250,7 @@ function RoomPageContent({ roomId }: RoomPageProps) {
           playlistPanel={
             <PlaylistPanel
               canControlRoom={canControlRoom}
-              currentPlaylistItemId={currentTrack?.id ?? null}
+              currentPlaylistItemId={playbackState?.playlistItemId ?? null}
               currentUserId={me?.id}
               isActiveRoomMember={isActiveRoomMember}
               roomId={roomId}

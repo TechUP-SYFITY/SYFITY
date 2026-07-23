@@ -164,8 +164,10 @@ export function usePlayerControls({
 
     // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
     playerControllerRef?.current?.play();
-    void runHostCommand('select', () =>
-      playbackCommands.changeTrack(roomId, 'select', playlistItemId),
+    void runHostCommand(
+      'select',
+      () => playbackCommands.changeTrack(roomId, 'select', playlistItemId),
+      isPlaying ? undefined : () => playerControllerRef?.current?.pause(),
     );
   }
 

@@ -405,6 +405,12 @@ describe('usePlayerControls', () => {
   });
 
   it('Playlist 곡 선택 실패를 공통 Player 오류로 표시하고 pending을 해제한다', async () => {
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(),
+      },
+    };
     vi.mocked(playbackCommands.changeTrack).mockRejectedValue(
       new ApiClientError({
         code: 'PLAYLIST_ITEM_NOT_FOUND',
@@ -417,6 +423,7 @@ describe('usePlayerControls', () => {
         hasPlayableTrack: true,
         isHost: true,
         isPlaying: false,
+        playerControllerRef,
         roomId,
       }),
     );
@@ -429,6 +436,43 @@ describe('usePlayerControls', () => {
       expect(result.current.commandError).toBe('재생할 곡을 찾을 수 없어요.');
       expect(result.current.pendingCommand).toBeNull();
     });
+    expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
+    expect(playerControllerRef.current.pause).toHaveBeenCalledOnce();
+  });
+
+  it('재생 중인 곡에서 Playlist 선택이 실패하면 로컬 플레이어를 일시정지하지 않는다', async () => {
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(),
+      },
+    };
+    vi.mocked(playbackCommands.changeTrack).mockRejectedValue(
+      new ApiClientError({
+        code: 'PLAYLIST_ITEM_NOT_FOUND',
+        message: '재생목록 항목이 없습니다.',
+      }),
+    );
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: true,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSelectTrack('missing-item');
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingCommand).toBeNull();
+    });
+    expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
+    expect(playerControllerRef.current.pause).not.toHaveBeenCalled();
   });
 
   it('낙관적 재생 명령이 실패하면 로컬 플레이어를 다시 일시정지한다', async () => {

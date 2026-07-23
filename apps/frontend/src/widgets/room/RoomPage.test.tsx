@@ -192,7 +192,7 @@ describe('RoomPage', () => {
     );
   });
 
-  it('Host가 Playlist 곡을 선택하면 select Socket 명령을 정확히 한 번 전송한다', async () => {
+  it('Host가 아직 재생되지 않은 첫 곡을 선택하면 select Socket 명령을 정확히 한 번 전송한다', async () => {
     const Wrapper = createWrapper();
 
     render(
@@ -201,7 +201,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Dynamite 재생' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 재생' }));
 
     await waitFor(() => {
       const selectCalls = socket.emit.mock.calls.filter(
@@ -212,7 +212,7 @@ describe('RoomPage', () => {
         'playback:change-track',
         {
           action: 'select',
-          playlistItemId: 'fallback-dynamite',
+          playlistItemId: 'fallback-night-changes',
           roomId: roomFixture.room.id,
         },
         expect.any(Function),

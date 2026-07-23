@@ -128,6 +128,19 @@ describe('PlaylistPanel', () => {
     expect(screen.getByRole('button', { name: '첫 번째 곡 추가' })).toBeInTheDocument();
   });
 
+  it('모바일 곡 추가 버튼을 스크롤 영역 밖의 Figma 하단 위치에 고정한다', () => {
+    renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
+
+    const scrollRegion = screen.getByTestId('playlist-scroll-region');
+    const mobileAction = screen.getByTestId('playlist-mobile-add-action');
+    const addButton = screen.getByRole('button', { name: '곡 추가' });
+
+    expect(scrollRegion).toHaveClass('overflow-y-auto', 'scrollbar-none', 'pb-16', 'xl:pb-0');
+    expect(scrollRegion).not.toContainElement(mobileAction);
+    expect(mobileAction).toHaveClass('absolute', 'right-3', 'bottom-4', 'z-30', 'xl:hidden');
+    expect(addButton).toHaveClass('h-11', 'justify-center', 'text-center', 'rounded-2xl');
+  });
+
   it('unavailable 곡은 경고 아이콘과 함께 비활성 스타일로 렌더링한다', () => {
     renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
 

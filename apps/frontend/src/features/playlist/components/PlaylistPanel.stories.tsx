@@ -285,7 +285,7 @@ function createDragInteraction(
           'false',
         ),
       );
-      await waitFor(() => expect(scrollContainer).not.toHaveClass('scrollbar-none'));
+      await waitFor(() => expect(scrollContainer).toHaveClass('scrollbar-none'));
       await expect(scrollContainer).toHaveClass('overflow-y-auto');
       return;
     }

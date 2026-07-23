@@ -70,6 +70,7 @@ function makePrisma(
     createManyAndReturn: vi.fn().mockResolvedValue([overrides.createResult ?? playlistItem]),
     findUnique: vi.fn().mockResolvedValue(overrides.findUniqueResult ?? null),
     update: vi.fn().mockResolvedValue({}),
+    updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     delete: vi.fn().mockResolvedValue({}),
   };
 
@@ -113,10 +114,13 @@ describe('PlaylistRepository', () => {
     });
   });
 
-  it('메타데이터 갱신 대상만 cutoff 기준으로 조회하고 결과를 한 트랜잭션으로 저장한다', async () => {
+  it('갱신 사이에 삭제된 항목이 있어도 나머지 메타데이터 갱신을 저장한다', async () => {
     const prisma = makePrisma();
     const repository = new PlaylistRepository(prisma);
     const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    vi.mocked(prisma.playlistItem.updateMany)
+      .mockResolvedValueOnce({ count: 1 } as never)
+      .mockResolvedValueOnce({ count: 0 } as never);
 
     await repository.findStaleMetadataItems(cutoff);
     await repository.applyMetadataRefresh([
@@ -137,7 +141,7 @@ describe('PlaylistRepository', () => {
       where: { metadataRefreshedAt: { lte: cutoff } },
       select: { id: true, videoId: true },
     });
-    expect(prisma.playlistItem.update).toHaveBeenCalledWith({
+    expect(prisma.playlistItem.updateMany).toHaveBeenCalledWith({
       where: { id: 'playlist-item-1' },
       data: expect.objectContaining({
         status: 'available',
@@ -145,7 +149,7 @@ describe('PlaylistRepository', () => {
         metadataRefreshedAt: expect.any(Date),
       }),
     });
-    expect(prisma.playlistItem.update).toHaveBeenCalledWith({
+    expect(prisma.playlistItem.updateMany).toHaveBeenCalledWith({
       where: { id: 'playlist-item-2' },
       data: { status: 'unavailable', metadataRefreshedAt: expect.any(Date) },
     });

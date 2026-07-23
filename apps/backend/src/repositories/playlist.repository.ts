@@ -69,7 +69,14 @@ type PlaylistItemTxClient = {
 export type PlaylistRepositoryPrisma = {
   playlistItem: Pick<
     PrismaClient['playlistItem'],
-    'findMany' | 'aggregate' | 'create' | 'createManyAndReturn' | 'findUnique' | 'update' | 'delete'
+    | 'findMany'
+    | 'aggregate'
+    | 'create'
+    | 'createManyAndReturn'
+    | 'findUnique'
+    | 'update'
+    | 'updateMany'
+    | 'delete'
   >;
   $transaction: {
     <T>(operations: Promise<T>[]): Promise<T[]>;
@@ -208,7 +215,7 @@ export class PlaylistRepository implements IPlaylistRepository {
     const metadataRefreshedAt = new Date();
     await this.prisma.$transaction(
       items.map(({ id, result }) =>
-        this.prisma.playlistItem.update({
+        this.prisma.playlistItem.updateMany({
           where: { id },
           data:
             result.status === 'available'

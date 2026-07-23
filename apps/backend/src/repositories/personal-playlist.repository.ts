@@ -67,7 +67,7 @@ export type PersonalPlaylistRepositoryPrisma = {
   >;
   personalPlaylistItem: Pick<
     PrismaClient['personalPlaylistItem'],
-    'findMany' | 'findUnique' | 'update' | 'delete'
+    'findMany' | 'findUnique' | 'update' | 'updateMany' | 'delete'
   >;
   $transaction: {
     <T>(operations: Promise<T>[]): Promise<T[]>;
@@ -197,7 +197,7 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
     const metadataRefreshedAt = new Date();
     await this.prisma.$transaction(
       items.map(({ id, result }) =>
-        this.prisma.personalPlaylistItem.update({
+        this.prisma.personalPlaylistItem.updateMany({
           where: { id },
           data:
             result.status === 'available'

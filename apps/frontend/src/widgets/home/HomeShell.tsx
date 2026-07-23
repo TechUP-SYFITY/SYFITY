@@ -52,7 +52,7 @@ export function HomeShell({
   onRetryMyRooms,
 }: HomeShellProps) {
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-205 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
+    <div className="mx-auto flex w-full max-w-205 flex-1 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
       <GreetingHeader
         nickname={nickname}
         isLoading={isUserLoading}

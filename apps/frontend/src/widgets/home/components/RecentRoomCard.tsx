@@ -18,7 +18,7 @@ export function RecentRoomCard({ room }: RecentRoomCardProps) {
     <button
       type="button"
       onClick={() => router.push(`/room/${room.id}`)}
-      className="group flex w-full items-center gap-4 rounded-2xl border border-white/8 bg-[rgba(17,17,19,0.72)] p-4 text-left transition-colors hover:border-primary/25 hover:bg-[rgba(23,23,26,0.85)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl border border-white/8 bg-[rgba(17,17,19,0.72)] p-4 text-left transition-colors hover:border-primary/25 hover:bg-[rgba(23,23,26,0.85)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       <span className="relative flex size-13 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-linear-to-br from-primary/25 to-accent/25 text-primary">
         <AudioLines className="size-5" aria-hidden />

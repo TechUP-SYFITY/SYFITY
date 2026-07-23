@@ -120,7 +120,7 @@ describe('YouTubePlayer', () => {
     expect(players[0]?.unMute).toHaveBeenCalled();
   });
 
-  it('YouTube IFrame의 네이티브 재생 컨트롤을 숨긴다', async () => {
+  it('YouTube IFrame에 컨트롤 숨김과 현재 origin을 전달한다', async () => {
     render(
       <YouTubePlayer
         playbackState={playbackState}
@@ -133,6 +133,7 @@ describe('YouTubePlayer', () => {
 
     await waitFor(() => {
       expect(playerOptions?.playerVars?.controls).toBe(0);
+      expect(playerOptions?.playerVars?.origin).toBe(window.location.origin);
     });
   });
 

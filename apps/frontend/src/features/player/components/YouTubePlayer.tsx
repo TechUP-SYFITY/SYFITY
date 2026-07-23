@@ -176,6 +176,7 @@ export function YouTubePlayer({
         height: '100%',
         playerVars: {
           controls: 0,
+          origin: window.location.origin,
           playsinline: 1,
           rel: 0,
         },

@@ -22,6 +22,8 @@ export const closePool = async () => {
 const ALL_TABLES = [
   'chat_messages',
   'playlist_items',
+  'personal_playlist_items',
+  'personal_playlists',
   'recent_rooms',
   'room_members',
   'rooms',
@@ -37,7 +39,7 @@ const truncate = async (tables: string[]) => {
 /** globalSetup 전용. 테스트 사용자까지 포함해 DB를 완전히 비운다. */
 export const resetDatabase = () => truncate(ALL_TABLES);
 
-/** spec 사이 격리용. 고정 테스트 사용자는 남기고 Room 관련 데이터만 비운다. */
+/** spec 사이 격리용. 고정 테스트 사용자만 남기고 앱 데이터를 비운다. */
 export const resetRoomData = () => truncate(ROOM_TABLES);
 
 export const seedTestUsers = async () => {

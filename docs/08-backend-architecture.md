@@ -6,7 +6,7 @@
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
 | 버전      | v2.2                                                                                  |
-| 상태      | 탈퇴 계정의 기존 토큰을 인증 단계에서 차단                                            |
+| 상태      | 탈퇴 진행 상태와 프로필 이미지 Storage 삭제 재시도를 추적                             |
 | 작성 목적 | Syfity 백엔드 구조 정의                                                               |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -393,11 +393,13 @@ app.use(errorHandler);
 
 ### 내부 Room 수명 주기 Router
 
-`POST /api/v1/internal/rooms/inactivate-stale`와 `POST /api/v1/internal/playlist-items/refresh-stale-metadata`는 cron-job.org가 호출한다. 공개 API와 분리해 tsoa Swagger에 노출하지 않지만, 내부에서도 같은 레이어 구조를 따른다. 성공 시 각 healthchecks.io URL로 별도 ping을 보내며 URL이 없으면 건너뛴다.
+`POST /api/v1/internal/rooms/inactivate-stale`, `POST /api/v1/internal/playlist-items/refresh-stale-metadata`, `POST /api/v1/internal/profile-image-objects/cleanup`는 cron-job.org가 호출한다. 공개 API와 분리해 tsoa Swagger에 노출하지 않지만, 내부에서도 같은 레이어 구조를 따른다. Room·메타데이터 endpoint는 성공 시 각 healthchecks.io URL로 별도 ping을 보내며 URL이 없으면 건너뛴다.
 
 ```text
 internal.routes.ts → cronAuth → RoomLifecycleController
                   → RoomLifecycleService → RoomRepository
+                  → ProfileImageCleanupController
+                  → ProfileImageCleanupService → ProfileImageRepository → IObjectStorage
 ```
 
 `cronAuth`는 `Authorization: Bearer <CRON_SECRET>`를 비교하고, 실패 시 `AUTH_FORBIDDEN`을 반환한다. `RoomLifecycleService`는 closed 후 30일 지난 Room을 inactive로 전환한다. Home의 `내 Room` 조회와 recover 요청 전 보정도 같은 Service 메서드를 호출해 스케줄 실행 지연을 보완한다.

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ERROR_CODES } from '@syfity/shared';
 
 import { UserService } from './user.service';
+import type { IProfileImageRepository } from '../types/profile-image';
 import type { IUserRepository, RecentRoomRecord, UserProfileRecord } from '../types/user';
 
 const userProfile: UserProfileRecord = {
@@ -31,6 +32,23 @@ function makeRepo(overrides: Partial<IUserRepository> = {}): IUserRepository {
     markDeletionPending: vi.fn().mockResolvedValue(undefined),
     clearDeletionPending: vi.fn().mockResolvedValue(undefined),
     anonymizeUser: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function makeProfileImageRepo(
+  overrides: Partial<IProfileImageRepository> = {},
+): IProfileImageRepository {
+  return {
+    createPending: vi.fn().mockResolvedValue(undefined),
+    discardPending: vi.fn().mockResolvedValue(undefined),
+    confirmPending: vi.fn().mockResolvedValue(userProfile),
+    resetCurrent: vi.fn().mockResolvedValue({ ...userProfile, profileImage: null }),
+    queueAllForDeletion: vi.fn().mockResolvedValue(undefined),
+    queueLegacyObjectForDeletion: vi.fn().mockResolvedValue(undefined),
+    findDeletePending: vi.fn().mockResolvedValue([]),
+    queueStalePendingForDeletion: vi.fn().mockResolvedValue(undefined),
+    deleteObject: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -109,6 +127,7 @@ describe('UserService', () => {
       getPublicUrl: vi.fn(),
       remove: vi.fn(),
     };
+    const profileImageRepo = makeProfileImageRepo();
     const service = new UserService(
       repo,
       undefined,
@@ -116,6 +135,7 @@ describe('UserService', () => {
       undefined,
       storage,
       'profile-images',
+      profileImageRepo,
     );
 
     await expect(
@@ -132,6 +152,10 @@ describe('UserService', () => {
     expect(storage.createSignedUploadUrl).toHaveBeenCalledWith(
       expect.stringMatching(/^user-id\/.+\.webp$/),
     );
+    expect(profileImageRepo.createPending).toHaveBeenCalledWith(
+      'user-id',
+      expect.stringMatching(/^user-id\/.+\.webp$/),
+    );
   });
 
   it('프로필 이미지 확정은 본인 경로만 허용하고 이전 이미지는 정리한다', async () => {
@@ -145,6 +169,17 @@ describe('UserService', () => {
       getPublicUrl: vi.fn().mockReturnValue('https://cdn.example/new.webp'),
       remove: vi.fn().mockResolvedValue(undefined),
     };
+    const profileImageRepo = makeProfileImageRepo({
+      findDeletePending: vi.fn().mockResolvedValue([
+        {
+          id: 'old-object',
+          userId: 'user-id',
+          path: 'user-id/old.png',
+          status: 'delete_pending',
+          createdAt: new Date(),
+        },
+      ]),
+    });
     const service = new UserService(
       repo,
       undefined,
@@ -152,6 +187,7 @@ describe('UserService', () => {
       undefined,
       storage,
       'profile-images',
+      profileImageRepo,
     );
 
     await expect(
@@ -163,8 +199,17 @@ describe('UserService', () => {
     await service.confirmProfileImageUpload('user-id', 'user-id/new.webp');
 
     expect(storage.getPublicUrl).toHaveBeenCalledWith('user-id/new.webp');
-    expect(repo.updateProfileImage).toHaveBeenCalledWith('user-id', 'https://cdn.example/new.webp');
+    expect(profileImageRepo.confirmPending).toHaveBeenCalledWith(
+      'user-id',
+      'user-id/new.webp',
+      'https://cdn.example/new.webp',
+    );
+    expect(profileImageRepo.queueLegacyObjectForDeletion).toHaveBeenCalledWith(
+      'user-id',
+      'user-id/old.png',
+    );
     expect(storage.remove).toHaveBeenCalledWith('user-id/old.png');
+    expect(profileImageRepo.deleteObject).toHaveBeenCalledWith('old-object');
   });
 
   it('이미지 초기화와 회원 탈퇴 때 기존 이미지를 삭제하고 탈퇴 처리를 완료한다', async () => {
@@ -186,6 +231,17 @@ describe('UserService', () => {
       getPublicUrl: vi.fn(),
       remove: vi.fn().mockResolvedValue(undefined),
     };
+    const profileImageRepo = makeProfileImageRepo({
+      findDeletePending: vi.fn().mockResolvedValue([
+        {
+          id: 'old-object',
+          userId: 'user-id',
+          path: 'user-id/old.png',
+          status: 'delete_pending',
+          createdAt: new Date(),
+        },
+      ]),
+    });
     const service = new UserService(
       repo,
       roomService,
@@ -193,10 +249,11 @@ describe('UserService', () => {
       personalPlaylistRepo,
       storage,
       'profile-images',
+      profileImageRepo,
     );
 
     await service.resetProfileImage('user-id');
-    expect(repo.updateProfileImage).toHaveBeenCalledWith('user-id', null);
+    expect(profileImageRepo.resetCurrent).toHaveBeenCalledWith('user-id');
     expect(storage.remove).toHaveBeenCalledWith('user-id/old.png');
 
     await service.deleteAccount('user-id');
@@ -208,6 +265,7 @@ describe('UserService', () => {
     expect(roomService.closeRoomAndBroadcast).not.toHaveBeenCalledWith('closed-room', 'user-id');
     expect(personalPlaylistRepo.deleteAllByOwnerId).toHaveBeenCalledWith('user-id');
     expect(repo.anonymizeUser).toHaveBeenCalledWith('user-id');
+    expect(profileImageRepo.queueAllForDeletion).toHaveBeenCalledWith('user-id');
   });
 
   it('회원 탈퇴 중 프로필 이미지 삭제에 실패하면 후속 삭제 처리를 진행하지 않는다', async () => {
@@ -224,6 +282,17 @@ describe('UserService', () => {
       getPublicUrl: vi.fn(),
       remove: vi.fn().mockRejectedValue(new Error('storage unavailable')),
     };
+    const profileImageRepo = makeProfileImageRepo({
+      findDeletePending: vi.fn().mockResolvedValue([
+        {
+          id: 'old-object',
+          userId: 'user-id',
+          path: 'user-id/old.png',
+          status: 'delete_pending',
+          createdAt: new Date(),
+        },
+      ]),
+    });
     const service = new UserService(
       repo,
       roomService,
@@ -231,6 +300,7 @@ describe('UserService', () => {
       personalPlaylistRepo,
       storage,
       'profile-images',
+      profileImageRepo,
     );
 
     await expect(service.deleteAccount('user-id')).rejects.toThrow('storage unavailable');

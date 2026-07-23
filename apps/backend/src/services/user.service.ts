@@ -10,6 +10,7 @@ import type { RoomService } from './room.service';
 import { AppError } from '../errors/appError';
 import type { IObjectStorage } from '../lib/storage/objectStorage.interface';
 import type { IPersonalPlaylistRepository } from '../types/personal-playlist';
+import type { IProfileImageRepository } from '../types/profile-image';
 import type { IRoomRepository } from '../types/room';
 import type { IUserRepository, RecentRoomRecord, UserProfileRecord } from '../types/user';
 import { extractStoragePath } from '../utils/extractStoragePath';
@@ -31,6 +32,7 @@ export class UserService {
       'createSignedUploadUrl' | 'getPublicUrl' | 'remove'
     >,
     private readonly profileImageBucket?: string,
+    private readonly profileImageRepo?: IProfileImageRepository,
   ) {}
 
   async getMe(userId: string): Promise<UserProfileRecord> {
@@ -75,8 +77,15 @@ export class UserService {
     }
     const storageClient = this.requireStorageClient();
     const path = `${userId}/${randomUUID()}.${PROFILE_IMAGE_EXTENSION[input.mimeType]}`;
-    const { token } = await storageClient.createSignedUploadUrl(path);
-    return { path, token, bucket: this.requireProfileImageBucket() };
+    const profileImageRepo = this.requireProfileImageRepo();
+    await profileImageRepo.createPending(userId, path);
+    try {
+      const { token } = await storageClient.createSignedUploadUrl(path);
+      return { path, token, bucket: this.requireProfileImageBucket() };
+    } catch (error) {
+      await profileImageRepo.discardPending(userId, path);
+      throw error;
+    }
   }
 
   async confirmProfileImageUpload(userId: string, path: string): Promise<UserProfileRecord> {
@@ -85,18 +94,24 @@ export class UserService {
     }
     const storageClient = this.requireStorageClient();
     const currentUser = await this.userRepo.findUserById(userId);
-    const updated = await this.userRepo.updateProfileImage(
+    const updated = await this.requireProfileImageRepo().confirmPending(
       userId,
+      path,
       storageClient.getPublicUrl(path),
     );
-    await this.cleanupPreviousProfileImage(currentUser?.profileImage ?? null);
+    if (!updated) {
+      throw new AppError(403, ERROR_CODES.AUTH_FORBIDDEN, '확인할 수 없는 업로드 경로입니다.');
+    }
+    await this.queueLegacyProfileImageForDeletion(userId, currentUser?.profileImage ?? null);
+    await this.cleanupQueuedProfileImages(userId);
     return updated;
   }
 
   async resetProfileImage(userId: string): Promise<UserProfileRecord> {
     const currentUser = await this.userRepo.findUserById(userId);
-    const updated = await this.userRepo.updateProfileImage(userId, null);
-    await this.cleanupPreviousProfileImage(currentUser?.profileImage ?? null);
+    await this.queueLegacyProfileImageForDeletion(userId, currentUser?.profileImage ?? null);
+    const updated = await this.requireProfileImageRepo().resetCurrent(userId);
+    await this.cleanupQueuedProfileImages(userId);
     return updated;
   }
 
@@ -104,7 +119,9 @@ export class UserService {
     await this.userRepo.markDeletionPending(userId);
     try {
       const currentUser = await this.userRepo.findUserById(userId);
-      await this.removeProfileImage(currentUser?.profileImage ?? null);
+      await this.queueLegacyProfileImageForDeletion(userId, currentUser?.profileImage ?? null);
+      await this.requireProfileImageRepo().queueAllForDeletion(userId);
+      await this.cleanupQueuedProfileImages(userId, true);
 
       const roomRepo = this.requireRoomRepo();
       const roomService = this.requireRoomService();
@@ -129,15 +146,26 @@ export class UserService {
     return nickname;
   }
 
-  private async cleanupPreviousProfileImage(previousUrl: string | null): Promise<void> {
-    await this.removeProfileImage(previousUrl).catch(() => undefined);
+  private async queueLegacyProfileImageForDeletion(
+    userId: string,
+    profileImageUrl: string | null,
+  ): Promise<void> {
+    if (!profileImageUrl) return;
+    const path = extractStoragePath(profileImageUrl, this.requireProfileImageBucket());
+    if (!path) return;
+    await this.requireProfileImageRepo().queueLegacyObjectForDeletion(userId, path);
   }
 
-  private async removeProfileImage(previousUrl: string | null): Promise<void> {
-    if (!previousUrl) return;
-    const path = extractStoragePath(previousUrl, this.requireProfileImageBucket());
-    if (!path) return;
-    await this.requireStorageClient().remove(path);
+  private async cleanupQueuedProfileImages(userId: string, strict = false): Promise<void> {
+    const profileImageRepo = this.requireProfileImageRepo();
+    for (const image of await profileImageRepo.findDeletePending(userId)) {
+      try {
+        await this.requireStorageClient().remove(image.path);
+        await profileImageRepo.deleteObject(image.id);
+      } catch (error) {
+        if (strict) throw error;
+      }
+    }
   }
 
   private requireStorageClient(): Pick<
@@ -151,6 +179,11 @@ export class UserService {
   private requireProfileImageBucket(): string {
     if (!this.profileImageBucket) throw new Error('Profile image bucket is not configured.');
     return this.profileImageBucket;
+  }
+
+  private requireProfileImageRepo(): IProfileImageRepository {
+    if (!this.profileImageRepo) throw new Error('Profile image repository is not configured.');
+    return this.profileImageRepo;
   }
 
   private requireRoomService(): Pick<RoomService, 'closeRoomAndBroadcast'> {

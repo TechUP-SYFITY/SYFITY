@@ -10,7 +10,11 @@ import { errorHandler } from './middlewares/error.middleware';
 
 import { createInternalRouter } from './routes/internal.routes';
 
-import { metadataRefreshController, roomLifecycleController } from './ioc';
+import {
+  metadataRefreshController,
+  profileImageCleanupController,
+  roomLifecycleController,
+} from './ioc';
 import { isAllowedOrigin } from './utils/cors';
 
 // tsoa generate 실행 후 생성된다. clean checkout에서도 generate가 먼저 돌 수 있도록 require를 사용한다.
@@ -39,7 +43,11 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use(
   '/api/v1/internal',
-  createInternalRouter(roomLifecycleController, metadataRefreshController),
+  createInternalRouter(
+    roomLifecycleController,
+    metadataRefreshController,
+    profileImageCleanupController,
+  ),
 );
 
 RegisterRoutes(app);

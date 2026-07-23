@@ -6,7 +6,7 @@
 | --------- | ---------------------------------------------------------------------- |
 | 문서명    | Syfity Database Design                                                 |
 | 버전      | v2.3                                                                   |
-| 상태      | 계정 탈퇴 시각을 추가해 기존 토큰을 인증 단계에서 차단                 |
+| 상태      | 탈퇴 진행 상태와 프로필 이미지 객체 수명 주기를 DB에서 추적            |
 | 작성 목적 | Syfity 전체 기능의 PostgreSQL·Prisma 스키마 설계 정의                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md` |
 
@@ -109,6 +109,7 @@ erDiagram
     users ||--o{ playlist_items : added_by
     users ||--o{ chat_messages : user_id
     users ||--o{ personal_playlists : owner_id
+    users ||--o{ profile_image_objects : user_id
     rooms ||--o{ room_members : room_id
     rooms ||--o{ recent_rooms : room_id
     rooms ||--o{ playlist_items : room_id
@@ -136,7 +137,19 @@ Google OAuth로 생성되는 사용자 계정이다.
 | deleted_at             | TIMESTAMPTZ | NULLABLE     | 계정 탈퇴 완료 시각. 존재하면 기존 토큰 인증을 거부    |
 | created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각                                         |
 
-### 4.2 rooms
+### 4.2 profile_image_objects
+
+Supabase Storage의 프로필 이미지 객체 수명 주기를 추적한다. `pending`은 signed upload URL만 발급된 객체, `current`는 현재 `users.profile_image`가 가리키는 객체, `delete_pending`은 삭제 재시도 대상이다. 삭제가 성공하면 row도 hard delete한다.
+
+| 컬럼                   | 타입                     | 제약         | 설명                                |
+| ---------------------- | ------------------------ | ------------ | ----------------------------------- |
+| id                     | UUID                     | PK           | 객체 식별자                         |
+| user_id                | UUID                     | FK, NOT NULL | 소유 사용자                         |
+| path                   | VARCHAR                  | UK, NOT NULL | Storage 버킷 내부 경로              |
+| status                 | ProfileImageObjectStatus | NOT NULL     | pending/current/delete_pending 상태 |
+| created_at, updated_at | TIMESTAMPTZ              | NOT NULL     | 생성·수정 시각                      |
+
+### 4.3 rooms
 
 Room은 삭제하지 않고 상태로 관리한다.
 

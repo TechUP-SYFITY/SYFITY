@@ -41,6 +41,12 @@ enum ChatMessageType {
   system
 }
 
+enum ProfileImageObjectStatus {
+  pending
+  current
+  delete_pending
+}
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
@@ -59,8 +65,24 @@ model User {
   playlistItems PlaylistItem[]
   chatMessages  ChatMessage[]
   personalPlaylists PersonalPlaylist[]
+  profileImageObjects ProfileImageObject[]
 
   @@map("users")
+}
+
+model ProfileImageObject {
+  id        String                   @id @default(uuid()) @db.Uuid
+  userId    String                   @map("user_id") @db.Uuid
+  path      String                   @unique
+  status    ProfileImageObjectStatus @default(pending)
+  createdAt DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("profile_image_objects")
 }
 
 model Room {

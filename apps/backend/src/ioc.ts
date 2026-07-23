@@ -11,6 +11,7 @@ import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
 import { PersonalPlaylistRepository } from './repositories/personal-playlist.repository';
 import { PlaylistRepository } from './repositories/playlist.repository';
+import { ProfileImageRepository } from './repositories/profile-image.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
 
@@ -22,6 +23,7 @@ import { PersonalPlaylistService } from './services/personal-playlist.service';
 import { PlaybackService } from './services/playback.service';
 import { PlaylistService } from './services/playlist.service';
 import { PresenceService } from './services/presence.service';
+import { ProfileImageCleanupService } from './services/profile-image-cleanup.service';
 import { RoomLifecycleService } from './services/room-lifecycle.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
@@ -35,6 +37,7 @@ import { MetadataRefreshController } from './controllers/metadata-refresh.contro
 import { PersonalPlaylistController } from './controllers/personal-playlist.controller';
 import { PlaylistImportController } from './controllers/playlist-import.controller';
 import { PlaylistController } from './controllers/playlist.controller';
+import { ProfileImageCleanupController } from './controllers/profile-image-cleanup.controller';
 import { RoomLifecycleController } from './controllers/room-lifecycle.controller';
 import { RoomMemberController } from './controllers/room-member.controller';
 import { RoomMembershipController } from './controllers/room-membership.controller';
@@ -96,6 +99,7 @@ const profileImageStorage = new SupabaseStorageClient(
   config.supabase.url,
   config.supabase.secretKey,
 );
+const profileImageRepository = new ProfileImageRepository(prisma);
 const userRepository = new UserRepository(prisma);
 const userService = new UserService(
   userRepository,
@@ -104,6 +108,7 @@ const userService = new UserService(
   personalPlaylistRepository,
   profileImageStorage,
   config.supabase.profileImageBucket,
+  profileImageRepository,
 );
 export const playlistService = new PlaylistService(
   playlistRepository,
@@ -127,6 +132,9 @@ register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
 export const roomLifecycleController = new RoomLifecycleController(roomLifecycleService);
 export const metadataRefreshController = new MetadataRefreshController(metadataRefreshService);
+export const profileImageCleanupController = new ProfileImageCleanupController(
+  new ProfileImageCleanupService(profileImageRepository, profileImageStorage),
+);
 register(RoomMembershipController, () => new RoomMembershipController(roomService));
 register(RoomMemberController, () => new RoomMemberController(roomService));
 register(ChatController, () => new ChatController(chatService));

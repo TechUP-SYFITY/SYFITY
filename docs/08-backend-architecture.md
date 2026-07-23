@@ -279,7 +279,7 @@ export class RoomService {
 
 `@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. REST 인증은 일반 Express 인증 미들웨어를 직접 붙이지 않고 tsoa Security 진입점을 사용한다. Socket.IO 인증은 별도로 `socket/socketAuth.ts`의 `socketAuth`를 사용한다.
 
-JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정 탈퇴가 시작되거나 완료됐을 수 있으므로, `UserRepository.findUserById`로 DB 상태를 재확인하고 `deletionPendingAt` 또는 `deletedAt`이 있는 계정은 거부한다.
+JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정 탈퇴가 시작되거나 완료됐을 수 있으므로, `UserRepository.findUserById`로 DB 상태를 재확인하고 `deletionPendingAt` 또는 `deletedAt`이 있는 계정은 거부한다. Socket은 연결 시 `user:{userId}` room에도 참여하며, 탈퇴 pending 기록 직후 이 room의 모든 socket을 강제 해제해 이미 연결된 세션도 차단한다.
 
 ```ts
 // src/authentication.ts
@@ -537,6 +537,7 @@ export function initSocket(io: Server): void {
   io.use(socketAuth);
 
   io.on('connection', (socket) => {
+    socket.join(`user:${socket.data.userId}`);
     registerRoomHandlers(io, socket);
     registerPlaybackHandlers(io, socket);
     registerChatHandlers(io, socket);
@@ -643,7 +644,7 @@ REST 엔드포인트와 Socket.IO는 인증 방식이 다르다.
 | REST (`@Security('jwt')`) | `expressAuthentication` | `src/authentication.ts`    |
 | Socket.IO                 | `socketAuth` 미들웨어   | `src/socket/socketAuth.ts` |
 
-REST의 `expressAuthentication`과 마찬가지로, JWT 검증만으로는 부족해 `UserRepository.findUserById`로 DB 상태를 재확인하고 탈퇴 계정을 거부한다 — 그렇지 않으면 계정 삭제 직후에도 만료 전 토큰으로 Socket 연결을 계속 쓸 수 있다.
+REST의 `expressAuthentication`과 마찬가지로, JWT 검증만으로는 부족해 `UserRepository.findUserById`로 DB 상태를 재확인하고 탈퇴 계정을 거부한다. 이미 handshake를 통과한 Socket은 재인증되지 않으므로, `UserService.deleteAccount`가 pending 기록 직후 `io.in('user:{userId}').disconnectSockets(true)`를 호출해 해당 사용자의 모든 기존 연결을 즉시 종료한다.
 
 ```ts
 // src/socket/socketAuth.ts

@@ -242,6 +242,7 @@ describe('UserService', () => {
         },
       ]),
     });
+    const disconnectUserSockets = vi.fn();
     const service = new UserService(
       repo,
       roomService,
@@ -250,6 +251,7 @@ describe('UserService', () => {
       storage,
       'profile-images',
       profileImageRepo,
+      disconnectUserSockets,
     );
 
     await service.resetProfileImage('user-id');
@@ -258,6 +260,10 @@ describe('UserService', () => {
 
     await service.deleteAccount('user-id');
     expect(repo.markDeletionPending).toHaveBeenCalledWith('user-id');
+    expect(disconnectUserSockets).toHaveBeenCalledWith('user-id');
+    expect(vi.mocked(repo.markDeletionPending).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(disconnectUserSockets).mock.invocationCallOrder[0],
+    );
     expect(vi.mocked(repo.markDeletionPending).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(storage.remove).mock.invocationCallOrder[1],
     );
@@ -293,6 +299,7 @@ describe('UserService', () => {
         },
       ]),
     });
+    const disconnectUserSockets = vi.fn();
     const service = new UserService(
       repo,
       roomService,
@@ -301,12 +308,14 @@ describe('UserService', () => {
       storage,
       'profile-images',
       profileImageRepo,
+      disconnectUserSockets,
     );
 
     await expect(service.deleteAccount('user-id')).rejects.toThrow('storage unavailable');
 
     expect(storage.remove).toHaveBeenCalledWith('user-id/old.png');
     expect(repo.markDeletionPending).toHaveBeenCalledWith('user-id');
+    expect(disconnectUserSockets).toHaveBeenCalledWith('user-id');
     expect(repo.clearDeletionPending).toHaveBeenCalledWith('user-id');
     expect(roomRepo.findRoomsByHostId).not.toHaveBeenCalled();
     expect(roomService.closeRoomAndBroadcast).not.toHaveBeenCalled();

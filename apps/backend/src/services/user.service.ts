@@ -33,6 +33,7 @@ export class UserService {
     >,
     private readonly profileImageBucket?: string,
     private readonly profileImageRepo?: IProfileImageRepository,
+    private readonly disconnectUserSockets?: (userId: string) => void,
   ) {}
 
   async getMe(userId: string): Promise<UserProfileRecord> {
@@ -118,6 +119,7 @@ export class UserService {
   async deleteAccount(userId: string): Promise<void> {
     await this.userRepo.markDeletionPending(userId);
     try {
+      this.requireSocketDisconnector()(userId);
       const currentUser = await this.userRepo.findUserById(userId);
       await this.queueLegacyProfileImageForDeletion(userId, currentUser?.profileImage ?? null);
       await this.requireProfileImageRepo().queueAllForDeletion(userId);
@@ -184,6 +186,11 @@ export class UserService {
   private requireProfileImageRepo(): IProfileImageRepository {
     if (!this.profileImageRepo) throw new Error('Profile image repository is not configured.');
     return this.profileImageRepo;
+  }
+
+  private requireSocketDisconnector(): (userId: string) => void {
+    if (!this.disconnectUserSockets) throw new Error('Socket disconnector is not configured.');
+    return this.disconnectUserSockets;
   }
 
   private requireRoomService(): Pick<RoomService, 'closeRoomAndBroadcast'> {

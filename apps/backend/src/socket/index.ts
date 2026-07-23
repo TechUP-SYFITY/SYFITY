@@ -12,6 +12,7 @@ export function initSocket(io: Server): void {
 
   io.on('connection', (socket) => {
     logger.info({ socketId: socket.id, userId: socket.data.userId }, '[Socket] 연결');
+    socket.join(`user:${socket.data.userId}`);
 
     registerRoomHandlers(io, socket);
     registerPlaybackHandlers(io, socket);

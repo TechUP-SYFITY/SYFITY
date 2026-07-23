@@ -2,6 +2,7 @@ import { OAuth2Client } from 'google-auth-library';
 import type { IocContainer } from 'tsoa';
 
 import { cache } from './lib/cache';
+import { getIo } from './lib/io';
 import { PlaybackSessionStore } from './lib/playback/playback-session.store';
 import { prisma } from './lib/prisma';
 import { SupabaseStorageClient } from './lib/storage/supabaseStorage.client';
@@ -109,6 +110,7 @@ const userService = new UserService(
   profileImageStorage,
   config.supabase.profileImageBucket,
   profileImageRepository,
+  (userId) => getIo().in(`user:${userId}`).disconnectSockets(true),
 );
 export const playlistService = new PlaylistService(
   playlistRepository,

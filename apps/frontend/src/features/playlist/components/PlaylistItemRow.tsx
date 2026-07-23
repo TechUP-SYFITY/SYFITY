@@ -1,5 +1,6 @@
 // Playlist 곡 정보와 host 조작 액션을 렌더링한다.
 import { CircleAlert, GripVertical, Trash2 } from 'lucide-react';
+import type { CSSProperties, HTMLAttributes, Ref } from 'react';
 
 import { Button } from '@/shared/components/ui';
 import { formatDuration } from '@/shared/lib/formatDuration';
@@ -8,7 +9,7 @@ import type { PlaylistItem } from '@/shared/types/domain';
 
 import { PlaylistArtwork } from './PlaylistArtwork';
 
-interface PlaylistItemRowProps {
+export interface PlaylistItemRowProps {
   // true면 hover 없이 순서변경/삭제 액션을 항상 노출한다 (개인 플레이리스트 상세).
   alwaysShowActions?: boolean;
   isCurrent: boolean;
@@ -20,21 +21,29 @@ interface PlaylistItemRowProps {
   isOwnItem: boolean;
   isReady: boolean;
   isReorderEnabled: boolean;
+  dropPosition?: 'after' | 'before' | null;
+  dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
+  dragHandleRef?: Ref<HTMLButtonElement>;
   // addedBy는 이 컴포넌트에서 쓰지 않으므로, addedBy 없는 개인 플레이리스트 아이템도 받는다.
   item: Omit<PlaylistItem, 'addedBy'>;
   onBlurWithin: (event: React.FocusEvent<HTMLDivElement>) => void;
   onDelete: (itemId: string) => void;
-  onDragHandlePointerCancel: () => void;
+  onDragHandlePointerCancel?: () => void;
   onDragHandleKeyDown: (itemId: string, direction: -1 | 1) => void;
-  onDragHandlePointerDown: (itemId: string, event: React.PointerEvent<HTMLButtonElement>) => void;
-  onDragHandlePointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
-  onDragHandlePointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onDragHandlePointerDown?: (itemId: string, event: React.PointerEvent<HTMLButtonElement>) => void;
+  onDragHandlePointerMove?: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onDragHandlePointerUp?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onFocusWithin: () => void;
   onPreventMouseFocus: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  rowRef?: Ref<HTMLDivElement>;
+  style?: CSSProperties;
 }
 
 export function PlaylistItemRow({
   alwaysShowActions = false,
+  dragHandleProps,
+  dragHandleRef,
+  dropPosition = null,
   isCurrent,
   isDeleteEnabled,
   isDeletePending,
@@ -54,6 +63,8 @@ export function PlaylistItemRow({
   onDragHandlePointerUp,
   onFocusWithin,
   onPreventMouseFocus,
+  rowRef,
+  style,
 }: PlaylistItemRowProps) {
   const isUnavailable = item.status === 'unavailable';
   // Host는 모든 곡을, Member는 자신이 추가한 곡만 삭제할 수 있다 (docs/05-api-spec.md 6.3).
@@ -65,12 +76,19 @@ export function PlaylistItemRow({
 
   return (
     <div
+      ref={rowRef}
       data-testid={`playlist-row-${item.id}`}
       data-playlist-item-id={item.id}
+      data-drop-position={dropPosition ?? undefined}
+      style={style}
       className={cn(
-        `group min-w-0 overflow-hidden border-b border-border px-4 py-3 transition`,
+        `group relative min-w-0 overflow-hidden border-b border-border px-4 py-3 transition-colors duration-150 ease-out motion-reduce:transition-none`,
         isCurrent ? 'bg-primary/5' : 'hover:bg-muted/20',
-        isDragging && 'opacity-60',
+        isDragging && 'z-10 bg-background opacity-90 shadow-md ring-1 ring-primary/40',
+        dropPosition === 'before' &&
+          'before:absolute before:inset-x-0 before:top-0 before:z-20 before:h-0.5 before:bg-primary',
+        dropPosition === 'after' &&
+          'after:absolute after:inset-x-0 after:bottom-0 after:z-20 after:h-0.5 after:bg-primary',
       )}
       onBlurCapture={onBlurWithin}
       onClick={onFocusWithin}
@@ -106,6 +124,8 @@ export function PlaylistItemRow({
         >
           {isHost ? (
             <Button
+              {...dragHandleProps}
+              ref={dragHandleRef}
               variant="ghost"
               size="icon"
               className={cn(
@@ -125,13 +145,20 @@ export function PlaylistItemRow({
                 event.preventDefault();
                 onDragHandleKeyDown(item.id, event.key === 'ArrowUp' ? -1 : 1);
               }}
-              onPointerCancel={onDragHandlePointerCancel}
+              aria-pressed={isDragging}
+              onPointerCancel={dragHandleProps?.onPointerCancel ?? onDragHandlePointerCancel}
               onPointerDown={(event) => {
+                if (dragHandleProps?.onPointerDown) {
+                  dragHandleProps.onPointerDown(event);
+                  onPreventMouseFocus(event);
+                  return;
+                }
+
                 onPreventMouseFocus(event);
-                onDragHandlePointerDown(item.id, event);
+                onDragHandlePointerDown?.(item.id, event);
               }}
-              onPointerMove={onDragHandlePointerMove}
-              onPointerUp={onDragHandlePointerUp}
+              onPointerMove={dragHandleProps?.onPointerMove ?? onDragHandlePointerMove}
+              onPointerUp={dragHandleProps?.onPointerUp ?? onDragHandlePointerUp}
             >
               <GripVertical className="size-4" aria-hidden />
             </Button>

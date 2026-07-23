@@ -37,9 +37,9 @@ export function PlayerPanel({
   const isLocalSyncPaused = usePlayerStore((state) => state.isLocalSyncPaused);
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
   let statusText: string | null = null;
-  if (isLocalSyncPaused) {
+  if (playbackState && currentTrack && isLocalSyncPaused) {
     statusText = '내 화면만 일시정지됨';
-  } else if (!playbackState?.isPlaying) {
+  } else if (playbackState && currentTrack && !playbackState.isPlaying) {
     statusText = '호스트가 일시정지함';
   }
 

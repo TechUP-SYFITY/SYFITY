@@ -147,6 +147,14 @@ describe('PlayerPanel', () => {
     expect(screen.getByText('호스트가 일시정지함')).toBeInTheDocument();
   });
 
+  it('재생 상태가 없는 빈 Room에는 일시정지 상태를 표시하지 않는다', () => {
+    renderPlayerPanel([]);
+
+    expect(screen.getByRole('heading', { name: '재생 대기' })).toBeInTheDocument();
+    expect(screen.queryByText('내 화면만 일시정지됨')).not.toBeInTheDocument();
+    expect(screen.queryByText('호스트가 일시정지함')).not.toBeInTheDocument();
+  });
+
   it('영상 종료 이벤트를 공통 Player 제어 handler로 전달한다', () => {
     seedPlayback(false);
     renderPlayerPanel();

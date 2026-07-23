@@ -382,7 +382,7 @@ describe('PlaylistRepository', () => {
     expect(prisma.$transaction).toHaveBeenCalledWith([]);
   });
 
-  it('개인 Playlist에서 사용 가능하고 중복되지 않은 곡만 Room 끝에 가져온다', async () => {
+  it('개인 Playlist에서 사용 가능하고 중복되지 않은 곡만 Room 끝에 가져오며 메타데이터 갱신 시각을 보존한다', async () => {
     const existingItem = { ...playlistItem, videoId: 'existing-video', position: 3 };
     const sourceItems: PersonalPlaylistItemRecord[] = [
       {
@@ -420,6 +420,7 @@ describe('PlaylistRepository', () => {
         position: 3,
         status: 'available',
         addedAt: new Date(),
+        metadataRefreshedAt: new Date('2026-06-01T00:00:00.000Z'),
       },
     ];
     const prisma = makePrisma({ findManyResult: [existingItem], maxPosition: 3 });
@@ -439,6 +440,7 @@ describe('PlaylistRepository', () => {
           position: 4,
           addedBy: 'user-1',
           status: 'available',
+          metadataRefreshedAt: new Date('2026-06-01T00:00:00.000Z'),
         }),
       ],
       select: expect.any(Object),

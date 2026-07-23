@@ -270,7 +270,7 @@ export class PlaylistRepository implements IPlaylistRepository {
             addedBy,
             status: 'available' as const,
             addedAt,
-            metadataRefreshedAt: addedAt,
+            metadataRefreshedAt: item.metadataRefreshedAt ?? item.addedAt,
           };
         }),
         select: PLAYLIST_ITEM_SELECT,

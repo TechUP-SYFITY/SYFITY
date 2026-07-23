@@ -100,7 +100,7 @@ test('최근 참여한 방 카드로 다시 들어간다', async ({ request, ope
   await expect(memberPage.getByRole('heading', { level: 2, name: '최근 참여한 방' })).toBeVisible();
 
   // 카드는 aria-label 없이 방 이름이 접근성 이름이 된다.
-  await memberPage.getByRole('button', { name: new RegExp(room.name) }).click();
+  await memberPage.getByRole('button', { name: room.name }).click();
 
   await expect(memberPage).toHaveURL(`/room/${room.id}`);
   await expect(memberPage.getByRole('heading', { level: 1, name: room.name })).toBeVisible();

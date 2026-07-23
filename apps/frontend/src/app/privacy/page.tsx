@@ -1,3 +1,5 @@
+import { Footer, Header } from '@/shared/components/layout';
+
 const sections = [
   [
     '1. 개인정보의 처리 목적',
@@ -25,7 +27,7 @@ const sections = [
   ],
   [
     '7. 정보주체의 권리와 행사',
-    '이용자는 열람·정정·삭제·처리정지를 요청할 수 있습니다. 계정 설정의 계정 삭제 기능으로 직접 요청할 수 있으며 요청일로부터 7일 이내 처리합니다. Google 연결 권한은 Google 계정 보안 설정에서 철회할 수 있습니다. 만 14세 미만은 서비스 이용이 제한됩니다.',
+    '이용자는 열람·정정·삭제·처리정지를 요청할 수 있습니다. 계정 설정의 회원 탈퇴 기능으로 직접 요청할 수 있으며 요청일로부터 7일 이내 처리합니다. Google 연결 권한은 Google 계정 보안 설정에서 철회할 수 있습니다. 만 14세 미만은 서비스 이용이 제한됩니다.',
   ],
   [
     '8. 개인정보의 파기',
@@ -45,32 +47,41 @@ const sections = [
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-12">
-      <h1 className="text-3xl font-bold">개인정보처리방침</h1>
-      <p className="mt-3 text-sm text-muted-foreground">
-        정식 출시 전 변호사 검토가 필요한 초안입니다.
-      </p>
-      <div className="mt-10 space-y-8">
-        {sections.map(([title, content]) => (
-          <section key={title}>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="mt-3 leading-7 text-muted-foreground">{content}</p>
-          </section>
-        ))}
-      </div>
-      <p className="mt-10 text-sm leading-7 text-muted-foreground">
-        <a className="text-primary underline" href="http://www.google.com/policies/privacy">
-          Google 개인정보처리방침
-        </a>
-        과{' '}
-        <a
-          className="text-primary underline"
-          href="https://security.google.com/settings/security/permissions"
-        >
-          Google 계정 보안 설정
-        </a>
-        을 참고하세요.
-      </p>
-    </main>
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-background">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/4 size-125 rounded-full bg-primary/5 blur-[120px]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-1/3 right-1/4 size-105 rounded-full bg-accent/5 blur-[120px]"
+      />
+      <Header variant="app" logoHref="/" />
+      <main className="relative mx-auto w-full max-w-3xl flex-1 px-5 py-12">
+        <h1 className="text-3xl font-bold">개인정보처리방침</h1>
+        <div className="mt-10 space-y-8">
+          {sections.map(([title, content]) => (
+            <section key={title}>
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <p className="mt-3 leading-7 text-muted-foreground">{content}</p>
+            </section>
+          ))}
+        </div>
+        <p className="mt-10 text-sm leading-7 text-muted-foreground">
+          <a className="text-primary underline" href="http://www.google.com/policies/privacy">
+            Google 개인정보처리방침
+          </a>
+          과{' '}
+          <a
+            className="text-primary underline"
+            href="https://security.google.com/settings/security/permissions"
+          >
+            Google 계정 보안 설정
+          </a>
+          을 참고하세요.
+        </p>
+      </main>
+      <Footer />
+    </div>
   );
 }

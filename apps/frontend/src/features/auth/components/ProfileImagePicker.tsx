@@ -34,37 +34,41 @@ export function ProfileImagePicker({ currentImage, nickname }: ProfileImagePicke
         <AvatarFallback>{initial}</AvatarFallback>
       </Avatar>
       <div className="flex flex-col gap-2">
-        <label className="cursor-pointer text-sm font-semibold text-primary">
-          이미지 선택
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              const fileValidationError = validateProfileImageFile(file);
-              if (fileValidationError) {
-                setValidationError(profileImageValidationMessages[fileValidationError]);
-                upload.reset();
-                return;
-              }
+        <div className="flex flex-row gap-2">
+          <Button asChild variant="primary-soft" size="sm">
+            <label className="cursor-pointer">
+              이미지 선택
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const fileValidationError = validateProfileImageFile(file);
+                  if (fileValidationError) {
+                    setValidationError(profileImageValidationMessages[fileValidationError]);
+                    upload.reset();
+                    return;
+                  }
+                  setValidationError(null);
+                  upload.mutate(file);
+                }}
+              />
+            </label>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!currentImage || reset.isPending}
+            onClick={() => {
               setValidationError(null);
-              upload.mutate(file);
+              reset.mutate();
             }}
-          />
-        </label>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!currentImage || reset.isPending}
-          onClick={() => {
-            setValidationError(null);
-            reset.mutate();
-          }}
-        >
-          기본 이미지로 변경
-        </Button>
+          >
+            기본 이미지로 변경
+          </Button>
+        </div>
         {upload.isPending || reset.isPending ? (
           <span className="text-xs text-muted-foreground">업로드 중이에요</span>
         ) : null}

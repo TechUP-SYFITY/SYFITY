@@ -19,10 +19,10 @@ describe('DeleteAccountDialog', () => {
     vi.mocked(useDeleteAccount).mockReturnValue({ isPending: false, mutate } as never);
     render(<DeleteAccountDialog />);
 
-    fireEvent.click(screen.getByRole('button', { name: '계정 삭제' }));
-    expect(screen.getByRole('dialog', { name: '계정을 삭제할까요?' })).toBeInTheDocument();
-    expect(screen.getByText('계정을 삭제하면 되돌릴 수 없어요.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '삭제 확인' }));
+    fireEvent.click(screen.getByRole('button', { name: '회원 탈퇴' }));
+    expect(screen.getByRole('dialog', { name: '회원 탈퇴할까요?' })).toBeInTheDocument();
+    expect(screen.getByText('탈퇴하면 되돌릴 수 없어요.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '탈퇴 확인' }));
 
     expect(mutate).toHaveBeenCalledWith(
       undefined,
@@ -34,7 +34,7 @@ describe('DeleteAccountDialog', () => {
     vi.mocked(useDeleteAccount).mockReturnValue({ isPending: true, mutate } as never);
     render(<DeleteAccountDialog />);
 
-    fireEvent.click(screen.getByRole('button', { name: '계정 삭제' }));
-    expect(screen.getByRole('button', { name: '삭제 확인' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '회원 탈퇴' }));
+    expect(screen.getByRole('button', { name: '탈퇴 확인' })).toBeDisabled();
   });
 });

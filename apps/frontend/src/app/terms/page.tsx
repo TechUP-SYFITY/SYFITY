@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { Footer, Header } from '@/shared/components/layout';
+
 const sections = [
   [
     '제1조 (목적)',
@@ -35,7 +37,7 @@ const sections = [
   ],
   [
     '제9조 (계약 해지)',
-    '이용자는 계정 설정 화면에서 언제든 계정 삭제를 요청할 수 있습니다. 개인정보 처리와 삭제는 개인정보처리방침에 따르며, 약관 위반 시 서비스는 이용을 제한할 수 있습니다.',
+    '이용자는 계정 설정 화면에서 언제든 회원 탈퇴를 요청할 수 있습니다. 개인정보 처리와 삭제는 개인정보처리방침에 따르며, 약관 위반 시 서비스는 이용을 제한할 수 있습니다.',
   ],
   [
     '제10조 (책임의 제한)',
@@ -45,29 +47,38 @@ const sections = [
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-12">
-      <h1 className="text-3xl font-bold">이용약관</h1>
-      <p className="mt-3 text-sm text-muted-foreground">
-        정식 출시 전 변호사 검토가 필요한 초안입니다.
-      </p>
-      <div className="mt-10 space-y-8">
-        {sections.map(([title, content]) => (
-          <section key={title}>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="mt-3 leading-7 text-muted-foreground">{content}</p>
-          </section>
-        ))}
-      </div>
-      <p className="mt-10 text-sm text-muted-foreground">
-        YouTube 이용에는{' '}
-        <a className="text-primary underline" href="https://www.youtube.com/t/terms">
-          YouTube 서비스 약관
-        </a>
-        이 적용됩니다.{' '}
-        <Link className="text-primary underline" href="/privacy">
-          개인정보처리방침
-        </Link>
-      </p>
-    </main>
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-background">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/4 size-125 rounded-full bg-primary/5 blur-[120px]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-1/3 right-1/4 size-105 rounded-full bg-accent/5 blur-[120px]"
+      />
+      <Header variant="app" logoHref="/" />
+      <main className="relative mx-auto w-full max-w-3xl flex-1 px-5 py-12">
+        <h1 className="text-3xl font-bold">이용약관</h1>
+        <div className="mt-10 space-y-8">
+          {sections.map(([title, content]) => (
+            <section key={title}>
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <p className="mt-3 leading-7 text-muted-foreground">{content}</p>
+            </section>
+          ))}
+        </div>
+        <p className="mt-10 text-sm text-muted-foreground">
+          YouTube 이용에는{' '}
+          <a className="text-primary underline" href="https://www.youtube.com/t/terms">
+            YouTube 서비스 약관
+          </a>
+          이 적용됩니다.{' '}
+          <Link className="text-primary underline" href="/privacy">
+            개인정보처리방침
+          </Link>
+        </p>
+      </main>
+      <Footer />
+    </div>
   );
 }

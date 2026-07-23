@@ -34,7 +34,7 @@ describe('SettingsPage', () => {
     } as never);
     render(<SettingsPage />);
 
-    expect(screen.getByRole('heading', { name: '계정' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '계정 설정' })).toBeInTheDocument();
     expect(screen.getByText('alice@syfity.site')).toBeInTheDocument();
     expect(screen.getByText('profile: Alice')).toBeInTheDocument();
     expect(screen.getByText('nickname: Alice')).toBeInTheDocument();

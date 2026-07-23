@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button, Checkbox, Input } from '@/shared/components/ui';
 
@@ -15,7 +15,14 @@ export function OnboardingForm() {
   const [nickname, setNickname] = useState('');
   const [agreed, setAgreed] = useState(false);
   const complete = useCompleteOnboarding();
-  const actualNickname = nickname || me?.nickname || '';
+  const hasPrefilledNickname = useRef(false);
+
+  useEffect(() => {
+    if (!hasPrefilledNickname.current && me?.nickname) {
+      setNickname(me.nickname);
+      hasPrefilledNickname.current = true;
+    }
+  }, [me?.nickname]);
 
   return (
     <form
@@ -23,46 +30,50 @@ export function OnboardingForm() {
       onSubmit={(event) => {
         event.preventDefault();
         complete.mutate(
-          { nickname: actualNickname, ageAndTermsAgreed: agreed },
+          { nickname, ageAndTermsAgreed: agreed },
           { onSuccess: () => router.replace('/home') },
         );
       }}
     >
-      <div>
-        <h1 className="text-2xl font-bold">서비스 이용 설정</h1>
-        <p className="mt-2 text-sm text-muted-foreground">프로필과 약관 동의를 완료해 주세요.</p>
+      <h1 className="text-2xl font-bold">프로필 설정</h1>
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-semibold">프로필 사진</span>
+        <ProfileImagePicker currentImage={me?.profileImage ?? null} nickname={nickname} />
       </div>
-      <ProfileImagePicker currentImage={me?.profileImage ?? null} nickname={actualNickname} />
-      <Input
-        value={nickname}
-        placeholder="닉네임"
-        maxLength={20}
-        onChange={(event) => setNickname(event.target.value)}
-      />
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-semibold">닉네임</span>
+        <Input
+          value={nickname}
+          placeholder="닉네임"
+          maxLength={20}
+          onChange={(event) => setNickname(event.target.value)}
+        />
+      </div>
       <label className="flex items-start gap-3 text-sm text-muted-foreground">
         <Checkbox
           checked={agreed}
           onCheckedChange={(checked) => setAgreed(checked === true)}
           className="mt-0.5"
         />
-        <span>
-          저는 만 14세 이상이며{' '}
-          <Link href="/terms" className="text-primary underline">
-            이용약관
-          </Link>
-          과{' '}
-          <Link href="/privacy" className="text-primary underline">
-            개인정보처리방침
-          </Link>
-          에 동의합니다. Room에 참여하면 호스트의 재생 제어에 따라 제 화면에서도 재생이 자동으로
-          시작될 수 있다는 점을 확인했습니다.
+        <span className="flex flex-col gap-1">
+          <span>
+            저는 만 14세 이상이며{' '}
+            <Link href="/terms" className="text-primary underline">
+              이용약관
+            </Link>
+            과{' '}
+            <Link href="/privacy" className="text-primary underline">
+              개인정보처리방침
+            </Link>
+            에 동의합니다.
+          </span>
+          <span className="text-xs">
+            Room에 참여하면 호스트의 재생 제어에 따라 제 화면에서도 재생이 자동으로 시작될 수 있다는
+            점을 확인했습니다.
+          </span>
         </span>
       </label>
-      <Button
-        type="submit"
-        disabled={!actualNickname.trim() || !agreed}
-        isLoading={complete.isPending}
-      >
+      <Button type="submit" disabled={!nickname.trim() || !agreed} isLoading={complete.isPending}>
         시작하기
       </Button>
     </form>

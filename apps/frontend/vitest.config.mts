@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import path from 'node:path';
@@ -12,6 +12,8 @@ const dirname =
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
+    // E2E는 Playwright가 실행한다. Vitest가 e2e/ 하위를 수집하지 않도록 제외한다.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     projects: [
       {
         extends: true,

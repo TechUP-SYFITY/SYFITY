@@ -4,7 +4,7 @@ import type { IocContainer } from 'tsoa';
 import { cache } from './lib/cache';
 import { PlaybackSessionStore } from './lib/playback/playback-session.store';
 import { prisma } from './lib/prisma';
-import { YouTubeClient } from './lib/youtube/youtube.client';
+import { createYouTubeClient } from './lib/youtube/youtube.factory';
 
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
@@ -65,12 +65,18 @@ const playlistRepository = new PlaylistRepository(prisma);
 const personalPlaylistRepository = new PersonalPlaylistRepository(prisma);
 const chatRepository = new ChatRepository(prisma);
 const playbackSessionStore = new PlaybackSessionStore(cache);
-const playlistYoutubeClient = new YouTubeClient(config.youtube.apiKey);
+// YouTube 클라이언트는 상태가 없으므로 앱 전역에서 하나만 만들어 공유한다.
+// E2E 스텁 분기는 createYouTubeClient 안에서만 일어난다.
+const youtubeClient = createYouTubeClient({
+  apiKey: config.youtube.apiKey,
+  nodeEnv: config.nodeEnv,
+  e2eMode: config.e2eMode,
+});
 export const playbackService = new PlaybackService(
   roomRepository,
   playlistRepository,
   playbackSessionStore,
-  playlistYoutubeClient,
+  youtubeClient,
 );
 export const presenceService = new PresenceService(roomRepository, cache);
 export const chatService = new ChatService(chatRepository, roomRepository);
@@ -85,13 +91,13 @@ export const roomService = new RoomService(
 export const playlistService = new PlaylistService(
   playlistRepository,
   roomRepository,
-  playlistYoutubeClient,
+  youtubeClient,
   playbackService,
   personalPlaylistRepository,
 );
 export const personalPlaylistService = new PersonalPlaylistService(
   personalPlaylistRepository,
-  playlistYoutubeClient,
+  youtubeClient,
 );
 
 register(UserController, () => new UserController(userService));
@@ -100,10 +106,7 @@ export const roomLifecycleController = new RoomLifecycleController(roomLifecycle
 register(RoomMembershipController, () => new RoomMembershipController(roomService));
 register(RoomMemberController, () => new RoomMemberController(roomService));
 register(ChatController, () => new ChatController(chatService));
-register(SearchController, () => {
-  const youtubeClient = new YouTubeClient(config.youtube.apiKey);
-  return new SearchController(new SearchService(youtubeClient, cache));
-});
+register(SearchController, () => new SearchController(new SearchService(youtubeClient, cache)));
 register(PlaylistController, () => new PlaylistController(playlistService));
 register(PersonalPlaylistController, () => new PersonalPlaylistController(personalPlaylistService));
 register(PlaylistImportController, () => new PlaylistImportController(playlistService));

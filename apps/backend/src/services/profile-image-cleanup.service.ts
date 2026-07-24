@@ -2,7 +2,12 @@ import { logger } from '../lib/logger';
 import type { IObjectStorage } from '../lib/storage/objectStorage.interface';
 import type { IProfileImageRepository } from '../types/profile-image';
 
-const PENDING_UPLOAD_MAX_AGE_MS = 60 * 60 * 1000;
+// Supabase signed upload URLs are valid for two hours. Keep the pending row a
+// little longer so cleanup cannot remove it while a client can still upload.
+export const PROFILE_IMAGE_SIGNED_UPLOAD_URL_TTL_MS = 2 * 60 * 60 * 1000;
+const PENDING_UPLOAD_CLEANUP_BUFFER_MS = 5 * 60 * 1000;
+const PENDING_UPLOAD_MAX_AGE_MS =
+  PROFILE_IMAGE_SIGNED_UPLOAD_URL_TTL_MS + PENDING_UPLOAD_CLEANUP_BUFFER_MS;
 
 export class ProfileImageCleanupService {
   constructor(

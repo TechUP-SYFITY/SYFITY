@@ -55,7 +55,7 @@ export function PwaInstallPrompt() {
   return (
     <section
       aria-label="Syfity 설치 안내"
-      className="fixed inset-x-0 top-0 z-40 mx-auto w-full max-w-xl p-3 sm:p-4"
+      className="fixed inset-x-0 top-0 z-50 mx-auto w-full max-w-xl p-3 sm:p-4"
     >
       <div className="flex items-center gap-3 rounded-2xl border border-white/9 bg-surface/80 p-3 shadow-xl backdrop-blur">
         <div className="flex min-w-0 flex-1 items-start gap-3">

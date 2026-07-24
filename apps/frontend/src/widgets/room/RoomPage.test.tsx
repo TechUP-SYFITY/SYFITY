@@ -377,6 +377,20 @@ describe('RoomPage', () => {
     expect(routerReplace).toHaveBeenCalledWith('/home');
   });
 
+  it('Room 입장 시작 시 이전 세션의 재생 상태를 비운다', () => {
+    didSeedSnapshot = true;
+    usePlayerStore.getState().setPlaybackState(roomFixture.playbackState, 'room-join');
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+  });
+
   it('추방 이벤트를 받으면 Room 상태를 모두 정리하고 안내 후 /home으로 이동한다', async () => {
     const Wrapper = createWrapper();
 

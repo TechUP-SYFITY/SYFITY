@@ -284,6 +284,25 @@ describe('PlaybackService', () => {
     await expect(service.reportEnded('room-1', 'host', 'item-1', 0)).resolves.toBeNull();
   });
 
+  it('마지막 곡 종료는 마지막 seek 위치가 아닌 곡 종료 위치에서 멈춘다', async () => {
+    const { service } = makeService();
+    services.push(service);
+    const selected = await service.selectTrack('room-1', 'host', 'item-3');
+    const seeked = await service.seek('room-1', 'host', 60);
+
+    await expect(
+      service.reportEnded('room-1', 'host', 'item-3', seeked.playbackVersion),
+    ).resolves.toMatchObject({
+      broadcastEvent: 'playback:pause',
+      payload: {
+        currentTime: 180,
+        isPlaying: false,
+        playbackVersion: selected.payload.playbackVersion + 2,
+        playlistItemId: 'item-3',
+      },
+    });
+  });
+
   it('3초 미만이고 이력이 있으면 이전 곡으로 이동하고, 3초 이상이면 현재 곡을 재시작한다', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-20T00:00:00.000Z'));

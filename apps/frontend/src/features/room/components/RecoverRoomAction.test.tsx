@@ -9,14 +9,14 @@ import { RecoverRoomAction } from './RecoverRoomAction';
 describe('RecoverRoomAction', () => {
   afterEach(cleanup);
 
-  it('복구 전 Playlist와 재생 상태 초기화를 확인한다', () => {
+  it('복구 전 Playlist·채팅·재생 상태 초기화를 확인한다', () => {
     const onConfirm = vi.fn();
     render(<RecoverRoomAction roomName="지난 Room" onConfirm={onConfirm} />);
 
     fireEvent.click(screen.getByRole('button', { name: '지난 Room 복구' }));
 
     expect(screen.getByRole('dialog', { name: 'Room을 복구할까요?' })).toBeInTheDocument();
-    expect(screen.getByText(/Playlist와 재생 상태가 초기화/)).toBeInTheDocument();
+    expect(screen.getByText(/Playlist·채팅·재생 상태가 초기화/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Room 복구 확인' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);

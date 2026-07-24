@@ -19,6 +19,7 @@ interface MockPlayer {
   playVideo: ReturnType<typeof vi.fn>;
   seekTo: ReturnType<typeof vi.fn>;
   setVolume: ReturnType<typeof vi.fn>;
+  stopVideo: ReturnType<typeof vi.fn>;
   unMute: ReturnType<typeof vi.fn>;
 }
 
@@ -60,6 +61,7 @@ describe('YouTubePlayer', () => {
           playVideo: vi.fn(),
           seekTo: vi.fn(),
           setVolume: vi.fn(),
+          stopVideo: vi.fn(),
           unMute: vi.fn(),
         };
 
@@ -389,6 +391,39 @@ describe('YouTubePlayer', () => {
     expect(players[0]?.loadVideoById).toHaveBeenCalledWith({
       startSeconds: 30,
       videoId: 'video-2',
+    });
+  });
+
+  it('서버 재생 상태가 비면 이전 IFrame 영상을 중지한다', async () => {
+    const { rerender } = render(
+      <YouTubePlayer
+        playbackState={{ ...playbackState, isPlaying: true }}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players[0]?.loadVideoById).toHaveBeenCalledWith({
+        startSeconds: 0,
+        videoId: 'video-1',
+      });
+    });
+
+    rerender(
+      <YouTubePlayer
+        playbackState={null}
+        onBufferingRecovered={vi.fn()}
+        onEnded={vi.fn()}
+        onError={vi.fn()}
+        onPlaybackStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(players[0]?.stopVideo).toHaveBeenCalledOnce();
     });
   });
 

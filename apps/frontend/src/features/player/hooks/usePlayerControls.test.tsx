@@ -13,6 +13,7 @@ vi.mock('../lib/playbackCommands', () => ({
     changeTrack: vi.fn(),
     pause: vi.fn(),
     play: vi.fn(),
+    reportEnded: vi.fn(),
     requestSync: vi.fn(),
     seek: vi.fn(),
     updateSettings: vi.fn(),
@@ -28,6 +29,7 @@ describe('usePlayerControls', () => {
     vi.mocked(playbackCommands.changeTrack).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.pause).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.play).mockResolvedValue(undefined);
+    vi.mocked(playbackCommands.reportEnded).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.seek).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.updateSettings).mockResolvedValue(undefined);
   });
@@ -149,6 +151,30 @@ describe('usePlayerControls', () => {
     await waitFor(() => {
       expect(playbackCommands.seek).toHaveBeenCalledWith(roomId, 90);
     });
+  });
+
+  it('Host가 MiniPlayer 재생바를 끝으로 옮기면 자동 종료를 보고해 다음 곡 전환을 요청한다', async () => {
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        currentTrackDuration: 90,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        playbackVersion: 4,
+        playlistItemId: 'playlist-item-1',
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSeek(90);
+    });
+
+    await waitFor(() => {
+      expect(playbackCommands.reportEnded).toHaveBeenCalledWith(roomId, 'playlist-item-1', 4);
+    });
+    expect(playbackCommands.seek).not.toHaveBeenCalled();
   });
 
   it('Host가 재생 위치를 연속 변경하면 마지막 위치만 전송한다', async () => {

@@ -9,8 +9,8 @@
 | 항목      | 내용                                                         |
 | --------- | ------------------------------------------------------------ |
 | 문서명    | Syfity Product Requirements Document                         |
-| 버전      | v2.0                                                         |
-| 상태      | 전체 제품 기능 기준으로 재구성                               |
+| 버전      | v2.1                                                         |
+| 상태      | Room 복구 시 채팅 초기화 정책 반영                           |
 | 작성 목적 | Syfity의 제품 방향, 기능 정책, 사용자 경험 요구사항 정의     |
 | 기반 문서 | `99-technical-legal-feasibility.md`, `98-market-research.md` |
 
@@ -101,7 +101,7 @@ inactive ──→ 복구 불가
 | 상태     | 입장 | Host 동작               | 데이터                                                |
 | -------- | ---- | ----------------------- | ----------------------------------------------------- |
 | active   | 가능 | 운영·종료 가능          | 정상 사용                                             |
-| closed   | 불가 | 복구 또는 inactive 전환 | 채팅·참여 이력 유지, 복구 시 Playlist·Playback 초기화 |
+| closed   | 불가 | 복구 또는 inactive 전환 | 참여 이력 유지, 복구 시 Playlist·채팅·Playback 초기화 |
 | inactive | 불가 | 동작 불가               | 삭제에 준하는 종단 상태, 복구 불가                    |
 
 ### 4.2 역할
@@ -143,7 +143,7 @@ inactive ──→ 복구 불가
 - Close는 현재 감상 세션을 끝내고 모든 Socket Room 연결을 해제한다.
 - 기존 Member의 참여 이력과 `kicked` 상태는 유지한다.
 - 복구 뒤 기존 Member는 자동 입장하지 않으며, 기존 입장 권한으로 다시 참여한다.
-- 복구 시 Playlist와 PlaybackState를 초기화한다.
+- 복구 시 Playlist·채팅·PlaybackState를 초기화한다.
 
 ---
 

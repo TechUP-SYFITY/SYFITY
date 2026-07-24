@@ -8,7 +8,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RoomShell } from './RoomShell';
 
 vi.mock('@/shared/components/layout', () => ({
-  Header: () => null,
+  Header: ({ containerClassName }: { containerClassName?: string }) => (
+    <div data-class-name={containerClassName} data-testid="room-header" />
+  ),
 }));
 
 vi.mock('@/features/player/components/MiniPlayer', () => ({
@@ -104,5 +106,43 @@ describe('RoomShell', () => {
     );
 
     expect(screen.getByTestId('host-connection-notice')).toBeInTheDocument();
+  });
+
+  it('데스크톱 헤더 축소는 xl 미만 가로모드에만 적용한다', () => {
+    render(
+      <RoomShell
+        activeMobileTab={null}
+        hostConnection={{ status: 'connected' }}
+        isHost={false}
+        miniPlayerCommandError={null}
+        miniPlayerControlDisabled={false}
+        miniPlayerIsLocalSyncPaused={false}
+        miniPlayerIsMuted={false}
+        miniPlayerNextDisabled
+        miniPlayerPendingCommand={null}
+        miniPlayerPlayPauseDisabled={false}
+        miniPlayerPreviousDisabled
+        miniPlayerVolume={70}
+        onMiniPlayerNextTrack={vi.fn()}
+        onMiniPlayerPlayPause={vi.fn()}
+        onMiniPlayerPreviousTrack={vi.fn()}
+        onMiniPlayerSeek={vi.fn()}
+        onMiniPlayerVolumeChange={vi.fn()}
+        onMobileTabChange={vi.fn()}
+        onMuteToggle={vi.fn()}
+        onlineMemberCount={0}
+        playbackState={null}
+        playlist={[]}
+        playerPanel={null}
+        playlistPanel={null}
+        room={null}
+        roomId="room-1"
+      />,
+    );
+
+    expect(screen.getByTestId('room-header')).toHaveAttribute(
+      'data-class-name',
+      'max-xl:landscape:h-10 xl:h-16',
+    );
   });
 });

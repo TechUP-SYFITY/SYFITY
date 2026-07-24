@@ -8,6 +8,7 @@ import { prisma } from './lib/prisma';
 import { SupabaseStorageClient } from './lib/storage/supabaseStorage.client';
 import { createYouTubeClient } from './lib/youtube/youtube.factory';
 
+import { AccountDeletionRepository } from './repositories/account-deletion.repository';
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
 import { PersonalPlaylistRepository } from './repositories/personal-playlist.repository';
@@ -102,15 +103,15 @@ const profileImageStorage = new SupabaseStorageClient(
 );
 const profileImageRepository = new ProfileImageRepository(prisma);
 const userRepository = new UserRepository(prisma);
+const accountDeletionRepository = new AccountDeletionRepository(prisma);
 const userService = new UserService(
   userRepository,
   roomService,
-  roomRepository,
-  personalPlaylistRepository,
   profileImageStorage,
   config.supabase.profileImageBucket,
   profileImageRepository,
   (userId) => getIo().in(`user:${userId}`).disconnectSockets(true),
+  accountDeletionRepository,
 );
 export const playlistService = new PlaylistService(
   playlistRepository,

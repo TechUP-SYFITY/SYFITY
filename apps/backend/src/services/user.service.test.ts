@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ERROR_CODES } from '@syfity/shared';
 
 import { UserService } from './user.service';
+import { logger } from '../lib/logger';
+import type { IAccountDeletionRepository } from '../types/account-deletion';
 import type { IProfileImageRepository } from '../types/profile-image';
 import type { IUserRepository, RecentRoomRecord, UserProfileRecord } from '../types/user';
 
@@ -49,6 +51,15 @@ function makeProfileImageRepo(
     findDeletePending: vi.fn().mockResolvedValue([]),
     queueStalePendingForDeletion: vi.fn().mockResolvedValue(undefined),
     deleteObject: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function makeAccountDeletionRepo(
+  overrides: Partial<IAccountDeletionRepository> = {},
+): IAccountDeletionRepository {
+  return {
+    finalizeDeletion: vi.fn().mockResolvedValue({ closedRoomIds: [] }),
     ...overrides,
   };
 }
@@ -128,15 +139,7 @@ describe('UserService', () => {
       remove: vi.fn(),
     };
     const profileImageRepo = makeProfileImageRepo();
-    const service = new UserService(
-      repo,
-      undefined,
-      undefined,
-      undefined,
-      storage,
-      'profile-images',
-      profileImageRepo,
-    );
+    const service = new UserService(repo, undefined, storage, 'profile-images', profileImageRepo);
 
     await expect(
       service.createProfileImageUploadUrl('user-id', { mimeType: 'image/gif' as 'image/png' }),
@@ -180,15 +183,7 @@ describe('UserService', () => {
         },
       ]),
     });
-    const service = new UserService(
-      repo,
-      undefined,
-      undefined,
-      undefined,
-      storage,
-      'profile-images',
-      profileImageRepo,
-    );
+    const service = new UserService(repo, undefined, storage, 'profile-images', profileImageRepo);
 
     await expect(
       service.confirmProfileImageUpload('user-id', 'other-user/new.webp'),
@@ -218,14 +213,7 @@ describe('UserService', () => {
     const repo = makeRepo({
       findUserById: vi.fn().mockResolvedValue({ ...userProfile, profileImage: previousUrl }),
     });
-    const roomRepo = {
-      findRoomsByHostId: vi.fn().mockResolvedValue([
-        { id: 'active-room', status: 'active' },
-        { id: 'closed-room', status: 'closed' },
-      ]),
-    };
-    const roomService = { closeRoomAndBroadcast: vi.fn().mockResolvedValue(undefined) };
-    const personalPlaylistRepo = { deleteAllByOwnerId: vi.fn().mockResolvedValue(undefined) };
+    const roomService = { finalizeClosedRoom: vi.fn().mockResolvedValue(undefined) };
     const storage = {
       createSignedUploadUrl: vi.fn(),
       getPublicUrl: vi.fn(),
@@ -243,15 +231,17 @@ describe('UserService', () => {
       ]),
     });
     const disconnectUserSockets = vi.fn();
+    const accountDeletionRepo = makeAccountDeletionRepo({
+      finalizeDeletion: vi.fn().mockResolvedValue({ closedRoomIds: ['active-room'] }),
+    });
     const service = new UserService(
       repo,
       roomService,
-      roomRepo,
-      personalPlaylistRepo,
       storage,
       'profile-images',
       profileImageRepo,
       disconnectUserSockets,
+      accountDeletionRepo,
     );
 
     await service.resetProfileImage('user-id');
@@ -265,61 +255,66 @@ describe('UserService', () => {
       vi.mocked(disconnectUserSockets).mock.invocationCallOrder[0],
     );
     expect(vi.mocked(repo.markDeletionPending).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(storage.remove).mock.invocationCallOrder[1],
+      vi.mocked(accountDeletionRepo.finalizeDeletion).mock.invocationCallOrder[0],
     );
-    expect(roomService.closeRoomAndBroadcast).toHaveBeenCalledWith('active-room', 'user-id');
-    expect(roomService.closeRoomAndBroadcast).not.toHaveBeenCalledWith('closed-room', 'user-id');
-    expect(personalPlaylistRepo.deleteAllByOwnerId).toHaveBeenCalledWith('user-id');
-    expect(repo.anonymizeUser).toHaveBeenCalledWith('user-id');
-    expect(profileImageRepo.queueAllForDeletion).toHaveBeenCalledWith('user-id');
+    expect(accountDeletionRepo.finalizeDeletion).toHaveBeenCalledWith('user-id', 'profile-images');
+    expect(roomService.finalizeClosedRoom).toHaveBeenCalledWith('active-room');
+    expect(storage.remove).toHaveBeenCalledTimes(1);
   });
 
-  it('회원 탈퇴 중 프로필 이미지 삭제에 실패하면 후속 삭제 처리를 진행하지 않는다', async () => {
-    const previousUrl =
-      'https://project.supabase.co/storage/v1/object/public/profile-images/user-id/old.png';
-    const repo = makeRepo({
-      findUserById: vi.fn().mockResolvedValue({ ...userProfile, profileImage: previousUrl }),
-    });
-    const roomRepo = { findRoomsByHostId: vi.fn() };
-    const roomService = { closeRoomAndBroadcast: vi.fn() };
-    const personalPlaylistRepo = { deleteAllByOwnerId: vi.fn() };
+  it('회원 탈퇴 DB 확정에 실패하면 pending을 원복하고 Room 알림을 보내지 않는다', async () => {
+    const repo = makeRepo();
+    const roomService = { finalizeClosedRoom: vi.fn() };
     const storage = {
       createSignedUploadUrl: vi.fn(),
       getPublicUrl: vi.fn(),
-      remove: vi.fn().mockRejectedValue(new Error('storage unavailable')),
+      remove: vi.fn(),
     };
-    const profileImageRepo = makeProfileImageRepo({
-      findDeletePending: vi.fn().mockResolvedValue([
-        {
-          id: 'old-object',
-          userId: 'user-id',
-          path: 'user-id/old.png',
-          status: 'delete_pending',
-          createdAt: new Date(),
-        },
-      ]),
+    const profileImageRepo = makeProfileImageRepo();
+    const accountDeletionRepo = makeAccountDeletionRepo({
+      finalizeDeletion: vi.fn().mockRejectedValue(new Error('database unavailable')),
     });
     const disconnectUserSockets = vi.fn();
     const service = new UserService(
       repo,
       roomService,
-      roomRepo,
-      personalPlaylistRepo,
       storage,
       'profile-images',
       profileImageRepo,
       disconnectUserSockets,
+      accountDeletionRepo,
     );
 
-    await expect(service.deleteAccount('user-id')).rejects.toThrow('storage unavailable');
+    await expect(service.deleteAccount('user-id')).rejects.toThrow('database unavailable');
 
-    expect(storage.remove).toHaveBeenCalledWith('user-id/old.png');
     expect(repo.markDeletionPending).toHaveBeenCalledWith('user-id');
     expect(disconnectUserSockets).toHaveBeenCalledWith('user-id');
     expect(repo.clearDeletionPending).toHaveBeenCalledWith('user-id');
-    expect(roomRepo.findRoomsByHostId).not.toHaveBeenCalled();
-    expect(roomService.closeRoomAndBroadcast).not.toHaveBeenCalled();
-    expect(personalPlaylistRepo.deleteAllByOwnerId).not.toHaveBeenCalled();
-    expect(repo.anonymizeUser).not.toHaveBeenCalled();
+    expect(roomService.finalizeClosedRoom).not.toHaveBeenCalled();
+  });
+
+  it('DB 확정 뒤 Room 알림이 실패해도 탈퇴 pending을 원복하지 않는다', async () => {
+    const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const repo = makeRepo();
+    const roomService = {
+      finalizeClosedRoom: vi.fn().mockRejectedValue(new Error('socket unavailable')),
+    };
+    const service = new UserService(
+      repo,
+      roomService,
+      { createSignedUploadUrl: vi.fn(), getPublicUrl: vi.fn(), remove: vi.fn() },
+      'profile-images',
+      makeProfileImageRepo(),
+      vi.fn(),
+      makeAccountDeletionRepo({
+        finalizeDeletion: vi.fn().mockResolvedValue({ closedRoomIds: ['active-room'] }),
+      }),
+    );
+
+    await expect(service.deleteAccount('user-id')).resolves.toBeUndefined();
+
+    expect(roomService.finalizeClosedRoom).toHaveBeenCalledWith('active-room');
+    expect(repo.clearDeletionPending).not.toHaveBeenCalled();
+    loggerError.mockRestore();
   });
 });

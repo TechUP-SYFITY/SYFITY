@@ -8,10 +8,10 @@ import {
 
 import type { RoomService } from './room.service';
 import { AppError } from '../errors/appError';
+import { logger } from '../lib/logger';
 import type { IObjectStorage } from '../lib/storage/objectStorage.interface';
-import type { IPersonalPlaylistRepository } from '../types/personal-playlist';
+import type { IAccountDeletionRepository } from '../types/account-deletion';
 import type { IProfileImageRepository } from '../types/profile-image';
-import type { IRoomRepository } from '../types/room';
 import type { IUserRepository, RecentRoomRecord, UserProfileRecord } from '../types/user';
 import { extractStoragePath } from '../utils/extractStoragePath';
 
@@ -24,9 +24,7 @@ const PROFILE_IMAGE_EXTENSION: Record<ProfileImageMimeType, string> = {
 export class UserService {
   constructor(
     private readonly userRepo: IUserRepository,
-    private readonly roomService?: Pick<RoomService, 'closeRoomAndBroadcast'>,
-    private readonly roomRepo?: Pick<IRoomRepository, 'findRoomsByHostId'>,
-    private readonly personalPlaylistRepo?: Pick<IPersonalPlaylistRepository, 'deleteAllByOwnerId'>,
+    private readonly roomService?: Pick<RoomService, 'finalizeClosedRoom'>,
     private readonly storageClient?: Pick<
       IObjectStorage,
       'createSignedUploadUrl' | 'getPublicUrl' | 'remove'
@@ -34,6 +32,7 @@ export class UserService {
     private readonly profileImageBucket?: string,
     private readonly profileImageRepo?: IProfileImageRepository,
     private readonly disconnectUserSockets?: (userId: string) => void,
+    private readonly accountDeletionRepo?: IAccountDeletionRepository,
   ) {}
 
   async getMe(userId: string): Promise<UserProfileRecord> {
@@ -118,25 +117,24 @@ export class UserService {
 
   async deleteAccount(userId: string): Promise<void> {
     await this.userRepo.markDeletionPending(userId);
+    let closedRoomIds: string[];
     try {
       this.requireSocketDisconnector()(userId);
-      const currentUser = await this.userRepo.findUserById(userId);
-      await this.queueLegacyProfileImageForDeletion(userId, currentUser?.profileImage ?? null);
-      await this.requireProfileImageRepo().queueAllForDeletion(userId);
-      await this.cleanupQueuedProfileImages(userId, true);
-
-      const roomRepo = this.requireRoomRepo();
-      const roomService = this.requireRoomService();
-      const personalPlaylistRepo = this.requirePersonalPlaylistRepo();
-      const hostedRooms = await roomRepo.findRoomsByHostId(userId);
-      for (const room of hostedRooms.filter((hostedRoom) => hostedRoom.status === 'active')) {
-        await roomService.closeRoomAndBroadcast(room.id, userId);
-      }
-      await personalPlaylistRepo.deleteAllByOwnerId(userId);
-      await this.userRepo.anonymizeUser(userId);
+      ({ closedRoomIds } = await this.requireAccountDeletionRepo().finalizeDeletion(
+        userId,
+        this.requireProfileImageBucket(),
+      ));
     } catch (error) {
       await this.userRepo.clearDeletionPending(userId);
       throw error;
+    }
+
+    for (const roomId of closedRoomIds) {
+      try {
+        await this.requireRoomService().finalizeClosedRoom(roomId);
+      } catch (error) {
+        logger.error({ err: error, roomId }, '[UserService.deleteAccount] Room 종료 알림 실패');
+      }
     }
   }
 
@@ -193,19 +191,14 @@ export class UserService {
     return this.disconnectUserSockets;
   }
 
-  private requireRoomService(): Pick<RoomService, 'closeRoomAndBroadcast'> {
+  private requireRoomService(): Pick<RoomService, 'finalizeClosedRoom'> {
     if (!this.roomService) throw new Error('Room service is not configured.');
     return this.roomService;
   }
 
-  private requireRoomRepo(): Pick<IRoomRepository, 'findRoomsByHostId'> {
-    if (!this.roomRepo) throw new Error('Room repository is not configured.');
-    return this.roomRepo;
-  }
-
-  private requirePersonalPlaylistRepo(): Pick<IPersonalPlaylistRepository, 'deleteAllByOwnerId'> {
-    if (!this.personalPlaylistRepo)
-      throw new Error('Personal playlist repository is not configured.');
-    return this.personalPlaylistRepo;
+  private requireAccountDeletionRepo(): IAccountDeletionRepository {
+    if (!this.accountDeletionRepo)
+      throw new Error('Account deletion repository is not configured.');
+    return this.accountDeletionRepo;
   }
 }

@@ -293,7 +293,17 @@ export class RoomService {
   async closeRoomAndBroadcast(roomId: string, userId: string): Promise<RoomUpdateRecord> {
     const io = getIo();
     const room = await this.closeRoom(roomId, userId);
+    await this.notifyRoomClosed(room.id, io);
+    return room;
+  }
 
+  async finalizeClosedRoom(roomId: string): Promise<void> {
+    const io = getIo();
+    this.playbackService.clearSession(roomId);
+    await this.notifyRoomClosed(roomId, io);
+  }
+
+  private async notifyRoomClosed(roomId: string, io: ReturnType<typeof getIo>): Promise<void> {
     const systemMessage = await this.createSystemMessage(roomId, 'Room이 종료되었습니다.');
     if (systemMessage) {
       broadcastToRoom(roomId, 'chat:system', toChatSystemPayload(systemMessage));
@@ -302,7 +312,6 @@ export class RoomService {
     const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
     broadcastToRoom(roomId, 'room:closed', payload);
     io.socketsLeave(`room:${roomId}`);
-    return room;
   }
 
   private async generateUniqueInviteCode(): Promise<string> {

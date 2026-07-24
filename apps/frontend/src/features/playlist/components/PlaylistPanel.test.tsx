@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaylistItem } from '@/shared/types/domain';
 
-import { PlaylistPanel } from './PlaylistPanel';
+import { PlaylistPanel, restrictPlaylistDragToVerticalAxis } from './PlaylistPanel';
 import { playlistApi } from '../api/playlistApi';
 import { usePlaylistStore } from '../store/playlistStore';
 
@@ -100,6 +100,14 @@ describe('PlaylistPanel', () => {
   afterEach(() => {
     cleanup();
     usePlaylistStore.getState().clearPlaylist();
+  });
+
+  it('곡 순서 변경 중에는 가로축 이동을 제한한다', () => {
+    const transform = restrictPlaylistDragToVerticalAxis({
+      transform: { scaleX: 1, scaleY: 1, x: 240, y: -32 },
+    } as Parameters<typeof restrictPlaylistDragToVerticalAxis>[0]);
+
+    expect(transform).toEqual({ scaleX: 1, scaleY: 1, x: 0, y: -32 });
   });
 
   it('API 조회 중이면 최초 로딩 상태를 표시한다', () => {

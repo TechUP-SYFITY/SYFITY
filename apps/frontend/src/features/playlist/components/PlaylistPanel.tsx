@@ -4,6 +4,7 @@
 import {
   closestCenter,
   DndContext,
+  type Modifier,
   PointerSensor,
   useSensor,
   useSensors,
@@ -48,6 +49,13 @@ interface PlaylistPanelProps {
 const screenReaderInstructions = {
   draggable: '위쪽 또는 아래쪽 화살표 키로 재생목록 순서를 변경할 수 있습니다.',
 };
+
+// 재생목록은 세로 정렬만 지원한다. 포인터가 가로로 이동해도 행이 패널 밖으로
+// 이탈하지 않도록 x축 transform을 제거한다.
+export const restrictPlaylistDragToVerticalAxis: Modifier = ({ transform }) => ({
+  ...transform,
+  x: 0,
+});
 
 export function PlaylistPanel({
   canControlRoom,
@@ -205,6 +213,7 @@ export function PlaylistPanel({
         <DndContext
           accessibility={{ screenReaderInstructions }}
           collisionDetection={closestCenter}
+          modifiers={[restrictPlaylistDragToVerticalAxis]}
           sensors={sensors}
           onDragCancel={handleDragCancel}
           onDragEnd={(event: DragEndEvent) => handleDragEnd(getOverItemId(event))}

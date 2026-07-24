@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RoomLayout } from './RoomLayout';
+import { getMobileOverlayHeight, RoomLayout } from './RoomLayout';
 
 vi.mock('@/features/chat/components/ChatPanel', () => ({
   ChatPanel: () => <div data-testid="chat-panel" />,
@@ -91,8 +91,8 @@ describe('RoomLayout', () => {
 
     expect(screen.queryByTestId('room-mobile-overlay')).not.toBeInTheDocument();
     expect(screen.queryByTestId('room-tall-viewport-panel')).not.toBeInTheDocument();
-    // 데스크톱용 고정 슬롯 인스턴스만 남는다.
-    expect(screen.getAllByTestId('playlist-panel')).toHaveLength(1);
+    // 데스크톱용 고정 슬롯 + 가로모드 패널(기본 탭인 재생목록) 인스턴스가 남는다.
+    expect(screen.getAllByTestId('playlist-panel')).toHaveLength(2);
     expect(screen.getAllByTestId('chat-panel')).toHaveLength(1);
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument();
   });
@@ -112,8 +112,8 @@ describe('RoomLayout', () => {
       );
 
       expect(screen.getByTestId('room-mobile-overlay')).toBeInTheDocument();
-      // 화면 전체(inset-0)가 아니라 하단에 고정 높이(헤더 48 + 콘텐츠 280)만큼만 붙는다.
-      expect(screen.getByTestId('room-mobile-overlay')).toHaveStyle({ height: '328px' });
+      // 플레이어 아래 가용 공간(88px)을 넘지 않도록 높이가 축소된다.
+      expect(screen.getByTestId('room-mobile-overlay')).toHaveStyle({ height: '88px' });
       // 오버레이는 화면 전체를 덮지 않으므로 뒤로 돌아갈 수 있는 닫기(X) 버튼이 필요하다.
       expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
       expect(screen.queryByTestId('room-tall-viewport-panel')).not.toBeInTheDocument();
@@ -123,9 +123,13 @@ describe('RoomLayout', () => {
         members: 'member-list',
         chat: 'chat-panel',
       } as const;
-      // 데스크톱용 고정 슬롯 인스턴스 1개 + 모바일 오버레이 인스턴스 1개.
-      const expectedCount = activeMobileTab === 'members' ? 1 : 2;
-      expect(screen.getAllByTestId(testIdByTab[activeMobileTab])).toHaveLength(expectedCount);
+      // 데스크톱용 고정 슬롯 인스턴스 1개 + 모바일 오버레이 인스턴스 1개, 재생목록은
+      // 가로모드 패널의 기본 탭이라 인스턴스가 하나 더 있다(데스크톱 슬롯 + 가로모드
+      // 패널 + 모바일 오버레이).
+      const expectedCountByTab = { playlist: 3, members: 1, chat: 2 } as const;
+      expect(screen.getAllByTestId(testIdByTab[activeMobileTab])).toHaveLength(
+        expectedCountByTab[activeMobileTab],
+      );
     },
   );
 
@@ -164,5 +168,35 @@ describe('RoomLayout', () => {
     );
 
     expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
+  });
+
+  it('가로모드 사이드 패널은 작은 화면에서만 좁아지고 기본 탭은 재생목록이다', () => {
+    render(
+      <RoomLayout
+        activeMobileTab={null}
+        currentUserName="게스트"
+        onMobileTabChange={vi.fn()}
+        playerPanel={<div data-testid="player-panel" />}
+        playlistPanel={<div data-testid="playlist-panel" />}
+        roomId="room-1"
+      />,
+    );
+
+    const landscapePanel = screen.getByTestId('room-landscape-panel');
+    expect(landscapePanel).toBeInTheDocument();
+    expect(landscapePanel).toHaveClass('max-xl:landscape:flex');
+    expect(landscapePanel).toHaveClass('max-[767px]:landscape:w-64');
+    expect(landscapePanel).toHaveClass('min-[768px]:max-xl:landscape:w-room-side');
+    expect(screen.getByTestId('room-player-slot')).toHaveClass('max-xl:landscape:flex');
+    expect(screen.getAllByTestId('playlist-panel').some((el) => landscapePanel.contains(el))).toBe(
+      true,
+    );
+    expect(screen.queryByTestId('member-list')).not.toBeInTheDocument();
+  });
+
+  it('오버레이 높이를 플레이어 아래 가용 공간과 목표 높이 중 작은 값으로 제한한다', () => {
+    expect(getMobileOverlayHeight(600)).toBe(328);
+    expect(getMobileOverlayHeight(88)).toBe(88);
+    expect(getMobileOverlayHeight(-10)).toBe(0);
   });
 });

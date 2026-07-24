@@ -17,6 +17,7 @@ export type PersonalPlaylistItemRecord = {
   position: number;
   status: 'available' | 'unavailable';
   addedAt: Date;
+  metadataRefreshedAt?: Date;
 };
 
 export type AddPersonalPlaylistItemData = {
@@ -29,6 +30,11 @@ export type AddPersonalPlaylistItemData = {
 };
 
 export type ReorderPersonalPlaylistItemInput = { id: string; position: number };
+export type StalePersonalPlaylistMetadataItem = {
+  id: string;
+  videoId: string;
+  metadataRefreshedAt: Date;
+};
 
 export class PersonalPlaylistDuplicateVideoError extends Error {}
 
@@ -47,4 +53,11 @@ export interface IPersonalPlaylistRepository {
   findItemById(itemId: string): Promise<PersonalPlaylistItemRecord | null>;
   deleteItem(itemId: string): Promise<void>;
   reorderItems(items: ReorderPersonalPlaylistItemInput[]): Promise<void>;
+  deleteAllByOwnerId(ownerId: string): Promise<void>;
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: Pick<StalePersonalPlaylistMetadataItem, 'id' | 'metadataRefreshedAt'>,
+  ): Promise<StalePersonalPlaylistMetadataItem[]>;
+  applyMetadataRefresh(items: Array<{ id: string; result: RefreshedVideoMetadata }>): Promise<void>;
 }
+import type { RefreshedVideoMetadata } from './youtube-metadata';

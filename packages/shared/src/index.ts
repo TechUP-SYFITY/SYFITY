@@ -1,4 +1,5 @@
 export * from './constants/error-codes';
+export * from './constants/profile-image';
 export * from './dto/auth.dto';
 export * from './dto/chat.dto';
 export * from './dto/room.dto';

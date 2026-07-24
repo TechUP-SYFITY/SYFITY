@@ -41,6 +41,7 @@ const details: YouTubeVideoDetail[] = [
     thumbnailUrl: 'https://example.com/a.jpg',
     duration: 10,
     embeddable: true,
+    madeForKids: false,
     categoryId: '10',
   },
   {
@@ -50,6 +51,7 @@ const details: YouTubeVideoDetail[] = [
     thumbnailUrl: 'https://example.com/b.jpg',
     duration: 20,
     embeddable: true,
+    madeForKids: false,
     categoryId: '10',
   },
   {
@@ -59,6 +61,7 @@ const details: YouTubeVideoDetail[] = [
     thumbnailUrl: 'https://example.com/c.jpg',
     duration: 30,
     embeddable: true,
+    madeForKids: false,
     categoryId: '10',
   },
 ];

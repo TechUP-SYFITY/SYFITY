@@ -11,5 +11,12 @@ const config: StorybookConfig = {
   ],
   framework: '@storybook/nextjs-vite',
   staticDirs: ['../public'],
+  viteFinal: async (viteConfig) => ({
+    ...viteConfig,
+    optimizeDeps: {
+      ...viteConfig.optimizeDeps,
+      include: [...(viteConfig.optimizeDeps?.include ?? []), '@syfity/shared'],
+    },
+  }),
 };
 export default config;

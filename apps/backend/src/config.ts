@@ -58,4 +58,13 @@ export const config = {
   cron: {
     secret: requireEnv('CRON_SECRET'),
   },
+  healthchecks: {
+    roomLifecycleUrl: process.env.HEALTHCHECKS_ROOM_LIFECYCLE_URL,
+    metadataRefreshUrl: process.env.HEALTHCHECKS_METADATA_REFRESH_URL,
+  },
+  supabase: {
+    url: requireEnv('SUPABASE_URL'),
+    secretKey: requireEnv('SUPABASE_SECRET_KEY'),
+    profileImageBucket: process.env.SUPABASE_PROFILE_IMAGE_BUCKET ?? 'profile-images',
+  },
 };

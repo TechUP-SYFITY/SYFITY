@@ -30,3 +30,31 @@ export const useLogout = (api: AuthApi = authApi) => {
     },
   });
 };
+
+function useInvalidateMe() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: authQueryKeys.me() });
+}
+
+export const useCompleteOnboarding = (api: AuthApi = authApi) => {
+  const invalidateMe = useInvalidateMe();
+  return useMutation({ mutationFn: api.completeOnboarding, onSuccess: invalidateMe });
+};
+
+export const useUpdateNickname = (api: AuthApi = authApi) => {
+  const invalidateMe = useInvalidateMe();
+  return useMutation({ mutationFn: api.updateNickname, onSuccess: invalidateMe });
+};
+
+export const useDeleteAccount = (api: AuthApi = authApi) =>
+  useMutation({ mutationFn: api.deleteAccount });
+
+export const useUploadProfileImage = (api: AuthApi = authApi) => {
+  const invalidateMe = useInvalidateMe();
+  return useMutation({ mutationFn: api.uploadProfileImage, onSuccess: invalidateMe });
+};
+
+export const useResetProfileImage = (api: AuthApi = authApi) => {
+  const invalidateMe = useInvalidateMe();
+  return useMutation({ mutationFn: api.resetProfileImage, onSuccess: invalidateMe });
+};

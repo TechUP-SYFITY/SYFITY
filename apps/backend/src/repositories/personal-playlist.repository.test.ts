@@ -43,6 +43,7 @@ function makePrisma(
     findMany: vi.fn().mockResolvedValue(overrides.itemsResult ?? [item]),
     findUnique: vi.fn().mockResolvedValue(overrides.itemResult ?? item),
     update: vi.fn().mockResolvedValue({}),
+    updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     delete: vi.fn().mockResolvedValue({}),
     aggregate: vi.fn().mockResolvedValue({ _max: { position: null } }),
     create: vi.fn().mockResolvedValue(item),
@@ -53,6 +54,7 @@ function makePrisma(
     findUnique: vi.fn().mockResolvedValue(overrides.playlistResult ?? playlist),
     update: vi.fn().mockResolvedValue(playlist),
     delete: vi.fn().mockResolvedValue({}),
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
   };
   const transaction =
     overrides.transaction ??
@@ -83,6 +85,71 @@ describe('PersonalPlaylistRepository', () => {
     );
   });
 
+  it('갱신 사이에 삭제된 항목이 있어도 나머지 개인 Playlist 메타데이터 갱신을 저장한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PersonalPlaylistRepository(prisma);
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    vi.mocked(prisma.personalPlaylistItem.updateMany)
+      .mockResolvedValueOnce({ count: 1 } as never)
+      .mockResolvedValueOnce({ count: 0 } as never);
+
+    await repository.findStaleMetadataItems(cutoff);
+    await repository.applyMetadataRefresh([
+      {
+        id: 'item-1',
+        result: {
+          status: 'available',
+          title: 'Updated',
+          channelTitle: 'Channel',
+          thumbnailUrl: 'https://example.com/new.jpg',
+          duration: 200,
+        },
+      },
+      { id: 'item-2', result: { status: 'unavailable' } },
+    ]);
+
+    expect(prisma.personalPlaylistItem.findMany).toHaveBeenCalledWith({
+      where: { metadataRefreshedAt: { lte: cutoff } },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
+    });
+    expect(prisma.personalPlaylistItem.updateMany).toHaveBeenCalledWith({
+      where: { id: 'item-1' },
+      data: expect.objectContaining({
+        status: 'available',
+        title: 'Updated',
+        metadataRefreshedAt: expect.any(Date),
+      }),
+    });
+    expect(prisma.personalPlaylistItem.updateMany).toHaveBeenCalledWith({
+      where: { id: 'item-2' },
+      data: { status: 'unavailable', metadataRefreshedAt: expect.any(Date) },
+    });
+  });
+
+  it('동일한 갱신 시각의 다음 항목부터 cursor 배치로 조회한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PersonalPlaylistRepository(prisma);
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    const cursor = { id: 'item-100', metadataRefreshedAt: cutoff };
+
+    await repository.findStaleMetadataItems(cutoff, cursor);
+
+    expect(prisma.personalPlaylistItem.findMany).toHaveBeenCalledWith({
+      where: {
+        metadataRefreshedAt: { lte: cutoff },
+        OR: [
+          { metadataRefreshedAt: { gt: cutoff } },
+          { metadataRefreshedAt: cutoff, id: { gt: 'item-100' } },
+        ],
+      },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
+    });
+  });
+
   it('Playlist를 생성·조회·이름 변경한다', async () => {
     const prisma = makePrisma();
     const repository = new PersonalPlaylistRepository(prisma);
@@ -109,6 +176,17 @@ describe('PersonalPlaylistRepository', () => {
     await repository.deletePlaylist('playlist-1');
     expect(prisma.personalPlaylist.delete).toHaveBeenCalledWith({ where: { id: 'playlist-1' } });
     expect(prisma.personalPlaylistItem.delete).not.toHaveBeenCalled();
+  });
+
+  it('회원 탈퇴 시 소유한 모든 개인 Playlist를 삭제한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PersonalPlaylistRepository(prisma);
+
+    await repository.deleteAllByOwnerId('user-1');
+
+    expect(prisma.personalPlaylist.deleteMany).toHaveBeenCalledWith({
+      where: { ownerId: 'user-1' },
+    });
   });
 
   it('새 곡은 Serializable 트랜잭션에서 마지막 position 뒤에 추가한다', async () => {

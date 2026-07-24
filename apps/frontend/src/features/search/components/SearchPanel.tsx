@@ -4,6 +4,7 @@ import { ChevronDown, Inbox, Link2, LoaderCircle, Music2, Plus, Search, X } from
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { type ReactNode, useRef, useState } from 'react';
 
+import { YoutubeAttributionLink } from '@/shared/components/layout';
 import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
 
@@ -173,9 +174,10 @@ export function SearchPanel({
                     ) : null}
                     {!searchQuery.isLoading && !searchQuery.isError && hasResults ? (
                       <>
-                        <p className="border-b border-white/5.5 px-4 py-3 text-xs text-white/45">
-                          검색 결과 {results.length}개
-                        </p>
+                        <div className="flex items-center justify-between border-b border-white/5.5 px-4 py-3 text-xs text-white/45">
+                          <p>검색 결과 {results.length}개</p>
+                          <YoutubeAttributionLink />
+                        </div>
                         <ul>
                           {results.map((result) => (
                             <SearchResultItem

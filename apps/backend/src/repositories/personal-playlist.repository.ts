@@ -9,6 +9,7 @@ import {
   type PersonalPlaylistRecord,
   type ReorderPersonalPlaylistItemInput,
 } from '../types/personal-playlist';
+import type { RefreshedVideoMetadata } from '../types/youtube-metadata';
 
 const PERSONAL_PLAYLIST_SELECT = {
   id: true,
@@ -29,6 +30,7 @@ const PERSONAL_PLAYLIST_ITEM_SELECT = {
   position: true,
   status: true,
   addedAt: true,
+  metadataRefreshedAt: true,
 } as const;
 
 const ADD_ITEM_MAX_ATTEMPTS = 3;
@@ -61,11 +63,11 @@ type PersonalPlaylistItemTxClient = {
 export type PersonalPlaylistRepositoryPrisma = {
   personalPlaylist: Pick<
     PrismaClient['personalPlaylist'],
-    'findMany' | 'create' | 'findUnique' | 'update' | 'delete'
+    'findMany' | 'create' | 'findUnique' | 'update' | 'delete' | 'deleteMany'
   >;
   personalPlaylistItem: Pick<
     PrismaClient['personalPlaylistItem'],
-    'findMany' | 'findUnique' | 'update' | 'delete'
+    'findMany' | 'findUnique' | 'update' | 'updateMany' | 'delete'
   >;
   $transaction: {
     <T>(operations: Promise<T>[]): Promise<T[]>;
@@ -113,6 +115,10 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
     await this.prisma.personalPlaylist.delete({ where: { id: playlistId } });
   }
 
+  async deleteAllByOwnerId(ownerId: string): Promise<void> {
+    await this.prisma.personalPlaylist.deleteMany({ where: { ownerId } });
+  }
+
   getItems(playlistId: string): Promise<PersonalPlaylistItemRecord[]> {
     return this.prisma.personalPlaylistItem.findMany({
       where: { personalPlaylistId: playlistId },
@@ -130,12 +136,16 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
         })
         .then((result) =>
           tx.personalPlaylistItem.create({
-            data: {
-              ...data,
-              position: (result._max.position ?? 0) + 1,
-              status: 'available',
-              addedAt: new Date(),
-            },
+            data: (() => {
+              const addedAt = new Date();
+              return {
+                ...data,
+                position: (result._max.position ?? 0) + 1,
+                status: 'available',
+                addedAt,
+                metadataRefreshedAt: addedAt,
+              };
+            })(),
             select: PERSONAL_PLAYLIST_ITEM_SELECT,
           }),
         ),
@@ -169,6 +179,45 @@ export class PersonalPlaylistRepository implements IPersonalPlaylistRepository {
         this.prisma.personalPlaylistItem.update({
           where: { id: item.id },
           data: { position: item.position },
+        }),
+      ),
+    );
+  }
+
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: { id: string; metadataRefreshedAt: Date },
+  ): Promise<Array<{ id: string; videoId: string; metadataRefreshedAt: Date }>> {
+    return this.prisma.personalPlaylistItem.findMany({
+      where: {
+        metadataRefreshedAt: { lte: cutoff },
+        ...(cursor
+          ? {
+              OR: [
+                { metadataRefreshedAt: { gt: cursor.metadataRefreshedAt } },
+                { metadataRefreshedAt: cursor.metadataRefreshedAt, id: { gt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
+    });
+  }
+
+  async applyMetadataRefresh(
+    items: Array<{ id: string; result: RefreshedVideoMetadata }>,
+  ): Promise<void> {
+    const metadataRefreshedAt = new Date();
+    await this.prisma.$transaction(
+      items.map(({ id, result }) =>
+        this.prisma.personalPlaylistItem.updateMany({
+          where: { id },
+          data:
+            result.status === 'available'
+              ? { ...result, metadataRefreshedAt }
+              : { status: 'unavailable', metadataRefreshedAt },
         }),
       ),
     );

@@ -67,6 +67,24 @@ describe('AuthRepository', () => {
     );
   });
 
+  it('온보딩을 마친 기존 사용자의 프로필은 OAuth 로그인으로 덮어쓰지 않는다', async () => {
+    const onboardedUser = { ...userRecord, onboardedAt: new Date('2026-07-01T00:00:00.000Z') };
+    const upsert = vi.fn();
+    const update = vi.fn();
+    const findUnique = vi.fn().mockResolvedValue(onboardedUser);
+    const prisma = { user: { upsert, update, findUnique } } satisfies AuthRepositoryPrisma;
+    const repo = new AuthRepository(prisma);
+
+    await expect(
+      repo.upsertUser({
+        email: 'alice@example.com',
+        nickname: 'Google name',
+        profileImage: 'https://example.com/google.png',
+      }),
+    ).resolves.toEqual(onboardedUser);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
   it('refreshToken을 저장한다', async () => {
     const upsert = vi.fn();
     const update = vi.fn().mockResolvedValue(userRecord);
@@ -137,6 +155,34 @@ describe('AuthRepository', () => {
     const upsert = vi.fn();
     const update = vi.fn();
     const findUnique = vi.fn().mockResolvedValue(userRecord);
+    const prisma = { user: { upsert, update, findUnique } } satisfies AuthRepositoryPrisma;
+    const repo = new AuthRepository(prisma);
+
+    await expect(repo.findUserByRefreshToken('user-id', 'refresh-token')).resolves.toBe(null);
+  });
+
+  it('탈퇴한 사용자의 refreshToken은 거부한다', async () => {
+    const upsert = vi.fn();
+    const update = vi.fn();
+    const findUnique = vi.fn().mockResolvedValue({
+      ...userRecord,
+      refreshToken: 'refresh-token',
+      deletedAt: new Date('2026-07-23T00:00:00.000Z'),
+    });
+    const prisma = { user: { upsert, update, findUnique } } satisfies AuthRepositoryPrisma;
+    const repo = new AuthRepository(prisma);
+
+    await expect(repo.findUserByRefreshToken('user-id', 'refresh-token')).resolves.toBe(null);
+  });
+
+  it('탈퇴 진행 중인 사용자의 refreshToken은 거부한다', async () => {
+    const upsert = vi.fn();
+    const update = vi.fn();
+    const findUnique = vi.fn().mockResolvedValue({
+      ...userRecord,
+      refreshToken: 'refresh-token',
+      deletionPendingAt: new Date('2026-07-23T00:00:00.000Z'),
+    });
     const prisma = { user: { upsert, update, findUnique } } satisfies AuthRepositoryPrisma;
     const repo = new AuthRepository(prisma);
 

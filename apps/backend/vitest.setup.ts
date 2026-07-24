@@ -9,3 +9,5 @@ process.env.GOOGLE_CALLBACK_URL ??= 'http://localhost:4000/api/v1/auth/google/ca
 process.env.YOUTUBE_API_KEY ??= 'test-youtube-api-key';
 process.env.DATABASE_URL ??= 'postgresql://test:test@localhost:5432/test';
 process.env.CRON_SECRET ??= 'test-cron-secret';
+process.env.SUPABASE_URL ??= 'https://test.supabase.co';
+process.env.SUPABASE_SECRET_KEY ??= 'test-secret-key';

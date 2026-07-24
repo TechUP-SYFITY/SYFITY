@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                                                       |
 | --------- | -------------------------------------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                                            |
-| 버전      | v2.4                                                                                                                       |
-| 상태      | Playlist import의 동시 중복 처리 계약을 명확화                                                                             |
+| 버전      | v2.5                                                                                                                       |
+| 상태      | 온보딩·계정 삭제·프로필 이미지 수명 관리 및 메타데이터 갱신 계약 추가                                                      |
 | 작성 목적 | Syfity REST API 계약 정의                                                                                                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `06-socket-event-spec.md` |
 
@@ -82,6 +82,12 @@ GET    /auth/google/callback
 POST   /auth/refresh
 POST   /auth/logout
 GET    /me
+PATCH  /me
+PATCH  /me/nickname
+DELETE /me
+POST   /me/profile-image/upload-url
+POST   /me/profile-image/confirm
+DELETE /me/profile-image
 
 GET    /rooms/recent
 GET    /rooms/mine
@@ -112,6 +118,8 @@ PATCH  /personal-playlists/:playlistId/items
 GET    /search
 
 POST   /internal/rooms/inactivate-stale
+POST   /internal/playlist-items/refresh-stale-metadata
+POST   /internal/profile-image-objects/cleanup
 ```
 
 ---
@@ -145,9 +153,11 @@ POST   /internal/rooms/inactivate-stale
 ```ts
 {
   success: true,
-  data: { id: string, email: string, nickname: string, profileImage: string | null }
+  data: { id: string, email: string, nickname: string, profileImage: string | null, onboardedAt: string | null }
 }
 ```
+
+`PATCH /me`는 닉네임과 연령·약관 동의로 최초 온보딩을 완료한다. `PATCH /me/nickname`은 이후 닉네임을 수정한다. `DELETE /me`는 계정을 즉시 익명화하고 개인 Playlist를 삭제한다. 프로필 이미지는 signed upload URL 발급 → Supabase Storage 직접 업로드 → confirm의 3단계로 처리한다.
 
 ---
 
@@ -454,6 +464,8 @@ YouTube Music 영상 검색이다. 서버는 `search.list`와 `videos.list`로 M
 
 ## 9. 내부 운영 API
 
+`POST /internal/playlist-items/refresh-stale-metadata`는 `CRON_SECRET` 인증으로 25일 경과한 Room·개인 Playlist 메타데이터를 YouTube Data API에서 갱신하고, 삭제·비공개·임베드 불가·madeForKids 영상은 `unavailable`로 전환한다. 각 테이블은 `(metadataRefreshedAt, id)` cursor 기준 100개씩 독립 조회·반영해 대량 stale row도 한 트랜잭션에 누적하지 않는다. cron-job.org가 이 엔드포인트, Room 비활성화, 프로필 이미지 정리 엔드포인트를 호출한다.
+
 ### `POST /internal/rooms/inactivate-stale`
 
 GitHub Actions가 하루 한 번 호출한다. Swagger와 일반 FE 클라이언트에는 노출하지 않는다.
@@ -470,3 +482,16 @@ closed 상태이고 `closedAt`이 30일 이상 지난 Room을 inactive로 바꾼
 ```
 
 유효한 Bearer Token이 없으면 `AUTH_FORBIDDEN`(403)을 반환한다.
+
+### `POST /internal/profile-image-objects/cleanup`
+
+```http
+Authorization: Bearer <CRON_SECRET>
+```
+
+발급 뒤 1시간이 지난 `pending` 업로드와 프로필 교체·초기화·계정 탈퇴 중 Storage 삭제에 실패한 `delete_pending` 객체를 Supabase Storage에서 삭제한다. 실패한 객체 row는 남겨 다음 cron 실행에서 재시도한다.
+
+```ts
+// 200
+{ success: true, data: { deletedCount: number, failedCount: number } }
+```

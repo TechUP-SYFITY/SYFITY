@@ -40,6 +40,10 @@ export async function socketAuth(socket: Socket, next: (err?: Error) => void): P
       next(toSocketError('AUTH_USER_NOT_FOUND', '사용자를 찾을 수 없습니다.'));
       return;
     }
+    if (user.deletedAt || user.deletionPendingAt) {
+      next(toSocketError('AUTH_UNAUTHORIZED', '탈퇴한 계정입니다.'));
+      return;
+    }
 
     socket.data.userId = payload.id;
     socket.data.email = payload.email;

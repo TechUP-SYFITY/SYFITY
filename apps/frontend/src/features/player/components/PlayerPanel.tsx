@@ -1,10 +1,10 @@
 'use client';
 
 // Room의 YouTube 플레이어와 현재 재생 곡 정보를 표시한다.
-import { AlertTriangle, Play } from 'lucide-react';
-import type { RefObject } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { useRef, type RefObject } from 'react';
 
-import { formatDuration } from '@/shared/lib/formatDuration';
+import { YoutubeAttributionLink } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
 import type { PlaylistItem } from '@/shared/types/domain';
 
@@ -17,7 +17,6 @@ import type { PlayerController } from '../types/playerTypes';
 interface PlayerPanelProps {
   canControlRoom: boolean;
   roomId: string;
-  isHost: boolean;
   playerControllerRef?: RefObject<PlayerController | null>;
   onPlaybackStateChange: (isPlaying: boolean, currentTime: number) => void;
   playlist: PlaylistItem[];
@@ -26,18 +25,23 @@ interface PlayerPanelProps {
 export function PlayerPanel({
   canControlRoom,
   roomId,
-  isHost,
   playerControllerRef,
   onPlaybackStateChange,
   playlist,
 }: PlayerPanelProps) {
+  const playerFrameRef = useRef<HTMLDivElement>(null);
   const playbackState = usePlayerStore((state) => state.playbackState);
   const playbackError = usePlayerStore((state) => state.playbackError);
   const beginPlaybackSync = usePlayerStore((state) => state.beginPlaybackSync);
   const clearPlaybackSync = usePlayerStore((state) => state.clearPlaybackSync);
+  const isLocalSyncPaused = usePlayerStore((state) => state.isLocalSyncPaused);
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
-  const posterUrl = currentTrack ? getThumbnailUrl(currentTrack) : null;
-  const shouldShowPoster = Boolean(posterUrl) && !playbackState?.isPlaying;
+  let statusText: string | null = null;
+  if (playbackState && currentTrack && isLocalSyncPaused) {
+    statusText = '내 화면만 일시정지됨';
+  } else if (playbackState && currentTrack && !playbackState.isPlaying) {
+    statusText = '호스트가 일시정지함';
+  }
 
   function handleBufferingRecovered() {
     if (!playbackState?.videoId) {
@@ -71,9 +75,13 @@ export function PlayerPanel({
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 xl:mx-0">
-      <div className="relative overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border">
+    <section className="mx-auto flex h-full w-full max-w-2xl flex-col gap-4 xl:mx-0 xl:max-w-none xl:flex-col xl:items-stretch md:max-xl:portrait:max-w-[528px] max-xl:landscape:min-w-0 max-xl:landscape:flex-row max-xl:landscape:items-start">
+      <div
+        ref={playerFrameRef}
+        className="relative flex min-h-[200px] min-w-[356px] flex-1 overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-border xl:aspect-video xl:h-auto xl:w-full xl:min-w-0 xl:flex-none max-xl:landscape:h-[200px] max-xl:landscape:w-[356px] max-xl:landscape:flex-none"
+      >
         <YouTubePlayer
+          availableContainerRef={playerFrameRef}
           playerControllerRef={playerControllerRef}
           playbackState={playbackState}
           onBufferingRecovered={handleBufferingRecovered}
@@ -81,31 +89,9 @@ export function PlayerPanel({
           onError={handlePlayerError}
           onPlaybackStateChange={onPlaybackStateChange}
         />
-        {shouldShowPoster ? (
-          <div className="pointer-events-none absolute inset-0">
-            <div
-              className="size-full bg-cover bg-center opacity-80"
-              style={{
-                backgroundImage: `url(${posterUrl})`,
-              }}
-            />
-            <div className="absolute inset-0 bg-linear-to-r from-background/50 via-foreground/5 to-accent/20" />
-            <div className="absolute inset-0 bg-background/10" />
-            <div className="absolute top-1/2 left-1/2 flex size-14 -translate-1/2 items-center justify-center rounded-full bg-background/60 text-foreground">
-              <Play className="size-6 translate-x-0.5" aria-hidden />
-            </div>
-          </div>
-        ) : null}
-        <div className="pointer-events-none absolute top-4 left-4 rounded-full bg-background/70 px-3 py-1 text-xs font-bold text-primary">
-          <span className="mr-1 inline-block size-1.5 rounded-full bg-primary" />
-          LIVE SYNC
-        </div>
-        <span className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-background/80 px-2 py-1 text-xs font-bold text-foreground">
-          {currentTrack ? formatDuration(currentTrack.duration) : '0:00'}
-        </span>
       </div>
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex min-w-0 items-start justify-between gap-4 max-[767px]:landscape:hidden max-xl:landscape:flex-1 max-xl:landscape:items-center">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-bold text-foreground">
             {currentTrack?.title ?? '재생 대기'}
@@ -113,12 +99,13 @@ export function PlayerPanel({
           <p className="mt-1 truncate text-sm text-muted-foreground">
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
+          {statusText ? (
+            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <YoutubeAttributionLink />
+              <span className="break-keep">{statusText}</span>
+            </div>
+          ) : null}
         </div>
-        {!isHost ? (
-          <span className="hidden rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent-400 xl:block">
-            호스트 제어
-          </span>
-        ) : null}
       </div>
 
       <div className="min-h-5 space-y-1 text-sm text-muted-foreground">
@@ -132,12 +119,4 @@ export function PlayerPanel({
       <PlaybackSyncToast />
     </section>
   );
-}
-
-function getThumbnailUrl(track: PlaylistItem) {
-  if (track.thumbnailUrl) {
-    return track.thumbnailUrl;
-  }
-
-  return `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
 }

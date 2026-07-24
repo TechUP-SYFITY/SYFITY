@@ -57,6 +57,7 @@ function makePrisma(
   return {
     user: {
       findUnique: vi.fn().mockResolvedValue(findUniqueResult),
+      update: vi.fn(),
     },
     recentRoom: {
       findMany: vi.fn().mockResolvedValue(findManyResult),
@@ -78,6 +79,9 @@ describe('UserRepository', () => {
         email: true,
         nickname: true,
         profileImage: true,
+        onboardedAt: true,
+        deletionPendingAt: true,
+        deletedAt: true,
       },
     });
   });
@@ -87,6 +91,67 @@ describe('UserRepository', () => {
     const repo = new UserRepository(prisma);
 
     await expect(repo.findUserById('missing-id')).resolves.toBe(null);
+  });
+
+  it('온보딩, 닉네임, 이미지 변경은 필요한 프로필 필드를 반환한다', async () => {
+    const prisma = makePrisma();
+    vi.mocked(prisma.user.update).mockResolvedValue({
+      ...userProfile,
+      onboardedAt: new Date('2026-07-22T00:00:00.000Z'),
+    } as never);
+    const repo = new UserRepository(prisma);
+
+    await repo.completeOnboarding('user-id', { nickname: 'New name' });
+    await repo.updateNickname('user-id', 'Other name');
+    await repo.updateProfileImage('user-id', 'https://cdn.example/image.png');
+
+    expect(prisma.user.update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { id: 'user-id' },
+        data: { nickname: 'New name', onboardedAt: expect.any(Date) },
+      }),
+    );
+    expect(prisma.user.update).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ where: { id: 'user-id' }, data: { nickname: 'Other name' } }),
+    );
+    expect(prisma.user.update).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        where: { id: 'user-id' },
+        data: { profileImage: 'https://cdn.example/image.png' },
+      }),
+    );
+  });
+
+  it('탈퇴 시작 상태를 기록하고 완료 시 익명 정보와 비어 있는 인증 상태로 전환한다', async () => {
+    const prisma = makePrisma();
+    const repo = new UserRepository(prisma);
+
+    await repo.markDeletionPending('user-id');
+    await repo.clearDeletionPending('user-id');
+    await repo.anonymizeUser('user-id');
+
+    expect(prisma.user.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'user-id' },
+      data: { deletionPendingAt: expect.any(Date) },
+    });
+    expect(prisma.user.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'user-id' },
+      data: { deletionPendingAt: null },
+    });
+    expect(prisma.user.update).toHaveBeenNthCalledWith(3, {
+      where: { id: 'user-id' },
+      data: expect.objectContaining({
+        email: expect.stringMatching(/^deleted-.+@deleted\.syfity\.local$/),
+        nickname: '탈퇴한 사용자',
+        profileImage: null,
+        refreshToken: null,
+        deletionPendingAt: null,
+        deletedAt: expect.any(Date),
+      }),
+    });
   });
 
   it('최근 참여한 active 방 목록을 lastJoinedAt 내림차순으로 조회한다', async () => {

@@ -1,6 +1,7 @@
 import type { PlaylistItem } from '@syfity/shared';
 
 import type { PersonalPlaylistItemRecord } from './personal-playlist';
+import type { RefreshedVideoMetadata } from './youtube-metadata';
 
 export type PlaylistItemRecord = {
   id: string;
@@ -13,6 +14,7 @@ export type PlaylistItemRecord = {
   addedBy: string;
   status: 'available' | 'unavailable';
   addedAt: Date;
+  metadataRefreshedAt?: Date;
 };
 
 export type AddPlaylistItemData = {
@@ -40,6 +42,14 @@ export type ReorderPlaylistItemInput = {
   position: number;
 };
 
+export type StalePlaylistMetadataItem = {
+  id: string;
+  videoId: string;
+  metadataRefreshedAt: Date;
+};
+
+export type MetadataRefreshCursor = Pick<StalePlaylistMetadataItem, 'id' | 'metadataRefreshedAt'>;
+
 export type ImportPlaylistItemsResult = {
   addedItems: PlaylistItemRecord[];
   duplicateCount: number;
@@ -61,6 +71,11 @@ export interface IPlaylistRepository {
     sourceItems: PersonalPlaylistItemRecord[],
     addedBy: string,
   ): Promise<ImportPlaylistItemsResult>;
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: MetadataRefreshCursor,
+  ): Promise<StalePlaylistMetadataItem[]>;
+  applyMetadataRefresh(items: Array<{ id: string; result: RefreshedVideoMetadata }>): Promise<void>;
 }
 
 export function toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {

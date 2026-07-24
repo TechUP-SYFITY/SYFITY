@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -201,7 +201,10 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Night Changes 재생' }));
+    const [trackSelectButton] = await screen.findAllByRole('button', {
+      name: 'Night Changes 재생',
+    });
+    fireEvent.click(trackSelectButton);
 
     await waitFor(() => {
       const selectCalls = socket.emit.mock.calls.filter(
@@ -274,7 +277,7 @@ describe('RoomPage', () => {
     );
 
     expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
-    expect(screen.getByText('호스트 제어')).toBeInTheDocument();
+    expect(screen.queryByText('호스트 제어')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
@@ -309,9 +312,11 @@ describe('RoomPage', () => {
       useRoomStore.getState().markHostDisconnected('2099-01-01T00:00:00.000Z');
     });
 
-    expect(screen.getByRole('button', { name: '추가' })).toBeEnabled();
-    fireEvent.focus(screen.getByTestId('playlist-row-fallback-dynamite'));
-    expect(screen.getByRole('button', { name: 'Dynamite 삭제' })).toBeEnabled();
+    const [addTrigger] = await screen.findAllByRole('button', { name: '추가' });
+    expect(addTrigger).toBeEnabled();
+    const [dynamiteRow] = screen.getAllByTestId('playlist-row-fallback-dynamite');
+    fireEvent.focus(dynamiteRow);
+    expect(within(dynamiteRow).getByRole('button', { name: 'Dynamite 삭제' })).toBeEnabled();
   });
 
   it('Host 연결 상태에 따라 안내와 제어 권한을 전환한다', async () => {

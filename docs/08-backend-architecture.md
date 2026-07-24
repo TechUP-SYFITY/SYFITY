@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                  |
 | --------- | ------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Backend Architecture                                                           |
-| 버전      | v2.1                                                                                  |
-| 상태      | 개인 Playlist와 Room Playlist 불러오기 컨트롤러 구조를 명확화                         |
+| 버전      | v2.2                                                                                  |
+| 상태      | 탈퇴 진행 상태와 프로필 이미지 Storage 삭제 재시도를 추적                             |
 | 작성 목적 | Syfity 백엔드 구조 정의                                                               |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `05-api-spec.md`, `06-socket-event-spec.md` |
 
@@ -55,6 +55,7 @@ apps/backend/
       playlist-import.controller.ts
       playlist.controller.ts
       room-lifecycle.controller.ts → 내부 정리 API 응답 처리 (tsoa 미사용)
+      metadata-refresh.controller.ts → YouTube 메타데이터 갱신 내부 API
       room.controller.ts
       search.controller.ts
       user.controller.ts
@@ -71,6 +72,7 @@ apps/backend/
       playlist.service.ts
       presence.service.ts  → Socket 핸들러에서 호출, 연결 해제 유예 타이머 관리
       room-lifecycle.service.ts → 만료 보정·inactive 전환
+      metadata-refresh.service.ts → 두 Playlist 메타데이터 갱신 오케스트레이션
       room.service.ts
       search.service.ts    → YouTube API 직접 호출 (Repository 없음)
       user.service.ts
@@ -118,6 +120,7 @@ apps/backend/
         playback-session.store.ts → PlaybackState·반복·셔플·큐·이력 인메모리 관리
       youtube/
         youtube.client.ts
+      storage/                 → Supabase signed upload URL·공개 URL·삭제 클라이언트
 
     types/              → 도메인별 백엔드 타입 (auth/cache/chat/health/playback/personal-playlist/playlist/room/search/socket/user)
       express.d.ts      → Request 객체 확장 (user 정보 등)
@@ -276,7 +279,7 @@ export class RoomService {
 
 `@Security('jwt')` 데코레이터가 선언된 엔드포인트는 tsoa가 `expressAuthentication`을 자동으로 호출한다. REST 인증은 일반 Express 인증 미들웨어를 직접 붙이지 않고 tsoa Security 진입점을 사용한다. Socket.IO 인증은 별도로 `socket/socketAuth.ts`의 `socketAuth`를 사용한다.
 
-JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정이 삭제됐을 수 있으므로, `UserRepository.findUserById`로 DB 존재 여부까지 재확인한다.
+JWT 서명/만료만 검증하는 것으로는 부족하다 — 토큰이 유효해도 그 사이 계정 탈퇴가 시작되거나 완료됐을 수 있으므로, `UserRepository.findUserById`로 DB 상태를 재확인하고 `deletionPendingAt` 또는 `deletedAt`이 있는 계정은 거부한다. Socket은 연결 시 `user:{userId}` room에도 참여하며, 탈퇴 pending 기록 직후 이 room의 모든 socket을 강제 해제해 이미 연결된 세션도 차단한다.
 
 ```ts
 // src/authentication.ts
@@ -390,11 +393,13 @@ app.use(errorHandler);
 
 ### 내부 Room 수명 주기 Router
 
-`POST /api/v1/internal/rooms/inactivate-stale`는 GitHub Actions만 호출한다. 공개 API와 분리해 tsoa Swagger에 노출하지 않지만, 내부에서도 같은 레이어 구조를 따른다.
+`POST /api/v1/internal/rooms/inactivate-stale`, `POST /api/v1/internal/playlist-items/refresh-stale-metadata`, `POST /api/v1/internal/profile-image-objects/cleanup`는 cron-job.org가 호출한다. 공개 API와 분리해 tsoa Swagger에 노출하지 않지만, 내부에서도 같은 레이어 구조를 따른다. Room·메타데이터 endpoint는 성공 시 각 healthchecks.io URL로 별도 ping을 보내며 URL이 없으면 건너뛴다.
 
 ```text
 internal.routes.ts → cronAuth → RoomLifecycleController
                   → RoomLifecycleService → RoomRepository
+                  → ProfileImageCleanupController
+                  → ProfileImageCleanupService → ProfileImageRepository → IObjectStorage
 ```
 
 `cronAuth`는 `Authorization: Bearer <CRON_SECRET>`를 비교하고, 실패 시 `AUTH_FORBIDDEN`을 반환한다. `RoomLifecycleService`는 closed 후 30일 지난 Room을 inactive로 전환한다. Home의 `내 Room` 조회와 recover 요청 전 보정도 같은 Service 메서드를 호출해 스케줄 실행 지연을 보완한다.
@@ -532,6 +537,7 @@ export function initSocket(io: Server): void {
   io.use(socketAuth);
 
   io.on('connection', (socket) => {
+    socket.join(`user:${socket.data.userId}`);
     registerRoomHandlers(io, socket);
     registerPlaybackHandlers(io, socket);
     registerChatHandlers(io, socket);
@@ -638,7 +644,7 @@ REST 엔드포인트와 Socket.IO는 인증 방식이 다르다.
 | REST (`@Security('jwt')`) | `expressAuthentication` | `src/authentication.ts`    |
 | Socket.IO                 | `socketAuth` 미들웨어   | `src/socket/socketAuth.ts` |
 
-REST의 `expressAuthentication`과 마찬가지로, JWT 검증만으로는 부족해 `UserRepository.findUserById`로 DB 존재 여부까지 재확인한다 — 그렇지 않으면 계정 삭제 직후에도 만료 전 토큰으로 Socket 연결을 계속 쓸 수 있다.
+REST의 `expressAuthentication`과 마찬가지로, JWT 검증만으로는 부족해 `UserRepository.findUserById`로 DB 상태를 재확인하고 탈퇴 계정을 거부한다. 이미 handshake를 통과한 Socket은 재인증되지 않으므로, `UserService.deleteAccount`가 pending 기록 직후 `io.in('user:{userId}').disconnectSockets(true)`를 호출해 해당 사용자의 모든 기존 연결을 즉시 종료한다.
 
 ```ts
 // src/socket/socketAuth.ts

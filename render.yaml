@@ -29,7 +29,17 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_PROFILE_IMAGE_BUCKET
+        sync: false
       - key: CRON_SECRET
+        sync: false
+      - key: HEALTHCHECKS_ROOM_LIFECYCLE_URL
+        sync: false
+      - key: HEALTHCHECKS_METADATA_REFRESH_URL
         sync: false
       - key: YOUTUBE_API_KEY
         sync: false

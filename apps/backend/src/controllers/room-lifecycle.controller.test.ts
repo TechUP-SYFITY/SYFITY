@@ -1,7 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('../lib/healthchecks/pingHealthcheck', () => ({ pingHealthcheck: vi.fn() }));
+
 import { RoomLifecycleController } from './room-lifecycle.controller';
+import { pingHealthcheck } from '../lib/healthchecks/pingHealthcheck';
 
 function makeResponse(): Response {
   const response = { status: vi.fn(), json: vi.fn() };
@@ -20,6 +23,7 @@ describe('RoomLifecycleController', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ success: true, data: { inactivatedCount: 2 } });
+    expect(pingHealthcheck).toHaveBeenCalledOnce();
     expect(next).not.toHaveBeenCalled();
   });
 

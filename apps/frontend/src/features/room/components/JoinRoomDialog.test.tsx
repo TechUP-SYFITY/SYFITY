@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiClientError } from '@/shared/types/api';
 
 import { JoinRoomDialog } from './JoinRoomDialog';
-import type { RoomApi } from '../api/roomApi';
+import { roomApi, type RoomApi } from '../api/roomApi';
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 
@@ -34,7 +34,8 @@ describe('JoinRoomDialog', () => {
 
   it('추방된 사용자의 재입장을 별도 차단 상태로 안내한다', async () => {
     const onOpenChange = vi.fn();
-    const roomApiClient = {
+    const roomApiClient: RoomApi = {
+      ...roomApi,
       createRoomMembership: vi
         .fn()
         .mockRejectedValue(

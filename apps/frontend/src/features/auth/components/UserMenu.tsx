@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ListMusic, LogOut } from 'lucide-react';
+import { ChevronDown, FileText, ListMusic, LogOut, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
@@ -73,6 +73,27 @@ export function UserMenu({ api = authApi }: UserMenuProps) {
         <DropdownMenuItem asChild>
           <Link href="/playlists">
             <ListMusic aria-hidden />내 플레이리스트
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <Settings aria-hidden />
+            설정
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link href="/terms">
+            <FileText aria-hidden />
+            이용약관
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/privacy">
+            <Shield aria-hidden />
+            개인정보처리방침
           </Link>
         </DropdownMenuItem>
 

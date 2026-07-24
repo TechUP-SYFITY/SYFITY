@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                   |
 | --------- | ---------------------------------------------------------------------- |
 | 문서명    | Syfity Database Design                                                 |
-| 버전      | v2.2                                                                   |
-| 상태      | Playlist 순서 position의 1-based 계약을 명확화                         |
+| 버전      | v2.3                                                                   |
+| 상태      | 탈퇴 진행 상태와 프로필 이미지 객체 수명 주기를 DB에서 추적            |
 | 작성 목적 | Syfity 전체 기능의 PostgreSQL·Prisma 스키마 설계 정의                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md` |
 
@@ -109,6 +109,7 @@ erDiagram
     users ||--o{ playlist_items : added_by
     users ||--o{ chat_messages : user_id
     users ||--o{ personal_playlists : owner_id
+    users ||--o{ profile_image_objects : user_id
     rooms ||--o{ room_members : room_id
     rooms ||--o{ recent_rooms : room_id
     rooms ||--o{ playlist_items : room_id
@@ -124,16 +125,31 @@ erDiagram
 
 Google OAuth로 생성되는 사용자 계정이다.
 
-| 컬럼                   | 타입        | 제약         | 설명                 |
-| ---------------------- | ----------- | ------------ | -------------------- |
-| id                     | UUID        | PK           | 사용자 식별자        |
-| email                  | VARCHAR     | UK, NOT NULL | Google 계정 이메일   |
-| nickname               | VARCHAR     | NOT NULL     | 표시 이름            |
-| profile_image          | VARCHAR     | NULLABLE     | 프로필 이미지 URL    |
-| refresh_token          | VARCHAR     | NULLABLE     | Google Refresh Token |
-| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각       |
+| 컬럼                   | 타입        | 제약         | 설명                                                   |
+| ---------------------- | ----------- | ------------ | ------------------------------------------------------ |
+| id                     | UUID        | PK           | 사용자 식별자                                          |
+| email                  | VARCHAR     | UK, NOT NULL | Google 계정 이메일                                     |
+| nickname               | VARCHAR     | NOT NULL     | 표시 이름                                              |
+| profile_image          | VARCHAR     | NULLABLE     | 프로필 이미지 URL                                      |
+| refresh_token          | VARCHAR     | NULLABLE     | Google Refresh Token                                   |
+| onboarded_at           | TIMESTAMPTZ | NULLABLE     | 최초 온보딩 완료 시각                                  |
+| deletion_pending_at    | TIMESTAMPTZ | NULLABLE     | 탈퇴 정리 시작 시각. 존재하는 동안 신규 인증·쓰기 차단 |
+| deleted_at             | TIMESTAMPTZ | NULLABLE     | 계정 탈퇴 완료 시각. 존재하면 기존 토큰 인증을 거부    |
+| created_at, updated_at | TIMESTAMPTZ | NOT NULL     | 생성·수정 시각                                         |
 
-### 4.2 rooms
+### 4.2 profile_image_objects
+
+Supabase Storage의 프로필 이미지 객체 수명 주기를 추적한다. `pending`은 signed upload URL만 발급된 객체, `current`는 현재 `users.profile_image`가 가리키는 객체, `delete_pending`은 삭제 재시도 대상이다. 삭제가 성공하면 row도 hard delete한다.
+
+| 컬럼                   | 타입                     | 제약         | 설명                                |
+| ---------------------- | ------------------------ | ------------ | ----------------------------------- |
+| id                     | UUID                     | PK           | 객체 식별자                         |
+| user_id                | UUID                     | FK, NOT NULL | 소유 사용자                         |
+| path                   | VARCHAR                  | UK, NOT NULL | Storage 버킷 내부 경로              |
+| status                 | ProfileImageObjectStatus | NOT NULL     | pending/current/delete_pending 상태 |
+| created_at, updated_at | TIMESTAMPTZ              | NOT NULL     | 생성·수정 시각                      |
+
+### 4.3 rooms
 
 Room은 삭제하지 않고 상태로 관리한다.
 
@@ -194,7 +210,7 @@ active → closed → active
 
 ### 4.5 playlist_items
 
-Room 공동 Playlist 항목이다. 영상 메타데이터(`video_id`, `title`, `channel_title`, `thumbnail_url`, `duration`), `position`, `added_by`, `status`, `added_at`을 저장한다.
+Room 공동 Playlist 항목이다. 영상 메타데이터(`video_id`, `title`, `channel_title`, `thumbnail_url`, `duration`), `position`, `added_by`, `status`, `added_at`, `metadata_refreshed_at`을 저장한다. YouTube Data API 메타데이터는 25일 경과 시 갱신 대상으로 조회한다.
 
 - `(room_id, position)` 인덱스로 표시 순서를 조회한다.
 - 같은 Room의 동일 `video_id` 중복은 허용하지 않는다. `(room_id, video_id)` UNIQUE로 보장한다.
@@ -224,6 +240,8 @@ Room 채팅과 시스템 메시지다. `user_id`는 시스템 메시지에서 NU
 - 삭제는 hard delete이며, `personal_playlist_items` 외래 키의 `ON DELETE CASCADE`로 항목도 같은 트랜잭션에서 삭제한다. 보존 기간이나 cleanup cron은 필요하지 않다.
 
 ### 4.8 personal_playlist_items
+
+개인 Playlist 항목은 Room Playlist와 같은 영상 메타데이터 및 `metadata_refreshed_at`을 보관하고, 25일 경과 시 갱신 대상으로 조회한다.
 
 개인 Playlist의 곡이다. Room Playlist와 같은 영상 메타데이터와 `position`, `status`, `added_at`을 저장한다.
 

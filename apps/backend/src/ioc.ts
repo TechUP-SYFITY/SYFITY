@@ -2,35 +2,44 @@ import { OAuth2Client } from 'google-auth-library';
 import type { IocContainer } from 'tsoa';
 
 import { cache } from './lib/cache';
+import { getIo } from './lib/io';
 import { PlaybackSessionStore } from './lib/playback/playback-session.store';
 import { prisma } from './lib/prisma';
+import { SupabaseStorageClient } from './lib/storage/supabaseStorage.client';
 import { createYouTubeClient } from './lib/youtube/youtube.factory';
 
+import { AccountDeletionRepository } from './repositories/account-deletion.repository';
 import { AuthRepository } from './repositories/auth.repository';
 import { ChatRepository } from './repositories/chat.repository';
 import { PersonalPlaylistRepository } from './repositories/personal-playlist.repository';
 import { PlaylistRepository } from './repositories/playlist.repository';
+import { ProfileImageRepository } from './repositories/profile-image.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { UserRepository } from './repositories/user.repository';
 
 import { AuthService } from './services/auth.service';
 import { ChatService } from './services/chat.service';
 import { HealthService } from './services/health.service';
+import { MetadataRefreshService } from './services/metadata-refresh.service';
 import { PersonalPlaylistService } from './services/personal-playlist.service';
 import { PlaybackService } from './services/playback.service';
 import { PlaylistService } from './services/playlist.service';
 import { PresenceService } from './services/presence.service';
+import { ProfileImageCleanupService } from './services/profile-image-cleanup.service';
 import { RoomLifecycleService } from './services/room-lifecycle.service';
 import { RoomService } from './services/room.service';
 import { SearchService } from './services/search.service';
 import { UserService } from './services/user.service';
+import { YoutubeMetadataRefreshService } from './services/youtube-metadata-refresh.service';
 
 import { AuthController } from './controllers/auth.controller';
 import { ChatController } from './controllers/chat.controller';
 import { HealthController } from './controllers/health.controller';
+import { MetadataRefreshController } from './controllers/metadata-refresh.controller';
 import { PersonalPlaylistController } from './controllers/personal-playlist.controller';
 import { PlaylistImportController } from './controllers/playlist-import.controller';
 import { PlaylistController } from './controllers/playlist.controller';
+import { ProfileImageCleanupController } from './controllers/profile-image-cleanup.controller';
 import { RoomLifecycleController } from './controllers/room-lifecycle.controller';
 import { RoomMemberController } from './controllers/room-member.controller';
 import { RoomMembershipController } from './controllers/room-membership.controller';
@@ -57,8 +66,6 @@ register(AuthController, () => {
   return new AuthController(new AuthService(repo, oauthClient));
 });
 
-const userRepository = new UserRepository(prisma);
-const userService = new UserService(userRepository);
 const roomRepository = new RoomRepository(prisma);
 export const roomLifecycleService = new RoomLifecycleService(roomRepository);
 const playlistRepository = new PlaylistRepository(prisma);
@@ -72,6 +79,7 @@ const youtubeClient = createYouTubeClient({
   nodeEnv: config.nodeEnv,
   e2eMode: config.e2eMode,
 });
+const youtubeMetadataRefreshService = new YoutubeMetadataRefreshService(youtubeClient);
 export const playbackService = new PlaybackService(
   roomRepository,
   playlistRepository,
@@ -88,21 +96,48 @@ export const roomService = new RoomService(
   playbackService,
   roomLifecycleService,
 );
+const profileImageStorage = new SupabaseStorageClient(
+  config.supabase.profileImageBucket,
+  config.supabase.url,
+  config.supabase.secretKey,
+);
+const profileImageRepository = new ProfileImageRepository(prisma);
+const userRepository = new UserRepository(prisma);
+const accountDeletionRepository = new AccountDeletionRepository(prisma);
+const userService = new UserService(
+  userRepository,
+  roomService,
+  profileImageStorage,
+  config.supabase.profileImageBucket,
+  profileImageRepository,
+  (userId) => getIo().in(`user:${userId}`).disconnectSockets(true),
+  accountDeletionRepository,
+);
 export const playlistService = new PlaylistService(
   playlistRepository,
   roomRepository,
   youtubeClient,
   playbackService,
   personalPlaylistRepository,
+  youtubeMetadataRefreshService,
 );
 export const personalPlaylistService = new PersonalPlaylistService(
   personalPlaylistRepository,
   youtubeClient,
+  youtubeMetadataRefreshService,
+);
+export const metadataRefreshService = new MetadataRefreshService(
+  playlistService,
+  personalPlaylistService,
 );
 
 register(UserController, () => new UserController(userService));
 register(RoomController, () => new RoomController(userService, roomService));
 export const roomLifecycleController = new RoomLifecycleController(roomLifecycleService);
+export const metadataRefreshController = new MetadataRefreshController(metadataRefreshService);
+export const profileImageCleanupController = new ProfileImageCleanupController(
+  new ProfileImageCleanupService(profileImageRepository, profileImageStorage),
+);
 register(RoomMembershipController, () => new RoomMembershipController(roomService));
 register(RoomMemberController, () => new RoomMemberController(roomService));
 register(ChatController, () => new ChatController(chatService));

@@ -2,6 +2,7 @@ import type { KickedRoomMember } from '@syfity/shared';
 
 import type {
   ChatMessage,
+  PlaybackPolicy,
   PlaybackState,
   PlaylistItem,
   RoomDetail,
@@ -129,7 +130,7 @@ export const roomFixture = {
     updatedAt: '2026-07-01T10:12:00.000Z',
     videoId: null,
   } satisfies PlaybackState,
-  playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+  playbackPolicy: { repeatMode: 'off', shuffleEnabled: false } satisfies PlaybackPolicy,
   playlist: [
     {
       addedBy: 'fallback-host',

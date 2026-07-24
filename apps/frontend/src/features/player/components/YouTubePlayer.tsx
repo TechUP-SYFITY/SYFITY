@@ -3,7 +3,7 @@
 'use client';
 
 // YouTube IFrame Player API를 React 컴포넌트 생명주기에 연결한다.
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 
 import { getPlaybackCorrection } from '../lib/playerSync';
 import { usePlayerStore } from '../store/playerStore';
@@ -48,6 +48,7 @@ const loadYouTubeApi = () => {
 };
 
 interface YouTubePlayerProps {
+  availableContainerRef?: RefObject<HTMLElement | null>;
   playerControllerRef?: RefObject<PlayerController | null>;
   playbackState: PlayerPlaybackState | null;
   onBufferingRecovered: () => void;
@@ -57,6 +58,7 @@ interface YouTubePlayerProps {
 }
 
 export function YouTubePlayer({
+  availableContainerRef,
   playerControllerRef,
   playbackState,
   onBufferingRecovered,
@@ -80,6 +82,7 @@ export function YouTubePlayer({
   const isLocalSyncPaused = usePlayerStore((state) => state.isLocalSyncPaused);
   const isMuted = usePlayerVolumeStore((state) => state.isMuted);
   const volume = usePlayerVolumeStore((state) => state.volume);
+  const playerSize = usePlayerFrameSize(availableContainerRef);
 
   useEffect(() => {
     playbackStateRef.current = playbackState;
@@ -173,7 +176,7 @@ export function YouTubePlayer({
         height: '100%',
         playerVars: {
           controls: 0,
-          modestbranding: 1,
+          origin: window.location.origin,
           playsinline: 1,
           rel: 0,
         },
@@ -251,10 +254,67 @@ export function YouTubePlayer({
   ]);
 
   return (
-    <div className="aspect-video w-full bg-black">
-      <div className="size-full" ref={containerRef} />
+    <div className="flex h-full min-h-[200px] w-full items-center justify-center bg-black">
+      <div
+        className={playerSize ? 'shrink-0' : 'aspect-video h-auto w-full'}
+        style={playerSize ? playerSizeToStyle(playerSize) : undefined}
+      >
+        <div className="size-full" ref={containerRef} />
+      </div>
     </div>
   );
+}
+
+type PlayerFrameSize = { height: number; width: number };
+
+// YouTube RMF(Required Minimum Functionality)는 플레이어가 200×200px 미만으로
+// 축소되지 않을 것을 요구한다. 가용 공간이 이보다 좁아도 이 하한선을 지키기 위해
+// 필요하면 가용 너비를 넘어서더라도(letterbox 카드가 그만큼 커지도록) 강제한다.
+const MIN_PLAYER_DIMENSION = 200;
+
+export function calculatePlayerFrameSize(
+  availableWidth: number,
+  availableHeight: number,
+): PlayerFrameSize {
+  if (availableWidth <= 0 || availableHeight <= 0) {
+    return { height: MIN_PLAYER_DIMENSION, width: MIN_PLAYER_DIMENSION };
+  }
+
+  const widthLimitedHeight = availableWidth * (9 / 16);
+  const height = Math.max(MIN_PLAYER_DIMENSION, Math.min(availableHeight, widthLimitedHeight));
+  const width = Math.max(MIN_PLAYER_DIMENSION, height * (16 / 9));
+  return { height: Math.round(height), width: Math.round(width) };
+}
+
+function playerSizeToStyle({ height, width }: PlayerFrameSize): CSSProperties {
+  return { height, width };
+}
+
+function usePlayerFrameSize(
+  availableContainerRef: RefObject<HTMLElement | null> | undefined,
+): PlayerFrameSize | null {
+  const [size, setSize] = useState<PlayerFrameSize | null>(null);
+
+  useEffect(() => {
+    const container = availableContainerRef?.current;
+    if (!container) return undefined;
+
+    const measure = () => {
+      const { height, width } = container.getBoundingClientRect();
+      setSize(calculatePlayerFrameSize(width, height));
+    };
+
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(container);
+    window.addEventListener('resize', measure);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [availableContainerRef]);
+
+  return size;
 }
 
 function applyPlaybackState(

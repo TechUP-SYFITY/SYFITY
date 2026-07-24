@@ -1,5 +1,6 @@
 import { ERROR_CODES, type AddPersonalPlaylistItemRequest } from '@syfity/shared';
 
+import type { YoutubeMetadataRefreshService } from './youtube-metadata-refresh.service';
 import { AppError } from '../errors/appError';
 import { YOUTUBE_MUSIC_CATEGORY_ID, type IYouTubeClient } from '../lib/youtube/youtube.client';
 import {
@@ -12,10 +13,16 @@ import {
 import { assertOwnedPersonalPlaylist } from '../utils/personalPlaylistAccess';
 import { resolveVideoId } from '../utils/resolveVideoId';
 
+const METADATA_REFRESH_BATCH_SIZE = 100;
+
 export class PersonalPlaylistService {
   constructor(
     private readonly repository: IPersonalPlaylistRepository,
     private readonly youtubeClient: Pick<IYouTubeClient, 'getVideoDetails'>,
+    private readonly metadataRefreshService: Pick<
+      YoutubeMetadataRefreshService,
+      'refreshVideoMetadata'
+    >,
   ) {}
 
   getPlaylists(userId: string): Promise<PersonalPlaylistRecord[]> {
@@ -66,7 +73,7 @@ export class PersonalPlaylistService {
     if (!video || video.duration === 0) {
       throw new AppError(400, ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE, '재생할 수 없는 영상입니다.');
     }
-    if (!video.embeddable) {
+    if (!video.embeddable || video.madeForKids) {
       throw new AppError(
         400,
         ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
@@ -95,6 +102,34 @@ export class PersonalPlaylistService {
         throw this.createDuplicateVideoError();
       }
       throw error;
+    }
+  }
+
+  async refreshStaleMetadata(
+    cutoff: Date,
+  ): Promise<{ checkedCount: number; unavailableCount: number }> {
+    let cursor: { id: string; metadataRefreshedAt: Date } | undefined;
+    let checkedCount = 0;
+    let unavailableCount = 0;
+
+    for (;;) {
+      const staleItems = await this.repository.findStaleMetadataItems(cutoff, cursor);
+      if (staleItems.length === 0) return { checkedCount, unavailableCount };
+      const refreshed = await this.metadataRefreshService.refreshVideoMetadata([
+        ...new Set(staleItems.map((item) => item.videoId)),
+      ]);
+      const updates = staleItems.map((item) => ({
+        id: item.id,
+        result: refreshed.get(item.videoId) ?? { status: 'unavailable' as const },
+      }));
+      await this.repository.applyMetadataRefresh(updates);
+      checkedCount += staleItems.length;
+      unavailableCount += updates.filter((item) => item.result.status === 'unavailable').length;
+      if (staleItems.length < METADATA_REFRESH_BATCH_SIZE) {
+        return { checkedCount, unavailableCount };
+      }
+      const lastItem = staleItems[staleItems.length - 1]!;
+      cursor = { id: lastItem.id, metadataRefreshedAt: lastItem.metadataRefreshedAt };
     }
   }
 

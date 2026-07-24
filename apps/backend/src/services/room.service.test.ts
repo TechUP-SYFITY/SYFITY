@@ -1128,6 +1128,21 @@ describe('RoomService', () => {
     expect(io.socketsLeave).toHaveBeenCalledWith('room:room-1');
   });
 
+  it('이미 DB에서 종료된 Room도 재검증 없이 종료 알림과 재생 세션 정리를 수행한다', async () => {
+    const { io } = makeIo();
+    const { service, roomRepo, playbackService } = makeService({ io });
+
+    await expect(service.finalizeClosedRoom('room-1')).resolves.toBeUndefined();
+
+    expect(roomRepo.closeRoom).not.toHaveBeenCalled();
+    expect(playbackService.clearSession).toHaveBeenCalledWith('room-1');
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'room:closed', {
+      roomId: 'room-1',
+      reason: 'host-closed',
+    });
+    expect(io.socketsLeave).toHaveBeenCalledWith('room:room-1');
+  });
+
   it('REST Room 종료 시 시스템 메시지 생성 실패에도 room:closed를 broadcast한다', async () => {
     const loggerError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const { io } = makeIo();

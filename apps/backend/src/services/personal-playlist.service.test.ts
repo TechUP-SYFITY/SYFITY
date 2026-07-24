@@ -38,6 +38,9 @@ function fixture() {
     findItemById: vi.fn().mockResolvedValue(item),
     deleteItem: vi.fn().mockResolvedValue(undefined),
     reorderItems: vi.fn().mockResolvedValue(undefined),
+    deleteAllByOwnerId: vi.fn().mockResolvedValue(undefined),
+    findStaleMetadataItems: vi.fn().mockResolvedValue([]),
+    applyMetadataRefresh: vi.fn().mockResolvedValue(undefined),
   };
   const youtubeClient = {
     getVideoDetails: vi.fn().mockResolvedValue([
@@ -48,14 +51,17 @@ function fixture() {
         thumbnailUrl: '',
         duration: 180,
         embeddable: true,
+        madeForKids: false,
         categoryId: '10',
       },
     ]),
   };
+  const metadataRefreshService = { refreshVideoMetadata: vi.fn() };
   return {
-    service: new PersonalPlaylistService(repository, youtubeClient),
+    service: new PersonalPlaylistService(repository, youtubeClient, metadataRefreshService),
     repository,
     youtubeClient,
+    metadataRefreshService,
   };
 }
 
@@ -107,6 +113,87 @@ describe('PersonalPlaylistService', () => {
       status: 400,
       code: ERROR_CODES.PLAYLIST_NOT_MUSIC,
     });
+  });
+
+  it('아동용으로 지정된 영상은 개인 Playlist에 추가하지 않는다', async () => {
+    const { service, repository, youtubeClient } = fixture();
+    youtubeClient.getVideoDetails.mockResolvedValueOnce([
+      { ...item, embeddable: true, madeForKids: true, categoryId: '10' },
+    ]);
+
+    await expect(
+      service.addItem('playlist-1', 'user-1', { videoId: 'video-1' }),
+    ).rejects.toMatchObject({ status: 400, code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE });
+    expect(repository.addItem).not.toHaveBeenCalled();
+  });
+
+  it('오래된 메타데이터를 갱신하고 조회 불가 영상은 unavailable로 저장한다', async () => {
+    const { service, repository, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    repository.findStaleMetadataItems.mockResolvedValueOnce([
+      { id: 'item-1', videoId: 'video-1', metadataRefreshedAt: cutoff },
+      { id: 'item-2', videoId: 'missing-video', metadataRefreshedAt: cutoff },
+    ]);
+    metadataRefreshService.refreshVideoMetadata.mockResolvedValueOnce(
+      new Map([
+        [
+          'video-1',
+          {
+            status: 'available',
+            title: 'Updated',
+            channelTitle: 'Channel',
+            thumbnailUrl: 'thumb',
+            duration: 200,
+          },
+        ],
+      ]),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 2,
+      unavailableCount: 1,
+    });
+    expect(metadataRefreshService.refreshVideoMetadata).toHaveBeenCalledWith([
+      'video-1',
+      'missing-video',
+    ]);
+    expect(repository.applyMetadataRefresh).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'item-1',
+        result: expect.objectContaining({ status: 'available' }),
+      }),
+      { id: 'item-2', result: { status: 'unavailable' } },
+    ]);
+  });
+
+  it('100개 단위로 cursor를 넘겨 개인 Playlist 메타데이터를 갱신한다', async () => {
+    const { service, repository, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    const firstBatch = Array.from({ length: 100 }, (_, index) => ({
+      id: `item-${index + 1}`,
+      videoId: `video-${index + 1}`,
+      metadataRefreshedAt: cutoff,
+    }));
+    const lastBatch = [{ id: 'item-101', videoId: 'video-101', metadataRefreshedAt: cutoff }];
+    repository.findStaleMetadataItems
+      .mockResolvedValueOnce(firstBatch)
+      .mockResolvedValueOnce(lastBatch);
+    metadataRefreshService.refreshVideoMetadata.mockImplementation(
+      async (videoIds: string[]) =>
+        new Map(videoIds.map((videoId: string) => [videoId, { status: 'unavailable' as const }])),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 101,
+      unavailableCount: 101,
+    });
+
+    expect(repository.findStaleMetadataItems).toHaveBeenNthCalledWith(1, cutoff, undefined);
+    expect(repository.findStaleMetadataItems).toHaveBeenNthCalledWith(2, cutoff, {
+      id: 'item-100',
+      metadataRefreshedAt: cutoff,
+    });
+    expect(repository.applyMetadataRefresh).toHaveBeenCalledTimes(2);
   });
 
   it('중복 곡과 저장 중 unique 충돌을 PERSONAL_PLAYLIST_DUPLICATE_VIDEO로 거부한다', async () => {

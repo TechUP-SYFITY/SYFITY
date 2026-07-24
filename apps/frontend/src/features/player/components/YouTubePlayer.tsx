@@ -325,6 +325,12 @@ function applyPlaybackState(
   suppressNextPausedSyncRef: RefObject<boolean>,
 ) {
   if (!playbackState?.videoId) {
+    // Room 복구 등으로 서버 재생 상태가 비어도 IFrame에는 이전 영상이 남아 있을 수 있다.
+    // 명시적으로 중지하고 로드 식별자를 초기화해야 이후 새 곡도 정상적으로 불러온다.
+    player.stopVideo();
+    loadedVideoIdRef.current = null;
+    previousPlayerStateRef.current = null;
+    suppressNextPausedSyncRef.current = false;
     return;
   }
 

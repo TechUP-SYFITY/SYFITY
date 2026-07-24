@@ -4,6 +4,7 @@ import {
   ProfileImageRepository,
   type ProfileImageRepositoryPrisma,
 } from './profile-image.repository';
+import { Prisma } from '../generated/prisma/client';
 
 const userProfile = {
   id: 'user-id',
@@ -14,6 +15,11 @@ const userProfile = {
   deletionPendingAt: null,
   deletedAt: null,
 };
+
+const uniqueConstraintError = new Prisma.PrismaClientKnownRequestError('duplicate current image', {
+  code: 'P2002',
+  clientVersion: 'test',
+});
 
 function makePrisma(findFirstResult: { id: string } | null = { id: 'pending-object' }): {
   prisma: ProfileImageRepositoryPrisma;
@@ -102,6 +108,31 @@ describe('ProfileImageRepository', () => {
     ).resolves.toBeNull();
     expect(tx.profileImageObject.updateMany).not.toHaveBeenCalled();
     expect(tx.user.update).not.toHaveBeenCalled();
+  });
+
+  it('동시 confirm의 current 객체 고유 제약 충돌은 재시도해 하나의 current만 남긴다', async () => {
+    const { prisma, tx } = makePrisma();
+    vi.mocked(prisma.$transaction)
+      .mockRejectedValueOnce(uniqueConstraintError)
+      .mockImplementation((fn) => fn(tx as never));
+    const repo = new ProfileImageRepository(prisma);
+
+    await expect(
+      repo.confirmPending('user-id', 'user-id/new.png', 'https://cdn.example/new.png'),
+    ).resolves.toEqual(userProfile);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(prisma.$transaction).toHaveBeenLastCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+    expect(tx.profileImageObject.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-id', status: 'current', id: { not: 'pending-object' } },
+      data: { status: 'delete_pending' },
+    });
+    expect(tx.profileImageObject.update).toHaveBeenCalledWith({
+      where: { id: 'pending-object' },
+      data: { status: 'current' },
+    });
   });
 
   it('초기화·탈퇴·만료 pending은 삭제 대기 상태로 전환한다', async () => {

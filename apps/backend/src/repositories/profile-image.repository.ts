@@ -1,4 +1,6 @@
-import type { PrismaClient } from '../generated/prisma/client';
+import { isDriverAdapterError } from '@prisma/driver-adapter-utils';
+
+import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type { IProfileImageRepository, ProfileImageObjectRecord } from '../types/profile-image';
 import type { UserProfileRecord } from '../types/user';
 
@@ -20,6 +22,19 @@ const OBJECT_SELECT = {
   createdAt: true,
 } as const;
 
+const CONFIRM_MAX_ATTEMPTS = 3;
+
+function isSerializationFailure(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+    return true;
+  }
+  return isDriverAdapterError(error) && error.cause.kind === 'TransactionWriteConflict';
+}
+
+function isUniqueConstraintFailure(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
 type ProfileImageTransactionClient = {
   user: Pick<PrismaClient['user'], 'update'>;
   profileImageObject: Pick<
@@ -34,7 +49,10 @@ export type ProfileImageRepositoryPrisma = {
     PrismaClient['profileImageObject'],
     'create' | 'delete' | 'deleteMany' | 'findMany' | 'updateMany' | 'upsert'
   >;
-  $transaction: <T>(fn: (tx: ProfileImageTransactionClient) => Promise<T>) => Promise<T>;
+  $transaction: <T>(
+    fn: (tx: ProfileImageTransactionClient) => Promise<T>,
+    options?: { isolationLevel?: Prisma.TransactionIsolationLevel },
+  ) => Promise<T>;
 };
 
 export class ProfileImageRepository implements IProfileImageRepository {
@@ -55,27 +73,43 @@ export class ProfileImageRepository implements IProfileImageRepository {
     path: string,
     publicUrl: string,
   ): Promise<UserProfileRecord | null> {
-    return this.prisma.$transaction(async (tx) => {
-      const object = await tx.profileImageObject.findFirst({
-        where: { userId, path, status: 'pending' },
-        select: { id: true },
-      });
-      if (!object) return null;
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const object = await tx.profileImageObject.findFirst({
+              where: { userId, path, status: 'pending' },
+              select: { id: true },
+            });
+            if (!object) return null;
 
-      await tx.profileImageObject.updateMany({
-        where: { userId, status: 'current', id: { not: object.id } },
-        data: { status: 'delete_pending' },
-      });
-      await tx.profileImageObject.update({
-        where: { id: object.id },
-        data: { status: 'current' },
-      });
-      return tx.user.update({
-        where: { id: userId },
-        data: { profileImage: publicUrl },
-        select: USER_PROFILE_SELECT,
-      });
-    });
+            await tx.profileImageObject.updateMany({
+              where: { userId, status: 'current', id: { not: object.id } },
+              data: { status: 'delete_pending' },
+            });
+            await tx.profileImageObject.update({
+              where: { id: object.id },
+              data: { status: 'current' },
+            });
+            return tx.user.update({
+              where: { id: userId },
+              data: { profileImage: publicUrl },
+              select: USER_PROFILE_SELECT,
+            });
+          },
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          },
+        );
+      } catch (error) {
+        if (
+          attempt >= CONFIRM_MAX_ATTEMPTS ||
+          (!isSerializationFailure(error) && !isUniqueConstraintFailure(error))
+        ) {
+          throw error;
+        }
+      }
+    }
   }
 
   async resetCurrent(userId: string): Promise<UserProfileRecord> {

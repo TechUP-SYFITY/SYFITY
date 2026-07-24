@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                   |
 | --------- | ---------------------------------------------------------------------- |
 | 문서명    | Syfity Database Design                                                 |
-| 버전      | v2.3                                                                   |
-| 상태      | 탈퇴 진행 상태와 프로필 이미지 객체 수명 주기를 DB에서 추적            |
+| 버전      | v2.4                                                                   |
+| 상태      | Room 복구 시 채팅 초기화 정책 반영                                     |
 | 작성 목적 | Syfity 전체 기능의 PostgreSQL·Prisma 스키마 설계 정의                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md` |
 
@@ -15,7 +15,7 @@
 ## 2. 설계 원칙
 
 1. 모든 기본 키는 UUID를 사용한다.
-2. Room, 참여 이력, 채팅은 물리 삭제하지 않고 상태로 보존한다. 사용자가 명시적으로 삭제한 Room Playlist·개인 Playlist와 그 곡은 예외로 hard delete한다.
+2. Room과 참여 이력은 물리 삭제하지 않고 상태로 보존한다. Room 복구 시에는 Playlist·채팅을 함께 hard delete하며, 사용자가 명시적으로 삭제한 Room Playlist·개인 Playlist와 그 곡도 hard delete한다.
 3. 상태값은 PostgreSQL enum과 Prisma enum으로 함께 선언한다.
 4. 시각은 `TIMESTAMPTZ`로 저장하고 API에서는 ISO 8601 문자열로 직렬화한다.
 5. 현재 곡, 재생 위치, 반복·셔플, 셔플 큐, 재생 이력은 인메모리 재생 세션으로 관리한다. DB는 Room의 영속 데이터만 저장한다.
@@ -334,9 +334,9 @@ WHERE status = 'closed'
 하나의 DB 트랜잭션에서 다음을 수행한다.
 
 1. Room이 Host 소유의 `closed` 상태인지와 30일 만료 여부를 확인한다.
-2. Room Playlist를 삭제한다.
+2. Room Playlist와 채팅을 삭제한다.
 3. Room을 `active`로, `closed_at`을 NULL로 갱신한다.
 
 DB 트랜잭션이 성공한 뒤 해당 Room의 인메모리 재생 세션을 제거한다. 다음 입장 또는 Host 재생 제어 시 기본값의 새 세션을 만든다.
 
-채팅, Member 참여 이력, `kicked` 상태, 최근 Room 이력은 삭제하지 않는다.
+Member 참여 이력, `kicked` 상태, 최근 Room 이력은 삭제하지 않는다.

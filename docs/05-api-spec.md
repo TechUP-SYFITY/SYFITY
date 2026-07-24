@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                                                       |
 | --------- | -------------------------------------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity API Spec                                                                                                            |
-| 버전      | v2.5                                                                                                                       |
-| 상태      | 온보딩·계정 삭제·프로필 이미지 수명 관리 및 메타데이터 갱신 계약 추가                                                      |
+| 버전      | v2.6                                                                                                                       |
+| 상태      | Room 복구 시 채팅 초기화 정책 반영                                                                                         |
 | 작성 목적 | Syfity REST API 계약 정의                                                                                                  |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `03-realtime-sync-design.md`, `04-database-design.md`, `06-socket-event-spec.md` |
 
@@ -247,7 +247,7 @@ Host가 Room의 이름 또는 상태를 변경한다. 이름은 active Room에�
 
 `status: 'closed'`는 active Room만 closed로 전환한다. `closedAt`을 기록하고, 재생 세션을 종료하며 모든 Socket Room 연결을 해제한다. 참여 이력과 채팅은 유지한다.
 
-`status: 'active'`는 closed Room만 복구한다. 30일 만료 여부를 먼저 보정하고, 복구 가능하면 Playlist를 삭제한 뒤 인메모리 재생 세션을 제거한다. 참여 이력·채팅·추방 상태는 유지한다.
+`status: 'active'`는 closed Room만 복구한다. 30일 만료 여부를 먼저 보정하고, 복구 가능하면 Playlist·채팅을 삭제한 뒤 인메모리 재생 세션을 제거한다. 참여 이력·추방 상태는 유지한다.
 
 Host의 Socket 연결 해제는 이 API를 호출하지 않는다. 1분 재연결 유예 뒤 서버가 `status: 'closed'`와 같은 종료 처리를 수행한다.
 

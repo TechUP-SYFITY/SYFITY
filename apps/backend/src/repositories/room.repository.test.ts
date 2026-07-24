@@ -54,6 +54,7 @@ type RoomMemberRow = {
 
 function makeTransactionPrisma(room: RoomRecord = createdRoom): RoomTransactionPrisma {
   return {
+    chatMessage: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     room: {
       create: vi.fn().mockResolvedValue(room),
       update: vi.fn().mockResolvedValue({ ...updatedRoom, status: 'closed', closedAt: new Date() }),
@@ -643,7 +644,7 @@ describe('RoomRepository', () => {
     expect(tx.roomMember.updateMany).not.toHaveBeenCalled();
   });
 
-  it('Room 복구 시 Playlist를 비우고 active 상태로 전환한다', async () => {
+  it('Room 복구 시 Playlist·채팅을 비우고 active 상태로 전환한다', async () => {
     const { prisma, tx } = makePrisma();
     vi.mocked(tx.room.update).mockResolvedValue(updatedRoom as never);
     const repo = new RoomRepository(prisma);
@@ -651,12 +652,16 @@ describe('RoomRepository', () => {
     await expect(repo.recoverRoom('room-1')).resolves.toEqual(updatedRoom);
 
     expect(tx.playlistItem.deleteMany).toHaveBeenCalledWith({ where: { roomId: 'room-1' } });
+    expect(tx.chatMessage.deleteMany).toHaveBeenCalledWith({ where: { roomId: 'room-1' } });
     expect(tx.room.update).toHaveBeenCalledWith({
       where: { id: 'room-1' },
       data: { status: 'active', closedAt: null },
       select: { id: true, name: true, status: true, closedAt: true, updatedAt: true },
     });
     expect(vi.mocked(tx.playlistItem.deleteMany).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(tx.room.update).mock.invocationCallOrder[0],
+    );
+    expect(vi.mocked(tx.chatMessage.deleteMany).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(tx.room.update).mock.invocationCallOrder[0],
     );
   });

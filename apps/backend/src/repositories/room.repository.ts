@@ -14,6 +14,7 @@ import type {
 } from '../types/room';
 
 export type RoomTransactionPrisma = {
+  chatMessage: Pick<PrismaClient['chatMessage'], 'deleteMany'>;
   room: Pick<PrismaClient['room'], 'create' | 'update'>;
   roomMember: Pick<PrismaClient['roomMember'], 'create' | 'updateMany'>;
   playlistItem: Pick<PrismaClient['playlistItem'], 'deleteMany'>;
@@ -341,6 +342,7 @@ export class RoomRepository implements IRoomRepository {
   async recoverRoom(roomId: string): Promise<RoomUpdateRecord> {
     return this.prisma.$transaction(async (tx) => {
       await tx.playlistItem.deleteMany({ where: { roomId } });
+      await tx.chatMessage.deleteMany({ where: { roomId } });
       return tx.room.update({
         where: { id: roomId },
         data: { status: 'active', closedAt: null },

@@ -5,8 +5,8 @@
 | 항목      | 내용                                                                                         |
 | --------- | -------------------------------------------------------------------------------------------- |
 | 문서명    | Syfity Realtime Sync Design                                                                  |
-| 버전      | v2.0                                                                                         |
-| 상태      | 서버 권위 재생, 반복·셔플, Room 수명 주기 정책으로 재구성                                    |
+| 버전      | v2.1                                                                                         |
+| 상태      | Room 복구 시 채팅 초기화 정책 반영                                                           |
 | 작성 목적 | Syfity의 실시간 재생·참여 상태 동기화 설계 정의                                              |
 | 기반 문서 | `01-prd.md`, `02-system-architecture.md`, `04-database-design.md`, `06-socket-event-spec.md` |
 
@@ -250,7 +250,7 @@ flowchart TD
 ### 8.2 Close·복구·Inactive
 
 - Host가 active Room을 Close하면 재생을 중지하고 모든 Socket Room 연결을 해제한다.
-- Host가 closed Room을 복구하면 DB의 Playlist를 초기화하고 인메모리 재생 세션·자동 전환 타이머를 제거한다. 기존 Member는 자동 입장하지 않는다.
+- Host가 closed Room을 복구하면 DB의 Playlist·채팅을 초기화하고 인메모리 재생 세션·자동 전환 타이머를 제거한다. 기존 Member는 자동 입장하지 않는다.
 - inactive Room은 Socket 입장·이벤트 처리·재생 동기화를 모두 허용하지 않는다.
 
 ### 8.3 추방

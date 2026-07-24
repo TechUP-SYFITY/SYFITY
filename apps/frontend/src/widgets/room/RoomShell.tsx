@@ -102,7 +102,11 @@ export function RoomShell({
   return (
     <main className="h-dvh overflow-hidden bg-background text-foreground">
       <div className="flex h-full min-h-0 flex-col">
-        <Header actions={headerActions} containerClassName="landscape:h-10 xl:h-16" variant="app" />
+        <Header
+          actions={headerActions}
+          containerClassName="max-xl:landscape:h-10 xl:h-16"
+          variant="app"
+        />
         <RoomStatusBar
           onInviteClick={onInviteClick}
           onlineMemberCount={onlineMemberCount}

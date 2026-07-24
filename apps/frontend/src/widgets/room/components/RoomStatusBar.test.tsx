@@ -32,4 +32,11 @@ describe('RoomStatusBar', () => {
 
     expect(screen.getByRole('button', { name: '나가기' })).toBeInTheDocument();
   });
+
+  it('정보 바 축소는 xl 미만 가로모드에만 적용한다', () => {
+    const { container } = render(<RoomStatusBar onlineMemberCount={0} room={null} />);
+
+    expect(container.querySelector('section')).toHaveClass('max-xl:landscape:h-12');
+    expect(container.querySelector('section')).not.toHaveClass('landscape:h-12');
+  });
 });

@@ -72,6 +72,14 @@ describe('PwaInstallPrompt', () => {
     expect(screen.queryByLabelText('Syfity 설치 안내')).not.toBeInTheDocument();
   });
 
+  it('app Header보다 위에 설치 안내를 표시한다', () => {
+    usePwaStore.setState({ deferredPrompt: createDeferredPrompt().event });
+
+    render(<PwaInstallPrompt />);
+
+    expect(screen.getByLabelText('Syfity 설치 안내')).toHaveClass('z-50');
+  });
+
   it('설치 가능하면 네이티브 설치 프롬프트를 연다', async () => {
     const { event, prompt } = createDeferredPrompt();
     usePwaStore.setState({ deferredPrompt: event });

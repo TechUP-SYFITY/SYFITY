@@ -99,11 +99,14 @@ function RoomPageContent({ roomId }: RoomPageProps) {
   const miniPlayerHasPlayableTrack = Boolean(currentTrack);
   const miniPlayerControls = usePlayerControls({
     canControlRoom,
+    currentTrackDuration: currentTrack?.duration,
     currentTime,
     hasPlayableTrack: miniPlayerHasPlayableTrack,
     isHost,
     isPlaying: playbackState?.isPlaying ?? false,
     playerControllerRef,
+    playbackVersion: playbackState?.playbackVersion,
+    playlistItemId: playbackState?.playlistItemId,
     roomId,
   });
   const roomExitError = closeRoom.isError ? getApiErrorMessage(closeRoom.error) : undefined;

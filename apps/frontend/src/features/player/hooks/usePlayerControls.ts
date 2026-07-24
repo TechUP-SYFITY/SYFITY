@@ -20,11 +20,14 @@ const PLAYER_COMMAND_ERROR_MESSAGE_OVERRIDES = {
 
 interface UsePlayerControlsParams {
   canControlRoom?: boolean;
+  currentTrackDuration?: number;
   roomId: string;
   isHost: boolean;
   currentTime: number;
   hasPlayableTrack: boolean;
   isPlaying: boolean;
+  playbackVersion?: number;
+  playlistItemId?: string | null;
   playerControllerRef?: RefObject<PlayerController | null>;
   /** @deprecated next/previous selection is server-authoritative. */
   nextItemId?: string;
@@ -36,9 +39,12 @@ export function usePlayerControls({
   roomId,
   isHost,
   canControlRoom = isHost,
+  currentTrackDuration = 0,
   currentTime,
   hasPlayableTrack,
   isPlaying,
+  playbackVersion,
+  playlistItemId,
   playerControllerRef,
 }: UsePlayerControlsParams) {
   const seekTimeoutRef = useRef<number | null>(null);
@@ -157,8 +163,8 @@ export function usePlayerControls({
     void runHostCommand('next', () => playbackCommands.changeTrack(roomId, 'next'));
   }
 
-  function handleSelectTrack(playlistItemId: string) {
-    if (!playlistItemId || !canControlRoom || pendingCommandRef.current) {
+  function handleSelectTrack(selectedPlaylistItemId: string) {
+    if (!selectedPlaylistItemId || !canControlRoom || pendingCommandRef.current) {
       return;
     }
 
@@ -166,7 +172,7 @@ export function usePlayerControls({
     playerControllerRef?.current?.play();
     void runHostCommand(
       'select',
-      () => playbackCommands.changeTrack(roomId, 'select', playlistItemId),
+      () => playbackCommands.changeTrack(roomId, 'select', selectedPlaylistItemId),
       isPlaying ? undefined : () => playerControllerRef?.current?.pause(),
     );
   }
@@ -232,6 +238,19 @@ export function usePlayerControls({
 
     if (seekTimeoutRef.current !== null) {
       window.clearTimeout(seekTimeoutRef.current);
+    }
+
+    if (
+      currentTrackDuration > 0 &&
+      seekTime >= currentTrackDuration &&
+      playlistItemId &&
+      typeof playbackVersion === 'number' &&
+      Number.isFinite(playbackVersion)
+    ) {
+      void runHostCommand('seek', () =>
+        playbackCommands.reportEnded(roomId, playlistItemId, playbackVersion),
+      );
+      return;
     }
 
     seekTimeoutRef.current = window.setTimeout(() => {

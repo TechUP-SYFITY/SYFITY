@@ -2,7 +2,7 @@
 
 // Room 입장 응답을 도메인 store에 반영하고, 화면 생명주기에 맞춰 실시간 연결을 관리한다.
 import { useRouter } from 'next/navigation';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/shared/components/ui';
 import type { RoomJoinedPayload, RoomKickedPayload } from '@/shared/types/socket';
@@ -51,6 +51,13 @@ export function useRoomPageSession(roomId: string) {
   const setMessages = useChatStore((state) => state.setMessages);
   const clearMessages = useChatStore((state) => state.clearMessages);
   const clearRoom = useRoomStore((state) => state.clearRoom);
+
+  // 오프라인 중 Room이 종료되면 이 탭은 room:closed를 받지 못할 수 있다.
+  // 새 Room 세션을 그리기 전에 이전 전역 재생 상태를 비워, 이전 IFrame이 다시
+  // 마운트되는 순간 오래된 곡을 재생하는 일을 막는다.
+  useLayoutEffect(() => {
+    clearPlayback();
+  }, [clearPlayback, roomId]);
 
   const exitRoom = useCallback(() => {
     clearMessages();

@@ -382,8 +382,23 @@ export class PlaybackService {
       return null;
     const playlist = await this.playlistRepo.getPlaylist(roomId);
     const selection = this.selectNext(session, playlist, { honorRepeatOne: true });
-    if (!selection)
-      return this.applyTransition(roomId, session, { isPlaying: false }, 'playback:pause');
+    if (!selection) {
+      const currentTrackDuration = playlist.find(
+        (item) => item.id === session.playlistItemId,
+      )?.duration;
+
+      // 마지막 곡은 실제 종료 위치에서 멈춰야 한다. 마지막 seek 기준 시간을 그대로
+      // 보존하면 IFrame이 그 시점으로 되돌아가 재생을 다시 시작할 수 있다.
+      return this.applyTransition(
+        roomId,
+        session,
+        {
+          baseCurrentTime: currentTrackDuration ?? this.computeCurrentTime(session),
+          isPlaying: false,
+        },
+        'playback:pause',
+      );
+    }
     return this.transitionToSelection(
       roomId,
       session,

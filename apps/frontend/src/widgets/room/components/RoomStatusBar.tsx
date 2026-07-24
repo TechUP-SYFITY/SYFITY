@@ -19,7 +19,7 @@ export function RoomStatusBar({
   roomAction?: ReactNode;
 }) {
   return (
-    <section className="flex h-14 items-center justify-between gap-3 border-b border-border bg-background/50 px-5 md:px-6 xl:h-14 landscape:h-12">
+    <section className="flex h-14 items-center justify-between gap-3 border-b border-border bg-background/50 px-5 md:px-6 xl:h-14 max-xl:landscape:h-12">
       <div className="min-w-0">
         <h1 className="truncate text-sm font-bold">{room?.name ?? 'Room'}</h1>
         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground xl:mt-0.5 landscape:mt-1">

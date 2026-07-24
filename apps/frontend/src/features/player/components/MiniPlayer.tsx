@@ -97,11 +97,11 @@ export function MiniPlayer({
     <footer className="fixed inset-x-0 bottom-0 z-40 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/95 px-5 backdrop-blur-sm xl:static xl:h-room-mini-player xl:px-6">
       <div className="flex w-56 min-w-0 flex-none items-center gap-3 xl:w-56 landscape:w-44">
         <TrackArtwork track={currentTrack} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-semibold text-foreground">
+        <div className="min-w-0 flex-1 xl:relative">
+          <p className="truncate text-xs font-semibold text-foreground xl:absolute xl:top-0 xl:left-0 xl:w-[calc(50vw-15rem)]">
             {currentTrack?.title ?? '재생 대기'}
           </p>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="truncate text-xs text-muted-foreground xl:pt-4">
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>

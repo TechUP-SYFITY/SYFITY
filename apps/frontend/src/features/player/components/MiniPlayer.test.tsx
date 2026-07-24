@@ -220,6 +220,14 @@ describe('MiniPlayer', () => {
     expect(screen.getByText(track.title).parentElement).toHaveClass('flex-1');
   });
 
+  it('데스크톱 제목은 중앙 진행 바 전까지 동적으로 확장한다', () => {
+    renderMiniPlayer();
+
+    expect(screen.getByText(track.title)).toHaveClass('xl:absolute', 'xl:w-[calc(50vw-15rem)]');
+    expect(screen.getByText(track.title).parentElement).toHaveClass('xl:relative');
+    expect(screen.getByText(track.channelTitle)).toHaveClass('xl:pt-4');
+  });
+
   it('음소거 버튼을 누르면 주입된 핸들러를 호출한다', () => {
     const onMuteToggle = vi.fn();
 

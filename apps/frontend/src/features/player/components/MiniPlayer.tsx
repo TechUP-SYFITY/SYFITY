@@ -107,7 +107,7 @@ export function MiniPlayer({
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 md:max-xl:absolute md:max-xl:left-1/2 md:max-xl:-translate-x-1/2 xl:static xl:translate-x-0 landscape:absolute landscape:left-1/2 landscape:-translate-x-1/2">
+      <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 md:max-xl:absolute md:max-xl:left-1/2 md:max-xl:-translate-x-1/2 xl:static xl:translate-x-0 max-xl:landscape:absolute max-xl:landscape:left-1/2 max-xl:landscape:-translate-x-1/2">
         <div className="flex h-9 items-center justify-center gap-4">
           <button
             className={cn(

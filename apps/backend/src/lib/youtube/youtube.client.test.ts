@@ -113,6 +113,7 @@ describe('YouTubeClient', () => {
         thumbnailUrl: '',
         duration: 180,
         embeddable: true,
+        madeForKids: false,
         categoryId: '10',
       },
     ]);
@@ -150,6 +151,7 @@ describe('YouTubeClient', () => {
         thumbnailUrl: 'https://example.com/medium.jpg',
         duration: expectedSeconds,
         embeddable: true,
+        madeForKids: false,
         categoryId: '',
       },
     ]);
@@ -181,6 +183,7 @@ describe('YouTubeClient', () => {
         thumbnailUrl: '',
         duration: 180,
         embeddable: false,
+        madeForKids: false,
         categoryId: '',
       },
     ]);
@@ -208,8 +211,29 @@ describe('YouTubeClient', () => {
         thumbnailUrl: '',
         duration: 180,
         embeddable: true,
+        madeForKids: false,
         categoryId: '',
       },
+    ]);
+  });
+
+  it('영상 상세 응답의 madeForKids 상태를 매핑한다', async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        items: [
+          {
+            id: 'video-1',
+            snippet: { title: 'video', channelTitle: 'Channel' },
+            contentDetails: { duration: 'PT3M' },
+            status: { madeForKids: true },
+          },
+        ],
+      }),
+    );
+    const client = new YouTubeClient('api-key', fetchFn);
+
+    await expect(client.getVideoDetails(['video-1'])).resolves.toEqual([
+      expect.objectContaining({ videoId: 'video-1', madeForKids: true }),
     ]);
   });
 

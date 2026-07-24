@@ -7,6 +7,7 @@ import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
+import { ChatEmojiPicker } from './ChatEmojiPicker';
 import { CHAT_MAX_MESSAGE_LENGTH } from '../constants/chatConstants';
 
 interface ChatInputFormProps {
@@ -17,6 +18,7 @@ interface ChatInputFormProps {
 export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
   const errorId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingCursorPositionRef = useRef<number | null>(null);
   const [value, setValue] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const visibleError = localError ?? errorMessage;
@@ -31,6 +33,15 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
 
     textarea.style.height = 'auto';
     textarea.style.height = `${textarea.scrollHeight}px`;
+
+    if (pendingCursorPositionRef.current !== null) {
+      textarea.focus();
+      textarea.setSelectionRange(
+        pendingCursorPositionRef.current,
+        pendingCursorPositionRef.current,
+      );
+      pendingCursorPositionRef.current = null;
+    }
   }, [value]);
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -75,8 +86,27 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
     event.currentTarget.form?.requestSubmit();
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = textareaRef.current;
+    const selectionStart = textarea?.selectionStart ?? value.length;
+    const selectionEnd = textarea?.selectionEnd ?? selectionStart;
+    const nextValue = `${value.slice(0, selectionStart)}${emoji}${value.slice(selectionEnd)}`;
+
+    if (nextValue.length > CHAT_MAX_MESSAGE_LENGTH) {
+      setLocalError(maxLengthError);
+      pendingCursorPositionRef.current = null;
+      textarea?.focus();
+      textarea?.setSelectionRange(selectionStart, selectionEnd);
+      return;
+    }
+
+    setLocalError(null);
+    pendingCursorPositionRef.current = selectionStart + emoji.length;
+    setValue(nextValue);
+  };
+
   return (
-    <form className="min-w-0 flex-1" onSubmit={handleSubmit}>
+    <form className="relative min-w-0 flex-1" onSubmit={handleSubmit}>
       <div
         className={cn(
           `flex min-h-11 min-w-0 items-end rounded-2xl border bg-input px-3 py-1.5 transition-colors`,
@@ -95,6 +125,7 @@ export function ChatInputForm({ errorMessage, onSubmit }: ChatInputFormProps) {
           aria-invalid={Boolean(visibleError)}
           aria-label="채팅 메시지 입력"
         />
+        <ChatEmojiPicker onEmojiSelect={handleEmojiSelect} />
         <Button
           variant="ghost"
           size="icon"

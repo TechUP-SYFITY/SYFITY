@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { PlaylistRepository, type PlaylistRepositoryPrisma } from './playlist.repository';
 import { Prisma } from '../generated/prisma/client';
+import type { PersonalPlaylistItemRecord } from '../types/personal-playlist';
 import {
   PlaylistDuplicateVideoError,
   type AddPlaylistItemData,
@@ -66,8 +67,10 @@ function makePrisma(
       _max: { position: overrides.maxPosition ?? null },
     }),
     create: vi.fn().mockResolvedValue(overrides.createResult ?? playlistItem),
+    createManyAndReturn: vi.fn().mockResolvedValue([overrides.createResult ?? playlistItem]),
     findUnique: vi.fn().mockResolvedValue(overrides.findUniqueResult ?? null),
     update: vi.fn().mockResolvedValue({}),
+    updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     delete: vi.fn().mockResolvedValue({}),
   };
 
@@ -106,7 +109,73 @@ describe('PlaylistRepository', () => {
         addedBy: true,
         status: true,
         addedAt: true,
+        metadataRefreshedAt: true,
       },
+    });
+  });
+
+  it('갱신 사이에 삭제된 항목이 있어도 나머지 메타데이터 갱신을 저장한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PlaylistRepository(prisma);
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    vi.mocked(prisma.playlistItem.updateMany)
+      .mockResolvedValueOnce({ count: 1 } as never)
+      .mockResolvedValueOnce({ count: 0 } as never);
+
+    await repository.findStaleMetadataItems(cutoff);
+    await repository.applyMetadataRefresh([
+      {
+        id: 'playlist-item-1',
+        result: {
+          status: 'available',
+          title: 'Updated',
+          channelTitle: 'Channel',
+          thumbnailUrl: 'https://example.com/new.jpg',
+          duration: 200,
+        },
+      },
+      { id: 'playlist-item-2', result: { status: 'unavailable' } },
+    ]);
+
+    expect(prisma.playlistItem.findMany).toHaveBeenCalledWith({
+      where: { metadataRefreshedAt: { lte: cutoff } },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
+    });
+    expect(prisma.playlistItem.updateMany).toHaveBeenCalledWith({
+      where: { id: 'playlist-item-1' },
+      data: expect.objectContaining({
+        status: 'available',
+        title: 'Updated',
+        metadataRefreshedAt: expect.any(Date),
+      }),
+    });
+    expect(prisma.playlistItem.updateMany).toHaveBeenCalledWith({
+      where: { id: 'playlist-item-2' },
+      data: { status: 'unavailable', metadataRefreshedAt: expect.any(Date) },
+    });
+  });
+
+  it('동일한 갱신 시각의 다음 항목부터 cursor 배치로 조회한다', async () => {
+    const prisma = makePrisma();
+    const repository = new PlaylistRepository(prisma);
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    const cursor = { id: 'playlist-item-100', metadataRefreshedAt: cutoff };
+
+    await repository.findStaleMetadataItems(cutoff, cursor);
+
+    expect(prisma.playlistItem.findMany).toHaveBeenCalledWith({
+      where: {
+        metadataRefreshedAt: { lte: cutoff },
+        OR: [
+          { metadataRefreshedAt: { gt: cutoff } },
+          { metadataRefreshedAt: cutoff, id: { gt: 'playlist-item-100' } },
+        ],
+      },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
     });
   });
 
@@ -132,6 +201,7 @@ describe('PlaylistRepository', () => {
         position: 1,
         status: 'available',
         addedAt: expect.any(Date),
+        metadataRefreshedAt: expect.any(Date),
       },
       select: {
         id: true,
@@ -144,6 +214,7 @@ describe('PlaylistRepository', () => {
         addedBy: true,
         status: true,
         addedAt: true,
+        metadataRefreshedAt: true,
       },
     });
   });
@@ -244,6 +315,7 @@ describe('PlaylistRepository', () => {
         addedBy: true,
         status: true,
         addedAt: true,
+        metadataRefreshedAt: true,
       },
     });
   });
@@ -253,6 +325,7 @@ describe('PlaylistRepository', () => {
       id: 'playlist-item-1',
       roomId: 'room-1',
       videoId: 'video-1',
+      duration: 180,
       position: 1,
       addedBy: 'user-1',
       status: 'available',
@@ -268,6 +341,7 @@ describe('PlaylistRepository', () => {
         id: true,
         roomId: true,
         videoId: true,
+        duration: true,
         position: true,
         addedBy: true,
         status: true,
@@ -334,5 +408,128 @@ describe('PlaylistRepository', () => {
 
     expect(prisma.playlistItem.update).not.toHaveBeenCalled();
     expect(prisma.$transaction).toHaveBeenCalledWith([]);
+  });
+
+  it('개인 Playlist에서 사용 가능하고 중복되지 않은 곡만 Room 끝에 가져오며 메타데이터 갱신 시각을 보존한다', async () => {
+    const existingItem = { ...playlistItem, videoId: 'existing-video', position: 3 };
+    const sourceItems: PersonalPlaylistItemRecord[] = [
+      {
+        id: 'source-1',
+        personalPlaylistId: 'personal-1',
+        videoId: 'existing-video',
+        title: 'Existing',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 1,
+        status: 'available',
+        addedAt: new Date(),
+      },
+      {
+        id: 'source-2',
+        personalPlaylistId: 'personal-1',
+        videoId: 'unavailable-video',
+        title: 'Unavailable',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 2,
+        status: 'unavailable',
+        addedAt: new Date(),
+      },
+      {
+        id: 'source-3',
+        personalPlaylistId: 'personal-1',
+        videoId: 'new-video',
+        title: 'New',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 3,
+        status: 'available',
+        addedAt: new Date(),
+        metadataRefreshedAt: new Date('2026-06-01T00:00:00.000Z'),
+      },
+    ];
+    const prisma = makePrisma({ findManyResult: [existingItem], maxPosition: 3 });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.importItems('room-1', sourceItems, 'user-1')).resolves.toEqual({
+      addedItems: [playlistItem],
+      duplicateCount: 1,
+      unavailableCount: 1,
+    });
+
+    expect(prisma.playlistItem.createManyAndReturn).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          roomId: 'room-1',
+          videoId: 'new-video',
+          position: 4,
+          addedBy: 'user-1',
+          status: 'available',
+          metadataRefreshedAt: new Date('2026-06-01T00:00:00.000Z'),
+        }),
+      ],
+      select: expect.any(Object),
+    });
+  });
+
+  it('가져올 곡이 없으면 aggregate와 createManyAndReturn을 호출하지 않는다', async () => {
+    const sourceItems: PersonalPlaylistItemRecord[] = [
+      {
+        id: 'source-1',
+        personalPlaylistId: 'personal-1',
+        videoId: 'video-1',
+        title: 'Song',
+        channelTitle: 'Channel',
+        thumbnailUrl: '',
+        duration: 180,
+        position: 1,
+        status: 'unavailable',
+        addedAt: new Date(),
+      },
+    ];
+    const prisma = makePrisma({ findManyResult: [] });
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.importItems('room-1', sourceItems, 'user-1')).resolves.toEqual({
+      addedItems: [],
+      duplicateCount: 0,
+      unavailableCount: 1,
+    });
+    expect(prisma.playlistItem.aggregate).not.toHaveBeenCalled();
+    expect(prisma.playlistItem.createManyAndReturn).not.toHaveBeenCalled();
+  });
+
+  it('가져오기 중 unique 충돌은 재시도 후 중복 곡으로 집계한다', async () => {
+    const sourceItem: PersonalPlaylistItemRecord = {
+      id: 'source-1',
+      personalPlaylistId: 'personal-1',
+      videoId: 'video-1',
+      title: 'Song',
+      channelTitle: 'Channel',
+      thumbnailUrl: '',
+      duration: 180,
+      position: 1,
+      status: 'available',
+      addedAt: new Date(),
+    };
+    const prisma = makePrisma({ findManyResult: [playlistItem] });
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(uniqueConstraintError)
+      .mockImplementationOnce((fn: (tx: { playlistItem: typeof prisma.playlistItem }) => unknown) =>
+        fn({ playlistItem: prisma.playlistItem }),
+      );
+    prisma.$transaction = transaction as unknown as PlaylistRepositoryPrisma['$transaction'];
+    const repo = new PlaylistRepository(prisma);
+
+    await expect(repo.importItems('room-1', [sourceItem], 'user-1')).resolves.toEqual({
+      addedItems: [],
+      duplicateCount: 1,
+      unavailableCount: 0,
+    });
+    expect(transaction).toHaveBeenCalledTimes(2);
   });
 });

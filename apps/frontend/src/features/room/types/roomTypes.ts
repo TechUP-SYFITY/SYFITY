@@ -6,6 +6,7 @@ import type {
   GetRoomResponse as SharedGetRoomResponse,
   CreateRoomMembershipRequest as SharedCreateRoomMembershipRequest,
   CreateRoomMembershipResponse as SharedCreateRoomMembershipResponse,
+  GetMyRoomsResponse as SharedGetMyRoomsResponse,
   RecentRoomsResponse as SharedRecentRoomsResponse,
   UpdateRoomRequest as SharedUpdateRoomRequest,
   UpdateRoomResponse as SharedUpdateRoomResponse,
@@ -26,6 +27,8 @@ export interface RoomInviteInfo {
 }
 export type CreateRoomMembershipRequest = SharedCreateRoomMembershipRequest;
 export type CreateRoomMembershipResponse = SharedCreateRoomMembershipResponse['data'];
+export type MyRoomsResponse = SharedGetMyRoomsResponse['data'];
+export type MyRoomSummary = MyRoomsResponse['rooms'][number];
 export type RecentRoomsResponse = SharedRecentRoomsResponse['data'];
 export type RoomResponse = SharedGetRoomResponse['data'];
 export type UpdateRoomRequest = SharedUpdateRoomRequest;

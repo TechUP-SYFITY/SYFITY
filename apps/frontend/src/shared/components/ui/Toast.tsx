@@ -99,6 +99,7 @@ interface ToastOptions {
   variant?: ToastProps['variant'];
   duration?: number;
   closeLabel?: string;
+  onCloseClick?: () => void;
   onDismiss?: () => void;
 }
 
@@ -122,16 +123,19 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children, viewportClassName }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const sequence = useRef(0);
+  const activeInstances = useRef(new Map<string, number>());
   const [toastApi] = useState<ToastContextValue>(() => ({
     pushToast: (options) => {
       const id = options.id ?? `toast-${sequence.current + 1}`;
       sequence.current += 1;
       const nextToast = { ...options, id, instance: sequence.current };
 
+      activeInstances.current.set(id, nextToast.instance);
       setToasts((current) => [...current.filter((toast) => toast.id !== id), nextToast]);
       return id;
     },
     dismissToast: (id) => {
+      activeInstances.current.delete(id);
       setToasts((current) => current.filter((toast) => toast.id !== id));
     },
   }));
@@ -148,15 +152,17 @@ export function ToastProvider({ children, viewportClassName }: ToastProviderProp
             open
             variant={toast.variant}
             onOpenChange={(open) => {
-              if (!open) {
-                toast.onDismiss?.();
-                toastApi.dismissToast(toast.id);
+              if (open || activeInstances.current.get(toast.id) !== toast.instance) {
+                return;
               }
+
+              toast.onDismiss?.();
+              toastApi.dismissToast(toast.id);
             }}
           >
             {toast.icon ? <ToastIcon>{toast.icon}</ToastIcon> : null}
             <ToastTitle>{toast.title}</ToastTitle>
-            <ToastClose aria-label={toast.closeLabel ?? '알림 닫기'}>
+            <ToastClose aria-label={toast.closeLabel ?? '알림 닫기'} onClick={toast.onCloseClick}>
               <X aria-hidden />
             </ToastClose>
           </Toast>

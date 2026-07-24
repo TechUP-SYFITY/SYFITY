@@ -7,12 +7,15 @@ import type { PlaylistItem } from '@/shared/types/domain';
 
 import type { ReorderPlaylistRequest } from '../types/playlistTypes';
 
+// 순서 계산에는 item.id만 필요하므로, addedBy 유무와 무관하게 Room·개인 아이템을 모두 받는다.
+type ReorderablePlaylistItem = Pick<PlaylistItem, 'id'>;
+
 interface UsePlaylistReorderInteractionParams {
   canControlRoom: boolean;
   isReady: boolean;
   onBeforeReorder: () => void;
   onReorder: (body: ReorderPlaylistRequest) => void;
-  playlist: PlaylistItem[];
+  playlist: ReorderablePlaylistItem[];
 }
 
 export function usePlaylistReorderInteraction({
@@ -24,11 +27,16 @@ export function usePlaylistReorderInteraction({
 }: UsePlaylistReorderInteractionParams) {
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const draggingItemIdRef = useRef<string | null>(null);
+  const [dropTargetItemId, setDropTargetItemId] = useState<string | null>(null);
   const [focusedActionItemId, setFocusedActionItemId] = useState<string | null>(null);
 
   const setActiveDraggingItemId = (itemId: string | null) => {
     draggingItemIdRef.current = itemId;
     setDraggingItemId(itemId);
+
+    if (!itemId) {
+      setDropTargetItemId(null);
+    }
   };
 
   const preventMouseFocus = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -47,9 +55,10 @@ export function usePlaylistReorderInteraction({
     setFocusedActionItemId((currentItemId) => (currentItemId === itemId ? null : currentItemId));
   };
 
-  const submitReorder = (nextPlaylist: PlaylistItem[]) => {
+  const submitReorder = (nextPlaylist: ReorderablePlaylistItem[]) => {
     onBeforeReorder();
     onReorder({
+      // 백엔드 규약: position은 1부터 항목 수까지 중복 없이 연속이어야 한다. (Room·개인 공통)
       items: nextPlaylist.map((item, index) => ({
         id: item.id,
         position: index + 1,
@@ -90,6 +99,36 @@ export function usePlaylistReorderInteraction({
     setActiveDraggingItemId(null);
     submitReorder(nextPlaylist);
   };
+
+  const handleDragStart = (itemId: string) => {
+    if (!isReady || !canControlRoom) {
+      return;
+    }
+
+    setActiveDraggingItemId(itemId);
+  };
+
+  const handleDragOver = (targetItemId: string | null) => {
+    const currentDraggingItemId = draggingItemIdRef.current;
+
+    if (!currentDraggingItemId || !targetItemId || currentDraggingItemId === targetItemId) {
+      setDropTargetItemId(null);
+      return;
+    }
+
+    setDropTargetItemId(targetItemId);
+  };
+
+  const handleDragEnd = (targetItemId: string | null) => {
+    if (!targetItemId) {
+      setActiveDraggingItemId(null);
+      return;
+    }
+
+    handleDrop(targetItemId);
+  };
+
+  const handleDragCancel = () => setActiveDraggingItemId(null);
 
   const handleKeyboardReorder = (itemId: string, direction: -1 | 1) => {
     if (!isReady || !canControlRoom) {
@@ -158,10 +197,16 @@ export function usePlaylistReorderInteraction({
 
   return {
     draggingItemId,
+    dropPosition: getDropPosition(playlist, draggingItemId, dropTargetItemId),
+    dropTargetItemId,
     focusedActionItemId,
+    handleDragCancel,
+    handleDragEnd,
     handleDragHandlePointerDown,
     handleDragHandlePointerMove,
     handleDragHandlePointerUp,
+    handleDragOver,
+    handleDragStart,
     handleDrop,
     handleKeyboardReorder,
     handleRowBlur,
@@ -169,4 +214,23 @@ export function usePlaylistReorderInteraction({
     setActiveDraggingItemId,
     setFocusedActionItemId,
   };
+}
+
+function getDropPosition(
+  playlist: ReorderablePlaylistItem[],
+  draggingItemId: string | null,
+  dropTargetItemId: string | null,
+) {
+  if (!draggingItemId || !dropTargetItemId) {
+    return null;
+  }
+
+  const currentIndex = playlist.findIndex((item) => item.id === draggingItemId);
+  const targetIndex = playlist.findIndex((item) => item.id === dropTargetItemId);
+
+  if (currentIndex < 0 || targetIndex < 0) {
+    return null;
+  }
+
+  return currentIndex < targetIndex ? ('after' as const) : ('before' as const);
 }

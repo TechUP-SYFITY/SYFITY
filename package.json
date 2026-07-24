@@ -5,6 +5,11 @@
   "scripts": {
     "dev:fe": "pnpm --filter shared build && pnpm --filter frontend dev",
     "dev:be": "pnpm --filter backend dev",
+    "e2e": "pnpm --filter @syfity/shared build && pnpm e2e:db:up && pnpm e2e:db:migrate && pnpm --filter frontend exec playwright test",
+    "e2e:ui": "pnpm --filter @syfity/shared build && pnpm e2e:db:up && pnpm e2e:db:migrate && pnpm --filter frontend exec playwright test --ui",
+    "e2e:db:up": "docker compose --env-file apps/frontend/e2e/.env.e2e -f docker-compose.e2e.yml up -d --wait",
+    "e2e:db:down": "docker compose --env-file apps/frontend/e2e/.env.e2e -f docker-compose.e2e.yml down",
+    "e2e:db:migrate": "set -a && . ./apps/frontend/e2e/.env.e2e && set +a && pnpm --filter backend exec prisma migrate deploy",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "pnpm --filter frontend lint && pnpm --filter backend lint",

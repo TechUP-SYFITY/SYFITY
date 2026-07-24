@@ -3,463 +3,134 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ERROR_CODES } from '@syfity/shared';
 
 import { PlaylistService } from './playlist.service';
-import type { YouTubeVideoDetail } from '../lib/youtube/youtube.client';
 import { broadcastToRoom } from '../socket/broadcast';
-import type { PlaybackStateRecord } from '../types/playback';
-import type {
-  IPlaylistRepository,
-  PlaylistItemLookupRecord,
-  PlaylistItemRecord,
-} from '../types/playlist';
 import { PlaylistDuplicateVideoError } from '../types/playlist';
-import type { RoomDetailRecord } from '../types/room';
-import type { PlaybackStatePayload } from '../types/socket';
 
-vi.mock('../socket/broadcast', () => ({
-  broadcastToRoom: vi.fn(),
-}));
+vi.mock('../socket/broadcast', () => ({ broadcastToRoom: vi.fn() }));
 
-const room: RoomDetailRecord = {
-  id: 'room-1',
-  name: 'Morning Jazz',
-  hostId: 'user-1',
-  inviteCode: 'ABC123',
-  status: 'active',
-  createdAt: new Date('2026-07-01T12:00:00.000Z'),
-};
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
-const playlistItem: PlaylistItemRecord = {
-  id: 'playlist-item-1',
-  videoId: 'video-1',
-  title: 'Song One',
-  channelTitle: 'Channel One',
-  thumbnailUrl: 'https://example.com/thumb.jpg',
-  duration: 180,
-  position: 1,
-  addedBy: 'user-1',
-  status: 'available',
-  addedAt: new Date('2026-07-01T12:00:00.000Z'),
-};
-
-const secondPlaylistItem: PlaylistItemRecord = {
-  ...playlistItem,
-  id: 'playlist-item-2',
-  videoId: 'video-2',
-  title: 'Song Two',
-  channelTitle: 'Channel Two',
-  position: 2,
-  addedBy: 'user-2',
-};
-
-const unavailablePlaylistItem: PlaylistItemRecord = {
-  ...playlistItem,
-  id: 'playlist-item-unavailable',
-  videoId: 'video-unavailable',
-  title: 'Unavailable Song',
-  position: 2,
-  status: 'unavailable',
-};
-
-const thirdPlaylistItem: PlaylistItemRecord = {
-  ...playlistItem,
-  id: 'playlist-item-3',
-  videoId: 'video-3',
-  title: 'Song Three',
-  position: 3,
-  addedBy: 'user-3',
-};
-
-const playlistItemLookup: PlaylistItemLookupRecord = {
-  id: 'playlist-item-1',
+const item = {
+  id: 'item-1',
   roomId: 'room-1',
   videoId: 'video-1',
-  position: 1,
-  addedBy: 'user-1',
-  status: 'available',
-};
-
-const playbackState: PlaybackStateRecord = {
-  videoId: null,
-  playlistItemId: null,
-  baseCurrentTime: 0,
-  isPlaying: false,
-  serverStartedAt: null,
-  serverPausedAt: null,
-  updatedAt: new Date('2026-07-01T12:00:00.000Z'),
-};
-
-const nextTrackPayload: PlaybackStatePayload = {
-  currentTime: 0,
-  isPlaying: true,
-  videoId: 'video-2',
-  playlistItemId: 'playlist-item-2',
-};
-
-const resetPayload: PlaybackStatePayload = {
-  currentTime: 0,
-  isPlaying: false,
-  videoId: null,
-  playlistItemId: null,
-};
-
-const videoDetail: YouTubeVideoDetail = {
-  videoId: 'video-1',
-  title: 'Song One',
-  channelTitle: 'Channel One',
-  thumbnailUrl: 'https://example.com/thumb.jpg',
+  title: 'Song',
+  channelTitle: 'Channel',
+  thumbnailUrl: '',
   duration: 180,
-  embeddable: true,
-  categoryId: '10',
+  position: 1,
+  addedBy: 'host',
+  status: 'available' as const,
+  addedAt: new Date(),
 };
 
-function makeFixture(
-  overrides: {
-    room?: RoomDetailRecord | null;
-    playlist?: PlaylistItemRecord[];
-    addedItem?: PlaylistItemRecord;
-    addItemError?: Error;
-    duplicateItem?: PlaylistItemRecord | null;
-    lookupItem?: PlaylistItemLookupRecord | null;
-    playbackState?: PlaybackStateRecord | null;
-    videoDetails?: YouTubeVideoDetail[];
-  } = {},
-) {
+function fixture(status: 'active' | 'closed' | 'inactive' = 'active') {
   const playlistRepo = {
-    getPlaylist: vi.fn().mockResolvedValue(overrides.playlist ?? [playlistItem]),
-    addItem:
-      'addItemError' in overrides
-        ? vi.fn().mockRejectedValue(overrides.addItemError)
-        : vi.fn().mockResolvedValue(overrides.addedItem ?? playlistItem),
-    findItemByRoomAndVideoId: vi
-      .fn()
-      .mockResolvedValue('duplicateItem' in overrides ? overrides.duplicateItem : null),
-    findItemById: vi.fn().mockResolvedValue(overrides.lookupItem ?? null),
-    markUnavailable: vi.fn().mockResolvedValue(undefined),
+    getPlaylist: vi.fn().mockResolvedValue([item]),
+    addItem: vi.fn().mockResolvedValue(item),
+    findItemByRoomAndVideoId: vi.fn().mockResolvedValue(null),
+    findItemById: vi.fn().mockResolvedValue(item),
+    markUnavailable: vi.fn(),
     deleteItem: vi.fn().mockResolvedValue(undefined),
-    reorderItems: vi.fn().mockResolvedValue(undefined),
-  } satisfies IPlaylistRepository;
-
+    reorderItems: vi.fn(),
+    importItems: vi.fn().mockResolvedValue({
+      addedItems: [],
+      duplicateCount: 0,
+      unavailableCount: 0,
+    }),
+    findStaleMetadataItems: vi.fn().mockResolvedValue([]),
+    applyMetadataRefresh: vi.fn().mockResolvedValue(undefined),
+  };
   const roomRepo = {
-    findRoomById: vi.fn().mockResolvedValue('room' in overrides ? overrides.room : room),
-    findMembership: vi.fn().mockResolvedValue({ role: 'member', status: 'offline' }),
-    touchLastActivity: vi.fn().mockResolvedValue(undefined),
+    findRoomById: vi.fn().mockResolvedValue({ id: 'room-1', hostId: 'host', status }),
+    findMembership: vi.fn().mockResolvedValue({ role: 'host', status: 'online' }),
   };
-
-  const youtubeClient = {
-    getVideoDetails: vi.fn().mockResolvedValue(overrides.videoDetails ?? [videoDetail]),
-  };
-
   const playbackService = {
-    getPlaybackState: vi
-      .fn()
-      .mockResolvedValue('playbackState' in overrides ? overrides.playbackState : playbackState),
-    setTrack: vi.fn().mockResolvedValue(nextTrackPayload),
-    resetPlayback: vi.fn().mockResolvedValue(resetPayload),
+    enqueueIfShuffled: vi.fn().mockResolvedValue(undefined),
+    advanceAfterCurrentRemoved: vi.fn().mockResolvedValue(null),
   };
-
-  return {
-    service: new PlaylistService(playlistRepo, roomRepo, youtubeClient, playbackService),
+  const youtubeClient = {
+    getVideoDetails: vi
+      .fn()
+      .mockResolvedValue([{ ...item, embeddable: true, madeForKids: false, categoryId: '10' }]),
+  };
+  const personalPlaylistRepo = {
+    findPlaylistById: vi.fn().mockResolvedValue({ id: 'personal-1', ownerId: 'host' }),
+    getItems: vi.fn().mockResolvedValue([]),
+  };
+  const metadataRefreshService = { refreshVideoMetadata: vi.fn() };
+  const service = new PlaylistService(
     playlistRepo,
     roomRepo,
     youtubeClient,
     playbackService,
+    personalPlaylistRepo,
+    metadataRefreshService,
+  );
+  return {
+    service,
+    playbackService,
+    playlistRepo,
+    roomRepo,
+    youtubeClient,
+    personalPlaylistRepo,
+    metadataRefreshService,
   };
 }
 
-describe('PlaylistService', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('PlaylistService playback integration', () => {
+  it('곡 추가 뒤 셔플 큐 삽입을 요청한다', async () => {
+    const { service, playbackService } = fixture();
+    await service.addItem('room-1', 'host', { videoId: 'video-1' });
+    expect(playbackService.enqueueIfShuffled).toHaveBeenCalledWith('room-1', 'item-1');
   });
 
-  it('Room이 없으면 플레이리스트 조회에서 ROOM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ room: null });
-
-    await expect(service.getPlaylist('room-1', 'user-1')).rejects.toMatchObject({
-      status: 404,
-      code: ERROR_CODES.ROOM_NOT_FOUND,
-    });
-    expect(playlistRepo.getPlaylist).not.toHaveBeenCalled();
+  it('현재 곡 삭제는 PlaybackService에 정책 기반 전환을 위임한다', async () => {
+    const { service, playbackService, playlistRepo } = fixture();
+    await service.deleteItem('room-1', 'host', 'item-1');
+    expect(playbackService.advanceAfterCurrentRemoved).toHaveBeenCalledWith('room-1', 'item-1');
+    expect(playlistRepo.deleteItem).toHaveBeenCalledWith('item-1');
   });
 
-  it('참여자가 아니면 플레이리스트 조회에서 ROOM_ACCESS_DENIED를 반환한다', async () => {
-    const { service, roomRepo, playlistRepo } = makeFixture();
-    roomRepo.findMembership.mockResolvedValue(null);
+  it.each(['closed', 'inactive'] as const)(
+    '%s Room Playlist 변경은 ROOM_NOT_ACTIVE를 반환한다',
+    async (status) => {
+      const { service, playlistRepo } = fixture(status);
 
-    await expect(service.getPlaylist('room-1', 'user-1')).rejects.toMatchObject({
-      status: 403,
-      code: ERROR_CODES.ROOM_ACCESS_DENIED,
-    });
-    expect(playlistRepo.getPlaylist).not.toHaveBeenCalled();
-  });
-
-  it('플레이리스트를 조회한다', async () => {
-    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem] });
-
-    await expect(service.getPlaylist('room-1', 'user-1')).resolves.toEqual([playlistItem]);
-    expect(playlistRepo.getPlaylist).toHaveBeenCalledWith('room-1');
-  });
-
-  it('Room이 없으면 곡 추가에서 ROOM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ room: null });
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
-      {
-        status: 404,
-        code: ERROR_CODES.ROOM_NOT_FOUND,
-      },
-    );
-    expect(playlistRepo.addItem).not.toHaveBeenCalled();
-  });
-
-  it('참여자가 아니면 곡 추가에서 ROOM_ACCESS_DENIED를 반환한다', async () => {
-    const { service, roomRepo, playlistRepo, youtubeClient } = makeFixture();
-    roomRepo.findMembership.mockResolvedValue(null);
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
-      {
-        status: 403,
-        code: ERROR_CODES.ROOM_ACCESS_DENIED,
-      },
-    );
-    expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
-    expect(playlistRepo.addItem).not.toHaveBeenCalled();
-  });
-
-  it('videoId 직접 전달 시 곡을 추가한다', async () => {
-    const { service, playlistRepo, youtubeClient } = makeFixture();
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).resolves.toEqual(
-      playlistItem,
-    );
-
-    expect(youtubeClient.getVideoDetails).toHaveBeenCalledWith(['video-1']);
-    expect(playlistRepo.findItemByRoomAndVideoId).toHaveBeenCalledWith('room-1', 'video-1');
-    expect(playlistRepo.addItem).toHaveBeenCalledWith({
-      roomId: 'room-1',
-      videoId: 'video-1',
-      title: 'Song One',
-      channelTitle: 'Channel One',
-      thumbnailUrl: 'https://example.com/thumb.jpg',
-      duration: 180,
-      addedBy: 'user-1',
-    });
-  });
-
-  it('같은 Room에 이미 추가된 videoId면 중복 오류를 반환한다', async () => {
-    const { service, playlistRepo, youtubeClient } = makeFixture({ duplicateItem: playlistItem });
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
-      {
-        status: 409,
-        code: ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
-      },
-    );
-    expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
-    expect(playlistRepo.addItem).not.toHaveBeenCalled();
-  });
-
-  it('동시 추가로 DB unique 제약이 충돌해도 중복 오류를 반환한다', async () => {
-    const { service } = makeFixture({
-      addItemError: new PlaylistDuplicateVideoError(),
-    });
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
-      {
-        status: 409,
-        code: ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
-      },
-    );
-  });
-
-  it.each([
-    ['watch', 'https://youtube.com/watch?v=video-1'],
-    ['youtu.be', 'https://youtu.be/video-1'],
-    ['embed', 'https://www.youtube.com/embed/video-1'],
-    ['shorts', 'https://youtube.com/shorts/video-1'],
-    ['music.youtube.com', 'https://music.youtube.com/watch?v=video-1'],
-  ])('youtubeUrl %s 형식에서 videoId를 파싱한다', async (_name, youtubeUrl) => {
-    const { service, youtubeClient } = makeFixture();
-
-    await service.addItem('room-1', 'user-1', { youtubeUrl });
-
-    expect(youtubeClient.getVideoDetails).toHaveBeenCalledWith(['video-1']);
-  });
-
-  it('videoId와 youtubeUrl을 함께 전달하면 videoId를 우선한다', async () => {
-    const { service, youtubeClient } = makeFixture();
-
-    await service.addItem('room-1', 'user-1', {
-      videoId: 'video-priority',
-      youtubeUrl: 'https://youtu.be/video-url',
-    });
-
-    expect(youtubeClient.getVideoDetails).toHaveBeenCalledWith(['video-priority']);
-  });
-
-  it('파싱 불가 URL이면 PLAYLIST_INVALID_URL을 반환한다', async () => {
-    const { service, youtubeClient } = makeFixture();
-
-    await expect(
-      service.addItem('room-1', 'user-1', { youtubeUrl: 'https://example.com/video-1' }),
-    ).rejects.toMatchObject({
-      status: 400,
-      code: ERROR_CODES.PLAYLIST_INVALID_URL,
-    });
-    expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
-  });
-
-  it('videoId와 youtubeUrl이 모두 없으면 PLAYLIST_INVALID_URL을 반환한다', async () => {
-    const { service, youtubeClient } = makeFixture();
-
-    await expect(service.addItem('room-1', 'user-1', {})).rejects.toMatchObject({
-      status: 400,
-      code: ERROR_CODES.PLAYLIST_INVALID_URL,
-    });
-    expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
-  });
-
-  it('YouTube 상세가 없으면 PLAYLIST_VIDEO_UNAVAILABLE을 반환한다', async () => {
-    const { service } = makeFixture({ videoDetails: [] });
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
-      {
-        status: 400,
-        code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
-      },
-    );
-  });
-
-  it('duration이 0이면 PLAYLIST_VIDEO_UNAVAILABLE을 반환한다', async () => {
-    const { service } = makeFixture({ videoDetails: [{ ...videoDetail, duration: 0 }] });
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
-      {
-        status: 400,
-        code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
-      },
-    );
-  });
-
-  it('임베드가 금지된 영상이면 PLAYLIST_VIDEO_UNAVAILABLE을 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({
-      videoDetails: [{ ...videoDetail, embeddable: false }],
-    });
-
-    await expect(service.addItem('room-1', 'user-1', { videoId: 'video-1' })).rejects.toMatchObject(
-      {
-        status: 400,
-        code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
-      },
-    );
-    expect(playlistRepo.addItem).not.toHaveBeenCalled();
-  });
-
-  it('곡 추가 후 lastActivityAt을 갱신하고 playlist:updated를 broadcast한다', async () => {
-    const { service, roomRepo } = makeFixture();
-
-    await service.addItem('room-1', 'user-1', { videoId: 'video-1' });
-
-    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
-    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
-      playlist: [
+      await expect(service.addItem('room-1', 'host', { videoId: 'video-1' })).rejects.toMatchObject(
         {
-          id: 'playlist-item-1',
-          videoId: 'video-1',
-          title: 'Song One',
-          channelTitle: 'Channel One',
-          thumbnailUrl: 'https://example.com/thumb.jpg',
-          duration: 180,
-          position: 1,
-          addedBy: 'user-1',
-          status: 'available',
+          status: 409,
+          code: ERROR_CODES.ROOM_NOT_ACTIVE,
         },
-      ],
-    });
-  });
+      );
+      expect(playlistRepo.addItem).not.toHaveBeenCalled();
+    },
+  );
 
-  it('Room이 없으면 순서 변경에서 ROOM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ room: null });
-
-    await expect(
-      service.reorderPlaylist('room-1', 'user-1', [{ id: 'playlist-item-1', position: 1 }]),
-    ).rejects.toMatchObject({
-      status: 404,
-      code: ERROR_CODES.ROOM_NOT_FOUND,
-    });
-    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
-  });
-
-  it('참여자가 아니면 순서 변경에서 ROOM_ACCESS_DENIED를 반환한다', async () => {
-    const { service, roomRepo, playlistRepo } = makeFixture();
-    roomRepo.findMembership.mockResolvedValue(null);
+  it('Room Playlist 순서 변경은 모든 항목 id와 1부터 연속된 position을 요구한다', async () => {
+    const { service, playlistRepo } = fixture();
+    const secondItem = { ...item, id: 'item-2', position: 2 };
+    playlistRepo.getPlaylist.mockResolvedValueOnce([item, secondItem]);
 
     await expect(
-      service.reorderPlaylist('room-1', 'user-1', [{ id: 'playlist-item-1', position: 1 }]),
-    ).rejects.toMatchObject({
-      status: 403,
-      code: ERROR_CODES.ROOM_ACCESS_DENIED,
-    });
-    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
-  });
-
-  it('Host가 아니면 순서 변경에서 AUTH_FORBIDDEN을 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture();
-
-    await expect(
-      service.reorderPlaylist('room-1', 'user-2', [{ id: 'playlist-item-1', position: 1 }]),
-    ).rejects.toMatchObject({
-      status: 403,
-      code: ERROR_CODES.AUTH_FORBIDDEN,
-    });
-    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
-  });
-
-  it('순서 변경 요청에 존재하지 않는 항목이 있으면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem] });
-
-    await expect(
-      service.reorderPlaylist('room-1', 'user-1', [{ id: 'missing-item', position: 1 }]),
-    ).rejects.toMatchObject({
-      status: 404,
-      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
-    });
-    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
-  });
-
-  it('순서 변경 요청에서 일부 항목이 누락되면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem, secondPlaylistItem] });
-
-    await expect(
-      service.reorderPlaylist('room-1', 'user-1', [{ id: 'playlist-item-1', position: 1 }]),
-    ).rejects.toMatchObject({
-      status: 404,
-      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
-    });
-    expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
-  });
-
-  it('순서 변경 요청에 중복 항목이 있으면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem, secondPlaylistItem] });
-
-    await expect(
-      service.reorderPlaylist('room-1', 'user-1', [
-        { id: 'playlist-item-1', position: 2 },
-        { id: 'playlist-item-1', position: 1 },
+      service.reorderPlaylist('room-1', 'host', [
+        { id: 'item-1', position: 1 },
+        { id: 'item-1', position: 2 },
+        { id: 'item-2', position: 3 },
       ]),
     ).rejects.toMatchObject({
       status: 404,
       code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
     });
     expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
-  });
 
-  it('순서 변경 요청에 중복된 position 값이 있으면 VALIDATION_ERROR를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ playlist: [playlistItem, secondPlaylistItem] });
-
+    playlistRepo.getPlaylist.mockResolvedValueOnce([item, secondItem]);
     await expect(
-      service.reorderPlaylist('room-1', 'user-1', [
-        { id: 'playlist-item-1', position: 1 },
-        { id: 'playlist-item-2', position: 1 },
+      service.reorderPlaylist('room-1', 'host', [
+        { id: 'item-1', position: 1 },
+        { id: 'item-2', position: 3 },
       ]),
     ).rejects.toMatchObject({
       status: 400,
@@ -468,266 +139,235 @@ describe('PlaylistService', () => {
     expect(playlistRepo.reorderItems).not.toHaveBeenCalled();
   });
 
-  it('Host가 전체 항목 id를 보내면 position 값을 그대로 저장하고 playlist:updated를 broadcast한다', async () => {
-    const items = [
-      { id: 'playlist-item-1', position: 2 },
-      { id: 'playlist-item-2', position: 1 },
-    ];
-    const { service, playlistRepo, roomRepo } = makeFixture({
-      playlist: [playlistItem, secondPlaylistItem],
+  it('Room Playlist 순서 변경은 1-based position을 저장하고 갱신을 전파한다', async () => {
+    const { service, playlistRepo } = fixture();
+
+    await service.reorderPlaylist('room-1', 'host', [{ id: 'item-1', position: 1 }]);
+
+    expect(playlistRepo.reorderItems).toHaveBeenCalledWith([{ id: 'item-1', position: 1 }]);
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
+      playlist: [expect.objectContaining({ id: 'item-1', position: 1 })],
+    });
+  });
+
+  it.each([{}, { videoId: 'video-1', youtubeUrl: 'https://youtu.be/video-1' }])(
+    'videoId와 youtubeUrl이 정확히 하나가 아니면 VALIDATION_ERROR를 던진다',
+    async (request) => {
+      const { service } = fixture();
+
+      await expect(service.addItem('room-1', 'host', request)).rejects.toMatchObject({
+        status: 400,
+        code: ERROR_CODES.VALIDATION_ERROR,
+      });
+    },
+  );
+
+  it('Music 카테고리가 아닌 영상은 Room Playlist에 추가하지 않는다', async () => {
+    const { service, youtubeClient } = fixture();
+    youtubeClient.getVideoDetails.mockResolvedValueOnce([
+      { ...item, embeddable: true, categoryId: '22' },
+    ]);
+
+    await expect(service.addItem('room-1', 'host', { videoId: 'video-1' })).rejects.toMatchObject({
+      status: 400,
+      code: ERROR_CODES.PLAYLIST_NOT_MUSIC,
+    });
+  });
+
+  it('아동용으로 지정된 영상은 Room Playlist에 추가하지 않는다', async () => {
+    const { service, youtubeClient, playlistRepo } = fixture();
+    youtubeClient.getVideoDetails.mockResolvedValueOnce([
+      { ...item, embeddable: true, madeForKids: true, categoryId: '10' },
+    ]);
+
+    await expect(service.addItem('room-1', 'host', { videoId: 'video-1' })).rejects.toMatchObject({
+      status: 400,
+      code: ERROR_CODES.PLAYLIST_VIDEO_UNAVAILABLE,
+    });
+    expect(playlistRepo.addItem).not.toHaveBeenCalled();
+  });
+
+  it('오래된 메타데이터를 영상별 한 번만 갱신하고 누락 영상은 unavailable로 처리한다', async () => {
+    const { service, playlistRepo, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    playlistRepo.findStaleMetadataItems.mockResolvedValueOnce([
+      { id: 'item-1', videoId: 'video-1', metadataRefreshedAt: cutoff },
+      { id: 'item-2', videoId: 'video-1', metadataRefreshedAt: cutoff },
+      { id: 'item-3', videoId: 'missing-video', metadataRefreshedAt: cutoff },
+    ]);
+    metadataRefreshService.refreshVideoMetadata.mockResolvedValueOnce(
+      new Map([
+        [
+          'video-1',
+          {
+            status: 'available',
+            title: 'Updated',
+            channelTitle: 'Channel',
+            thumbnailUrl: 'thumb',
+            duration: 200,
+          },
+        ],
+      ]),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 3,
+      unavailableCount: 1,
+    });
+    expect(metadataRefreshService.refreshVideoMetadata).toHaveBeenCalledWith([
+      'video-1',
+      'missing-video',
+    ]);
+    expect(playlistRepo.applyMetadataRefresh).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'item-1',
+        result: expect.objectContaining({ status: 'available' }),
+      }),
+      expect.objectContaining({
+        id: 'item-2',
+        result: expect.objectContaining({ status: 'available' }),
+      }),
+      { id: 'item-3', result: { status: 'unavailable' } },
+    ]);
+  });
+
+  it('100개 단위로 cursor를 넘겨 메타데이터를 갱신한다', async () => {
+    const { service, playlistRepo, metadataRefreshService } = fixture();
+    const cutoff = new Date('2026-06-01T00:00:00.000Z');
+    const firstBatch = Array.from({ length: 100 }, (_, index) => ({
+      id: `item-${index + 1}`,
+      videoId: `video-${index + 1}`,
+      metadataRefreshedAt: cutoff,
+    }));
+    const lastBatch = [{ id: 'item-101', videoId: 'video-101', metadataRefreshedAt: cutoff }];
+    playlistRepo.findStaleMetadataItems
+      .mockResolvedValueOnce(firstBatch)
+      .mockResolvedValueOnce(lastBatch);
+    metadataRefreshService.refreshVideoMetadata.mockImplementation(
+      async (videoIds: string[]) =>
+        new Map(videoIds.map((videoId: string) => [videoId, { status: 'unavailable' as const }])),
+    );
+
+    await expect(service.refreshStaleMetadata(cutoff)).resolves.toEqual({
+      checkedCount: 101,
+      unavailableCount: 101,
     });
 
-    await expect(service.reorderPlaylist('room-1', 'user-1', items)).resolves.toBeUndefined();
+    expect(playlistRepo.findStaleMetadataItems).toHaveBeenNthCalledWith(1, cutoff, undefined);
+    expect(playlistRepo.findStaleMetadataItems).toHaveBeenNthCalledWith(2, cutoff, {
+      id: 'item-100',
+      metadataRefreshedAt: cutoff,
+    });
+    expect(playlistRepo.applyMetadataRefresh).toHaveBeenCalledTimes(2);
+  });
 
-    expect(playlistRepo.reorderItems).toHaveBeenCalledWith(items);
-    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
+  it('Host가 자신의 개인 Playlist를 가져오면 YouTube 재검증 없이 큐와 Playlist를 갱신한다', async () => {
+    const { service, playlistRepo, playbackService, youtubeClient, personalPlaylistRepo } =
+      fixture();
+    const imported = { ...item, id: 'item-2', videoId: 'video-2' };
+    playlistRepo.importItems.mockResolvedValueOnce({
+      addedItems: [imported],
+      duplicateCount: 1,
+      unavailableCount: 0,
+    });
+    personalPlaylistRepo.getItems.mockResolvedValueOnce([
+      { ...imported, personalPlaylistId: 'personal-1' },
+    ]);
+
+    await expect(
+      service.importFromPersonalPlaylist('room-1', 'host', 'personal-1'),
+    ).resolves.toEqual({
+      addedCount: 1,
+      duplicateCount: 1,
+      unavailableCount: 0,
+    });
+    expect(youtubeClient.getVideoDetails).not.toHaveBeenCalled();
+    expect(playbackService.enqueueIfShuffled).toHaveBeenCalledWith('room-1', 'item-2');
+    expect(broadcastToRoom).toHaveBeenCalledOnce();
     expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
       playlist: [
         {
-          id: 'playlist-item-1',
+          id: 'item-1',
           videoId: 'video-1',
-          title: 'Song One',
-          channelTitle: 'Channel One',
-          thumbnailUrl: 'https://example.com/thumb.jpg',
+          title: 'Song',
+          channelTitle: 'Channel',
+          thumbnailUrl: '',
           duration: 180,
           position: 1,
-          addedBy: 'user-1',
-          status: 'available',
-        },
-        {
-          id: 'playlist-item-2',
-          videoId: 'video-2',
-          title: 'Song Two',
-          channelTitle: 'Channel Two',
-          thumbnailUrl: 'https://example.com/thumb.jpg',
-          duration: 180,
-          position: 2,
-          addedBy: 'user-2',
+          addedBy: 'host',
           status: 'available',
         },
       ],
     });
   });
 
-  it('빈 플레이리스트에 빈 순서 변경 요청을 허용한다', async () => {
-    const { service, playlistRepo } = makeFixture({ playlist: [] });
+  it('추가할 곡이 없어도 playlist:updated broadcast를 수행한다', async () => {
+    const { service, playlistRepo } = fixture();
+    playlistRepo.importItems.mockResolvedValueOnce({
+      addedItems: [],
+      duplicateCount: 2,
+      unavailableCount: 0,
+    });
 
-    await expect(service.reorderPlaylist('room-1', 'user-1', [])).resolves.toBeUndefined();
-
-    expect(playlistRepo.reorderItems).toHaveBeenCalledWith([]);
+    await expect(
+      service.importFromPersonalPlaylist('room-1', 'host', 'personal-1'),
+    ).resolves.toEqual({
+      addedCount: 0,
+      duplicateCount: 2,
+      unavailableCount: 0,
+    });
+    expect(broadcastToRoom).toHaveBeenCalledOnce();
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', {
+      playlist: expect.any(Array),
+    });
   });
 
-  it('Room이 없으면 곡 삭제에서 ROOM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ room: null, lookupItem: playlistItemLookup });
+  it('가져오기 재시도 소진 뒤 unique 충돌은 PLAYLIST_DUPLICATE_VIDEO으로 변환한다', async () => {
+    const { service, playlistRepo } = fixture();
+    playlistRepo.importItems.mockRejectedValueOnce(new PlaylistDuplicateVideoError());
 
-    await expect(service.deleteItem('room-1', 'user-1', 'playlist-item-1')).rejects.toMatchObject({
-      status: 404,
-      code: ERROR_CODES.ROOM_NOT_FOUND,
+    await expect(
+      service.importFromPersonalPlaylist('room-1', 'host', 'personal-1'),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: ERROR_CODES.PLAYLIST_DUPLICATE_VIDEO,
     });
-    expect(playlistRepo.deleteItem).not.toHaveBeenCalled();
+    expect(broadcastToRoom).not.toHaveBeenCalled();
   });
 
-  it('참여자가 아니면 곡 삭제에서 ROOM_ACCESS_DENIED를 반환한다', async () => {
-    const { service, roomRepo, playlistRepo } = makeFixture({ lookupItem: playlistItemLookup });
-    roomRepo.findMembership.mockResolvedValue(null);
-
-    await expect(service.deleteItem('room-1', 'user-1', 'playlist-item-1')).rejects.toMatchObject({
-      status: 403,
-      code: ERROR_CODES.ROOM_ACCESS_DENIED,
-    });
-    expect(playlistRepo.deleteItem).not.toHaveBeenCalled();
-  });
-
-  it('곡 삭제 대상 항목이 없으면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({ lookupItem: null });
-
-    await expect(service.deleteItem('room-1', 'user-1', 'playlist-item-1')).rejects.toMatchObject({
-      status: 404,
-      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
-    });
-    expect(playlistRepo.deleteItem).not.toHaveBeenCalled();
-  });
-
-  it('곡 삭제 대상 항목이 다른 Room 소속이면 PLAYLIST_ITEM_NOT_FOUND를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({
-      lookupItem: { ...playlistItemLookup, roomId: 'other-room' },
-    });
-
-    await expect(service.deleteItem('room-1', 'user-1', 'playlist-item-1')).rejects.toMatchObject({
-      status: 404,
-      code: ERROR_CODES.PLAYLIST_ITEM_NOT_FOUND,
-    });
-    expect(playlistRepo.deleteItem).not.toHaveBeenCalled();
-  });
-
-  it('Member가 타인이 추가한 곡을 삭제하면 AUTH_FORBIDDEN을 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({
-      lookupItem: { ...playlistItemLookup, addedBy: 'user-1' },
-    });
-
-    await expect(service.deleteItem('room-1', 'user-2', 'playlist-item-1')).rejects.toMatchObject({
-      status: 403,
+  it.each([
+    {
+      label: 'Host가 아닌 사용자',
+      userId: 'member',
+      playlist: { id: 'personal-1', ownerId: 'member' },
       code: ERROR_CODES.AUTH_FORBIDDEN,
-    });
-    expect(playlistRepo.deleteItem).not.toHaveBeenCalled();
-  });
-
-  it('Member는 본인이 추가한 곡을 삭제할 수 있다', async () => {
-    const { service, playlistRepo } = makeFixture({
-      lookupItem: { ...playlistItemLookup, addedBy: 'user-2' },
-      playlist: [],
-    });
-
-    await expect(
-      service.deleteItem('room-1', 'user-2', 'playlist-item-1'),
-    ).resolves.toBeUndefined();
-
-    expect(playlistRepo.deleteItem).toHaveBeenCalledWith('playlist-item-1');
-    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', { playlist: [] });
-  });
-
-  it('Host는 타인이 추가한 곡을 삭제할 수 있다', async () => {
-    const { service, playlistRepo } = makeFixture({
-      lookupItem: { ...playlistItemLookup, addedBy: 'user-2' },
-      playlist: [],
-    });
+      status: 403,
+    },
+    {
+      label: '존재하지 않는 개인 Playlist',
+      userId: 'host',
+      playlist: null,
+      code: ERROR_CODES.PERSONAL_PLAYLIST_NOT_FOUND,
+      status: 404,
+    },
+    {
+      label: '다른 사용자의 개인 Playlist',
+      userId: 'host',
+      playlist: { id: 'personal-1', ownerId: 'other-user' },
+      code: ERROR_CODES.PERSONAL_PLAYLIST_ACCESS_DENIED,
+      status: 403,
+    },
+  ])('$label 가져오기를 거부한다', async ({ userId, playlist, code, status }) => {
+    const { service, playlistRepo, personalPlaylistRepo } = fixture();
+    personalPlaylistRepo.findPlaylistById.mockResolvedValueOnce(playlist);
 
     await expect(
-      service.deleteItem('room-1', 'user-1', 'playlist-item-1'),
-    ).resolves.toBeUndefined();
-
-    expect(playlistRepo.deleteItem).toHaveBeenCalledWith('playlist-item-1');
-  });
-
-  it('PlaybackState가 없으면 곡을 삭제하지 않고 SERVER_INTERNAL_ERROR를 반환한다', async () => {
-    const { service, playlistRepo } = makeFixture({
-      lookupItem: playlistItemLookup,
-      playbackState: null,
+      service.importFromPersonalPlaylist('room-1', userId, 'personal-1'),
+    ).rejects.toMatchObject({
+      status,
+      code,
     });
-
-    await expect(service.deleteItem('room-1', 'user-1', 'playlist-item-1')).rejects.toMatchObject({
-      status: 500,
-      code: ERROR_CODES.SERVER_INTERNAL_ERROR,
-    });
-    expect(playlistRepo.deleteItem).not.toHaveBeenCalled();
-  });
-
-  it('현재 재생 곡이 아니면 PlaybackState 변경 없이 playlist:updated만 broadcast한다', async () => {
-    const { service, playlistRepo, roomRepo, playbackService } = makeFixture({
-      lookupItem: playlistItemLookup,
-      playlist: [],
-    });
-
-    await expect(
-      service.deleteItem('room-1', 'user-1', 'playlist-item-1'),
-    ).resolves.toBeUndefined();
-
-    expect(playbackService.setTrack).not.toHaveBeenCalled();
-    expect(playbackService.resetPlayback).not.toHaveBeenCalled();
-    expect(playlistRepo.deleteItem).toHaveBeenCalledWith('playlist-item-1');
-    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
-    expect(broadcastToRoom).toHaveBeenCalledTimes(1);
-    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', 'playlist:updated', { playlist: [] });
-  });
-
-  it('현재 재생 곡 삭제 시 다음 available 곡으로 PlaybackState를 먼저 갱신하고 broadcast한다', async () => {
-    const { service, playlistRepo, playbackService } = makeFixture({
-      lookupItem: playlistItemLookup,
-      playbackState: { ...playbackState, playlistItemId: 'playlist-item-1', videoId: 'video-1' },
-    });
-    playlistRepo.getPlaylist
-      .mockResolvedValueOnce([playlistItem, secondPlaylistItem])
-      .mockResolvedValueOnce([secondPlaylistItem]);
-
-    await expect(
-      service.deleteItem('room-1', 'user-1', 'playlist-item-1'),
-    ).resolves.toBeUndefined();
-
-    expect(playbackService.setTrack).toHaveBeenCalledWith('room-1', 'video-2', 'playlist-item-2');
-    expect(playbackService.setTrack.mock.invocationCallOrder[0]).toBeLessThan(
-      playlistRepo.deleteItem.mock.invocationCallOrder[0],
-    );
-    expect(broadcastToRoom).toHaveBeenNthCalledWith(
-      1,
-      'room-1',
-      'playback:change-track',
-      nextTrackPayload,
-    );
-    expect(broadcastToRoom).toHaveBeenNthCalledWith(2, 'room-1', 'playlist:updated', {
-      playlist: [
-        {
-          id: 'playlist-item-2',
-          videoId: 'video-2',
-          title: 'Song Two',
-          channelTitle: 'Channel Two',
-          thumbnailUrl: 'https://example.com/thumb.jpg',
-          duration: 180,
-          position: 2,
-          addedBy: 'user-2',
-          status: 'available',
-        },
-      ],
-    });
-  });
-
-  it('현재 재생 곡 삭제 시 unavailable 항목을 건너뛰고 다음 available 곡을 선택한다', async () => {
-    const { service, playlistRepo, playbackService } = makeFixture({
-      lookupItem: playlistItemLookup,
-      playbackState: { ...playbackState, playlistItemId: 'playlist-item-1', videoId: 'video-1' },
-    });
-    playlistRepo.getPlaylist
-      .mockResolvedValueOnce([playlistItem, unavailablePlaylistItem, thirdPlaylistItem])
-      .mockResolvedValueOnce([unavailablePlaylistItem, thirdPlaylistItem]);
-
-    await service.deleteItem('room-1', 'user-1', 'playlist-item-1');
-
-    expect(playbackService.setTrack).toHaveBeenCalledWith('room-1', 'video-3', 'playlist-item-3');
-    expect(playbackService.resetPlayback).not.toHaveBeenCalled();
-  });
-
-  it('현재 재생 곡 삭제 시 다음 available 곡이 없으면 PlaybackState를 초기화하고 pause를 broadcast한다', async () => {
-    const { service, playlistRepo, playbackService } = makeFixture({
-      lookupItem: playlistItemLookup,
-      playbackState: { ...playbackState, playlistItemId: 'playlist-item-1', videoId: 'video-1' },
-    });
-    playlistRepo.getPlaylist
-      .mockResolvedValueOnce([playlistItem, unavailablePlaylistItem])
-      .mockResolvedValueOnce([unavailablePlaylistItem]);
-
-    await expect(
-      service.deleteItem('room-1', 'user-1', 'playlist-item-1'),
-    ).resolves.toBeUndefined();
-
-    expect(playbackService.resetPlayback).toHaveBeenCalledWith('room-1');
-    expect(playbackService.resetPlayback.mock.invocationCallOrder[0]).toBeLessThan(
-      playlistRepo.deleteItem.mock.invocationCallOrder[0],
-    );
-    expect(broadcastToRoom).toHaveBeenNthCalledWith(1, 'room-1', 'playback:pause', resetPayload);
-    expect(broadcastToRoom).toHaveBeenNthCalledWith(2, 'room-1', 'playlist:updated', {
-      playlist: [
-        {
-          id: 'playlist-item-unavailable',
-          videoId: 'video-unavailable',
-          title: 'Unavailable Song',
-          channelTitle: 'Channel One',
-          thumbnailUrl: 'https://example.com/thumb.jpg',
-          duration: 180,
-          position: 2,
-          addedBy: 'user-1',
-          status: 'unavailable',
-        },
-      ],
-    });
-  });
-
-  it('곡 삭제 성공 시 lastActivityAt을 갱신한다', async () => {
-    const { service, roomRepo } = makeFixture({
-      lookupItem: playlistItemLookup,
-      playlist: [],
-    });
-
-    await service.deleteItem('room-1', 'user-1', 'playlist-item-1');
-
-    expect(roomRepo.touchLastActivity).toHaveBeenCalledWith('room-1');
+    expect(playlistRepo.importItems).not.toHaveBeenCalled();
+    expect(broadcastToRoom).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,6 @@
 import { ERROR_CODES } from '@syfity/shared';
 
 import { AppError } from '../errors/appError';
-import { logger } from '../lib/logger';
 import { maskProfanity } from '../lib/profanityFilter';
 import type { ChatMessageRecord, ChatRecord, IChatRepository } from '../types/chat';
 import type { IRoomRepository } from '../types/room';
@@ -13,10 +12,7 @@ const MAX_MESSAGE_LENGTH = 300;
 export class ChatService {
   constructor(
     private readonly chatRepo: IChatRepository,
-    private readonly roomRepo: Pick<
-      IRoomRepository,
-      'findRoomById' | 'findMembership' | 'touchLastActivity'
-    >,
+    private readonly roomRepo: Pick<IRoomRepository, 'findRoomById' | 'findMembership'>,
   ) {}
 
   async sendMessage(params: {
@@ -46,16 +42,6 @@ export class ChatService {
       type: 'user',
       message: maskedMessage,
     });
-
-    try {
-      await this.roomRepo.touchLastActivity(params.roomId);
-    } catch (err) {
-      // 메시지 저장은 이미 성공했으므로 lastActivity 갱신 실패가 실시간 전달을 막지 않게 한다.
-      logger.error(
-        { err, roomId: params.roomId },
-        '[ChatService.sendMessage] Room lastActivity 갱신 실패',
-      );
-    }
 
     return record;
   }

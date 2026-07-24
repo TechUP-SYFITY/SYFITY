@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { ERROR_CODES } from '@syfity/shared';
 
 import type { PlaybackService } from './playback.service';
+import type { RoomLifecycleService } from './room-lifecycle.service';
 import { AppError } from '../errors/appError';
 import type { ICache } from '../lib/cache/cache.interface';
 import { getIo } from '../lib/io';
@@ -13,19 +14,28 @@ import type { IPlaylistRepository } from '../types/playlist';
 import type {
   IRoomRepository,
   CreateMembershipResult,
+  KickedMemberRecord,
   LeaveRoomResult,
   RoomDetailRecord,
   RoomMemberRecord,
+  RoomMemberLookupRecord,
+  RoomMineRecord,
   RoomRecord,
   RoomSnapshotResult,
   RoomUpdateRecord,
 } from '../types/room';
-import type { RoomClosedPayload } from '../types/socket';
+import type { PresenceUpdatePayload, RoomClosedPayload, RoomKickedPayload } from '../types/socket';
 import { toChatSystemPayload } from '../utils/chatPayload';
-import { assertActiveRoomMember } from '../utils/roomAccess';
+import {
+  assertActiveRoomMember,
+  assertJoinableRoomMember,
+  assertRoomHost,
+  assertRoomHostWithoutActiveStatus,
+} from '../utils/roomAccess';
 
 const INVITE_CODE_RETRY_LIMIT = 3;
 const RECENT_CHAT_LIMIT = 50;
+const ROOM_RECOVERY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export class RoomService {
   constructor(
@@ -33,7 +43,8 @@ export class RoomService {
     private readonly cache: ICache,
     private readonly playlistRepo: Pick<IPlaylistRepository, 'getPlaylist'>,
     private readonly chatRepo: Pick<IChatRepository, 'findLatestChats' | 'createMessage'>,
-    private readonly playbackService: Pick<PlaybackService, 'initializeCache' | 'clearCache'>,
+    private readonly playbackService: Pick<PlaybackService, 'clearSession' | 'resetSession'>,
+    private readonly roomLifecycleService: Pick<RoomLifecycleService, 'inactivateStaleRooms'>,
   ) {}
 
   async createRoom(userId: string, name: string): Promise<RoomRecord> {
@@ -41,8 +52,6 @@ export class RoomService {
     const room = await this.roomRepo.createRoom({ name, hostId: userId, inviteCode });
 
     await this.roomRepo.upsertRecentRoom(userId, room.id);
-    this.playbackService.initializeCache(room.id);
-
     return room;
   }
 
@@ -56,6 +65,11 @@ export class RoomService {
     }
     if (room.status === 'inactive') {
       throw new AppError(403, ERROR_CODES.ROOM_INACTIVE, '비활성화된 Room입니다.');
+    }
+
+    const membership = await this.roomRepo.findMembership(room.id, userId);
+    if (membership?.status === 'kicked') {
+      throw new AppError(403, ERROR_CODES.ROOM_MEMBER_KICKED, 'Host에 의해 추방된 사용자입니다.');
     }
 
     const isNewMembership = await this.roomRepo.upsertMembership(room.id, userId);
@@ -75,23 +89,13 @@ export class RoomService {
   }
 
   async getRoomInfo(roomId: string, userId: string): Promise<RoomDetailRecord> {
-    const room = await this.roomRepo.findRoomById(roomId);
-    if (!room) {
-      throw new AppError(404, ERROR_CODES.ROOM_NOT_FOUND, '존재하지 않는 Room입니다.');
-    }
-
-    const membership = await this.roomRepo.findMembership(roomId, userId);
-    if (!membership) {
-      throw new AppError(403, ERROR_CODES.ROOM_ACCESS_DENIED, 'Room 참여자만 접근할 수 있습니다.');
-    }
-
-    return room;
+    return assertJoinableRoomMember(this.roomRepo, roomId, userId);
   }
 
   async updateRoom(
     roomId: string,
     userId: string,
-    body: { name: string } | { status: 'closed' },
+    body: { name: string } | { status: 'closed' } | { status: 'active' },
   ): Promise<RoomUpdateRecord> {
     const room = await this.roomRepo.findRoomById(roomId);
     if (!room) {
@@ -101,22 +105,65 @@ export class RoomService {
       throw new AppError(403, ERROR_CODES.AUTH_FORBIDDEN, 'Host만 Room 정보를 수정할 수 있습니다.');
     }
 
-    if ('status' in body) {
+    if ('name' in body) {
+      if (room.status !== 'active') {
+        throw new AppError(
+          409,
+          ERROR_CODES.ROOM_NOT_ACTIVE,
+          'active 상태의 Room만 이름을 바꿀 수 있습니다.',
+        );
+      }
+      return this.roomRepo.updateRoomName(roomId, body.name);
+    }
+
+    if (body.status === 'closed') {
+      if (room.status === 'closed') {
+        throw new AppError(403, ERROR_CODES.ROOM_CLOSED, '이미 종료된 Room입니다.');
+      }
+      if (room.status === 'inactive') {
+        throw new AppError(403, ERROR_CODES.ROOM_INACTIVE, '비활성화된 Room입니다.');
+      }
       return this.closeRoomAndBroadcast(roomId, userId);
     }
 
-    return this.roomRepo.updateRoomName(roomId, body.name);
+    if (room.status !== 'closed') {
+      throw new AppError(409, ERROR_CODES.ROOM_NOT_CLOSED, '복구 대상이 closed 상태가 아닙니다.');
+    }
+    return this.recoverRoom(room);
+  }
+
+  async getMyRooms(userId: string): Promise<RoomMineRecord[]> {
+    await this.roomLifecycleService.inactivateStaleRooms();
+    return this.roomRepo.findRoomsByHostId(userId);
+  }
+
+  async deactivateRoom(roomId: string, userId: string): Promise<void> {
+    const room = await this.roomRepo.findRoomById(roomId);
+    if (!room) {
+      throw new AppError(404, ERROR_CODES.ROOM_NOT_FOUND, '존재하지 않는 Room입니다.');
+    }
+    if (room.hostId !== userId) {
+      throw new AppError(403, ERROR_CODES.AUTH_FORBIDDEN, 'Host만 Room을 비활성화할 수 있습니다.');
+    }
+    if (room.status !== 'closed') {
+      throw new AppError(
+        409,
+        ERROR_CODES.ROOM_NOT_CLOSED,
+        '비활성화 대상이 closed 상태가 아닙니다.',
+      );
+    }
+    await this.roomRepo.deactivateRoom(roomId);
   }
 
   async setMemberOnline(
     roomId: string,
     userId: string,
   ): Promise<{ member: RoomMemberRecord; wasOnline: boolean }> {
-    await assertActiveRoomMember(this.roomRepo, roomId, userId);
+    await assertJoinableRoomMember(this.roomRepo, roomId, userId);
     const didTransition = await this.roomRepo.updateMemberStatus(roomId, userId, 'online', [
       'offline',
+      'left',
     ]);
-    await this.roomRepo.touchLastActivity(roomId);
     const member = await this.findRequiredMemberInfo(roomId, userId);
 
     return { member, wasOnline: !didTransition };
@@ -124,6 +171,76 @@ export class RoomService {
 
   async getMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return this.roomRepo.findMembers(roomId);
+  }
+
+  async getActiveMembers(roomId: string, hostUserId: string): Promise<RoomMemberRecord[]> {
+    await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    return this.roomRepo.findMembers(roomId);
+  }
+
+  async getKickedMembers(roomId: string, hostUserId: string): Promise<KickedMemberRecord[]> {
+    await assertRoomHost(this.roomRepo, roomId, hostUserId);
+    return this.roomRepo.findKickedMembers(roomId);
+  }
+
+  async kickMember(
+    roomId: string,
+    hostUserId: string,
+    memberId: string,
+  ): Promise<{ memberId: string; status: 'kicked' }> {
+    const room = await assertRoomHostWithoutActiveStatus(this.roomRepo, roomId, hostUserId);
+    this.assertRoomIsActive(room.status);
+
+    const member = await this.roomRepo.findMemberById(roomId, memberId);
+    if (!member) {
+      throw new AppError(404, ERROR_CODES.ROOM_MEMBER_NOT_FOUND, '참여자를 찾을 수 없습니다.');
+    }
+    if (member.userId === room.hostId) {
+      throw new AppError(409, ERROR_CODES.ROOM_CANNOT_KICK_HOST, 'Host는 추방할 수 없습니다.');
+    }
+
+    const didTransition = await this.roomRepo.updateMemberStatusByMemberId(
+      roomId,
+      memberId,
+      'kicked',
+      ['online', 'offline'],
+    );
+    if (!didTransition) {
+      throw new AppError(
+        404,
+        ERROR_CODES.ROOM_MEMBER_NOT_FOUND,
+        '추방할 수 없는 상태의 참여자입니다.',
+      );
+    }
+
+    await this.disconnectAndNotifyKicked(roomId, member);
+    return { memberId, status: 'kicked' };
+  }
+
+  async unkickMember(
+    roomId: string,
+    hostUserId: string,
+    memberId: string,
+  ): Promise<{ memberId: string; status: 'left' }> {
+    const room = await assertRoomHostWithoutActiveStatus(this.roomRepo, roomId, hostUserId);
+    this.assertRoomIsActive(room.status);
+
+    const member = await this.roomRepo.findMemberById(roomId, memberId);
+    if (!member) {
+      throw new AppError(404, ERROR_CODES.ROOM_MEMBER_NOT_FOUND, '참여자를 찾을 수 없습니다.');
+    }
+
+    const didTransition = await this.roomRepo.updateMemberStatusByMemberId(
+      roomId,
+      memberId,
+      'left',
+      ['kicked'],
+    );
+    if (!didTransition) {
+      throw new AppError(409, ERROR_CODES.ROOM_MEMBER_NOT_KICKED, '추방 상태가 아닙니다.');
+    }
+
+    return { memberId, status: 'left' };
   }
 
   async leaveRoom(roomId: string, userId: string): Promise<LeaveRoomResult> {
@@ -141,7 +258,6 @@ export class RoomService {
       return { type: 'noop' };
     }
 
-    await this.roomRepo.touchLastActivity(roomId);
     const member = await this.findRequiredMemberInfo(roomId, userId);
 
     return { type: 'left', member };
@@ -154,7 +270,7 @@ export class RoomService {
     }
 
     const closedRoom = await this.roomRepo.closeRoom(roomId);
-    this.playbackService.clearCache(roomId);
+    this.playbackService.clearSession(roomId);
 
     return closedRoom;
   }
@@ -177,7 +293,17 @@ export class RoomService {
   async closeRoomAndBroadcast(roomId: string, userId: string): Promise<RoomUpdateRecord> {
     const io = getIo();
     const room = await this.closeRoom(roomId, userId);
+    await this.notifyRoomClosed(room.id, io);
+    return room;
+  }
 
+  async finalizeClosedRoom(roomId: string): Promise<void> {
+    const io = getIo();
+    this.playbackService.clearSession(roomId);
+    await this.notifyRoomClosed(roomId, io);
+  }
+
+  private async notifyRoomClosed(roomId: string, io: ReturnType<typeof getIo>): Promise<void> {
     const systemMessage = await this.createSystemMessage(roomId, 'Room이 종료되었습니다.');
     if (systemMessage) {
       broadcastToRoom(roomId, 'chat:system', toChatSystemPayload(systemMessage));
@@ -186,7 +312,6 @@ export class RoomService {
     const payload: RoomClosedPayload = { roomId, reason: 'host-closed' };
     broadcastToRoom(roomId, 'room:closed', payload);
     io.socketsLeave(`room:${roomId}`);
-    return room;
   }
 
   private async generateUniqueInviteCode(): Promise<string> {
@@ -203,6 +328,24 @@ export class RoomService {
     );
   }
 
+  private async recoverRoom(room: RoomDetailRecord): Promise<RoomUpdateRecord> {
+    const isExpired =
+      room.closedAt !== null && Date.now() - room.closedAt.getTime() >= ROOM_RECOVERY_WINDOW_MS;
+    if (isExpired) {
+      await this.roomLifecycleService.inactivateStaleRooms();
+      throw new AppError(
+        409,
+        ERROR_CODES.ROOM_RECOVERY_EXPIRED,
+        '30일이 지나 더 이상 복구할 수 없습니다.',
+      );
+    }
+
+    const recovered = await this.roomRepo.recoverRoom(room.id);
+    const resetPayload = this.playbackService.resetSession(room.id);
+    broadcastToRoom(room.id, 'playback:reset', resetPayload);
+    return recovered;
+  }
+
   private async findRequiredMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord> {
     const member = await this.roomRepo.findMemberInfo(roomId, userId);
     if (!member) {
@@ -210,5 +353,42 @@ export class RoomService {
     }
 
     return member;
+  }
+
+  private assertRoomIsActive(status: RoomDetailRecord['status']): void {
+    if (status === 'closed') {
+      throw new AppError(403, ERROR_CODES.ROOM_CLOSED, '종료된 Room입니다.');
+    }
+    if (status === 'inactive') {
+      throw new AppError(403, ERROR_CODES.ROOM_INACTIVE, '비활성화된 Room입니다.');
+    }
+  }
+
+  private async disconnectAndNotifyKicked(
+    roomId: string,
+    member: Pick<RoomMemberLookupRecord, 'userId' | 'nickname' | 'profileImage' | 'role'>,
+  ): Promise<void> {
+    const roomKey = `room:${roomId}`;
+    const io = getIo();
+    const payload: RoomKickedPayload = {
+      roomId,
+      message: 'Host에 의해 Room에서 추방되었습니다.',
+    };
+    const sockets = await io.in(roomKey).fetchSockets();
+
+    for (const targetSocket of sockets) {
+      if (targetSocket.data.userId !== member.userId) continue;
+      targetSocket.emit('room:kicked', payload);
+      await targetSocket.leave(roomKey);
+    }
+
+    const presencePayload: PresenceUpdatePayload = {
+      userId: member.userId,
+      nickname: member.nickname,
+      profileImage: member.profileImage,
+      role: member.role,
+      status: 'left',
+    };
+    broadcastToRoom(roomId, 'presence:update', presencePayload);
   }
 }

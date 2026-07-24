@@ -9,7 +9,8 @@ import { playbackCommands } from '../lib/playbackCommands';
 import { usePlayerStore } from '../store/playerStore';
 import type { PlayerController } from '../types/playerTypes';
 
-export type PlayerCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek';
+export type PlayerCommand =
+  'play' | 'pause' | 'previous' | 'next' | 'select' | 'seek' | 'repeat' | 'shuffle';
 
 const SEEK_DEBOUNCE_MS = 200;
 const PLAYER_COMMAND_ERROR_MESSAGE_OVERRIDES = {
@@ -24,8 +25,10 @@ interface UsePlayerControlsParams {
   currentTime: number;
   hasPlayableTrack: boolean;
   isPlaying: boolean;
-  nextItemId?: string;
   playerControllerRef?: RefObject<PlayerController | null>;
+  /** @deprecated next/previous selection is server-authoritative. */
+  nextItemId?: string;
+  /** @deprecated next/previous selection is server-authoritative. */
   previousItemId?: string;
 }
 
@@ -36,9 +39,7 @@ export function usePlayerControls({
   currentTime,
   hasPlayableTrack,
   isPlaying,
-  nextItemId,
   playerControllerRef,
-  previousItemId,
 }: UsePlayerControlsParams) {
   const seekTimeoutRef = useRef<number | null>(null);
   const pendingCommandRef = useRef<PlayerCommand | null>(null);
@@ -50,6 +51,7 @@ export function usePlayerControls({
   const pauseLocalSync = usePlayerStore((state) => state.pauseLocalSync);
   const resumeLocalSync = usePlayerStore((state) => state.resumeLocalSync);
   const setPlaybackSyncError = usePlayerStore((state) => state.setPlaybackSyncError);
+  const playbackPolicy = usePlayerStore((state) => state.playbackPolicy);
   const controlDisabled = !canControlRoom || !hasPlayableTrack || Boolean(pendingCommand);
   const playPauseDisabled =
     !hasPlayableTrack || Boolean(pendingCommand) || (isHost && !canControlRoom);
@@ -136,13 +138,13 @@ export function usePlayerControls({
   }
 
   function handlePreviousTrack() {
-    if (!hasPlayableTrack || !previousItemId) {
+    if (!hasPlayableTrack) {
       return;
     }
 
     // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
     playerControllerRef?.current?.play();
-    void runHostCommand('previous', () => playbackCommands.changeTrack(roomId, previousItemId));
+    void runHostCommand('previous', () => playbackCommands.changeTrack(roomId, 'previous'));
   }
 
   function handleNextTrack() {
@@ -150,14 +152,41 @@ export function usePlayerControls({
       return;
     }
 
-    if (!nextItemId) {
-      void runHostCommand('next', () => playbackCommands.pause(roomId, 0));
+    // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
+    playerControllerRef?.current?.play();
+    void runHostCommand('next', () => playbackCommands.changeTrack(roomId, 'next'));
+  }
+
+  function handleSelectTrack(playlistItemId: string) {
+    if (!playlistItemId || !canControlRoom || pendingCommandRef.current) {
       return;
     }
 
     // 탭 이벤트와 같은 호출 스택에서 재생해 모바일 자동재생 정책을 충족한다.
     playerControllerRef?.current?.play();
-    void runHostCommand('next', () => playbackCommands.changeTrack(roomId, nextItemId));
+    void runHostCommand(
+      'select',
+      () => playbackCommands.changeTrack(roomId, 'select', playlistItemId),
+      isPlaying ? undefined : () => playerControllerRef?.current?.pause(),
+    );
+  }
+
+  function handleRepeatToggle() {
+    let nextRepeatMode: 'off' | 'all' | 'one' = 'all';
+    if (playbackPolicy?.repeatMode === 'all') {
+      nextRepeatMode = 'one';
+    } else if (playbackPolicy?.repeatMode === 'one') {
+      nextRepeatMode = 'off';
+    }
+    void runHostCommand('repeat', () =>
+      playbackCommands.updateSettings(roomId, { repeatMode: nextRepeatMode }),
+    );
+  }
+
+  function handleShuffleToggle() {
+    void runHostCommand('shuffle', () =>
+      playbackCommands.updateSettings(roomId, { shuffleEnabled: !playbackPolicy?.shuffleEnabled }),
+    );
   }
 
   function handlePlaybackStateChange(nextIsPlaying: boolean, nextCurrentTime: number) {
@@ -218,7 +247,10 @@ export function usePlayerControls({
     handlePlaybackStateChange,
     handlePlayPause,
     handlePreviousTrack,
+    handleSelectTrack,
+    handleRepeatToggle,
     handleSeek,
+    handleShuffleToggle,
     pendingCommand,
     isLocalSyncPaused,
     playPauseDisabled,

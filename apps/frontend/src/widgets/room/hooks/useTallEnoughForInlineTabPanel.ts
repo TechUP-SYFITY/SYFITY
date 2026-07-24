@@ -29,8 +29,18 @@ export const TAB_PANEL_HEIGHT = 280;
 // 다시 오버레이로 돌아가고, 그 반대도 마찬가지다.
 const TAB_PANEL_HEIGHT_BUFFER = 24;
 
-export function useTallEnoughForInlineTabPanel(chromeRef: RefObject<HTMLElement | null>): boolean {
-  const [isTallEnough, setIsTallEnough] = useState(false);
+export type InlineTabPanelSpace = {
+  availableSpace: number;
+  isTallEnough: boolean;
+};
+
+export function useTallEnoughForInlineTabPanel(
+  chromeRef: RefObject<HTMLElement | null>,
+): InlineTabPanelSpace {
+  const [space, setSpace] = useState<InlineTabPanelSpace>({
+    availableSpace: 0,
+    isTallEnough: false,
+  });
 
   useEffect(() => {
     const element = chromeRef.current;
@@ -43,12 +53,14 @@ export function useTallEnoughForInlineTabPanel(chromeRef: RefObject<HTMLElement 
       const chromeBottom = element.getBoundingClientRect().bottom;
       const availableSpace = window.innerHeight - chromeBottom - RESERVED_FOOTER_HEIGHT;
 
-      setIsTallEnough((wasTallEnough) => {
-        const threshold = wasTallEnough
+      setSpace((previous) => {
+        const threshold = previous.isTallEnough
           ? TAB_PANEL_HEIGHT - TAB_PANEL_HEIGHT_BUFFER
           : TAB_PANEL_HEIGHT + TAB_PANEL_HEIGHT_BUFFER;
-
-        return availableSpace >= threshold;
+        return {
+          availableSpace: Math.max(0, availableSpace),
+          isTallEnough: availableSpace >= threshold,
+        };
       });
     };
 
@@ -64,5 +76,5 @@ export function useTallEnoughForInlineTabPanel(chromeRef: RefObject<HTMLElement 
     };
   }, [chromeRef]);
 
-  return isTallEnough;
+  return space;
 }

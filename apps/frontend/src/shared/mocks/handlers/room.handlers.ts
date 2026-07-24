@@ -5,8 +5,13 @@ import type {
   CreateRoomMembershipResponse,
   CreateRoomRequest,
   CreateRoomResponse,
+  GetActiveRoomMembersResponse,
+  GetKickedRoomMembersResponse,
+  GetMyRoomsResponse,
   GetRoomResponse,
   RecentRoomsResponse,
+  UpdateRoomMemberRequest,
+  UpdateRoomMemberResponse,
   UpdateRoomRequest,
   UpdateRoomResponse,
 } from '@syfity/shared';
@@ -38,6 +43,31 @@ export const roomHandlers = [
       },
     } satisfies RecentRoomsResponse),
   ),
+  http.get(`${API}/rooms/mine`, () => {
+    const now = new Date();
+
+    return HttpResponse.json({
+      success: true,
+      data: {
+        rooms: [
+          {
+            closedAt: null,
+            id: roomFixture.room.id,
+            name: roomFixture.room.name,
+            status: 'active',
+            updatedAt: now.toISOString(),
+          },
+          {
+            closedAt: new Date(now.getTime() - 24 * 60 * 60_000).toISOString(),
+            id: 'closed-room-fixture',
+            name: '지난 플레이리스트',
+            status: 'closed',
+            updatedAt: new Date(now.getTime() - 24 * 60 * 60_000).toISOString(),
+          },
+        ],
+      },
+    } satisfies GetMyRoomsResponse);
+  }),
   http.post(`${API}/rooms`, async ({ request }) => {
     const body = (await request.json()) as CreateRoomRequest;
 
@@ -81,6 +111,36 @@ export const roomHandlers = [
         createdAt: new Date().toISOString(),
       },
     } satisfies GetRoomResponse);
+  }),
+  http.get(`${API}/rooms/:roomId/members`, ({ params, request }) => {
+    if (params.roomId !== roomFixture.room.id) {
+      return notFound('ROOM_NOT_FOUND', 'Room not found');
+    }
+
+    const status = new URL(request.url).searchParams.get('status');
+    if (status === 'kicked') {
+      return HttpResponse.json({
+        success: true,
+        data: { members: roomFixture.kickedMembers },
+      } satisfies GetKickedRoomMembersResponse);
+    }
+
+    return HttpResponse.json({
+      success: true,
+      data: { members: roomFixture.members },
+    } satisfies GetActiveRoomMembersResponse);
+  }),
+  http.patch(`${API}/rooms/:roomId/members/:memberId`, async ({ params, request }) => {
+    if (params.roomId !== roomFixture.room.id) {
+      return notFound('ROOM_NOT_FOUND', 'Room not found');
+    }
+
+    const body = (await request.json()) as UpdateRoomMemberRequest;
+
+    return HttpResponse.json({
+      success: true,
+      data: { memberId: String(params.memberId), status: body.status },
+    } satisfies UpdateRoomMemberResponse);
   }),
   http.patch(`${API}/rooms/:roomId`, async ({ params, request }) => {
     if (params.roomId !== roomFixture.room.id) {

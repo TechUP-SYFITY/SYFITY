@@ -1,10 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { apiClient } from '@/shared/lib/api/apiClient';
 import { isMockingEnabled } from '@/shared/lib/env';
 import { ApiClientError } from '@/shared/types/api';
 
 import { authApi } from './authApi';
+
+const { storageFrom, uploadToSignedUrl } = vi.hoisted(() => ({
+  storageFrom: vi.fn(),
+  uploadToSignedUrl: vi.fn(),
+}));
 
 vi.mock('@/shared/lib/api/apiClient', () => ({
   apiClient: {
@@ -14,11 +19,20 @@ vi.mock('@/shared/lib/api/apiClient', () => ({
   getBaseUrl: () => 'http://localhost:4000/api/v1',
 }));
 
+vi.mock('@/shared/lib/storage/supabaseStorageClient', () => ({
+  supabaseStorageClient: {
+    storage: {
+      from: storageFrom,
+    },
+  },
+}));
+
 vi.mock('@/shared/lib/env', () => ({
   isMockingEnabled: vi.fn(() => false),
 }));
 
 const getMock = vi.mocked(apiClient.get);
+const postMock = vi.mocked(apiClient.post);
 const isMockingEnabledMock = vi.mocked(isMockingEnabled);
 
 const stubLocation = () => {
@@ -30,12 +44,9 @@ const stubLocation = () => {
 
 describe('authApi', () => {
   beforeEach(() => {
-    getMock.mockReset();
-    isMockingEnabledMock.mockReturnValue(false);
-  });
-
-  afterEach(() => {
     vi.clearAllMocks();
+    isMockingEnabledMock.mockReturnValue(false);
+    storageFrom.mockReturnValue({ uploadToSignedUrl });
   });
 
   it('getMe requests /me and returns profile data', async () => {
@@ -51,6 +62,27 @@ describe('authApi', () => {
     getMock.mockRejectedValue(error);
 
     await expect(authApi.getMe()).rejects.toBe(error);
+  });
+
+  it('Storage 업로드 오류는 사용자용 한국어 메시지로 변환한다', async () => {
+    const file = new File(['image'], 'profile.png', { type: 'image/png' });
+    postMock.mockResolvedValueOnce({
+      path: 'users/user-1/profile.png',
+      token: 'upload-token',
+      bucket: 'profile-images',
+    });
+    uploadToSignedUrl.mockResolvedValueOnce({ error: new Error('The resource already exists') });
+
+    await expect(authApi.uploadProfileImage(file)).rejects.toThrow(
+      '이미지 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.',
+    );
+    expect(storageFrom).toHaveBeenCalledWith('profile-images');
+    expect(uploadToSignedUrl).toHaveBeenCalledWith(
+      'users/user-1/profile.png',
+      'upload-token',
+      file,
+    );
+    expect(postMock).toHaveBeenCalledTimes(1);
   });
 
   it('loginWithGoogle builds the auth URL with returnUrl', () => {

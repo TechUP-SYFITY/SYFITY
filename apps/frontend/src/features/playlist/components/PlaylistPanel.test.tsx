@@ -61,6 +61,8 @@ function renderPlaylistPanel(options?: {
   currentUserId?: string;
   isActiveRoomMember?: boolean;
   isHost?: boolean;
+  isSelectPending?: boolean;
+  onSelectItem?: (itemId: string) => void;
   playlistItems?: PlaylistItem[];
   queryClient?: QueryClient;
 }) {
@@ -77,7 +79,9 @@ function renderPlaylistPanel(options?: {
         roomId={roomId}
         isHost={options?.isHost ?? true}
         isReady
+        isSelectPending={options?.isSelectPending}
         onOpenSearch={vi.fn()}
+        onSelectItem={options?.onSelectItem ?? vi.fn()}
       />
     </QueryClientProvider>,
   );
@@ -128,6 +132,19 @@ describe('PlaylistPanel', () => {
     expect(screen.getByRole('button', { name: '첫 번째 곡 추가' })).toBeInTheDocument();
   });
 
+  it('모바일 곡 추가 버튼을 스크롤 영역 밖의 Figma 하단 위치에 고정한다', () => {
+    renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
+
+    const scrollRegion = screen.getByTestId('playlist-scroll-region');
+    const mobileAction = screen.getByTestId('playlist-mobile-add-action');
+    const addButton = screen.getByRole('button', { name: '곡 추가' });
+
+    expect(scrollRegion).toHaveClass('overflow-y-auto', 'scrollbar-none', 'pb-16', 'xl:pb-0');
+    expect(scrollRegion).not.toContainElement(mobileAction);
+    expect(mobileAction).toHaveClass('absolute', 'right-3', 'bottom-4', 'z-30', 'xl:hidden');
+    expect(addButton).toHaveClass('h-11', 'justify-center', 'text-center', 'rounded-2xl');
+  });
+
   it('unavailable 곡은 경고 아이콘과 함께 비활성 스타일로 렌더링한다', () => {
     renderPlaylistPanel({ playlistItems: [availableItem, unavailableItem] });
 
@@ -146,6 +163,58 @@ describe('PlaylistPanel', () => {
 
     expect(screen.getByTestId(`playlist-row-${availableItem.id}`)).not.toHaveClass('bg-primary/5');
     expect(screen.getByTestId(`playlist-row-${unavailableItem.id}`)).toHaveClass('bg-primary/5');
+  });
+
+  it('Host가 재생 가능한 다른 곡을 선택하면 해당 항목을 한 번 전달한다', () => {
+    const onSelectItem = vi.fn();
+    renderPlaylistPanel({
+      currentPlaylistItemId: 'another-item',
+      onSelectItem,
+      playlistItems: [availableItem],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Song One 재생' }));
+
+    expect(onSelectItem).toHaveBeenCalledOnce();
+    expect(onSelectItem).toHaveBeenCalledWith(availableItem.id);
+  });
+
+  it('현재 곡과 unavailable 곡은 선택할 수 없다', () => {
+    const onSelectItem = vi.fn();
+    renderPlaylistPanel({
+      currentPlaylistItemId: availableItem.id,
+      onSelectItem,
+      playlistItems: [availableItem, unavailableItem],
+    });
+
+    expect(screen.getByRole('button', { name: 'Song One 재생' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Song Two 재생' })).toBeDisabled();
+    expect(onSelectItem).not.toHaveBeenCalled();
+  });
+
+  it('다른 Player 명령이 pending이면 곡 선택을 비활성화한다', () => {
+    renderPlaylistPanel({
+      currentPlaylistItemId: 'another-item',
+      isSelectPending: true,
+      playlistItems: [availableItem],
+    });
+
+    expect(screen.getByRole('button', { name: 'Song One 재생' })).toBeDisabled();
+  });
+
+  it('Member에게는 곡 선택 동작을 제공하지 않는다', () => {
+    const onSelectItem = vi.fn();
+    renderPlaylistPanel({
+      canControlRoom: false,
+      currentPlaylistItemId: 'another-item',
+      isHost: false,
+      onSelectItem,
+      playlistItems: [availableItem],
+    });
+
+    expect(screen.queryByRole('button', { name: 'Song One 재생' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Song One'));
+    expect(onSelectItem).not.toHaveBeenCalled();
   });
 
   it('기존 목록이 있으면 API 요청 중이어도 전체 로딩 스피너를 같이 표시하지 않는다', () => {
@@ -248,6 +317,7 @@ describe('PlaylistPanel', () => {
           isHost
           isReady
           onOpenSearch={onOpenSearch}
+          onSelectItem={vi.fn()}
         />
       </QueryClientProvider>,
     );
@@ -256,6 +326,7 @@ describe('PlaylistPanel', () => {
 
     expect(screen.getByRole('button', { name: 'Song One 순서 변경' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Song One 삭제' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Song One 재생' })).toBeDisabled();
     screen
       .getAllByRole('button', { name: /곡 추가|추가/ })
       .forEach((button) => expect(button).toBeDisabled());

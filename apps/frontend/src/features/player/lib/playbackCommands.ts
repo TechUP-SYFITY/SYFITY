@@ -3,6 +3,7 @@
 // Host 전용 playback Socket 명령을 Promise 기반 함수로 감싼다.
 import { socketClient } from '@/shared/lib/socket/socketClient';
 import type { SocketAck } from '@/shared/types/api';
+import type { PlaybackPolicy } from '@/shared/types/domain';
 import { createSocketError } from '@/shared/types/socket';
 
 const getSocket = () => {
@@ -25,15 +26,11 @@ const resolveAck = (response: SocketAck, resolve: () => void, reject: (reason: E
 };
 
 export const playbackCommands = {
-  changeTrack: (roomId: string, playlistItemId: string) =>
+  changeTrack: (roomId: string, action: 'select' | 'next' | 'previous', playlistItemId?: string) =>
     new Promise<void>((resolve, reject) => {
-      getSocket().emit(
-        'playback:change-track',
-        { action: 'select', playlistItemId, roomId },
-        (response) => {
-          resolveAck(response, resolve, reject);
-        },
-      );
+      getSocket().emit('playback:change-track', { action, playlistItemId, roomId }, (response) => {
+        resolveAck(response, resolve, reject);
+      });
     }),
   pause: (roomId: string, currentTime: number) =>
     new Promise<void>((resolve, reject) => {
@@ -53,12 +50,28 @@ export const playbackCommands = {
         resolveAck(response, resolve, reject);
       });
     }),
+  reportEnded: (roomId: string, playlistItemId: string, playbackVersion: number) =>
+    new Promise<void>((resolve, reject) => {
+      getSocket().emit(
+        'playback:ended',
+        { roomId, playlistItemId, playbackVersion },
+        (response) => {
+          resolveAck(response, resolve, reject);
+        },
+      );
+    }),
   requestSync: (roomId: string) => {
     getSocket().emit('playback:sync-request', { roomId });
   },
   seek: (roomId: string, seekTime: number) =>
     new Promise<void>((resolve, reject) => {
       getSocket().emit('playback:seek', { roomId, seekTime }, (response) => {
+        resolveAck(response, resolve, reject);
+      });
+    }),
+  updateSettings: (roomId: string, patch: Partial<PlaybackPolicy>) =>
+    new Promise<void>((resolve, reject) => {
+      getSocket().emit('playback:update-settings', { roomId, ...patch }, (response) => {
         resolveAck(response, resolve, reject);
       });
     }),

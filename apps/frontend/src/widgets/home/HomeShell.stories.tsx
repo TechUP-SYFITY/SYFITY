@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
-import { previewRecentRooms } from './homePreviewData';
+import { previewMyRooms, previewRecentRooms } from './homePreviewData';
 import { HomeShell } from './HomeShell';
 
 const meta = {
@@ -11,10 +11,19 @@ const meta = {
   },
   args: {
     nickname: 'Alice',
+    isMyRoomsError: false,
+    isMyRoomsLoading: false,
+    isRecentRoomsLoading: false,
     isUserLoading: false,
-    isRoomsLoading: false,
+    myRooms: previewMyRooms,
     onCreateRoom: () => {},
+    onDeactivateRoom: () => {},
+    onDeactivationOpenChange: () => {},
     onJoinRoom: () => {},
+    onRecoverRoom: () => {},
+    onRecoveryOpenChange: () => {},
+    onRetryMyRooms: () => {},
+    recentRooms: previewRecentRooms,
   },
 } satisfies Meta<typeof HomeShell>;
 
@@ -22,21 +31,29 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: {
-    rooms: previewRecentRooms,
-  },
+  args: {},
 };
 
 export const EmptyRooms: Story = {
   args: {
-    rooms: [],
+    myRooms: [],
+    recentRooms: [],
   },
 };
 
 export const Loading: Story = {
   args: {
-    rooms: [],
+    isMyRoomsLoading: true,
+    isRecentRoomsLoading: true,
     isUserLoading: true,
-    isRoomsLoading: true,
+    myRooms: [],
+    recentRooms: [],
+  },
+};
+
+export const MyRoomsError: Story = {
+  args: {
+    isMyRoomsError: true,
+    myRooms: [],
   },
 };

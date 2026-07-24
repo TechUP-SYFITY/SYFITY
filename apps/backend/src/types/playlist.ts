@@ -1,5 +1,8 @@
 import type { PlaylistItem } from '@syfity/shared';
 
+import type { PersonalPlaylistItemRecord } from './personal-playlist';
+import type { RefreshedVideoMetadata } from './youtube-metadata';
+
 export type PlaylistItemRecord = {
   id: string;
   videoId: string;
@@ -11,6 +14,7 @@ export type PlaylistItemRecord = {
   addedBy: string;
   status: 'available' | 'unavailable';
   addedAt: Date;
+  metadataRefreshedAt?: Date;
 };
 
 export type AddPlaylistItemData = {
@@ -27,6 +31,7 @@ export type PlaylistItemLookupRecord = {
   id: string;
   roomId: string;
   videoId: string;
+  duration: number;
   position: number;
   addedBy: string;
   status: 'available' | 'unavailable';
@@ -35,6 +40,20 @@ export type PlaylistItemLookupRecord = {
 export type ReorderPlaylistItemInput = {
   id: string;
   position: number;
+};
+
+export type StalePlaylistMetadataItem = {
+  id: string;
+  videoId: string;
+  metadataRefreshedAt: Date;
+};
+
+export type MetadataRefreshCursor = Pick<StalePlaylistMetadataItem, 'id' | 'metadataRefreshedAt'>;
+
+export type ImportPlaylistItemsResult = {
+  addedItems: PlaylistItemRecord[];
+  duplicateCount: number;
+  unavailableCount: number;
 };
 
 export class PlaylistDuplicateVideoError extends Error {}
@@ -47,6 +66,16 @@ export interface IPlaylistRepository {
   markUnavailable(itemId: string): Promise<void>;
   deleteItem(itemId: string): Promise<void>;
   reorderItems(items: ReorderPlaylistItemInput[]): Promise<void>;
+  importItems(
+    roomId: string,
+    sourceItems: PersonalPlaylistItemRecord[],
+    addedBy: string,
+  ): Promise<ImportPlaylistItemsResult>;
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: MetadataRefreshCursor,
+  ): Promise<StalePlaylistMetadataItem[]>;
+  applyMetadataRefresh(items: Array<{ id: string; result: RefreshedVideoMetadata }>): Promise<void>;
 }
 
 export function toPlaylistItem(item: PlaylistItemRecord): PlaylistItem {

@@ -8,11 +8,13 @@ export type AuthRepositoryPrisma = {
 export class AuthRepository implements IAuthRepository {
   constructor(private readonly prisma: AuthRepositoryPrisma) {}
 
-  upsertUser(data: {
+  async upsertUser(data: {
     email: string;
     nickname: string;
     profileImage: string | null;
   }): Promise<UserRecord> {
+    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (existing?.onboardedAt) return existing;
     return this.prisma.user.upsert({
       where: { email: data.email },
       update: {
@@ -30,6 +32,7 @@ export class AuthRepository implements IAuthRepository {
   async findUserByRefreshToken(userId: string, refreshToken: string): Promise<UserRecord | null> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return null;
+    if (user.deletedAt || user.deletionPendingAt) return null;
     if (user.refreshToken !== refreshToken) return null;
 
     return user;

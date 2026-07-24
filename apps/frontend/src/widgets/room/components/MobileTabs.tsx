@@ -27,10 +27,10 @@ export function MobileTabs({
     // 그래서 onValueChange는 쓰지 않고, 탭당 정확히 한 번만 도는 onClick 하나로
     // 상태 전이를 전담시킨다. 열림/닫힘 토글 판단은 부모의 functional setState가 한다.
     <Tabs value={activeTab ?? ''}>
-      <TabsList className="grid h-12 grid-cols-3 border-t border-border bg-background">
+      <TabsList className="grid h-12 grid-cols-3 border-t border-border bg-background xl:h-12 landscape:h-10">
         {tabs.map((tab) => (
           <TabsTrigger
-            className="h-12 text-sm"
+            className="h-12 text-sm xl:h-12 xl:text-sm landscape:h-10 landscape:text-xs"
             key={tab.id}
             onClick={() => onChange(tab.id)}
             value={tab.id}

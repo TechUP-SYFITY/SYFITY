@@ -1,14 +1,18 @@
 import { isDriverAdapterError } from '@prisma/driver-adapter-utils';
 
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
+import type { PersonalPlaylistItemRecord } from '../types/personal-playlist';
 import {
   PlaylistDuplicateVideoError,
   type AddPlaylistItemData,
   type IPlaylistRepository,
+  type ImportPlaylistItemsResult,
+  type MetadataRefreshCursor,
   type PlaylistItemLookupRecord,
   type PlaylistItemRecord,
   type ReorderPlaylistItemInput,
 } from '../types/playlist';
+import type { RefreshedVideoMetadata } from '../types/youtube-metadata';
 
 const PLAYLIST_ITEM_SELECT = {
   id: true,
@@ -21,6 +25,7 @@ const PLAYLIST_ITEM_SELECT = {
   addedBy: true,
   status: true,
   addedAt: true,
+  metadataRefreshedAt: true,
 } as const;
 
 // 두 요청이 동시에 같은 Room에 곡을 추가하면 max(position) 조회와 insert 사이에
@@ -56,13 +61,23 @@ function isUniqueConstraintFailure(error: unknown): boolean {
 }
 
 type PlaylistItemTxClient = {
-  playlistItem: Pick<PrismaClient['playlistItem'], 'aggregate' | 'create'>;
+  playlistItem: Pick<
+    PrismaClient['playlistItem'],
+    'aggregate' | 'create' | 'findMany' | 'createManyAndReturn'
+  >;
 };
 
 export type PlaylistRepositoryPrisma = {
   playlistItem: Pick<
     PrismaClient['playlistItem'],
-    'findMany' | 'aggregate' | 'create' | 'findUnique' | 'update' | 'delete'
+    | 'findMany'
+    | 'aggregate'
+    | 'create'
+    | 'createManyAndReturn'
+    | 'findUnique'
+    | 'update'
+    | 'updateMany'
+    | 'delete'
   >;
   $transaction: {
     <T>(operations: Promise<T>[]): Promise<T[]>;
@@ -93,35 +108,48 @@ export class PlaylistRepository implements IPlaylistRepository {
         })
         .then((result) =>
           tx.playlistItem.create({
-            data: {
-              roomId: data.roomId,
-              videoId: data.videoId,
-              title: data.title,
-              channelTitle: data.channelTitle,
-              thumbnailUrl: data.thumbnailUrl,
-              duration: data.duration,
-              position: (result._max.position ?? 0) + 1,
-              addedBy: data.addedBy,
-              status: 'available',
-              addedAt: new Date(),
-            },
+            data: (() => {
+              const addedAt = new Date();
+              return {
+                roomId: data.roomId,
+                videoId: data.videoId,
+                title: data.title,
+                channelTitle: data.channelTitle,
+                thumbnailUrl: data.thumbnailUrl,
+                duration: data.duration,
+                position: (result._max.position ?? 0) + 1,
+                addedBy: data.addedBy,
+                status: 'available',
+                addedAt,
+                metadataRefreshedAt: addedAt,
+              };
+            })(),
             select: PLAYLIST_ITEM_SELECT,
           }),
         ),
     );
   }
 
-  private async withSerializableRetry<T>(fn: (tx: PlaylistItemTxClient) => Promise<T>): Promise<T> {
+  private async withSerializableRetry<T>(
+    fn: (tx: PlaylistItemTxClient) => Promise<T>,
+    retryUniqueConstraint = false,
+  ): Promise<T> {
     for (let attempt = 1; ; attempt += 1) {
       try {
         return await this.prisma.$transaction(fn, {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         });
       } catch (error) {
-        if (isUniqueConstraintFailure(error)) {
+        const uniqueConstraintFailure = isUniqueConstraintFailure(error);
+        if (uniqueConstraintFailure && !retryUniqueConstraint) {
           throw new PlaylistDuplicateVideoError();
         }
-        if (!isSerializationFailure(error) || attempt >= ADD_ITEM_MAX_ATTEMPTS) {
+        const shouldRetry =
+          isSerializationFailure(error) || (retryUniqueConstraint && uniqueConstraintFailure);
+        if (!shouldRetry || attempt >= ADD_ITEM_MAX_ATTEMPTS) {
+          if (uniqueConstraintFailure) {
+            throw new PlaylistDuplicateVideoError();
+          }
           throw error;
         }
         await sleep(retryDelayMs(attempt));
@@ -143,6 +171,7 @@ export class PlaylistRepository implements IPlaylistRepository {
         id: true,
         roomId: true,
         videoId: true,
+        duration: true,
         position: true,
         addedBy: true,
         status: true,
@@ -172,5 +201,105 @@ export class PlaylistRepository implements IPlaylistRepository {
         }),
       ),
     );
+  }
+
+  findStaleMetadataItems(
+    cutoff: Date,
+    cursor?: MetadataRefreshCursor,
+  ): Promise<Array<{ id: string; videoId: string; metadataRefreshedAt: Date }>> {
+    return this.prisma.playlistItem.findMany({
+      where: {
+        metadataRefreshedAt: { lte: cutoff },
+        ...(cursor
+          ? {
+              OR: [
+                { metadataRefreshedAt: { gt: cursor.metadataRefreshedAt } },
+                { metadataRefreshedAt: cursor.metadataRefreshedAt, id: { gt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ metadataRefreshedAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+      select: { id: true, videoId: true, metadataRefreshedAt: true },
+    });
+  }
+
+  async applyMetadataRefresh(
+    items: Array<{ id: string; result: RefreshedVideoMetadata }>,
+  ): Promise<void> {
+    const metadataRefreshedAt = new Date();
+    await this.prisma.$transaction(
+      items.map(({ id, result }) =>
+        this.prisma.playlistItem.updateMany({
+          where: { id },
+          data:
+            result.status === 'available'
+              ? { ...result, metadataRefreshedAt }
+              : { status: 'unavailable', metadataRefreshedAt },
+        }),
+      ),
+    );
+  }
+
+  importItems(
+    roomId: string,
+    sourceItems: PersonalPlaylistItemRecord[],
+    addedBy: string,
+  ): Promise<ImportPlaylistItemsResult> {
+    return this.withSerializableRetry(async (tx) => {
+      const existing = await tx.playlistItem.findMany({
+        where: { roomId },
+        select: { videoId: true },
+      });
+      const existingVideoIds = new Set(existing.map((item) => item.videoId));
+      const unavailableCount = sourceItems.filter((item) => item.status === 'unavailable').length;
+      const seenVideoIds = new Set<string>();
+      const itemsToInsert: PersonalPlaylistItemRecord[] = [];
+      let duplicateCount = 0;
+
+      for (const item of sourceItems) {
+        if (item.status === 'unavailable') {
+          continue;
+        }
+        if (existingVideoIds.has(item.videoId) || seenVideoIds.has(item.videoId)) {
+          duplicateCount += 1;
+          continue;
+        }
+        seenVideoIds.add(item.videoId);
+        itemsToInsert.push(item);
+      }
+
+      if (itemsToInsert.length === 0) {
+        return { addedItems: [], duplicateCount, unavailableCount };
+      }
+
+      const { _max } = await tx.playlistItem.aggregate({
+        where: { roomId },
+        _max: { position: true },
+      });
+      let nextPosition = (_max.position ?? 0) + 1;
+      const addedItems = await tx.playlistItem.createManyAndReturn({
+        data: itemsToInsert.map((item) => {
+          const addedAt = new Date();
+          return {
+            roomId,
+            videoId: item.videoId,
+            title: item.title,
+            channelTitle: item.channelTitle,
+            thumbnailUrl: item.thumbnailUrl,
+            duration: item.duration,
+            position: nextPosition++,
+            addedBy,
+            status: 'available' as const,
+            addedAt,
+            metadataRefreshedAt: item.metadataRefreshedAt ?? item.addedAt,
+          };
+        }),
+        select: PLAYLIST_ITEM_SELECT,
+      });
+
+      return { addedItems, duplicateCount, unavailableCount };
+    }, true);
   }
 }

@@ -25,7 +25,7 @@ type RoomHandlerService = Pick<
   RoomService,
   'setMemberOnline' | 'getRoomSnapshot' | 'leaveRoom' | 'createSystemMessage'
 >;
-type RoomHandlerPlaybackService = Pick<PlaybackService, 'getPlaybackStateForSocket'>;
+type RoomHandlerPlaybackService = Pick<PlaybackService, 'getSnapshotForSocket'>;
 type RoomHandlerPresenceService = Pick<
   PresenceService,
   'cancelMemberOfflineTimer' | 'cancelHostCloseTimer' | 'getHostConnectionState'
@@ -61,8 +61,8 @@ export function registerRoomHandlers(
         const hostReconnected =
           member.role === 'host' && presenceService.cancelHostCloseTimer(roomId);
         const hostConnection = presenceService.getHostConnectionState(roomId);
-        const [playbackState, snapshot] = await Promise.all([
-          playbackService.getPlaybackStateForSocket(roomId, userId),
+        const [playbackSnapshot, snapshot] = await Promise.all([
+          playbackService.getSnapshotForSocket(roomId, userId),
           roomService.getRoomSnapshot(roomId),
         ]);
 
@@ -71,8 +71,8 @@ export function registerRoomHandlers(
         const roomJoinedPayload: RoomJoinedPayload = {
           roomId,
           hostConnection,
-          playbackState,
-          playbackPolicy: { repeatMode: 'off', shuffleEnabled: false },
+          playbackState: playbackSnapshot.playbackState,
+          playbackPolicy: playbackSnapshot.playbackPolicy,
           playlist: snapshot.playlist,
           members: snapshot.members,
           recentChats: snapshot.recentChats.map((chat) => ({

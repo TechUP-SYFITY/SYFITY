@@ -5,7 +5,12 @@ import type { ReactNode } from 'react';
 
 import { Header } from '@/shared/components/layout';
 import { getCurrentPlaylistItem } from '@/shared/lib/playback';
-import type { PlaybackState, PlaylistItem, RoomDetail } from '@/shared/types/domain';
+import type {
+  PlaybackPolicy,
+  PlaybackState,
+  PlaylistItem,
+  RoomDetail,
+} from '@/shared/types/domain';
 
 import { MiniPlayer, type MiniPlayerPendingCommand } from '@/features/player/components/MiniPlayer';
 import { HostConnectionNotice } from '@/features/room/components/HostConnectionNotice';
@@ -32,6 +37,8 @@ interface RoomShellProps {
   miniPlayerPendingCommand: MiniPlayerPendingCommand;
   miniPlayerPlayPauseDisabled: boolean;
   miniPlayerPreviousDisabled: boolean;
+  miniPlayerRepeatMode?: PlaybackPolicy['repeatMode'];
+  miniPlayerShuffleEnabled?: boolean;
   miniPlayerVolume: number;
   onlineMemberCount: number;
   onInviteClick?: () => void;
@@ -39,7 +46,9 @@ interface RoomShellProps {
   onMiniPlayerNextTrack: () => void;
   onMiniPlayerPlayPause: () => void;
   onMiniPlayerPreviousTrack: () => void;
+  onMiniPlayerRepeatToggle?: () => void;
   onMiniPlayerSeek: (seekTime: number) => void;
+  onMiniPlayerShuffleToggle?: () => void;
   onMiniPlayerVolumeChange: (volume: number) => void;
   onMobileTabChange: (tab: RoomMobileTab | null) => void;
   playbackState: PlaybackState | null;
@@ -47,6 +56,7 @@ interface RoomShellProps {
   playerPanel: ReactNode;
   playlistPanel: ReactNode;
   room: RoomDetail | null;
+  roomAction?: ReactNode;
   roomId: string;
 }
 
@@ -65,13 +75,17 @@ export function RoomShell({
   miniPlayerPendingCommand,
   miniPlayerPlayPauseDisabled,
   miniPlayerPreviousDisabled,
+  miniPlayerRepeatMode = 'off',
+  miniPlayerShuffleEnabled = false,
   miniPlayerVolume,
   onInviteClick,
   onMuteToggle,
   onMiniPlayerNextTrack,
   onMiniPlayerPlayPause,
   onMiniPlayerPreviousTrack,
+  onMiniPlayerRepeatToggle = () => undefined,
   onMiniPlayerSeek,
+  onMiniPlayerShuffleToggle = () => undefined,
   onMiniPlayerVolumeChange,
   onMobileTabChange,
   onlineMemberCount,
@@ -80,6 +94,7 @@ export function RoomShell({
   playerPanel,
   playlistPanel,
   room,
+  roomAction,
   roomId,
 }: RoomShellProps) {
   const currentTrack = getCurrentPlaylistItem(playlist, playbackState);
@@ -87,11 +102,12 @@ export function RoomShell({
   return (
     <main className="h-dvh overflow-hidden bg-background text-foreground">
       <div className="flex h-full min-h-0 flex-col">
-        <Header variant="app" actions={headerActions} />
+        <Header actions={headerActions} containerClassName="landscape:h-10 xl:h-16" variant="app" />
         <RoomStatusBar
           onInviteClick={onInviteClick}
           onlineMemberCount={onlineMemberCount}
           room={room}
+          roomAction={roomAction}
         />
         {hostConnection.status === 'connected' ? null : (
           <HostConnectionNotice hostConnection={hostConnection} />
@@ -118,12 +134,16 @@ export function RoomShell({
           onNextTrack={onMiniPlayerNextTrack}
           onPlayPause={onMiniPlayerPlayPause}
           onPreviousTrack={onMiniPlayerPreviousTrack}
+          onRepeatToggle={onMiniPlayerRepeatToggle}
           onSeek={onMiniPlayerSeek}
+          onShuffleToggle={onMiniPlayerShuffleToggle}
           onVolumeChange={onMiniPlayerVolumeChange}
           pendingCommand={miniPlayerPendingCommand}
           playbackState={playbackState}
           playPauseDisabled={miniPlayerPlayPauseDisabled}
           previousDisabled={miniPlayerPreviousDisabled}
+          repeatMode={miniPlayerRepeatMode}
+          shuffleEnabled={miniPlayerShuffleEnabled}
           volume={miniPlayerVolume}
         />
       </div>

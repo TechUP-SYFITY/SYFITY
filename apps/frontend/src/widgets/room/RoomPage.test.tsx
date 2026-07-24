@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UserProfileResponse } from '@syfity/shared';
 
 import { ToastProvider } from '@/shared/components/ui';
+import { socketClient } from '@/shared/lib/socket/socketClient';
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import { server } from '@/shared/mocks/server';
 
@@ -25,10 +26,22 @@ vi.mock('./hooks/useRoomLiveConnections', () => ({
   useRoomLiveConnections: vi.fn(),
 }));
 
-const { routerPush, routerReplace } = vi.hoisted(() => ({
-  routerPush: vi.fn(),
-  routerReplace: vi.fn(),
-}));
+const { routerPush, routerReplace, socket } = vi.hoisted(() => {
+  const fakeSocket = {
+    connect: vi.fn(),
+    connected: true,
+    disconnect: vi.fn(),
+    emit: vi.fn(),
+    off: vi.fn(),
+    on: vi.fn(),
+  };
+
+  return {
+    routerPush: vi.fn(),
+    routerReplace: vi.fn(),
+    socket: fakeSocket,
+  };
+});
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -37,19 +50,29 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+vi.mock('@/shared/lib/socket/socketClient', () => ({
+  socketClient: {
+    connect: vi.fn(() => socket),
+    disconnect: vi.fn(),
+    get: vi.fn(() => socket),
+  },
+}));
+
 vi.mock('@/shared/mocks/PresenceMockPanel', () => ({
   PresenceMockPanel: () => <div data-testid="presence-mock-panel" />,
 }));
 
 let didSeedSnapshot = false;
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: { retry: false },
     },
   });
+}
 
+function createWrapper(queryClient = createTestQueryClient()) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <ToastProvider>
@@ -59,9 +82,18 @@ function createWrapper() {
   };
 }
 
+// Host의 "추가" 컨트롤은 드롭다운(검색으로 추가 / 내 플레이리스트 불러오기)이므로,
+// 검색 패널을 열려면 트리거를 연 뒤 "검색으로 추가" 항목을 선택해야 한다.
+async function openSearchViaAddMenu() {
+  const [addTrigger] = await screen.findAllByRole('button', { name: '추가' });
+  fireEvent.keyDown(addTrigger as HTMLElement, { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('menuitem', { name: '검색으로 추가' }));
+}
+
 describe('RoomPage', () => {
   beforeEach(() => {
     didSeedSnapshot = false;
+    vi.mocked(socketClient.get).mockReturnValue(socket);
     vi.mocked(useRoomLiveConnections).mockImplementation(
       (_roomId, enabled, _onRoomClosed, onSnapshot) => {
         if (enabled && !didSeedSnapshot) {
@@ -107,6 +139,34 @@ describe('RoomPage', () => {
     expect(screen.queryByTestId('presence-mock-panel')).toBeNull();
   });
 
+  it('추방된 사용자가 Room URL로 재입장하면 전용 차단 문구를 표시한다', async () => {
+    server.use(
+      http.post('*/api/v1/room-memberships', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'ROOM_MEMBER_KICKED',
+              message: 'Host에 의해 추방된 사용자입니다.',
+            },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText('Room에 입장하지 못했어요')).toBeInTheDocument();
+    expect(screen.getByText('Host가 다시 허용하기 전에는 입장할 수 없어요.')).toBeInTheDocument();
+    expect(screen.queryByTestId('presence-mock-panel')).not.toBeInTheDocument();
+  });
+
   it('mocking 활성 시 Room에 정상 입장하고 현재 사용자명을 표시한다', async () => {
     const Wrapper = createWrapper();
 
@@ -121,13 +181,47 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getByTestId('presence-mock-panel')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '추방 관리' })).toBeInTheDocument();
     expect(useChatStore.getState().messages).toEqual(roomFixture.chats);
     expect(useRoomLiveConnections).toHaveBeenCalledWith(
       roomFixture.room.id,
       true,
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
+  });
+
+  it('Host가 아직 재생되지 않은 첫 곡을 선택하면 select Socket 명령을 정확히 한 번 전송한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    const [trackSelectButton] = await screen.findAllByRole('button', {
+      name: 'Night Changes 재생',
+    });
+    fireEvent.click(trackSelectButton);
+
+    await waitFor(() => {
+      const selectCalls = socket.emit.mock.calls.filter(
+        ([eventName]) => eventName === 'playback:change-track',
+      );
+      expect(selectCalls).toHaveLength(1);
+      expect(selectCalls[0]).toEqual([
+        'playback:change-track',
+        {
+          action: 'select',
+          playlistItemId: 'fallback-night-changes',
+          roomId: roomFixture.room.id,
+        },
+        expect.any(Function),
+      ]);
+    });
+    expect(usePlayerStore.getState().playbackState?.playlistItemId).toBeNull();
   });
 
   it('이전 Room 상태가 남아 있어도 URL의 roomId로 연결한다', async () => {
@@ -156,6 +250,7 @@ describe('RoomPage', () => {
       true,
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
   });
 
@@ -182,10 +277,11 @@ describe('RoomPage', () => {
     );
 
     expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
-    expect(screen.getByText('호스트 제어')).toBeInTheDocument();
+    expect(screen.queryByText('호스트 제어')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
     expect(screen.queryByText('호스트 연결이 끊겼습니다. 재접속을 기다리는 중...')).toBeNull();
     expect(screen.getAllByText('지민').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: '추방 관리' })).not.toBeInTheDocument();
   });
 
   it('Host 재접속 중에도 Member는 곡을 추가하고 본인 곡을 삭제할 수 있다', async () => {
@@ -216,9 +312,11 @@ describe('RoomPage', () => {
       useRoomStore.getState().markHostDisconnected('2099-01-01T00:00:00.000Z');
     });
 
-    expect(screen.getByRole('button', { name: '추가' })).toBeEnabled();
-    fireEvent.focus(screen.getByTestId('playlist-row-fallback-dynamite'));
-    expect(screen.getByRole('button', { name: 'Dynamite 삭제' })).toBeEnabled();
+    const [addTrigger] = await screen.findAllByRole('button', { name: '추가' });
+    expect(addTrigger).toBeEnabled();
+    const [dynamiteRow] = screen.getAllByTestId('playlist-row-fallback-dynamite');
+    fireEvent.focus(dynamiteRow);
+    expect(within(dynamiteRow).getByRole('button', { name: 'Dynamite 삭제' })).toBeEnabled();
   });
 
   it('Host 연결 상태에 따라 안내와 제어 권한을 전환한다', async () => {
@@ -251,7 +349,7 @@ describe('RoomPage', () => {
     expect(screen.getByRole('button', { name: '재생' })).toBeEnabled();
   });
 
-  it('Room 종료 callback으로 재생 상태를 정리하고 /home으로 이동한다', async () => {
+  it('Room 종료 callback으로 Room 세션 상태를 정리하고 /home으로 이동한다', async () => {
     const Wrapper = createWrapper();
 
     render(
@@ -271,7 +369,265 @@ describe('RoomPage', () => {
     });
 
     expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(usePlaylistStore.getState().playlist).toEqual([]);
+    expect(usePresenceStore.getState().members).toEqual([]);
+    expect(useChatStore.getState().messages).toEqual([]);
+    expect(useRoomStore.getState().hasJoinedRoom).toBe(false);
+    expect(screen.getByText('Room이 종료되었습니다.')).toBeVisible();
     expect(routerReplace).toHaveBeenCalledWith('/home');
+  });
+
+  it('추방 이벤트를 받으면 Room 상태를 모두 정리하고 안내 후 /home으로 이동한다', async () => {
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(useRoomStore.getState().room).not.toBeNull();
+    expect(usePresenceStore.getState().members).not.toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).not.toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).not.toBeNull();
+    expect(useChatStore.getState().messages).not.toHaveLength(0);
+
+    const onRoomKicked = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[4];
+    const lateSnapshot = vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[3];
+    expect(onRoomKicked).toBeTypeOf('function');
+
+    act(() => {
+      onRoomKicked?.({
+        roomId: roomFixture.room.id,
+        message: 'Host에 의해 Room에서 추방되었습니다.',
+      });
+      onRoomKicked?.({
+        roomId: roomFixture.room.id,
+        message: 'Host에 의해 Room에서 추방되었습니다.',
+      });
+    });
+
+    expect(useRoomStore.getState().room).toBeNull();
+    expect(usePresenceStore.getState().members).toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(useChatStore.getState().messages).toHaveLength(0);
+    expect(screen.getByText('Host에 의해 Room에서 추방되었습니다.')).toBeInTheDocument();
+    expect(routerReplace).toHaveBeenCalledOnce();
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+
+    await waitFor(() => {
+      expect(vi.mocked(useRoomLiveConnections).mock.calls.at(-1)?.[1]).toBe(false);
+    });
+
+    act(() => {
+      lateSnapshot?.({
+        roomId: roomFixture.room.id,
+        hostConnection: { status: 'connected' },
+        playbackState: roomFixture.playbackState,
+        playbackPolicy: roomFixture.playbackPolicy,
+        playlist: roomFixture.playlist,
+        members: roomFixture.members,
+        recentChats: roomFixture.chats,
+      });
+    });
+
+    expect(useRoomStore.getState().room).toBeNull();
+    expect(usePresenceStore.getState().members).toHaveLength(0);
+    expect(usePlaylistStore.getState().playlist).toHaveLength(0);
+    expect(usePlayerStore.getState().playbackState).toBeNull();
+    expect(useChatStore.getState().messages).toHaveLength(0);
+  });
+
+  it('사용자 정보가 확인되기 전에는 Room 퇴장 액션을 실행할 수 없다', async () => {
+    server.use(
+      http.get(
+        '*/api/v1/me',
+        () =>
+          new Promise<HttpResponse<UserProfileResponse>>(() => {
+            // 사용자 응답을 대기 상태로 유지해 Room 입장과 인증 조회의 경합을 재현한다.
+          }),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(await screen.findByText(roomFixture.room.name)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '나가기' })).toBeDisabled();
+  });
+
+  it('사용자 정보 조회가 실패하면 역할을 추정하지 않고 Home으로 이동한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: { code: 'AUTH_FORBIDDEN', message: '사용자 정보를 조회할 수 없습니다.' },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    expect(
+      await screen.findByText('사용자 정보를 확인할 수 없어 Home으로 이동합니다.'),
+    ).toBeVisible();
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+    expect(socket.emit).not.toHaveBeenCalledWith('room:leave', { roomId: roomFixture.room.id });
+  });
+
+  it('Host는 REST 종료 후 room:closed 이벤트를 기다리되 응답이 없으면 Home으로 이동한다', async () => {
+    const updateRoom = vi.fn();
+    server.use(
+      http.patch('*/api/v1/rooms/:roomId', async ({ request }) => {
+        updateRoom(await request.json());
+        return HttpResponse.json({
+          success: true,
+          data: {
+            id: roomFixture.room.id,
+            name: roomFixture.room.name,
+            status: 'closed',
+            closedAt: '2026-07-21T00:00:00.000Z',
+            updatedAt: '2026-07-21T00:00:00.000Z',
+          },
+        });
+      }),
+    );
+    const queryClient = createTestQueryClient();
+    const Wrapper = createWrapper(queryClient);
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room 종료' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
+
+    await waitFor(() => expect(updateRoom).toHaveBeenCalledWith({ status: 'closed' }));
+    await waitFor(() =>
+      expect(queryClient.getMutationCache().getAll().at(-1)?.state.status).toBe('success'),
+    );
+
+    const confirmButton = screen.getByRole('button', { name: 'Room 종료 확인' });
+    expect(confirmButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    fireEvent.click(confirmButton);
+    expect(updateRoom).toHaveBeenCalledTimes(1);
+    expect(routerReplace).not.toHaveBeenCalledWith('/home');
+
+    await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/home'), { timeout: 4000 });
+    expect(screen.getByText('Room이 종료되었습니다.')).toBeVisible();
+  });
+
+  it('Host Room 종료 요청이 실패하면 Dialog에서 오류를 안내하고 Room에 남는다', async () => {
+    server.use(
+      http.patch('*/api/v1/rooms/:roomId', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'SERVER_INTERNAL_ERROR',
+              message: 'Room 종료 요청에 실패했어요.',
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room 종료' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Room 종료 확인' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Room 종료 요청에 실패했어요.');
+    expect(screen.getByRole('button', { name: 'Room 종료 확인' })).toBeEnabled();
+    const cancelButton = screen.getByRole('button', { name: '취소' });
+    expect(cancelButton).toBeEnabled();
+
+    fireEvent.click(cancelButton);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Room 종료' }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(routerReplace).not.toHaveBeenCalledWith('/home');
+  });
+
+  it('Member는 즉시 room:leave를 전송하고 Home으로 이동한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            email: 'jimin@example.com',
+            id: 'fallback-member-1',
+            nickname: '지민',
+            profileImage: null,
+          },
+        } satisfies UserProfileResponse),
+      ),
+    );
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '나가기' }));
+
+    expect(socket.emit).toHaveBeenCalledWith('room:leave', { roomId: roomFixture.room.id });
+    expect(routerReplace).toHaveBeenCalledWith('/home');
+  });
+
+  it('Socket이 연결되지 않은 Member에게 퇴장 실패를 안내한다', async () => {
+    server.use(
+      http.get('*/api/v1/me', () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            email: 'jimin@example.com',
+            id: 'fallback-member-1',
+            nickname: '지민',
+            profileImage: null,
+          },
+        } satisfies UserProfileResponse),
+      ),
+    );
+    vi.mocked(socketClient.get).mockReturnValue(null);
+    const Wrapper = createWrapper();
+
+    render(
+      <Wrapper>
+        <RoomPage roomId={roomFixture.room.id} />
+      </Wrapper>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '나가기' }));
+
+    expect(await screen.findByText('서버 연결을 확인한 뒤 다시 시도해 주세요.')).toBeVisible();
+    expect(routerReplace).not.toHaveBeenCalledWith('/home');
   });
 
   it('Room 초대 버튼으로 초대 모달을 열고 실제 초대 코드와 링크를 복사한다', async () => {
@@ -320,8 +676,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'Night Changes' },
     });
@@ -343,8 +698,7 @@ describe('RoomPage', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '검색 패널 닫기' }));
-    const [reopenSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(reopenSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     expect(screen.queryByText('플레이리스트에 추가했어요 🎵')).not.toBeInTheDocument();
   });
 
@@ -376,9 +730,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    expect(openSearchButton).toBeDefined();
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
 
     expect(await screen.findByRole('dialog', { name: '곡 추가' })).toBeInTheDocument();
 
@@ -425,8 +777,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'Night Changes' },
     });
@@ -467,8 +818,7 @@ describe('RoomPage', () => {
       </Wrapper>,
     );
 
-    const [openSearchButton] = await screen.findAllByRole('button', { name: '추가' });
-    fireEvent.click(openSearchButton as HTMLButtonElement);
+    await openSearchViaAddMenu();
     fireEvent.change(screen.getByPlaceholderText('YouTube 영상 검색 또는 링크 붙여넣기'), {
       target: { value: 'https://youtu.be/yellow' },
     });

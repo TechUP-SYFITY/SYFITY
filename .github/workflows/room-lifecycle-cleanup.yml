@@ -1,0 +1,18 @@
+name: Room Lifecycle Cleanup
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  inactivate-stale-rooms:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call inactivate-stale endpoint
+        run: |
+          # RENDER_HEALTH_URL은 https://api.syfity.site/api/v1/health 형식이다.
+          BASE_URL="${RENDER_HEALTH_URL%/api/v1/health}"
+          curl -fsS -X POST "$BASE_URL/api/v1/internal/rooms/inactivate-stale" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          RENDER_HEALTH_URL: ${{ vars.RENDER_HEALTH_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

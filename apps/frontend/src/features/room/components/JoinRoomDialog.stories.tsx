@@ -55,6 +55,8 @@ function createRoomApiMock(apiOverride: RoomApiOverride = {}): RoomApi {
       status: 'active',
       createdAt: new Date().toISOString(),
     }),
+    deleteRoom: async () => undefined,
+    getMyRooms: async () => ({ rooms: [] }),
     getRecentRooms: async () => ({ rooms: [] }),
     getRoom: async () => joinedRoomData.room,
     updateRoom: async () => ({
@@ -169,5 +171,26 @@ export const InactiveRoom: Story = {
     const canvas = await submitCode(canvasElement);
 
     await expect(canvas.findByText('입장할 수 없는 방이에요')).resolves.toBeInTheDocument();
+  },
+};
+
+export const KickedRoom: Story = {
+  args: {
+    roomApiClient: createRoomApiMock({
+      createRoomMembership: async () => {
+        throw new ApiClientError(
+          { code: 'ROOM_MEMBER_KICKED', message: 'Host에 의해 추방된 사용자입니다.' },
+          403,
+        );
+      },
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await submitCode(canvasElement);
+
+    await expect(canvas.findByText('이 Room에서 추방되었어요')).resolves.toBeInTheDocument();
+    await expect(
+      canvas.findByText('Host가 다시 허용하기 전에는 입장할 수 없어요.'),
+    ).resolves.toBeInTheDocument();
   },
 };

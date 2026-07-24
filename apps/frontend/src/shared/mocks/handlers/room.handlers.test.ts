@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CreateRoomMembershipResponse, CreateRoomResponse } from '@syfity/shared';
+import type {
+  CreateRoomMembershipResponse,
+  CreateRoomResponse,
+  GetActiveRoomMembersResponse,
+  GetKickedRoomMembersResponse,
+  GetMyRoomsResponse,
+  UpdateRoomMemberResponse,
+} from '@syfity/shared';
 
 import { roomFixture } from '@/shared/mocks/fixtures/roomFixture';
 import type { ApiResponse } from '@/shared/types/api';
@@ -23,6 +30,38 @@ const createRoom = async (body: unknown) => {
     method: 'POST',
   });
   const data = (await response.json()) as ApiResponse<CreateRoomResponse['data']>;
+
+  return { data, status: response.status };
+};
+
+const getMyRooms = async () => {
+  const response = await fetch('http://localhost:4000/api/v1/rooms/mine');
+  const data = (await response.json()) as ApiResponse<GetMyRoomsResponse['data']>;
+
+  return { data, status: response.status };
+};
+
+const getMembers = async (status?: 'kicked') => {
+  const query = status ? `?status=${status}` : '';
+  const response = await fetch(
+    `http://localhost:4000/api/v1/rooms/${roomFixture.room.id}/members${query}`,
+  );
+  const data = (await response.json()) as
+    GetActiveRoomMembersResponse | GetKickedRoomMembersResponse;
+
+  return { data, status: response.status };
+};
+
+const updateMember = async (memberId: string, status: 'kicked' | 'left') => {
+  const response = await fetch(
+    `http://localhost:4000/api/v1/rooms/${roomFixture.room.id}/members/${memberId}`,
+    {
+      body: JSON.stringify({ status }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH',
+    },
+  );
+  const data = (await response.json()) as UpdateRoomMemberResponse;
 
   return { data, status: response.status };
 };
@@ -54,6 +93,17 @@ describe('room MSW handlers', () => {
     });
   });
 
+  it('returns only active and closed rooms from my Room endpoint', async () => {
+    const { data, status } = await getMyRooms();
+
+    expect(status).toBe(200);
+    expect(data.success).toBe(true);
+
+    if (data.success) {
+      expect(data.data.rooms.map((room) => room.status)).toEqual(['active', 'closed']);
+    }
+  });
+
   it('keeps roomId-only membership unsupported to match the backend contract', async () => {
     const { data, status } = await createMembership({ roomId: roomFixture.room.id });
 
@@ -64,6 +114,32 @@ describe('room MSW handlers', () => {
         code: 'ROOM_NOT_FOUND',
         message: 'Room not found',
       },
+    });
+  });
+
+  it('returns active and kicked member lists', async () => {
+    const active = await getMembers();
+    const kicked = await getMembers('kicked');
+
+    expect(active.status).toBe(200);
+    expect(active.data).toEqual({ success: true, data: { members: roomFixture.members } });
+    expect(kicked.status).toBe(200);
+    expect(kicked.data).toEqual({ success: true, data: { members: roomFixture.kickedMembers } });
+  });
+
+  it('updates a room member to kicked or left', async () => {
+    const kick = await updateMember('fallback-member-1', 'kicked');
+    const unkick = await updateMember('kicked-membership-1', 'left');
+
+    expect(kick.status).toBe(200);
+    expect(kick.data).toEqual({
+      success: true,
+      data: { memberId: 'fallback-member-1', status: 'kicked' },
+    });
+    expect(unkick.status).toBe(200);
+    expect(unkick.data).toEqual({
+      success: true,
+      data: { memberId: 'kicked-membership-1', status: 'left' },
     });
   });
 });

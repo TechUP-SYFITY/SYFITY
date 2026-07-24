@@ -2,7 +2,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import type { PlaylistItem } from '@/shared/types/domain';
 
@@ -63,6 +63,7 @@ const meta = {
     isHost: true,
     isReady: true,
     onOpenSearch: () => undefined,
+    onSelectItem: () => undefined,
     playlistApiClient: createPlaylistApiMock(),
   },
 } satisfies Meta<typeof PlaylistPanel>;
@@ -104,6 +105,21 @@ function createPlaylistApiMock(apiOverride: PlaylistApiOverride = {}): PlaylistA
     reorderPlaylist: async () => undefined,
     ...apiOverride,
   };
+}
+
+function createReorderablePlaylistApiMock(): PlaylistApi {
+  let currentPlaylist = [...playlistItems];
+
+  return createPlaylistApiMock({
+    getPlaylist: async () => ({ playlist: currentPlaylist }),
+    reorderPlaylist: async (_roomId, body) => {
+      const positionById = new Map(body.items.map((item) => [item.id, item.position]));
+
+      currentPlaylist = currentPlaylist
+        .map((item) => ({ ...item, position: positionById.get(item.id) ?? item.position }))
+        .sort((first, second) => first.position - second.position);
+    },
+  });
 }
 
 function withPlaylistStoryFrame() {
@@ -160,6 +176,153 @@ export const ParentPlaylistData: Story = {
   decorators: [withPlaylistStoryFrame()],
 };
 
+export const SelectTrackInteraction: Story = {
+  args: {
+    currentPlaylistItemId: 'story-night-changes',
+    onSelectItem: fn(),
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const selectButton = canvas.getByRole('button', { name: 'Dynamite 재생' });
+
+    selectButton.focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(args.onSelectItem).toHaveBeenCalledTimes(1);
+    await expect(args.onSelectItem).toHaveBeenLastCalledWith('story-dynamite');
+
+    await userEvent.pointer([
+      { keys: '[TouchA>]', target: selectButton },
+      { keys: '[/TouchA]', target: selectButton },
+    ]);
+    await expect(args.onSelectItem).toHaveBeenCalledTimes(2);
+    await expect(args.onSelectItem).toHaveBeenLastCalledWith('story-dynamite');
+  },
+};
+
+export const DragPreview: Story = {
+  args: {
+    playlistApiClient: createReorderablePlaylistApiMock(),
+  },
+  decorators: [withPlaylistStoryFrame()],
+};
+
+export const DraggingState: Story = {
+  args: {
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: createDragInteraction('[MouseLeft>]'),
+};
+
+export const TouchDraggingState: Story = {
+  args: {
+    playlistItems,
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: createDragInteraction('[TouchA>]'),
+};
+
+export const DragAndDropInteraction: Story = {
+  args: {
+    playlistApiClient: createReorderablePlaylistApiMock(),
+  },
+  decorators: [withPlaylistStoryFrame()],
+  play: createDragInteraction('[MouseLeft>]', '[/MouseLeft]'),
+};
+
+function createDragInteraction(
+  pointerKey: '[MouseLeft>]' | '[TouchA>]',
+  releaseKey?: '[/MouseLeft]' | '[/TouchA]',
+) {
+  return async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const sourceRow = await canvas.findByTestId('playlist-row-story-night-changes');
+    const middleRow = await canvas.findByTestId('playlist-row-story-dynamite');
+    const finalRow = await canvas.findByTestId('playlist-row-story-levitating');
+    const targetRow = releaseKey ? middleRow : finalRow;
+
+    await userEvent.click(sourceRow);
+
+    const handle = canvas.getByRole('button', { name: 'Night Changes 순서 변경' });
+    const sourceRect = handle.getBoundingClientRect();
+    const middleRect = middleRow.getBoundingClientRect();
+    const targetRect = targetRow.getBoundingClientRect();
+
+    const pointerActions: Array<{
+      coords: { x: number; y: number };
+      keys?: string;
+      target: HTMLElement;
+    }> = [
+      {
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: sourceRect.top + sourceRect.height / 2,
+        },
+        keys: pointerKey,
+        target: handle,
+      },
+      {
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: middleRect.top + middleRect.height / 2,
+        },
+        target: middleRow,
+      },
+    ];
+
+    if (!releaseKey) {
+      pointerActions.push({
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: targetRect.top + targetRect.height / 2,
+        },
+        target: targetRow,
+      });
+    }
+
+    if (releaseKey) {
+      pointerActions.push({
+        coords: {
+          x: sourceRect.left + sourceRect.width / 2,
+          y: targetRect.top + targetRect.height / 2,
+        },
+        keys: releaseKey,
+        target: targetRow,
+      });
+    }
+
+    await userEvent.pointer(pointerActions);
+
+    const scrollContainer = sourceRow.parentElement;
+
+    if (releaseKey) {
+      await waitFor(() =>
+        expect(
+          Array.from(canvasElement.querySelectorAll('[data-playlist-item-id]')).map((row) =>
+            row.getAttribute('data-playlist-item-id'),
+          ),
+        ).toEqual(['story-dynamite', 'story-levitating', 'story-night-changes']),
+      );
+      await waitFor(() =>
+        expect(canvas.getByRole('button', { name: 'Night Changes 순서 변경' })).toHaveAttribute(
+          'aria-pressed',
+          'false',
+        ),
+      );
+      await waitFor(() => expect(scrollContainer).toHaveClass('scrollbar-none'));
+      await expect(scrollContainer).toHaveClass('overflow-y-auto');
+      return;
+    }
+
+    await expect(handle).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(targetRow).toHaveAttribute('data-drop-position', 'after'));
+    await expect(scrollContainer).toHaveClass('overflow-y-auto', 'scrollbar-none');
+    await expect(targetRow).toHaveClass('after:inset-x-0');
+  };
+}
+
 export const MemberView: Story = {
   args: {
     canControlRoom: false,
@@ -170,6 +333,7 @@ export const MemberView: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByRole('button', { name: '곡 추가' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Dynamite 재생' })).not.toBeInTheDocument();
   },
 };
 
@@ -191,6 +355,7 @@ export const HostControlsDisabled: Story = {
 
     await expect(canvas.getByRole('button', { name: 'Night Changes 순서 변경' })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: 'Night Changes 삭제' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Dynamite 재생' })).toBeDisabled();
   },
 };
 

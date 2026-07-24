@@ -6,6 +6,7 @@ import type {
   CreateRoomResponse,
   CreateRoomMembershipRequest,
   CreateRoomMembershipResponse,
+  MyRoomsResponse,
   RecentRoomsResponse,
   RoomResponse,
   UpdateRoomRequest,
@@ -16,6 +17,8 @@ export const roomApi = {
   createRoomMembership: (body: CreateRoomMembershipRequest) =>
     apiClient.post<CreateRoomMembershipResponse>('/room-memberships', body),
   createRoom: (body: CreateRoomRequest) => apiClient.post<CreateRoomResponse>('/rooms', body),
+  deleteRoom: (roomId: string) => apiClient.delete<void>(`/rooms/${roomId}`),
+  getMyRooms: () => apiClient.get<MyRoomsResponse>('/rooms/mine'),
   getRecentRooms: () => apiClient.get<RecentRoomsResponse>('/rooms/recent'),
   getRoom: (roomId: string) => apiClient.get<RoomResponse>(`/rooms/${roomId}`),
   updateRoom: (roomId: string, body: UpdateRoomRequest) =>

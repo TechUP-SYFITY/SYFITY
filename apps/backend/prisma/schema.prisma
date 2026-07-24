@@ -28,6 +28,7 @@ enum RoomMemberStatus {
   online
   offline
   left
+  kicked
 }
 
 enum PlaylistItemStatus {
@@ -40,12 +41,21 @@ enum ChatMessageType {
   system
 }
 
+enum ProfileImageObjectStatus {
+  pending
+  current
+  delete_pending
+}
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
   nickname     String
   profileImage String?  @map("profile_image")
   refreshToken String?  @map("refresh_token")
+  onboardedAt   DateTime? @map("onboarded_at") @db.Timestamptz
+  deletionPendingAt DateTime? @map("deletion_pending_at") @db.Timestamptz
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -54,8 +64,25 @@ model User {
   recentRooms   RecentRoom[]
   playlistItems PlaylistItem[]
   chatMessages  ChatMessage[]
+  personalPlaylists PersonalPlaylist[]
+  profileImageObjects ProfileImageObject[]
 
   @@map("users")
+}
+
+model ProfileImageObject {
+  id        String                   @id @default(uuid()) @db.Uuid
+  userId    String                   @map("user_id") @db.Uuid
+  path      String                   @unique
+  status    ProfileImageObjectStatus @default(pending)
+  createdAt DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("profile_image_objects")
 }
 
 model Room {
@@ -65,7 +92,6 @@ model Room {
   visibility     RoomVisibility
   inviteCode     String         @unique @map("invite_code") @db.VarChar(8)
   status         RoomStatus     @default(active)
-  lastActivityAt DateTime       @map("last_activity_at") @db.Timestamptz
   closedAt       DateTime?      @map("closed_at") @db.Timestamptz
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
@@ -74,9 +100,10 @@ model Room {
   roomMembers   RoomMember[]
   recentRooms   RecentRoom[]
   playlistItems PlaylistItem[]
-  playbackState PlaybackState?
   chatMessages  ChatMessage[]
 
+  @@index([hostId, status, updatedAt(sort: Desc)])
+  @@index([closedAt])
   @@map("rooms")
 }
 
@@ -89,11 +116,13 @@ model RoomMember {
   joinedAt   DateTime         @map("joined_at") @db.Timestamptz
   lastSeenAt DateTime?        @map("last_seen_at") @db.Timestamptz
   leftAt     DateTime?        @map("left_at") @db.Timestamptz
+  updatedAt  DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   room Room @relation(fields: [roomId], references: [id])
   user User @relation(fields: [userId], references: [id])
 
   @@unique([roomId, userId])
+  @@index([roomId, status])
   @@map("room_members")
 }
 
@@ -123,31 +152,14 @@ model PlaylistItem {
   addedBy      String             @map("added_by") @db.Uuid
   status       PlaylistItemStatus @default(available)
   addedAt      DateTime           @map("added_at") @db.Timestamptz
+  metadataRefreshedAt DateTime    @map("metadata_refreshed_at") @db.Timestamptz
 
   room           Room            @relation(fields: [roomId], references: [id])
   addedByUser    User            @relation(fields: [addedBy], references: [id])
-  playbackStates PlaybackState[]
 
   @@unique([roomId, videoId])
   @@index([roomId, position])
   @@map("playlist_items")
-}
-
-model PlaybackState {
-  id              String    @id @default(uuid()) @db.Uuid
-  roomId          String    @unique @map("room_id") @db.Uuid
-  videoId         String?   @map("video_id")
-  playlistItemId  String?   @map("playlist_item_id") @db.Uuid
-  baseCurrentTime Float     @default(0) @map("base_current_time")
-  isPlaying       Boolean   @default(false) @map("is_playing")
-  serverStartedAt DateTime? @map("server_started_at") @db.Timestamptz
-  serverPausedAt  DateTime? @map("server_paused_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  room         Room          @relation(fields: [roomId], references: [id])
-  playlistItem PlaylistItem? @relation(fields: [playlistItemId], references: [id])
-
-  @@map("playback_states")
 }
 
 model ChatMessage {
@@ -163,4 +175,38 @@ model ChatMessage {
 
   @@index([roomId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("chat_messages")
+}
+
+model PersonalPlaylist {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  owner User                   @relation(fields: [ownerId], references: [id])
+  items PersonalPlaylistItem[]
+
+  @@index([ownerId, updatedAt(sort: Desc)])
+  @@map("personal_playlists")
+}
+
+model PersonalPlaylistItem {
+  id                 String             @id @default(uuid()) @db.Uuid
+  personalPlaylistId String             @map("personal_playlist_id") @db.Uuid
+  videoId            String             @map("video_id")
+  title              String
+  channelTitle       String             @map("channel_title")
+  thumbnailUrl       String             @map("thumbnail_url")
+  duration           Int
+  position           Int
+  status             PlaylistItemStatus @default(available)
+  addedAt            DateTime           @default(now()) @map("added_at") @db.Timestamptz
+  metadataRefreshedAt DateTime           @map("metadata_refreshed_at") @db.Timestamptz
+
+  playlist PersonalPlaylist @relation(fields: [personalPlaylistId], references: [id], onDelete: Cascade)
+
+  @@unique([personalPlaylistId, videoId])
+  @@index([personalPlaylistId, position])
+  @@map("personal_playlist_items")
 }

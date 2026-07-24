@@ -24,6 +24,7 @@ const track: PlaylistItem = {
 const playbackState: PlaybackState = {
   currentTime: 45,
   isPlaying: false,
+  playbackVersion: 0,
   playlistItemId: 'playlist-item-1',
   videoId: 'video-1',
 };
@@ -41,12 +42,16 @@ function renderMiniPlayer(props: Partial<ComponentProps<typeof MiniPlayer>> = {}
     onNextTrack: vi.fn(),
     onPlayPause: vi.fn(),
     onPreviousTrack: vi.fn(),
+    onRepeatToggle: vi.fn(),
     onSeek: vi.fn(),
+    onShuffleToggle: vi.fn(),
     onVolumeChange: vi.fn(),
     pendingCommand: null,
     playbackState,
     playPauseDisabled: false,
     previousDisabled: false,
+    repeatMode: 'off',
+    shuffleEnabled: false,
     volume: 70,
   };
 
@@ -97,6 +102,26 @@ describe('MiniPlayer', () => {
     expect(onPlayPause).toHaveBeenCalledTimes(1);
     expect(onPreviousTrack).toHaveBeenCalledTimes(1);
     expect(onNextTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it('반복·셔플 버튼은 활성 상태를 표시하고 Host 명령을 호출한다', () => {
+    const onRepeatToggle = vi.fn();
+    const onShuffleToggle = vi.fn();
+    renderMiniPlayer({
+      onRepeatToggle,
+      onShuffleToggle,
+      repeatMode: 'one',
+      shuffleEnabled: true,
+    });
+
+    const shuffle = screen.getByRole('button', { name: '셔플 끄기' });
+    const repeat = screen.getByRole('button', { name: '한 곡 반복' });
+    expect(shuffle).toHaveAttribute('aria-pressed', 'true');
+    expect(repeat).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(shuffle);
+    fireEvent.click(repeat);
+    expect(onShuffleToggle).toHaveBeenCalledOnce();
+    expect(onRepeatToggle).toHaveBeenCalledOnce();
   });
 
   it('Member는 재생 제어를 사용하고 곡 이동만 비활성화한다', () => {
@@ -177,6 +202,22 @@ describe('MiniPlayer', () => {
     });
 
     expect(onVolumeChange).toHaveBeenCalledWith(35);
+  });
+
+  it('볼륨 컨트롤을 hover와 focus 진입 시 확장 가능한 그룹으로 표시한다', () => {
+    renderMiniPlayer();
+
+    expect(screen.getByRole('group', { name: '볼륨' })).toHaveClass('mini-player-volume-control');
+    expect(screen.getByRole('slider', { name: '볼륨 조절' })).toHaveClass(
+      'mini-player-volume-range',
+    );
+  });
+
+  it('비활성 좋아요 버튼을 제거하고 곡 정보에 남은 너비를 사용한다', () => {
+    renderMiniPlayer();
+
+    expect(screen.queryByRole('button', { name: '좋아요 기능 준비 중' })).not.toBeInTheDocument();
+    expect(screen.getByText(track.title).parentElement).toHaveClass('flex-1');
   });
 
   it('음소거 버튼을 누르면 주입된 핸들러를 호출한다', () => {

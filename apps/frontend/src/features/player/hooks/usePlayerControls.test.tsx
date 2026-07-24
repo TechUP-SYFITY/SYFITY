@@ -15,6 +15,7 @@ vi.mock('../lib/playbackCommands', () => ({
     play: vi.fn(),
     requestSync: vi.fn(),
     seek: vi.fn(),
+    updateSettings: vi.fn(),
   },
 }));
 
@@ -28,6 +29,7 @@ describe('usePlayerControls', () => {
     vi.mocked(playbackCommands.pause).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.play).mockResolvedValue(undefined);
     vi.mocked(playbackCommands.seek).mockResolvedValue(undefined);
+    vi.mocked(playbackCommands.updateSettings).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -35,7 +37,7 @@ describe('usePlayerControls', () => {
     vi.useRealTimers();
   });
 
-  it('Host가 이전 곡을 요청하면 previousItemId로 곡 변경 명령을 보낸다', async () => {
+  it('Host가 이전 곡을 요청하면 action 기반 곡 변경 명령을 보낸다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -52,7 +54,36 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-0');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'previous');
+    });
+  });
+
+  it('반복과 셔플 토글을 현재 정책 기준으로 서버에 요청한다', async () => {
+    usePlayerStore.getState().setPlaybackPolicy({ repeatMode: 'all', shuffleEnabled: false });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 0,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleRepeatToggle();
+    });
+    await waitFor(() => {
+      expect(playbackCommands.updateSettings).toHaveBeenCalledWith(roomId, { repeatMode: 'one' });
+    });
+
+    act(() => {
+      result.current.handleShuffleToggle();
+    });
+    await waitFor(() => {
+      expect(playbackCommands.updateSettings).toHaveBeenCalledWith(roomId, {
+        shuffleEnabled: true,
+      });
     });
   });
 
@@ -246,7 +277,7 @@ describe('usePlayerControls', () => {
     expect(callOrder).toEqual(['local-play', 'socket-change-track']);
     expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-0');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'previous');
     });
   });
 
@@ -280,8 +311,168 @@ describe('usePlayerControls', () => {
     expect(callOrder).toEqual(['local-play', 'socket-change-track']);
     expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
+  });
+
+  it('Host의 Playlist 곡 선택은 서버 명령 전에 로컬 플레이어를 재생하고 item id를 전달한다', async () => {
+    const callOrder: string[] = [];
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(() => callOrder.push('local-play')),
+      },
+    };
+    vi.mocked(playbackCommands.changeTrack).mockImplementation(async () => {
+      callOrder.push('socket-change-track');
+    });
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 0,
+        hasPlayableTrack: false,
+        isHost: true,
+        isPlaying: false,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSelectTrack('playlist-item-2');
+    });
+
+    expect(callOrder).toEqual(['local-play', 'socket-change-track']);
+    await waitFor(() => {
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(
+        roomId,
+        'select',
+        'playlist-item-2',
+      );
+    });
+  });
+
+  it('Member의 Playlist 곡 선택은 로컬 재생과 서버 명령을 실행하지 않는다', () => {
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(),
+      },
+    };
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 0,
+        hasPlayableTrack: true,
+        isHost: false,
+        isPlaying: false,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSelectTrack('playlist-item-2');
+    });
+
+    expect(playerControllerRef.current.play).not.toHaveBeenCalled();
+    expect(playbackCommands.changeTrack).not.toHaveBeenCalled();
+  });
+
+  it('Playlist 곡 선택 명령이 pending이면 중복 선택을 보내지 않는다', async () => {
+    const selectCommand = createDeferred<void>();
+    vi.mocked(playbackCommands.changeTrack).mockReturnValue(selectCommand.promise);
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 0,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSelectTrack('playlist-item-2');
+      result.current.handleSelectTrack('playlist-item-2');
+    });
+
+    expect(playbackCommands.changeTrack).toHaveBeenCalledOnce();
+    expect(result.current.pendingCommand).toBe('select');
+
+    await act(async () => {
+      selectCommand.resolve();
+      await selectCommand.promise;
+    });
+  });
+
+  it('Playlist 곡 선택 실패를 공통 Player 오류로 표시하고 pending을 해제한다', async () => {
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(),
+      },
+    };
+    vi.mocked(playbackCommands.changeTrack).mockRejectedValue(
+      new ApiClientError({
+        code: 'PLAYLIST_ITEM_NOT_FOUND',
+        message: '재생목록 항목이 없습니다.',
+      }),
+    );
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 0,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: false,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSelectTrack('missing-item');
+    });
+
+    await waitFor(() => {
+      expect(result.current.commandError).toBe('재생할 곡을 찾을 수 없어요.');
+      expect(result.current.pendingCommand).toBeNull();
+    });
+    expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
+    expect(playerControllerRef.current.pause).toHaveBeenCalledOnce();
+  });
+
+  it('재생 중인 곡에서 Playlist 선택이 실패하면 로컬 플레이어를 일시정지하지 않는다', async () => {
+    const playerControllerRef = {
+      current: {
+        pause: vi.fn(),
+        play: vi.fn(),
+      },
+    };
+    vi.mocked(playbackCommands.changeTrack).mockRejectedValue(
+      new ApiClientError({
+        code: 'PLAYLIST_ITEM_NOT_FOUND',
+        message: '재생목록 항목이 없습니다.',
+      }),
+    );
+    const { result } = renderHook(() =>
+      usePlayerControls({
+        currentTime: 12,
+        hasPlayableTrack: true,
+        isHost: true,
+        isPlaying: true,
+        playerControllerRef,
+        roomId,
+      }),
+    );
+
+    act(() => {
+      result.current.handleSelectTrack('missing-item');
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingCommand).toBeNull();
+    });
+    expect(playerControllerRef.current.play).toHaveBeenCalledOnce();
+    expect(playerControllerRef.current.pause).not.toHaveBeenCalled();
   });
 
   it('낙관적 재생 명령이 실패하면 로컬 플레이어를 다시 일시정지한다', async () => {
@@ -356,7 +547,7 @@ describe('usePlayerControls', () => {
     });
   });
 
-  it('Host가 다음 곡을 요청하면 nextItemId로 곡 변경 명령을 보낸다', async () => {
+  it('Host가 다음 곡을 요청하면 action 기반 곡 변경 명령을 보낸다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -373,11 +564,11 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
-  it('Host의 마지막 곡이 종료되면 0초 pause 명령을 보낸다', async () => {
+  it('Host의 다음 곡 요청은 마지막 곡 여부도 서버에 위임한다', async () => {
     const { result } = renderHook(() =>
       usePlayerControls({
         currentTime: 12,
@@ -393,7 +584,7 @@ describe('usePlayerControls', () => {
     });
 
     await waitFor(() => {
-      expect(playbackCommands.pause).toHaveBeenCalledWith(roomId, 0);
+      expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     });
   });
 
@@ -630,7 +821,7 @@ describe('usePlayerControls', () => {
       vi.advanceTimersByTime(200);
     });
 
-    expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'playlist-item-2');
+    expect(playbackCommands.changeTrack).toHaveBeenCalledWith(roomId, 'next');
     expect(playbackCommands.seek).not.toHaveBeenCalled();
 
     await act(async () => {

@@ -1,5 +1,8 @@
+import type { KickedRoomMember } from '@syfity/shared';
+
 import type {
   ChatMessage,
+  PlaybackPolicy,
   PlaybackState,
   PlaylistItem,
   RoomDetail,
@@ -110,13 +113,24 @@ export const roomFixture = {
       userId: 'fallback-member-5',
     },
   ] satisfies RoomMember[],
+  kickedMembers: [
+    {
+      id: 'kicked-membership-1',
+      kickedAt: '2026-07-21T01:00:00.000Z',
+      nickname: '추방 멤버',
+      profileImage: null,
+      userId: 'kicked-user-1',
+    },
+  ] satisfies KickedRoomMember[],
   playbackState: {
     currentTime: 0,
     isPlaying: false,
+    playbackVersion: 0,
     playlistItemId: null,
     updatedAt: '2026-07-01T10:12:00.000Z',
     videoId: null,
   } satisfies PlaybackState,
+  playbackPolicy: { repeatMode: 'off', shuffleEnabled: false } satisfies PlaybackPolicy,
   playlist: [
     {
       addedBy: 'fallback-host',

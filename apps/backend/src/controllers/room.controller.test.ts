@@ -28,6 +28,7 @@ const roomDetail: RoomDetailRecord = {
   hostId: 'user-1',
   inviteCode: 'ABC123',
   status: 'active',
+  closedAt: null,
   createdAt: new Date('2026-07-01T12:00:00.000Z'),
 };
 
@@ -38,6 +39,16 @@ const updatedRoom: RoomUpdateRecord = {
   closedAt: null,
   updatedAt: new Date('2026-07-01T12:30:00.000Z'),
 };
+
+const myRooms = [
+  {
+    id: 'room-1',
+    name: 'Morning Jazz',
+    status: 'closed' as const,
+    closedAt: new Date('2026-07-01T12:30:00.000Z'),
+    updatedAt: new Date('2026-07-01T12:30:00.000Z'),
+  },
+];
 
 function makeRequest(): ExRequest {
   return {
@@ -54,6 +65,8 @@ function makeUserService() {
 function makeRoomService() {
   return {
     createRoom: vi.fn().mockResolvedValue(createdRoom),
+    deactivateRoom: vi.fn().mockResolvedValue(undefined),
+    getMyRooms: vi.fn().mockResolvedValue(myRooms),
     getRoomInfo: vi.fn().mockResolvedValue(roomDetail),
     updateRoom: vi.fn().mockResolvedValue(updatedRoom),
   };
@@ -152,6 +165,28 @@ describe('RoomController', () => {
     expect(roomService.getRoomInfo).toHaveBeenCalledWith('room-1', 'user-id');
   });
 
+  it('GET /rooms/mine 응답을 반환한다', async () => {
+    const userService = makeUserService();
+    const roomService = makeRoomService();
+    const controller = new RoomController(userService, roomService);
+
+    await expect(controller.getMyRooms(makeRequest())).resolves.toEqual({
+      success: true,
+      data: {
+        rooms: [
+          {
+            id: 'room-1',
+            name: 'Morning Jazz',
+            status: 'closed',
+            closedAt: '2026-07-01T12:30:00.000Z',
+            updatedAt: '2026-07-01T12:30:00.000Z',
+          },
+        ],
+      },
+    });
+    expect(roomService.getMyRooms).toHaveBeenCalledWith('user-id');
+  });
+
   it('GET /rooms/:roomId service 에러를 그대로 전파한다', async () => {
     const error = new Error('get failed');
     const userService = makeUserService();
@@ -222,17 +257,31 @@ describe('RoomController', () => {
         name: 'Evening Jazz',
         status: 'closed',
       } as never),
-    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+      message: 'name 또는 status: closed/active 중 하나가 필요합니다.',
+    });
     expect(roomService.updateRoom).not.toHaveBeenCalled();
   });
 
-  it('PATCH /rooms/:roomId는 status: active 단독 요청을 거부한다', async () => {
+  it('PATCH /rooms/:roomId는 status: active 단독 요청을 서비스에 전달한다', async () => {
     const roomService = makeRoomService();
     const controller = new RoomController(makeUserService(), roomService);
 
-    await expect(
-      controller.updateRoom('room-1', makeRequest(), { status: 'active' } as never),
-    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
-    expect(roomService.updateRoom).not.toHaveBeenCalled();
+    await controller.updateRoom('room-1', makeRequest(), { status: 'active' });
+
+    expect(roomService.updateRoom).toHaveBeenCalledWith('room-1', 'user-id', {
+      status: 'active',
+    });
+  });
+
+  it('DELETE /rooms/:roomId를 서비스에 전달한다', async () => {
+    const roomService = makeRoomService();
+    const controller = new RoomController(makeUserService(), roomService);
+
+    await expect(controller.deactivateRoom('room-1', makeRequest())).resolves.toBeUndefined();
+
+    expect(roomService.deactivateRoom).toHaveBeenCalledWith('room-1', 'user-id');
   });
 });

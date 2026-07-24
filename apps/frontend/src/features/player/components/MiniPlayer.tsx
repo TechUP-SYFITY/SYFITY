@@ -2,10 +2,10 @@
 
 // Room 하단에 고정되는 미니 플레이어 UI와 주입된 제어 상태를 표시한다.
 import {
-  Heart,
   Pause,
   Play,
   Repeat,
+  Repeat1,
   Shuffle,
   SkipBack,
   SkipForward,
@@ -16,11 +16,12 @@ import type { CSSProperties } from 'react';
 
 import { formatDuration } from '@/shared/lib/formatDuration';
 import { cn } from '@/shared/lib/utils';
-import type { PlaybackState, PlaylistItem } from '@/shared/types/domain';
+import type { PlaybackPolicy, PlaybackState, PlaylistItem } from '@/shared/types/domain';
 
 import { TrackArtwork } from './TrackArtwork';
 
-export type MiniPlayerPendingCommand = 'play' | 'pause' | 'previous' | 'next' | 'seek' | null;
+export type MiniPlayerPendingCommand =
+  'play' | 'pause' | 'previous' | 'next' | 'select' | 'seek' | 'repeat' | 'shuffle' | null;
 
 interface MiniPlayerProps {
   commandError: string | null;
@@ -34,12 +35,16 @@ interface MiniPlayerProps {
   onNextTrack: () => void;
   onPlayPause: () => void;
   onPreviousTrack: () => void;
+  onRepeatToggle: () => void;
   onSeek: (seekTime: number) => void;
+  onShuffleToggle: () => void;
   onVolumeChange: (volume: number) => void;
   pendingCommand: MiniPlayerPendingCommand;
   playbackState: PlaybackState | null;
   playPauseDisabled: boolean;
   previousDisabled: boolean;
+  repeatMode: PlaybackPolicy['repeatMode'];
+  shuffleEnabled: boolean;
   volume: number;
 }
 
@@ -55,12 +60,16 @@ export function MiniPlayer({
   onNextTrack,
   onPlayPause,
   onPreviousTrack,
+  onRepeatToggle,
   onSeek,
+  onShuffleToggle,
   onVolumeChange,
   pendingCommand,
   playbackState,
   playPauseDisabled,
   previousDisabled,
+  repeatMode,
+  shuffleEnabled,
   volume,
 }: MiniPlayerProps) {
   const duration = currentTrack?.duration ?? 0;
@@ -86,9 +95,9 @@ export function MiniPlayer({
     // 오버레이의 pb-28(112px)이 이 MiniPlayer(h-16=64px) + 하단 탭 바(h-12=48px) 높이를
     // 정확히 합친 값이라 오버레이 콘텐츠와 겹치지 않는다.
     <footer className="fixed inset-x-0 bottom-0 z-40 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/95 px-5 backdrop-blur-sm xl:static xl:h-room-mini-player xl:px-6">
-      <div className="flex w-56 min-w-0 flex-none items-center gap-3">
+      <div className="flex w-56 min-w-0 flex-none items-center gap-3 xl:w-56 landscape:w-44">
         <TrackArtwork track={currentTrack} />
-        <div className="w-24 min-w-0 flex-none">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold text-foreground">
             {currentTrack?.title ?? '재생 대기'}
           </p>
@@ -96,23 +105,21 @@ export function MiniPlayer({
             {currentTrack?.channelTitle ?? '곡을 추가해보세요'}
           </p>
         </div>
-        <button
-          className={cn(getIconButtonClass(true), `hidden sm:flex`)}
-          type="button"
-          aria-label="좋아요 기능 준비 중"
-          disabled
-        >
-          <Heart className="inline-block size-3.5 shrink-0" aria-hidden />
-        </button>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1">
+      <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 md:max-xl:absolute md:max-xl:left-1/2 md:max-xl:-translate-x-1/2 xl:static xl:translate-x-0 landscape:absolute landscape:left-1/2 landscape:-translate-x-1/2">
         <div className="flex h-9 items-center justify-center gap-4">
           <button
-            className={cn(getIconButtonClass(true), `hidden md:flex`)}
+            className={cn(
+              getIconButtonClass(controlDisabled),
+              shuffleEnabled && !controlDisabled && 'text-primary',
+              `hidden md:flex`,
+            )}
             type="button"
-            aria-label="셔플 기능 준비 중"
-            disabled
+            aria-label={shuffleEnabled ? '셔플 끄기' : '셔플 켜기'}
+            aria-pressed={shuffleEnabled}
+            disabled={controlDisabled}
+            onClick={onShuffleToggle}
           >
             <Shuffle className="inline-block size-3.5 shrink-0" aria-hidden />
           </button>
@@ -154,12 +161,22 @@ export function MiniPlayer({
             <SkipForward className="inline-block size-4 shrink-0" aria-hidden />
           </button>
           <button
-            className={cn(getIconButtonClass(true), `hidden md:flex`)}
+            className={cn(
+              getIconButtonClass(controlDisabled),
+              repeatMode !== 'off' && !controlDisabled && 'text-primary',
+              `hidden md:flex`,
+            )}
             type="button"
-            aria-label="반복 재생 기능 준비 중"
-            disabled
+            aria-label={getRepeatButtonLabel(repeatMode)}
+            aria-pressed={repeatMode !== 'off'}
+            disabled={controlDisabled}
+            onClick={onRepeatToggle}
           >
-            <Repeat className="inline-block size-3.5 shrink-0" aria-hidden />
+            {repeatMode === 'one' ? (
+              <Repeat1 className="inline-block size-3.5 shrink-0" aria-hidden />
+            ) : (
+              <Repeat className="inline-block size-3.5 shrink-0" aria-hidden />
+            )}
           </button>
         </div>
         <div className="hidden w-full max-w-96 items-center gap-2 text-xs/4 text-muted-foreground xl:flex">
@@ -212,7 +229,11 @@ export function MiniPlayer({
         ) : null}
       </div>
 
-      <div className="hidden w-36 flex-none items-center justify-end gap-2 xl:flex">
+      <div
+        className="hidden w-36 flex-none mini-player-volume-control items-center justify-end gap-2 md:max-xl:ml-auto md:max-xl:flex xl:flex xl:w-36 min-[700px]:landscape:ml-auto min-[700px]:landscape:flex min-[700px]:landscape:w-28"
+        role="group"
+        aria-label="볼륨"
+      >
         <button
           className={getIconButtonClass(false)}
           type="button"
@@ -243,6 +264,12 @@ export function MiniPlayer({
       </div>
     </footer>
   );
+}
+
+function getRepeatButtonLabel(repeatMode: PlaybackPolicy['repeatMode']) {
+  if (repeatMode === 'all') return '전체 반복';
+  if (repeatMode === 'one') return '한 곡 반복';
+  return '반복 없음';
 }
 
 function getIconButtonClass(disabled: boolean) {

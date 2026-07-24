@@ -45,6 +45,7 @@ vi.mock('./YouTubePlayer', () => ({
 
 vi.mock('../lib/playbackCommands', () => ({
   playbackCommands: {
+    reportEnded: vi.fn().mockResolvedValue(undefined),
     reportError: vi.fn(),
     requestSync: vi.fn(),
   },
@@ -77,17 +78,14 @@ const playlist: PlaylistItem[] = [
   },
 ];
 
-const onEnded = vi.fn();
 const onPlaybackStateChange = vi.fn();
 
-function renderPlayerPanel(isHost = true, playlistItems = playlist, canControlRoom = isHost) {
+function renderPlayerPanel(playlistItems = playlist, canControlRoom = true) {
   return render(
     <ToastProvider>
       <PlayerPanel
         canControlRoom={canControlRoom}
         roomId={roomId}
-        isHost={isHost}
-        onEnded={onEnded}
         onPlaybackStateChange={onPlaybackStateChange}
         playlist={playlistItems}
       />
@@ -100,6 +98,7 @@ function seedPlayback(isPlaying = false, playlistItemId = 'playlist-item-1') {
     {
       currentTime: 12,
       isPlaying,
+      playbackVersion: 1,
       playlistItemId,
       videoId: 'video-1',
     },
@@ -130,13 +129,39 @@ describe('PlayerPanel', () => {
     expect(screen.queryByText('Host 제어 가능')).not.toBeInTheDocument();
   });
 
+  it('Member가 로컬 동기화를 중지하면 자신의 화면만 일시정지됐음을 표시한다', () => {
+    seedPlayback(true);
+    usePlayerStore.getState().pauseLocalSync();
+
+    renderPlayerPanel(playlist, false);
+
+    expect(screen.getByText('내 화면만 일시정지됨')).toBeInTheDocument();
+    expect(screen.queryByText('호스트가 일시정지함')).not.toBeInTheDocument();
+  });
+
+  it('호스트 재생 상태가 일시정지이면 호스트 일시정지 상태를 표시한다', () => {
+    seedPlayback(false);
+
+    renderPlayerPanel(playlist, false);
+
+    expect(screen.getByText('호스트가 일시정지함')).toBeInTheDocument();
+  });
+
+  it('재생 상태가 없는 빈 Room에는 일시정지 상태를 표시하지 않는다', () => {
+    renderPlayerPanel([]);
+
+    expect(screen.getByRole('heading', { name: '재생 대기' })).toBeInTheDocument();
+    expect(screen.queryByText('내 화면만 일시정지됨')).not.toBeInTheDocument();
+    expect(screen.queryByText('호스트가 일시정지함')).not.toBeInTheDocument();
+  });
+
   it('영상 종료 이벤트를 공통 Player 제어 handler로 전달한다', () => {
     seedPlayback(false);
     renderPlayerPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'mock ended' }));
 
-    expect(onEnded).toHaveBeenCalledTimes(1);
+    expect(playbackCommands.reportEnded).toHaveBeenCalledWith(roomId, 'playlist-item-1', 1);
   });
 
   it('버퍼링 회복 시 자동 동기화 요청을 보낸다', () => {
@@ -210,7 +235,7 @@ describe('PlayerPanel', () => {
 
   it('Member에서 player error 발생 시 서버에 재생 실패를 보고하지 않는다', () => {
     seedPlayback(false);
-    renderPlayerPanel(false);
+    renderPlayerPanel(playlist, false);
 
     fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 
@@ -219,7 +244,7 @@ describe('PlayerPanel', () => {
 
   it('Host 역할은 유지하지만 제어할 수 없으면 배지 없이 재생 실패 보고를 차단한다', () => {
     seedPlayback(false);
-    renderPlayerPanel(true, playlist, false);
+    renderPlayerPanel(playlist, false);
 
     fireEvent.click(screen.getByRole('button', { name: 'mock player error' }));
 

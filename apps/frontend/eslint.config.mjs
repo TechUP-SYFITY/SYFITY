@@ -18,11 +18,14 @@ const eslintConfig = defineConfig([
   ...nextTs,
   globalIgnores([
     '.next/**',
+    '.next-e2e/**', // Playwright E2E용 Next 빌드 산출물
     'out/**',
     'build/**',
     'next-env.d.ts',
     'src/generated/**',
     '.storybook/**',
+    'test-results/**',
+    'playwright-report/**',
   ]),
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -184,6 +187,14 @@ const eslintConfig = defineConfig([
     },
   },
   ...storybook.configs['flat/recommended'],
+  {
+    // Playwright fixture는 `async ({ page }, use) => { ... await use(value) }` 형태를 쓴다.
+    // react-hooks 규칙이 이 `use`를 React Hook으로 오인하므로 E2E 디렉터리에서만 끈다.
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
 ]);
 
 export default eslintConfig;

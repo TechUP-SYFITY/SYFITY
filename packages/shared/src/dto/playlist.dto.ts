@@ -35,3 +35,16 @@ export type ReorderPlaylistItem = {
 export type ReorderPlaylistRequest = {
   items: ReorderPlaylistItem[];
 };
+
+export type ImportPersonalPlaylistRequest = {
+  personalPlaylistId: string;
+};
+
+export type ImportPersonalPlaylistResponse = {
+  success: true;
+  data: {
+    addedCount: number;
+    duplicateCount: number;
+    unavailableCount: number;
+  };
+};

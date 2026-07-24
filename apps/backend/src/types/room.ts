@@ -15,6 +15,7 @@ export type RoomDetailRecord = {
   hostId: string;
   status: 'active' | 'inactive' | 'closed';
   inviteCode: string;
+  closedAt: Date | null;
   createdAt: Date;
 };
 
@@ -26,6 +27,16 @@ export type RoomUpdateRecord = {
   updatedAt: Date;
 };
 
+export type RoomMineRecord = {
+  id: string;
+  name: string;
+  status: 'active' | 'closed';
+  closedAt: Date | null;
+  updatedAt: Date;
+};
+
+export type InactivateStaleRoomsResult = { inactivatedCount: number };
+
 export type CreateRoomData = {
   name: string;
   hostId: string;
@@ -33,7 +44,7 @@ export type CreateRoomData = {
 };
 
 export type RoomRole = 'host' | 'member' | 'guest';
-export type RoomMemberStatus = 'online' | 'offline' | 'left';
+export type RoomMemberStatus = 'online' | 'offline' | 'left' | 'kicked';
 export type HostConnectionState =
   { status: 'connected' } | { status: 'disconnected'; waitUntil: string };
 
@@ -43,6 +54,23 @@ export type RoomMembershipRecord = {
 };
 
 export type RoomMemberRecord = {
+  id: string;
+  userId: string;
+  nickname: string;
+  profileImage: string | null;
+  role: RoomRole;
+  status: 'online' | 'offline' | 'left';
+};
+
+export type KickedMemberRecord = {
+  id: string;
+  userId: string;
+  nickname: string;
+  profileImage: string | null;
+  kickedAt: Date;
+};
+
+export type RoomMemberLookupRecord = {
   id: string;
   userId: string;
   nickname: string;
@@ -71,10 +99,18 @@ export interface IRoomRepository {
   existsRoom(roomId: string): Promise<boolean>;
   findRoomById(roomId: string): Promise<RoomDetailRecord | null>;
   findRoomByInviteCode(inviteCode: string): Promise<RoomDetailRecord | null>;
-  touchLastActivity(roomId: string): Promise<void>;
+  findRoomsByHostId(hostId: string): Promise<RoomMineRecord[]>;
   findMembership(roomId: string, userId: string): Promise<RoomMembershipRecord | null>;
   upsertMembership(roomId: string, userId: string): Promise<boolean>;
   findMembers(roomId: string): Promise<RoomMemberRecord[]>;
+  findMemberById(roomId: string, memberId: string): Promise<RoomMemberLookupRecord | null>;
+  updateMemberStatusByMemberId(
+    roomId: string,
+    memberId: string,
+    status: RoomMemberStatus,
+    fromStatuses: RoomMemberStatus[],
+  ): Promise<boolean>;
+  findKickedMembers(roomId: string): Promise<KickedMemberRecord[]>;
   upsertRecentRoom(userId: string, roomId: string): Promise<void>;
   updateMemberStatus(
     roomId: string,
@@ -84,5 +120,8 @@ export interface IRoomRepository {
   ): Promise<boolean>;
   findMemberInfo(roomId: string, userId: string): Promise<RoomMemberRecord | null>;
   closeRoom(roomId: string): Promise<RoomUpdateRecord>;
+  recoverRoom(roomId: string): Promise<RoomUpdateRecord>;
+  deactivateRoom(roomId: string): Promise<void>;
+  inactivateStaleRooms(): Promise<number>;
   updateRoomName(roomId: string, name: string): Promise<RoomUpdateRecord>;
 }

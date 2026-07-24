@@ -8,6 +8,10 @@ export function Footer() {
         <p className="text-xs text-white/40">
           © {new Date().getFullYear()} Syfity. 음악으로 연결된 세상.
         </p>
+        <div className="flex gap-3 text-xs text-white/55">
+          <a href="/terms">이용약관</a>
+          <a href="/privacy">개인정보처리방침</a>
+        </div>
       </div>
     </footer>
   );

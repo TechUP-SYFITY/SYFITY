@@ -9,6 +9,7 @@ import type {
   RoomHostDisconnectedPayload,
   RoomJoinedPayload,
   RoomJoinPayload,
+  RoomKickedPayload,
 } from '@/shared/types/socket';
 
 import { useRoomStore } from '../store/roomStore';
@@ -17,6 +18,7 @@ export const useRoomSocket = (
   roomId: string,
   onSnapshot?: (snapshot: RoomJoinedPayload) => void,
   onRoomClosed?: () => void,
+  onRoomKicked?: (payload: RoomKickedPayload) => void,
 ) => {
   const markHostDisconnected = useRoomStore((state) => state.markHostDisconnected);
   const markHostReconnected = useRoomStore((state) => state.markHostReconnected);
@@ -46,6 +48,11 @@ export const useRoomSocket = (
 
       markRoomClosed(payload.reason);
       onRoomClosed?.();
+    };
+    const handleRoomKicked = (payload: RoomKickedPayload) => {
+      if (payload.roomId === roomId) {
+        onRoomKicked?.(payload);
+      }
     };
     const handleRoomJoined = (snapshot: RoomJoinedPayload) => {
       if (snapshot.roomId !== roomId) {
@@ -85,6 +92,7 @@ export const useRoomSocket = (
     socket.on('room:host-disconnected', handleHostDisconnected);
     socket.on('room:host-reconnected', handleHostReconnected);
     socket.on('room:closed', handleRoomClosed);
+    socket.on('room:kicked', handleRoomKicked);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     joinRoom();
 
@@ -94,8 +102,8 @@ export const useRoomSocket = (
       socket.off('room:host-disconnected', handleHostDisconnected);
       socket.off('room:host-reconnected', handleHostReconnected);
       socket.off('room:closed', handleRoomClosed);
+      socket.off('room:kicked', handleRoomKicked);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      socket.emit('room:leave', { roomId });
     };
   }, [
     markHostDisconnected,
@@ -103,6 +111,7 @@ export const useRoomSocket = (
     markRoomClosed,
     onSnapshot,
     onRoomClosed,
+    onRoomKicked,
     roomId,
     setRoomSocketError,
   ]);

@@ -3,7 +3,8 @@ import { cn } from '@/shared/lib/utils';
 import type { PlaylistItem } from '@/shared/types/domain';
 
 interface PlaylistArtworkProps {
-  item: PlaylistItem;
+  // addedBy는 쓰지 않으므로 개인 플레이리스트 아이템도 받는다.
+  item: Omit<PlaylistItem, 'addedBy'>;
 }
 
 export function PlaylistArtwork({ item }: PlaylistArtworkProps) {
@@ -20,7 +21,7 @@ export function PlaylistArtwork({ item }: PlaylistArtworkProps) {
   );
 }
 
-function getThumbnailUrl(item: PlaylistItem) {
+function getThumbnailUrl(item: Omit<PlaylistItem, 'addedBy'>) {
   if (item.thumbnailUrl) {
     return item.thumbnailUrl;
   }

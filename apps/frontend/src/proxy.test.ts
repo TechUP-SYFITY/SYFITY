@@ -67,4 +67,14 @@ describe('proxy', () => {
     expect(location).toContain('/login');
     expect(location).toContain('returnUrl=%2Fhome');
   });
+
+  it.each(['/onboarding', '/settings', '/playlists', '/playlists/personal-1'])(
+    '비로그인 보호 경로 %s 접근은 returnUrl과 함께 /login으로 보낸다',
+    (path) => {
+      const location = proxy(req(path))?.headers.get('location');
+
+      expect(location).toContain('/login');
+      expect(location).toContain(`returnUrl=${encodeURIComponent(path)}`);
+    },
+  );
 });

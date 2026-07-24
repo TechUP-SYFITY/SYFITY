@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, FileText, ListMusic, LogOut, Settings, Shield } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect } from 'react';
 
 import {
@@ -66,6 +67,35 @@ export function UserMenu({ api = authApi }: UserMenuProps) {
           <span className="text-sm font-semibold text-white">{me.nickname}</span>
           <span className="text-xs font-normal text-white/48">{me.email}</span>
         </DropdownMenuLabel>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link href="/playlists">
+            <ListMusic aria-hidden />내 플레이리스트
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <Settings aria-hidden />
+            설정
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link href="/terms">
+            <FileText aria-hidden />
+            이용약관
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/privacy">
+            <Shield aria-hidden />
+            개인정보처리방침
+          </Link>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 

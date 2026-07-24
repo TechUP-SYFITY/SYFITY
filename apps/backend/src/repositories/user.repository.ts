@@ -1,8 +1,10 @@
+import { randomUUID } from 'node:crypto';
+
 import type { PrismaClient } from '../generated/prisma/client';
 import type { IUserRepository, RecentRoomRecord, UserProfileRecord } from '../types/user';
 
 export type UserRepositoryPrisma = {
-  user: Pick<PrismaClient['user'], 'findUnique'>;
+  user: Pick<PrismaClient['user'], 'findUnique' | 'update'>;
   recentRoom: Pick<PrismaClient['recentRoom'], 'findMany'>;
 };
 
@@ -17,6 +19,64 @@ export class UserRepository implements IUserRepository {
         email: true,
         nickname: true,
         profileImage: true,
+        onboardedAt: true,
+        deletionPendingAt: true,
+        deletedAt: true,
+      },
+    });
+  }
+
+  completeOnboarding(
+    userId: string,
+    data: { nickname: string },
+  ): Promise<UserProfileRecord & { onboardedAt: Date }> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { nickname: data.nickname, onboardedAt: new Date() },
+      select: { id: true, email: true, nickname: true, profileImage: true, onboardedAt: true },
+    }) as Promise<UserProfileRecord & { onboardedAt: Date }>;
+  }
+
+  updateNickname(userId: string, nickname: string): Promise<UserProfileRecord> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { nickname },
+      select: { id: true, email: true, nickname: true, profileImage: true, onboardedAt: true },
+    });
+  }
+
+  updateProfileImage(userId: string, profileImage: string | null): Promise<UserProfileRecord> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { profileImage },
+      select: { id: true, email: true, nickname: true, profileImage: true, onboardedAt: true },
+    });
+  }
+
+  async markDeletionPending(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletionPendingAt: new Date() },
+    });
+  }
+
+  async clearDeletionPending(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletionPendingAt: null },
+    });
+  }
+
+  async anonymizeUser(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: `deleted-${randomUUID()}@deleted.syfity.local`,
+        nickname: '탈퇴한 사용자',
+        profileImage: null,
+        refreshToken: null,
+        deletionPendingAt: null,
+        deletedAt: new Date(),
       },
     });
   }
@@ -25,7 +85,10 @@ export class UserRepository implements IUserRepository {
     const records = await this.prisma.recentRoom.findMany({
       where: {
         userId,
-        room: { status: 'active' },
+        room: {
+          status: 'active',
+          roomMembers: { none: { userId, status: 'kicked' } },
+        },
       },
       select: {
         lastJoinedAt: true,
